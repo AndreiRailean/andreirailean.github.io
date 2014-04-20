@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+	"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+	<title>Andrei Railean</title>
+	<link rel="stylesheet" href="style-2009.css" type="text/css" media="screen" title="style" charset="utf-8">
+	<!-- OpenID Delegation -->
+	<link rel="openid.server"
+			href="http://www.myopenid.com/server" />
+	<link rel="openid.delegate"
+			href="http://andreirailean.myopenid.com/" />
+	<link rel="openid2.local_id"
+			href="http://andreirailean.myopenid.com" />
+	<link rel="openid2.provider"
+			href="http://www.myopenid.com/server" />
+	<meta http-equiv="X-XRDS-Location"
+			content="http://www.myopenid.com/xrds?username=andreirailean.myopenid.com" />
+
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-94183-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+<script src="raphael.js"></script>
+
+<link  href="http://fonts.googleapis.com/css?family=Cabin+Sketch:bold&v1" rel="stylesheet" type="text/css" >
+<style>
+body {
+  font-family: 'Cabin Sketch', serif;
+  font-style: normal;
+  font-size: 20px;
+  font-weight: 400;
+  text-shadow: none;
+  text-decoration: none;
+  text-transform: none;
+  letter-spacing: -0.05em;
+  word-spacing: 0.069em;
+  line-height: 1;
+}
+
+#image
+{
+	background: #FFF url("/images/andrei.md.jpg") no-repeat scroll center center;
+	height: 450px;
+	width: 800px;
+	margin: auto;
+	position: relative;
+}
+
+#lines
+{
+	height: 80px; 
+	width:400px; 
+	position: absolute; 
+	left: 0px;
+	bottom: 150px;
+}
+
+#circles
+{
+	height: 400px; 
+	width:800px;
+}	
+
+h1 {
+  font-family: 'Cabin Sketch', serif;
+	font-size: 50px;
+	margin: 0;
+	text-align: left;
+	position:absolute;
+	bottom: 170px;
+	left: 60px;
+}
+
+.contact
+{
+  font-family: 'Cabin Sketch', serif;
+	font-size: 18px;
+	text-align:left;
+	position:absolute;
+	bottom: 155px;
+	left: 70px;
+}
+
+</style>
+
+
+</head>
+<body>
+<!-- Photos -->
+<br>
+<div id="image">
+	<div id="lines"></div>			
+	<div id="circles"></div>	
+	<h1>Andrei Railean</h1>
+	<div class="contact">andrei @ andrei.md &nbsp;  &nbsp;  &nbsp; +61 412 85 44 06</div>
+	<!-- <img src="images/andrei.md.jpg" alt="andrei.md" /> -->
+</div>
+
+<!-- <div id="squares" style="height: 100px; width:800px; margin:auto;"></div>	 -->
+
+<!-- External Links -->
+<div class="content-wrapper" ><div class="content standard" style="text-align: center;">
+<a href="http://www.facebook.com/andreirailean"><img src="/images/site-logos/facebook.png" width="90" height="30" alt="Andrei Railean on Facebook"></a>
+<a href="http://twitter.com/andrei_md"><img src="/images/site-logos/twitter.png" width="122" height="30" alt="@andrei_md on twitter"></a>
+<a href="http://www.linkedin.com/in/andreirailean"><img src="images/site-logos/linkedin.png" width="113" height="30" alt="Andrei Railean on LinkedIn"></a>
+<!-- <a href="http://andreirailean.livejournal.com"><img src="images/site-logos/livejournal.png" width="119" height="30" alt="Andrei Railean on LiveJournal"></a> -->
+<a href="http://andreirailean.tumblr.com/"><img src="/images/site-logos/tumblr.png" width="110" height="30" alt="Andrei Railean on Tumblr"></a>
+<!-- <a href="http://flickr.com/photos/andrei-railean/"><img src="images/site-logos/flickr.png" width="87" height="30" alt="Andrei Railean on Flickr"></a> -->
+</div>
+
+
+<script type="text/javascript" charset="utf-8">
+
+// photo lines
+var set = {
+	sq: {
+		w: 800,
+		h: 100
+	},
+	
+	li: {
+		w: 400,
+		h: 80,
+		count: 10,
+		line_width: 80
+	},
+	
+	ci: {
+		w: 800,
+		h: 400,
+		count: 20
+	}
+	
+}
+
+
+
+
+// var squares_canvas = Raphael("squares", set.sq.w, set.sq.h);
+var lines_canvas = Raphael("lines", set.li.w, set.li.h);
+var circles_canvas = Raphael("circles", set.ci.w, set.ci.h);
+
+var lines = {};
+// var squares = {};
+var circles = [];
+
+var draw_square = function() {
+
+	var height = set.sq.h;
+	var width = set.sq.w;
+	var box_max = 60;
+	var square_count = 20;
+
+	var width_start = Math.round(Math.random()*box_max);
+	var width_finish = Math.round(Math.random()*box_max);
+
+	var x = Math.round(width-box_max/2 - Math.random()*(width-box_max));
+	var y = Math.round(height-box_max/2 - Math.random()*(height-box_max));
+
+	var square_id = Math.round(Math.random()*square_count);
+
+	if (squares[square_id]) {
+		squares[square_id].animate({width: 0, height: 0}, Math.floor(Math.random()*400));
+		squares[square_id].remove();		
+	}
+	
+ 	squares[square_id] = squares_canvas.rect(x,y,0,0).attr({fill: "rgb("+random_rgb()+")", stroke:null, "fill-opacity": 0.5});	
+	squares[square_id].animate({width: width_finish, height: width_finish, fill:"rgb("+random_rgb()+")"}, Math.floor(800-Math.random()*400));
+}
+
+var circle_draw = function() {
+
+	if (circles.length > set.ci.count || Math.random() < 0.2) {
+		setTimeout("circle_deflate()", random(500));
+		return;
+	}
+
+	var height = set.ci.h;
+	var width = set.ci.w;
+	var radius_max = 50;
+
+	var circle = null;
+
+	if (!circles.length || Math.random() < 0.5) {
+		var x = anywhere(radius_max, width-radius_max);
+		var y = anywhere(radius_max, height-radius_max);
+		circle = circles_canvas.circle(x,y,1).attr({fill: "rgb("+random_rgb()+")", stroke:null, "fill-opacity": 0.3});
+	} else {
+		circle = circles.shift();		
+	}
+	
+	circle.animate({r: random(radius_max), fill:"rgb("+random_rgb()+")"}, anywhere(500,2000));		
+
+	circles.push(circle);
+	
+}
+
+
+function circle_deflate() {
+	if (!circles.length) return;
+	
+	var circle = circles.shift();
+	if (circle.attrs.r == 0) {
+		circle.remove();
+	} else {
+		circle.animate({fill:"rgb(255,255,255)", r: 0}, circa(600));
+		circles.push(circle);
+	}
+}
+
+function circa(num) {
+	var nb = num/4;
+	var min = num - nb;
+	return Math.floor(min + nb * Math.random()*2);
+}
+
+function anywhere(start,stop) {
+	if (start > stop) {
+		var t = start;
+		start = stop;
+		stop = t;
+	}
+	return Math.floor(start+Math.random()*(stop-start));
+}
+
+function random(num) {
+	return Math.round(Math.random()*num);
+}
+
+//setTimeout("stop_anim()", 5000);
+function stop_anim(){
+	clearInterval(interval_id);
+}
+
+function draw_line() {
+	var x_lines = set.li.count;
+
+	var height = set.li.h;
+	var width = set.li.w;
+	var barwidth = set.li.line_width;
+
+	var colwidth = random(barwidth);//Math.round(Math.random()*barwidth);
+	var pos = random(width); //Math.round(Math.random()*width);
+	var line = random(x_lines); //Math.round(Math.random()*x_lines);
+	if (!lines[line]) {
+	 	lines[line] = lines_canvas.rect(0, 0, 0, height).attr({fill: "rgb("+random_rgb()+")", stroke:null, "fill-opacity": 0.4});
+	}
+	var stripe = lines[line];
+	stripe.animate({x: pos, width: colwidth, fill:"rgb("+random_rgb()+")"}, anywhere(500,1000));
+}
+
+function random_rgb() {
+	var rgb = ["0","0","0"];
+	
+	var upper_limit = 250;
+	var lower_limit = 150;
+	
+	rgb[0]=anywhere(lower_limit, upper_limit);//Math.floor(upper_limit - Math.random()*lower_limit);
+	rgb[1]=anywhere(lower_limit, upper_limit);//Math.floor(upper_limit - Math.random()*lower_limit);
+	rgb[2]=anywhere(lower_limit, upper_limit);//Math.floor(upper_limit - Math.random()*lower_limit);
+
+	return rgb;
+}
+
+
+// init
+//squares();
+
+// var square_live = setInterval("draw_square()", Math.floor(600-Math.random()*300));
+var interval_id = setInterval("draw_line()", circa(500));
+var interval_id = setInterval("circle_draw()", circa(300));
+var interval_id = setInterval("circle_draw()", circa(500));
+
+</script>
+
+</body>
+</html>
