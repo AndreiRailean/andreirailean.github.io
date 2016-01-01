@@ -1,288 +1,73 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
-	"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
-<head>
-	<title>Andrei Railean</title>
-	<link rel="stylesheet" href="style-2009.css" type="text/css" media="screen" title="style" charset="utf-8">
-	<!-- OpenID Delegation -->
-	<link rel="openid.server"
-			href="http://www.myopenid.com/server" />
-	<link rel="openid.delegate"
-			href="http://andreirailean.myopenid.com/" />
-	<link rel="openid2.local_id"
-			href="http://andreirailean.myopenid.com" />
-	<link rel="openid2.provider"
-			href="http://www.myopenid.com/server" />
-	<meta http-equiv="X-XRDS-Location"
-			content="http://www.myopenid.com/xrds?username=andreirailean.myopenid.com" />
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Andrei Railean</title>
 
-<script type="text/javascript">
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
 
-  var _gaq = _gaq || [];
-  _gaq.push(['_setAccount', 'UA-94183-1']);
-  _gaq.push(['_trackPageview']);
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
 
-  (function() {
-    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-  })();
+  </head>
+  <body>
+    <main class="container">
+      <div class="page-header">
+        <h1 class="page-title">Andrei Railean</h1>
+      </div>
 
-</script>
+      <div class="row">
+        <div class="col-sm-8 push-sm-4">
+          <p class="lead">
+            I'm a full-stack web engineer focusing on rich JavaScript applications using React, Angular and NodeJS. I prefer to work in an environment where frontends talk to backends via a well-defined API (like REST).
+            <span class="text-muted">I enjoy tuning build chains and spend a bit of time with opsy things like AWS, Docker and bash scripts.</span>
+          </p>
+          <p>
+            Often, you can find me experimenting with the Internet of Things (<a href="https://twitter.com/hashtag/iot">IoT</a>). I try to get microcontrollers and tiny computers to read sensors and talk to one another.
+          </p>
+          <div class="page-header">
+            <h2 class="page-title">Blog</h2>
+          </div>
+          <section>
+            <h3>
+              <p class="small text-muted">Sat, 2 Jan 2015</p>
+              New Apple TV
+            </h3>
 
-<script src="raphael.js"></script>
+            <p>
+              Got myself a brand new Apple TV (4 Gen). The guys at Apple have reworked the UI and made the whole experience a lot slicker. My favourite feature so far is being able to control TV volume and turn on the tv from the AppleTV remote. Doesn't take much to make me happy. I intend to try making Apple TV helpful in my IoT experiments. Will try writing an app to see how much of a hub it can become for other devices in the house.
+            </p>
+          </section>
+        </div>
+        <div class="col-sm-4 pull-sm-8">
+          <div class="list-group">
+            <a href="https://github.com/AndreiRailean" class="list-group-item"><i class="fa fa-github"></i> AndreiRailean on Github</a>
+            <a href="http://twitter.com/andrei_md" class="list-group-item"><i class="fa fa-twitter"></i> @andrei_md on Twitter</a>
+            <a href="http://stackoverflow.com/users/68672/andrei-r" class="list-group-item"><i class="fa fa-stack-overflow"></i> Andrei R on Stack Overflow</a>
+            <a href="http://www.linkedin.com/in/andreirailean" class="list-group-item"><i class="fa fa-linkedin-square"></i> Andrei Railean on LinkedIn</a>
+          </div>
+          <div class="list-group">
+            <a class="list-group-item" href="tel:0412854406"><i class="fa fa-phone"></i> 0412854406</a>
+            <span class="list-group-item"><i class="fa fa-envelope-o"></i> andrei@andrei.md</span>
+          </div>
+        </div>
+      </div>
+    </main>
 
-<link  href="http://fonts.googleapis.com/css?family=Cabin+Sketch:bold&v1" rel="stylesheet" type="text/css" >
-<style>
-body {
-  font-family: 'Cabin Sketch', serif;
-  font-style: normal;
-  font-size: 20px;
-  font-weight: 400;
-  text-shadow: none;
-  text-decoration: none;
-  text-transform: none;
-  letter-spacing: -0.05em;
-  word-spacing: 0.069em;
-  line-height: 1;
-}
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
 
-#image
-{
-	background: #FFF url("/images/andrei.md.jpg") no-repeat scroll center center;
-	height: 450px;
-	width: 800px;
-	margin: auto;
-	position: relative;
-}
+      ga('create', 'UA-94183-1', 'auto');
+      ga('send', 'pageview');
+    </script>
 
-#lines
-{
-	height: 80px; 
-	width:400px; 
-	position: absolute; 
-	left: 0px;
-	bottom: 150px;
-}
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
 
-#circles
-{
-	height: 400px; 
-	width:800px;
-}	
-
-h1 {
-  font-family: 'Cabin Sketch', serif;
-	font-size: 50px;
-	margin: 0;
-	text-align: left;
-	position:absolute;
-	bottom: 170px;
-	left: 60px;
-}
-
-.contact
-{
-  font-family: 'Cabin Sketch', serif;
-	font-size: 18px;
-	text-align:left;
-	position:absolute;
-	bottom: 155px;
-	left: 70px;
-}
-
-</style>
-
-
-</head>
-<body>
-<!-- Photos -->
-<br>
-<div id="image">
-	<div id="lines"></div>			
-	<div id="circles"></div>	
-	<h1>Andrei Railean</h1>
-	<div class="contact">andrei @ andrei.md &nbsp;  &nbsp;  &nbsp; +61 412 85 44 06</div>
-	<!-- <img src="images/andrei.md.jpg" alt="andrei.md" /> -->
-</div>
-
-<!-- <div id="squares" style="height: 100px; width:800px; margin:auto;"></div>	 -->
-
-<!-- External Links -->
-<div class="content-wrapper" ><div class="content standard" style="text-align: center;">
-<a href="http://www.facebook.com/andreirailean"><img src="/images/site-logos/facebook.png" width="90" height="30" alt="Andrei Railean on Facebook"></a>
-<a href="http://twitter.com/andrei_md"><img src="/images/site-logos/twitter.png" width="122" height="30" alt="@andrei_md on twitter"></a>
-<a href="http://www.linkedin.com/in/andreirailean"><img src="images/site-logos/linkedin.png" width="113" height="30" alt="Andrei Railean on LinkedIn"></a>
-<!-- <a href="http://andreirailean.livejournal.com"><img src="images/site-logos/livejournal.png" width="119" height="30" alt="Andrei Railean on LiveJournal"></a> -->
-<a href="http://andreirailean.tumblr.com/"><img src="/images/site-logos/tumblr.png" width="110" height="30" alt="Andrei Railean on Tumblr"></a>
-<!-- <a href="http://flickr.com/photos/andrei-railean/"><img src="images/site-logos/flickr.png" width="87" height="30" alt="Andrei Railean on Flickr"></a> -->
-</div>
-
-
-<script type="text/javascript" charset="utf-8">
-
-// photo lines
-var set = {
-	sq: {
-		w: 800,
-		h: 100
-	},
-	
-	li: {
-		w: 400,
-		h: 80,
-		count: 10,
-		line_width: 80
-	},
-	
-	ci: {
-		w: 800,
-		h: 400,
-		count: 20
-	}
-	
-}
-
-
-
-
-// var squares_canvas = Raphael("squares", set.sq.w, set.sq.h);
-var lines_canvas = Raphael("lines", set.li.w, set.li.h);
-var circles_canvas = Raphael("circles", set.ci.w, set.ci.h);
-
-var lines = {};
-// var squares = {};
-var circles = [];
-
-var draw_square = function() {
-
-	var height = set.sq.h;
-	var width = set.sq.w;
-	var box_max = 60;
-	var square_count = 20;
-
-	var width_start = Math.round(Math.random()*box_max);
-	var width_finish = Math.round(Math.random()*box_max);
-
-	var x = Math.round(width-box_max/2 - Math.random()*(width-box_max));
-	var y = Math.round(height-box_max/2 - Math.random()*(height-box_max));
-
-	var square_id = Math.round(Math.random()*square_count);
-
-	if (squares[square_id]) {
-		squares[square_id].animate({width: 0, height: 0}, Math.floor(Math.random()*400));
-		squares[square_id].remove();		
-	}
-	
- 	squares[square_id] = squares_canvas.rect(x,y,0,0).attr({fill: "rgb("+random_rgb()+")", stroke:null, "fill-opacity": 0.5});	
-	squares[square_id].animate({width: width_finish, height: width_finish, fill:"rgb("+random_rgb()+")"}, Math.floor(800-Math.random()*400));
-}
-
-var circle_draw = function() {
-
-	if (circles.length > set.ci.count || Math.random() < 0.2) {
-		setTimeout("circle_deflate()", random(500));
-		return;
-	}
-
-	var height = set.ci.h;
-	var width = set.ci.w;
-	var radius_max = 50;
-
-	var circle = null;
-
-	if (!circles.length || Math.random() < 0.5) {
-		var x = anywhere(radius_max, width-radius_max);
-		var y = anywhere(radius_max, height-radius_max);
-		circle = circles_canvas.circle(x,y,1).attr({fill: "rgb("+random_rgb()+")", stroke:null, "fill-opacity": 0.3});
-	} else {
-		circle = circles.shift();		
-	}
-	
-	circle.animate({r: random(radius_max), fill:"rgb("+random_rgb()+")"}, anywhere(500,2000));		
-
-	circles.push(circle);
-	
-}
-
-
-function circle_deflate() {
-	if (!circles.length) return;
-	
-	var circle = circles.shift();
-	if (circle.attrs.r == 0) {
-		circle.remove();
-	} else {
-		circle.animate({fill:"rgb(255,255,255)", r: 0}, circa(600));
-		circles.push(circle);
-	}
-}
-
-function circa(num) {
-	var nb = num/4;
-	var min = num - nb;
-	return Math.floor(min + nb * Math.random()*2);
-}
-
-function anywhere(start,stop) {
-	if (start > stop) {
-		var t = start;
-		start = stop;
-		stop = t;
-	}
-	return Math.floor(start+Math.random()*(stop-start));
-}
-
-function random(num) {
-	return Math.round(Math.random()*num);
-}
-
-//setTimeout("stop_anim()", 5000);
-function stop_anim(){
-	clearInterval(interval_id);
-}
-
-function draw_line() {
-	var x_lines = set.li.count;
-
-	var height = set.li.h;
-	var width = set.li.w;
-	var barwidth = set.li.line_width;
-
-	var colwidth = random(barwidth);//Math.round(Math.random()*barwidth);
-	var pos = random(width); //Math.round(Math.random()*width);
-	var line = random(x_lines); //Math.round(Math.random()*x_lines);
-	if (!lines[line]) {
-	 	lines[line] = lines_canvas.rect(0, 0, 0, height).attr({fill: "rgb("+random_rgb()+")", stroke:null, "fill-opacity": 0.4});
-	}
-	var stripe = lines[line];
-	stripe.animate({x: pos, width: colwidth, fill:"rgb("+random_rgb()+")"}, anywhere(500,1000));
-}
-
-function random_rgb() {
-	var rgb = ["0","0","0"];
-	
-	var upper_limit = 250;
-	var lower_limit = 150;
-	
-	rgb[0]=anywhere(lower_limit, upper_limit);//Math.floor(upper_limit - Math.random()*lower_limit);
-	rgb[1]=anywhere(lower_limit, upper_limit);//Math.floor(upper_limit - Math.random()*lower_limit);
-	rgb[2]=anywhere(lower_limit, upper_limit);//Math.floor(upper_limit - Math.random()*lower_limit);
-
-	return rgb;
-}
-
-
-// init
-//squares();
-
-// var square_live = setInterval("draw_square()", Math.floor(600-Math.random()*300));
-var interval_id = setInterval("draw_line()", circa(500));
-var interval_id = setInterval("circle_draw()", circa(300));
-var interval_id = setInterval("circle_draw()", circa(500));
-
-</script>
-
-</body>
+  </body>
 </html>
