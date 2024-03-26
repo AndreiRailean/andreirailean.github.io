@@ -1,0 +1,20 @@
+---
+import "@/styles/globals.css";
+import "@fontsource-variable/inter";
+
+import MetaTags from "@/components/MetaTags.astro";
+import Header from "@/components/Header.astro";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <slot name="metadata">
+      <MetaTags />
+    </slot>
+  </head>
+  <body class="max-w-full overflow-x-hidden">
+    <Header />
+    <slot />
+  </body>
+</html>
