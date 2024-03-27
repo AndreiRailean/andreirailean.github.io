@@ -70,6 +70,9 @@ export default {
       },
       fontFamily: {
         sans: ["Inter", ...defaultTheme.fontFamily.sans],
+        display: ['"Exo Variable"', ...defaultTheme.fontFamily.sans],
+        subtitle: ["Quintessential", ...defaultTheme.fontFamily.serif],
+        body: ['"Source Sans Pro"', ...defaultTheme.fontFamily.sans],
       },
     },
   },

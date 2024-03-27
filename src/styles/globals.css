@@ -77,6 +77,15 @@
 
 @layer base {
   html {
-    font-family: "Inter variable", system-ui, sans-serif;
+    @apply font-sans;
   }
+
+  h1 {
+    @apply font-display font-bold;
+  }
+
+  h2 {
+    @apply font-subtitle font-bold;
+  }
+
 }
