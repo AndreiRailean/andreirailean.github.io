@@ -1,19 +1,27 @@
 ---
-import "@/styles/globals.css";
-import "@fontsource-variable/inter";
-import "@fontsource-variable/exo";
-import "@fontsource/source-sans-pro";
-import "@fontsource/quintessential";
+import "@/styles/globals.css"
+import "@fontsource-variable/inter"
+import "@fontsource-variable/exo"
+import "@fontsource/source-sans-pro"
+import "@fontsource/quintessential"
 
-import MetaTags from "@/components/MetaTags.astro";
-import Header from "@/components/Header.astro";
+import MetaTags from "@/components/MetaTags.astro"
+import Header from "@/components/Header.astro"
+
+interface Props {
+  title?: string | undefined
+  description?: string | undefined
+  ogImage?: URL | undefined
+}
+
+const { title, description, ogImage } = Astro.props
 ---
 
 <!doctype html>
 <html lang="en">
   <head>
     <slot name="metadata">
-      <MetaTags />
+      <MetaTags title={title} description={description} ogImage={ogImage} />
     </slot>
   </head>
   <body class="max-w-full overflow-x-hidden">
