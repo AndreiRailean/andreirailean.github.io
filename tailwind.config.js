@@ -1,5 +1,5 @@
 /** @type {import('tailwindcss').Config} */
-import defaultTheme from "tailwindcss/defaultTheme";
+import defaultTheme from "tailwindcss/defaultTheme"
 
 export default {
   darkMode: ["class"],
@@ -69,12 +69,11 @@ export default {
         "accordion-up": "accordion-up 0.2s ease-out",
       },
       fontFamily: {
-        sans: ["Inter", ...defaultTheme.fontFamily.sans],
+        sans: ["Source Sans Pro", ...defaultTheme.fontFamily.sans],
         display: ['"Exo Variable"', ...defaultTheme.fontFamily.sans],
-        subtitle: ["Quintessential", ...defaultTheme.fontFamily.serif],
-        body: ['"Source Sans Pro"', ...defaultTheme.fontFamily.sans],
+        subtitle: ['"Rubik Variable"', ...defaultTheme.fontFamily.sans],
       },
     },
   },
   plugins: [require("tailwindcss-animate")],
-};
+}

@@ -71,7 +71,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground bg-[url('/bg.svg')] dark:bg-[url('/bg-dark.svg')];
   }
 }
 
@@ -81,11 +81,11 @@
   }
 
   h1 {
-    @apply font-display font-bold;
+    @apply font-display font-bold tracking-tight text-4xl md:text-5xl lg:text-7xl;
   }
 
   h2 {
-    @apply font-subtitle font-bold;
+    @apply font-subtitle font-normal text-2xl md:text-3xl;
   }
 
 }
