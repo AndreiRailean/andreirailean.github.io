@@ -7,21 +7,53 @@ imageUrl: https://avatars.githubusercontent.com/u/25991?v=4
 
 # Andrei Railean
 
-**Principal Engineer | Platform Architect | Engineering Mentor | Fostering Team Excellence and Innovation at Ignition**
+**Principal Engineer | Platform Architect | Engineering Mentor | Fostering Team Excellence and Innovation**
 
-Byron Bay, NSW Australia | hello@andrei.md | https://andrei.md
+Byron Bay, NSW Australia | resume@andrei.md | https://andrei.md
 
-I focus on developing collaborative engineering teams that know how to build software that is maintainable and scales well. I am not afraid of difficult conversations or asking "stupid" questions.
+I am a software engineer who knows how to build complex stuff. As a people leader, I help engineers collaborate and build software that is maintainable and scales well. I am not afraid of difficult conversations or asking "stupid" questions.
 
 ## Work Experience
 
 ### [Ignition](https://ignitionapp.com/)
 
-#### Principal Software Engineer | Jan 2022 - Current
+Ignition is a a SaaS product to help professional service providers engage  clients and get paid for their work.
 
+Throughout my tenure at Ignition, I have performed different roles within the product engineering team.
+
+#### Principal Software Engineer | Jan 2022 - Current
+I work with engineering leadership team to streamline software delivery processes and define key initiatives. I am hands-on with all platforms that teams rely on. I work with TypeScript, React, Node.js, Apollo Client among others.
+
+During shaping and building of features, I focus on identifying how platforms need to change to support new use cases. My role enables Ignition to build solutions faster.
+
+Some Recent Projects:
+- Analytics instrumentation for better PLG workflow
+- Real-time communication framework: Specify, spike and oversee the implementation of real-time communication framework using WebSockets and GraphQL Subscriptions. Reduced complexity of UI code and enabled new use cases.
+- Notification system: Promote the need for and define architecture of internal notification system within the app. Increased usability and reduced reliance on email.
+- MYOB Integration: Add new ledger integration. Required generalising parts of the app so a new integration can slot in.
+- AI content generation: Coordinated interaction of different teams and definined infrastructure and app components necessary to deliver generative ai part of the app.
+
+Focus areas:
+- Pioneering adoption of new tooling: React Suspense, Apollo Client hooks, NX package manager, Zod, TypeScript
+- Improvement of CI efficiency: resources consumed, improvement to flaky specs, developer experience with tests: CircleCI, Jest, Cypress
+- Coordinating the design system: definition of reusable components and consistent application of them in the app: Chakra, React
+- Code conventions and type safety: code generation from GQL schema, Types, hooks for queries and mutations. Linting and formatting setup.
+
+Management, People and Culture:
+- Definitioned technical interview process for accurate evaluation of candidates
+- Evaluated of quality of contribution and collaboration of individual contributors
+- Provided assistance to team leaders with fostering collaboration within their teams
+- Mentored team leads and individual contributors and provided timely feedback
+- Organised hackathons, was Frontend chapter lead and champoined excellence with JS engineers
+
+Skills: Engineering Management · JavaScript · Software Architecture · Technical Leadership · Problem Solving · React.js · GraphQL · CircleCI · TypeScript · Team Leadership · Jira · Operational Efficiency
 
 #### Engineering Team Lead | Jul 2021 - Jan 2022
+After Ignition engineering underwent a change of structure by splitting all engineers into smaller teams I ended up briefly managing one of the teams. Each team is a mixture of frontend and backend engineers.
 
+As a member of engineering leadership group, I was involved in establishing processes for working within the team and the interaction with product managers and designers on software delivery.
+
+This was a short assignment and once everything was running smoothly, I handed over my responsibilities to one of my team members. This allowed me to step into the Principal engineer role to support engineering effort in all teams.
 
 #### Lead Frontend Engineer | Jan 2017 - Jun 2021
 Building a new front end using React.js. Adjusting the overall app architecture to support greater interactivity, faster development and easy maintenance.
@@ -95,77 +127,31 @@ AnyPrice was a startup I co-founded with a few tech friends. It was a price comp
 #### Co-Founder and Frontend Engineer | Jul 2013 - May 2014
 I co-founded AnyPrice to build a price comparison engine for consumer products in a google-like manner - by collecting information from the open web. We built software to collect, categorize, group, display and otherwise make sense of terabytes of data.
 
-Business achieved good traction with Google and visitors. Our audience was able to conveniently explore all options available on the market, unlike at other pay-to-play comparison websites.
-
-The business was shut down because we were overcapitalized on SEO and when Google changed the algorithm, our traffic tanked and we ran out of money.
-
-Tech: JavaScript, JQuery, Bootstrap CSS, Ruby on Rails, Liquid, Web Scraping, Machine Learning, ElasticSearch, Git, Heroku
-
 ### [ProductReview.com.au](https://productreview.com.au)
 ProductReview.com.au is Australia’s leading online publisher of consumer opinion on products and services.
+I started as an engineer and quickly progressed to managing the whole business.
 
 #### General Manager | Dec 2010 - May 2013
-Got into business analysis to see what processes and resources are required for growth. This turned into a full-time Manager role.
-
-I set up a team to manage all content via new content systems and guidelines. Set up regular detailed reporting on quality and trends to establish KPIs for the content team.
-
-After content, I hired a new marketing manager. We re-branded and redesigned the web property and launched TV ads. Marketing team covered social media, customer feedback, PR campaigns, EDMs and created new advertising products. I hired graphic designers to look after all the visual detail.
-
-- Grow the business through features and business relationships
-- Make sure there was continuous feedback between all teams
-- Look after monetization, analytics, performance and reporting
-- Build a team and create a productive and friendly environment
-- Build additional revenue streams
-
-I instituted processes to improve code quality and frequent feature releases. The dev team followed modern agile practices. I coordinated feature prioritization and incentives for achievement of critical deadlines. Starting as a developer made me well aware of our abilities and constraints. I was involved in setting course for adopting new technologies, overcoming technical roadblocks and planning infrastructure for continued growth.
-
-As a result of all activity, the revenues have tripled, visitor traffic beat all expectations, team grew from 3 to 12 and important and long-lasting relationships were established
-
-Areas of focus: Affiliate marketing, Google AdSense, SEO, Referral program, Traffic acquisition, Media and Brand partnerships
+Got into business analysis to see what processes and resources are required for growth. This turned into a full-time Manager role. Under my command the business has tripled the revenue, visitor traffic beat all expectations, team grew from 3 to 12 and we established important and long-lasting business partnerships.
 
 #### Software Engineer | Aug 2010 - Dec 2010
-I started as a developer in a small team of three. As a software engineer with commercial experience, I introduced modern practices like git version control, scheduled releases and systematic analytics tracking instrumentation.
-
-Tech: PHP, JavaScript, CSS, HTML, Git, Google Analytics, Digital Ocean
+I introduced modern practices like git version control, scheduled releases and systematic analytics tracking instrumentation.
 
 ### [PaintAccess.com.au](https://paintaccess.com.au)
 PaintAccess.com.au is an online retailer of accessories for trade painters and plasterers. The store was one of the early adopters of Shopify in Australia.
 
-Business is still around and is making money
-
 #### Co-founder and Technical Director | Aug 2009 - Jun 2012
-Created a new online retail business from the ground up. Established relationships with suppliers. Set up shipping, stock management and pricing procedures.
-
-- Built a new business on Shopify
-- Evaluated multiple e-commerce platforms
-- Created a custom Shopify theme
-- Configured apps, plugins and integrations
-- Ran advertising on Google network
-- Used Google Analytics to optimize performance
-
-Tech: Shopify, Liquid, JavaScript, Google: Apps, Analytics
+Created a new online retail business from the ground up. Built a new business on Shopify. Coded custom themes. Established relationships with suppliers. Set up shipping, stock management and pricing procedures. Optimised SEO and Advertising spend.
 
 ### [Yahoo! Australia](https://au.yahoo.com)
 
 #### Software Engineer | Jul 2007 - Aug 2009
 Developed infrastructure for user generated content to be used on media properties. Built APIs and web services as part of with Yahoo's global engineering team.
 
-- Build new features for Lifestyle, TV and Food web properties
-- Weather web service (import data + provide API + frontend)
-- Anonymous Comments Platform (web service + frontend)
-- Ops capacity planning for traffic spikes and large volumes of data
-
-Tech: PHP, Perl, JavaScript, YII, REST, Foosball
-
 ### [Squiz.net](https://squiz.net)
 
 #### Software Engineer | Aug 2004 - Jul 2007
 Developer of MySource Matrix (v3) Enterprise-grade Content Management System (CMS).
-- Added key components: Triggers, Remote content, Thesaurus.
-- Represented company at government client locations for sales, maintenance and integration assignments
-- Trained new developers.
-
-Tech: PHP, JavaScript, JQuery, MySQL, PostgreSQL, HTTP Proxy, SVN
 
 ## Education
 
