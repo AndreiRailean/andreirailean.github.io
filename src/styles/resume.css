@@ -1,15 +1,13 @@
 article.minimalist {
-  @apply prose prose-sm prose-slate m-0
-    max-w-fit bg-white pt-20 dark:prose-invert prose-h1:text-3xl prose-h1:uppercase prose-h2:mb-3 prose-h2:mt-8 prose-h2:text-sm
-    prose-h2:uppercase prose-h2:text-slate-500 prose-h2:border-b-2 prose-h2:border-slate-200
-    prose-h3:mb-3 prose-h3:mt-8 prose-h3:text-xl prose-h3:uppercase prose-h4:mb-3
-    prose-h4:mt-4 prose-h4:text-sm prose-h4:text-slate-600 prose-p:my-2
-    prose-p:text-sm prose-p:leading-6 prose-a:font-bold prose-a:no-underline prose-a:transition-colors
-    hover:prose-a:text-slate-400 prose-li:text-sm prose-table:mt-4 prose-thead:border-0
-    prose-th:p-0 prose-th:font-medium prose-td:p-0
-    prose-td:text-slate-500
-    dark:bg-slate-800
-    prose-h4:dark:text-slate-400
+  @apply prose prose-sm prose-stone m-0
+    max-w-fit bg-white pt-20 dark:prose-invert prose-h1:text-3xl prose-h1:uppercase prose-h2:mb-2 prose-h2:mt-6 prose-h2:text-sm
+    prose-h2:uppercase prose-h2:text-stone-500 prose-h2:border-b-2 prose-h2:border-stone-200
+    prose-h3:leading-snug prose-h3:text-lg prose-h3:uppercase
+    prose-h4:leading-snug prose-h4:font-extrabold prose-h4:text-lg
+    prose-p:text-sm prose-p:leading-snug prose-p:tracking-tight prose-a:font-bold
+    hover:prose-a:text-stone-400 prose-li:text-sm
+    dark:bg-stone-800
+    prose-h4:dark:text-stone-400
     sm:px-24 sm:py-14
     lg:max-w-4xl;
 }
@@ -17,7 +15,7 @@ article.minimalist {
 @media print {
   @page {
     size: A4 portrait;
-    margin: 1cm;
+    margin: 0.5cm;
   }
   prose-h1,
   prose-h2,
@@ -25,6 +23,9 @@ article.minimalist {
   prose-h4,
   prose-h5 {
     page-break-after: avoid;
+  }
+  prose-p {
+    page-break-inside: avoid;
   }
   article.minimalist {
     @apply p-0;
