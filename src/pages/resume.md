@@ -2,7 +2,6 @@
 title: Andrei Railean - Resume
 description: Resume of Andrei Railean, Principal Engineer at Ignition.
 layout: ../layouts/ResumeLayout.astro
-pdfLink: andrei-railean-resume.pdf
 imageUrl: https://avatars.githubusercontent.com/u/25991?v=4
 ---
 
@@ -11,8 +10,6 @@ imageUrl: https://avatars.githubusercontent.com/u/25991?v=4
 **Principal Engineer | Platform Architect | Engineering Mentor | Fostering Team Excellence and Innovation at Ignition**
 
 Byron Bay, NSW Australia | hello@andrei.md | https://andrei.md
-
-Came to Australia in 2000 to study Computer Science at UNSW in Sydney and never left. I have been helping companies build software systems ever since. Experienced different environments and business models: web agencies and consulting, online publishers, e-commerce and SaaS products. Have maintained hands-on engineering skills even while working in management roles and building teams - this allowed me to bridge the gap between technical and other kinds of knowledge workers.
 
 I focus on developing collaborative engineering teams that know how to build software that is maintainable and scales well. I am not afraid of difficult conversations or asking "stupid" questions.
 
@@ -180,7 +177,5 @@ Bachelor, Banks and Stock Exchanges | Sep 1996 - Feb 1998
 
 ## Languages
 
-| Language | Proficiency                   |
-|----------|-------------------------------|
-| English  | Full professional proficiency |
-| Russian  | Native speaker                |
+- English - Full professional proficiency
+- Russian - Native speaker
