@@ -9,7 +9,7 @@ imageUrl: https://avatars.githubusercontent.com/u/25991?v=4
 
 **Principal Engineer | Platform Architect | Engineering Mentor | Fostering Team Excellence and Innovation**
 
-[LinkedIn](https://www.linkedin.com/in/andreirailean/) &mdash; andrei@andrei.md &mdash; Byron Bay, NSW Australia
+[LinkedIn](https://www.linkedin.com/in/andreirailean/) &mdash; andrei@andrei.md &mdash; [andrei.md/resume](//andrei.md/resume) &mdash; Byron Bay, NSW Australia
 
 As a software engineer, I build complex online platforms. My strong focus is on efficient delivery of value. As a people leader, I foster a culture of collaboration and quality; producing software that is maintainable and scales well.
 
