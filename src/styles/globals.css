@@ -88,6 +88,10 @@
     @apply font-subtitle font-normal text-2xl md:text-3xl;
   }
 
+  h3 {
+    @apply font-display;
+  }
+
 }
 
 @layer components {

@@ -1,0 +1,42 @@
+---
+import "@/styles/globals.css"
+import "@/styles/resume.css"
+import "@fontsource-variable/inter"
+import "@fontsource-variable/exo"
+import "@fontsource/source-sans-pro"
+import "@fontsource-variable/rubik"
+
+type Props = {
+  frontmatter: {
+    title: string
+    pdfLink: string
+    noIndex?: boolean
+    description?: string
+  }
+}
+
+const { PDF_VIEW, FORCE_THEME = "" } = import.meta.env
+
+const { title, noIndex, description } = Astro.props
+  .frontmatter as Props["frontmatter"]
+---
+
+<!doctype html>
+<html lang="en" class={FORCE_THEME}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="description" content={description || title} />
+    {noIndex && <meta name="robots" content="noindex" />}
+    <title>{title}</title>
+  </head>
+  <body>
+    <div class="container mx-auto flex justify-center">
+      <article class="minimalist relative">
+        <slot />
+      </article>
+    </div>
+  </body>
+</html>
