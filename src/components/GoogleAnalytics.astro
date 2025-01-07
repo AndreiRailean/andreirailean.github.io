@@ -3,8 +3,8 @@
 ></script>
 <script is:inline>
   window.dataLayer = window.dataLayer || []
-  function gtag() {
-    window.dataLayer.push(arguments)
+  function gtag(...args) {
+    window.dataLayer.push(args)
   }
   gtag("js", new Date())
 

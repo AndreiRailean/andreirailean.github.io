@@ -15,7 +15,7 @@ type Props = {
   }
 }
 
-const { PDF_VIEW, FORCE_THEME = "" } = import.meta.env
+const { FORCE_THEME = "" } = import.meta.env
 
 const { title, noIndex, description } = Astro.props
   .frontmatter as Props["frontmatter"]

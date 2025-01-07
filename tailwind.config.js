@@ -1,5 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 import defaultTheme from "tailwindcss/defaultTheme"
+import twAnimate from "tailwindcss-animate"
+import twTypography from "@tailwindcss/typography"
 
 export default {
   darkMode: ["class"],
@@ -78,5 +80,5 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
+  plugins: [twAnimate, twTypography],
 }
