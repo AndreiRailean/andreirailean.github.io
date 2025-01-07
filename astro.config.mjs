@@ -1,8 +1,8 @@
-import { defineConfig } from "astro/config";
-import tailwind from "@astrojs/tailwind";
-import react from "@astrojs/react";
+import { defineConfig } from "astro/config"
+import tailwind from "@astrojs/tailwind"
+import react from "@astrojs/react"
 
-import icon from "astro-icon";
+import icon from "astro-icon"
 
 // https://astro.build/config
 export default defineConfig({
@@ -14,12 +14,12 @@ export default defineConfig({
     react(),
     icon({
       include: {
-        "fa6-brands": ["*"]
+        "fa6-brands": ["*"],
       },
-    })
+    }),
   ],
   output: "static",
   server: {
-    port: 4354
-  }
-});
+    port: 4354,
+  },
+})
