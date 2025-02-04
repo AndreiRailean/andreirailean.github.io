@@ -1,5 +1,8 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+@custom-variant dark (&:is(.dark *));
 article.minimalist {
-  @apply prose prose-sm prose-stone m-0 max-w-fit bg-white pt-20 dark:prose-invert prose-h1:text-3xl prose-h1:uppercase prose-h2:mb-2 prose-h2:mt-6 prose-h2:border-b-2 prose-h2:border-stone-200 prose-h2:text-sm prose-h2:uppercase prose-h2:text-stone-500 prose-h3:text-lg prose-h3:uppercase prose-h3:leading-snug prose-h4:text-lg prose-h4:font-extrabold prose-h4:leading-snug prose-p:text-sm prose-p:leading-snug prose-p:tracking-tight prose-a:font-bold hover:prose-a:text-stone-400 prose-li:text-sm dark:bg-stone-800 prose-h4:dark:text-stone-400 sm:px-24 sm:py-14 lg:max-w-4xl;
+  @apply prose prose-sm prose-stone dark:prose-invert prose-h1:text-3xl prose-h1:uppercase prose-h2:mb-2 prose-h2:mt-6 prose-h2:border-b-2 prose-h2:border-stone-200 prose-h2:text-sm prose-h2:uppercase prose-h2:text-stone-500 prose-h3:text-lg prose-h3:uppercase prose-h3:leading-snug prose-h4:text-lg prose-h4:font-extrabold prose-h4:leading-snug prose-p:text-sm prose-p:leading-snug prose-p:tracking-tight prose-a:font-bold hover:prose-a:text-stone-400 prose-li:text-sm prose-h4:dark:text-stone-400 m-0 max-w-fit bg-white pt-20 sm:px-24 sm:py-14 lg:max-w-4xl dark:bg-stone-800;
 }
 
 @media print {
