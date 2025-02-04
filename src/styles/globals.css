@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 @plugin 'tailwindcss-animate';
 @plugin '@tailwindcss/typography';
@@ -43,11 +43,11 @@
   --animate-accordion-up: accordion-up 0.2s ease-out;
 
   --font-sans: Source Sans Pro, ui-sans-serif, system-ui, sans-serif,
-    'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
-  --font-display: 'Exo Variable', ui-sans-serif, system-ui, sans-serif,
-    'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
-  --font-subtitle: 'Rubik Variable', ui-sans-serif, system-ui, sans-serif,
-    'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-display: "Exo Variable", ui-sans-serif, system-ui, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-subtitle: "Rubik Variable", ui-sans-serif, system-ui, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 
   @keyframes accordion-down {
     from {
@@ -97,7 +97,7 @@
 }
 
 @utility social-icon {
-  @apply relative mx-auto my-1 flex h-10 w-10 cursor-pointer items-center justify-center rounded-3xl text-2xl transition-all duration-300 ease-in-out hover:rounded-xl hover:bg-gray-900 hover:text-gray-50 dark:hover:bg-gray-100 dark:hover:text-gray-900 md:h-12 md:w-12 md:text-3xl;
+  @apply relative mx-auto my-1 flex h-10 w-10 cursor-pointer items-center justify-center rounded-3xl text-2xl transition-all duration-300 ease-in-out hover:rounded-xl hover:bg-gray-900 hover:text-gray-50 md:h-12 md:w-12 md:text-3xl dark:hover:bg-gray-100 dark:hover:text-gray-900;
 }
 
 @utility social-icon-tooltip {
@@ -173,7 +173,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background bg-[url('/bg.svg')] text-foreground dark:bg-[url('/bg-dark.svg')];
+    @apply bg-background text-foreground bg-[url('/bg.svg')] dark:bg-[url('/bg-dark.svg')];
   }
 }
 
