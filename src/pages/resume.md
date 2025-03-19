@@ -16,7 +16,9 @@ I build complex online platforms with a focus on value delivery. As a leader, I 
 ## Work Experience
 
 ### Hiatus
+
 #### Personal projects
+
 Oct 2024 - Current
 
 Taking a break from full-time work to focus on family, explore AI, and learn new technologies.
@@ -26,6 +28,7 @@ Taking a break from full-time work to focus on family, explore AI, and learn new
 SaaS platform helping professional service providers engage clients and get paid. I served in various roles within the product engineering team.
 
 #### Principal Software Engineer
+
 Jul 2021 - Oct 2024
 
 Streamlined software delivery and platform architecture, enabling Ignition to rapidly deliver complex solutions.
@@ -37,6 +40,7 @@ Streamlined software delivery and platform architecture, enabling Ignition to ra
 **Leadership**: Developed hiring processes, evaluated contributions, facilitated collaboration, mentored staff, and organized hackathons.
 
 #### Lead Frontend Engineer
+
 Jan 2017 - Jun 2021
 
 Revamped the frontend with React.js to enhance interactivity, accelerate development, and simplify maintenance. Led a team of frontend engineers while actively contributing and reviewing code.
@@ -48,6 +52,7 @@ Revamped the frontend with React.js to enhance interactivity, accelerate develop
 ### [RateCity](http://ratecity.com.au/)
 
 #### Senior Software Engineer
+
 Jun 2014 - Dec 2016
 
 Built full-stack business platform with Node.js, React.js and ElasticSearch. Created search tools, calculators, APIs, and dashboards with server-side SEO. Tech: React, Rails, JavaScript, jQuery, HTML/CSS, REST, PostgreSQL.
@@ -55,14 +60,17 @@ Built full-stack business platform with Node.js, React.js and ElasticSearch. Cre
 ### AnyPrice
 
 #### Co-Founder and Frontend Engineer
+
 Jul 2013 - May 2014
 
 Built a price comparison engine collecting web data to simplify online shopping. Tech: JavaScript, Rails, CSS, jQuery, Analytics, AdSense, SEO.
 
 ### [ProductReview.com.au](https://productreview.com.au)
+
 Australia's leading online publisher of consumer feedback
 
 #### Engineer, General Manager
+
 Aug 2010 - May 2013
 
 Advanced from engineer to business manager at ProductReview.com.au. Introduced git, scheduled releases, and analytics. Tripled revenue, grew team from 3 to 12, and formed key business partnerships with leading Australian brands. Tech: PHP, JavaScript, Analytics, AdSense, AdWords, SEO.
@@ -70,6 +78,7 @@ Advanced from engineer to business manager at ProductReview.com.au. Introduced g
 ### [PaintAccess.com.au](https://paintaccess.com.au)
 
 #### Co-founder and Technical Director
+
 Aug 2009 - Jun 2012
 
 Founded PaintAccess.com.au, an early Shopify adopter for trade painters. Built custom themes, managed suppliers, shipping and inventory, and optimized marketing. Tech: Liquid, JavaScript, Ruby, jQuery, HTML/CSS, SEO/SEM.
@@ -77,6 +86,7 @@ Founded PaintAccess.com.au, an early Shopify adopter for trade painters. Built c
 ### [Yahoo! Australia](https://au.yahoo.com)
 
 #### Software Engineer
+
 Jul 2007 - Aug 2009
 
 Built user-generated content infrastructure and APIs for Yahoo's global team. Tech: PHP, Perl, JavaScript, bash, REST.
@@ -84,15 +94,17 @@ Built user-generated content infrastructure and APIs for Yahoo's global team. Te
 ### [Squiz.net](https://squiz.net)
 
 #### Software Engineer
+
 Aug 2004 - Jul 2007
 
 Developer on MySource Matrix (v3) Enterprise CMS. Tech: PHP, JavaScript, jQuery, PostgreSQL, MySQL, bash.
 
-
 ## Education
 
 #### University of NSW (UNSW), Sydney, Australia
+
 Bachelor in Computer Science (Mar 2001 - Dec 2004)
 
 #### Academy of Economic Studies (ASE), Chisinau, Moldova
+
 Bachelor in Banks and Stock Exchanges (Sep 1996 - Feb 1998)
