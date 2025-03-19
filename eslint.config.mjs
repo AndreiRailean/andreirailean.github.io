@@ -12,7 +12,7 @@ const __dirname = path.dirname(__filename)
 
 export default tseslint.config(
   {
-    ignores: ["dist/**/*"],
+    ignores: ["dist/**/*", ".astro/"],
   },
   {
     languageOptions: {
