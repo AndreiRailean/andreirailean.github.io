@@ -18,7 +18,7 @@ I build complex online platforms with a focus on value delivery. As a leader, I 
 - **Programming Languages**: TypeScript, JavaScript, PHP, Ruby, Python, Bash
 - **Frameworks & Libraries**: React, Next.js, Apollo, NX, Zod, Rails, jQuery, Webpack, TailwindCSS
 - **Tools & Platforms**: GraphQL, WebSockets, PostgreSQL, MySQL, ElasticSearch, Shopify
-- **DevOps**: CI/CD pipelines, Docker, Github Actions, CircleCI, DNS, AWS
+- **DevOps**: CI/CD pipelines, Docker, GitHub Actions, CircleCI, DNS, AWS
 - **Soft Skills**: Leadership, mentoring, collaboration, hiring, and team building
 - **Other**: SEO/SEM, analytics, AI content generation, real-time communication systems
 
