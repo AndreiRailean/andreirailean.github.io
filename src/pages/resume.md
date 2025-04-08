@@ -9,9 +9,18 @@ imageUrl: https://avatars.githubusercontent.com/u/25991?v=4
 
 **Principal Engineer | Platform Architect | Engineering Mentor | Leading by Example**
 
-[LinkedIn](https://www.linkedin.com/in/andreirailean/) &mdash; andrei@andrei.md &mdash; [andrei.md/resume](//andrei.md/resume) &mdash; Byron Bay, NSW Australia
+[LinkedIn](https://www.linkedin.com/in/andreirailean/) &mdash; andrei@andrei.md &mdash; [andrei.md/resume](https://andrei.md/resume) &mdash; Byron Bay, NSW Australia
 
 I build complex online platforms with a focus on value delivery. As a leader, I foster collaboration and create maintainable, scalable software.
+
+## Skills
+
+- **Programming Languages**: TypeScript, JavaScript, PHP, Ruby, Python, Bash
+- **Frameworks & Libraries**: React, Next.js, Apollo, NX, Zod, Rails, jQuery, Webpack, TailwindCSS
+- **Tools & Platforms**: GraphQL, WebSockets, PostgreSQL, MySQL, ElasticSearch, Shopify
+- **DevOps**: CI/CD pipelines, Docker, Github Actions, CircleCI, DNS, AWS
+- **Soft Skills**: Leadership, mentoring, collaboration, hiring, and team building
+- **Other**: SEO/SEM, analytics, AI content generation, real-time communication systems
 
 ## Work Experience
 
@@ -21,7 +30,12 @@ I build complex online platforms with a focus on value delivery. As a leader, I 
 
 Oct 2024 - Current
 
-Taking a break from full-time work to focus on family, explore AI, and learn new technologies.
+Taking a break from full-time work to focus on family, explore advancements in AI, and acquire new technical skills.
+
+- Experimented with AI-assisted coding technologies, including tools like Cursor AI, GitHub Copilot and Anthropic's Claude, to enhance productivity and streamline development workflows.
+- Built a multi-tenant application using Next.js, focusing on scalability, tenant isolation, and granular role-based access control.
+- Explored advancements in AI-driven content generation and its integration into modern web platforms.
+- Continued to refine skills in TypeScript, React, and Next.js while staying updated on emerging trends in software engineering.
 
 ### [Ignition](https://ignitionapp.com/)
 
