@@ -1,14 +1,36 @@
-<!-- Google tag (gtag.js) -->
-<script
-  is:inline
-  async
-  src="https://www.googletagmanager.com/gtag/js?id=G-LCDC2KKGVY"></script>
-<script is:inline>
-  window.dataLayer = window.dataLayer || []
-  function gtag(...args) {
-    window.dataLayer.push(args)
-  }
-  gtag("js", new Date())
+---
+const gaTrackingId = import.meta.env.PUBLIC_GA_TRACKING_ID
+---
 
-  gtag("config", "G-LCDC2KKGVY")
+<script async is:inline define:vars={{ gaTrackingId }}>
+  // Define dataLayer and gtag function.
+  window.dataLayer = window.dataLayer || []
+  function gtag() {
+    dataLayer.push(arguments) // eslint-disable-line
+  }
+
+  // Set default consent to 'denied' before loading analytics.
+  gtag("consent", "default", {
+    ad_storage: "denied",
+    ad_user_data: "denied",
+    ad_personalization: "denied",
+    analytics_storage: "denied",
+  })
+
+  // Check local storage for previously granted consent.
+  if (localStorage.getItem("analytics_consent") === "true") {
+    gtag("consent", "update", {
+      analytics_storage: "granted",
+    })
+  }
+
+  // Load the Google Analytics script.
+  const gascript = document.createElement("script")
+  gascript.src = `https://www.googletagmanager.com/gtag/js?id=${gaTrackingId}`
+  gascript.async = true
+  document.head.appendChild(gascript)
+
+  // Initialize Google Analytics.
+  gtag("js", new Date())
+  gtag("config", gaTrackingId)
 </script>
