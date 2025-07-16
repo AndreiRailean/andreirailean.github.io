@@ -14,13 +14,13 @@ const gaTrackingId = import.meta.env.PUBLIC_GA_TRACKING_ID
     ad_storage: "denied",
     ad_user_data: "denied",
     ad_personalization: "denied",
-    analytics_storage: "denied",
+    analytics_storage: "granted",
   })
 
   // Check local storage for previously granted consent.
-  if (localStorage.getItem("analytics_consent") === "true") {
+  if (localStorage.getItem("analytics_consent") === "false") {
     gtag("consent", "update", {
-      analytics_storage: "granted",
+      analytics_storage: "denied",
     })
   }
 
