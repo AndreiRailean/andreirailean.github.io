@@ -25,5 +25,6 @@ export default defineConfig({
   output: "static",
   server: {
     port: 4354,
+    // allowedHosts: ["localhost", "ngrok domain here"],
   },
 })
