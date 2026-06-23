@@ -1,45 +1,57 @@
 ---
 title: Andrei Railean - Resume
-description: Resume of Andrei Railean, Principal Engineer at Ignition.
+description: Resume of Andrei Railean, Software Engineer 
 layout: ../layouts/ResumeLayout.astro
 imageUrl: https://avatars.githubusercontent.com/u/25991?v=4
 ---
 
 # Andrei Railean
+**Principal Engineer | Platform Architect | Engineering Mentor | B2B SaaS | Fintech**
 
-**Principal Engineer | Platform Architect | Engineering Mentor | Leading by Example**
+[linkedin.com/in/andreirailean](https://www.linkedin.com/in/andreirailean/) 
+&ndash; andrei&commat;andrei.md 
+&ndash; Ocean Shores, NSW Australia
 
-[LinkedIn](https://www.linkedin.com/in/andreirailean/) &mdash; andrei@andrei.md &mdash; [andrei.md/resume](https://andrei.md/resume) &mdash; Byron Bay, NSW Australia
-
-I build complex online platforms with a focus on value delivery. As a leader, I foster collaboration and create maintainable, scalable software.
+Software engineer with experience building SaaS platforms, advertising-driven web properties, content management systems and e-commerce shopfronts. I love working with the full stack: from databases and servers to frontend ui and analytics. I work well within high-velocity teams building complex software. Always learning something new.
 
 ## Skills
 
-- **Programming Languages**: TypeScript, JavaScript, PHP, Ruby, Python, Bash
-- **Frameworks & Libraries**: React, Next.js, Apollo, NX, Zod, Rails, jQuery, Webpack, TailwindCSS
-- **Tools & Platforms**: GraphQL, WebSockets, PostgreSQL, MySQL, ElasticSearch, Shopify
-- **DevOps**: CI/CD pipelines, Docker, GitHub Actions, CircleCI, DNS, AWS
-- **Soft Skills**: Leadership, mentoring, collaboration, hiring, and team building
-- **Other**: SEO/SEM, analytics, AI content generation, real-time communication systems
+- **Programming Languages**: TypeScript, JavaScript, Rust, PHP, Ruby, Python, Bash, C
+- **Frameworks & Libraries**: React, Next.js, Apollo, NX, Zod, Rails, Webpack, TailwindCSS
+- **Backend APIs**: GraphQL, REST, Webhooks, Worker Queues, WebSockets
+- **Databases**: PostgreSQL, MySQL, ElasticSearch, Redis, SQLite, Neo4j
+- **Online Platforms**: Shopify, Mailchimp, Intercom, Stripe, Xero, Amplitude, Google Analytics and Ads.
+- **DevOps**: CI/CD, Docker, GitHub Actions, CircleCI, DNS, AWS (S3, Route 53, CloudFront, EC2, IAM), Kubernetes,
+Cilium, SystemD, Caddy Web Proxy, Nginx, Cloudflare.
+- **People**: Leadership, management, mentoring, collaboration, hiring (and firing), training, developer events and team building. Stakeholder
+management. Performance assessments.
+- **Org Support**: Production planning. Prioritisation. Interaction with vendors. "build vs buy" considerations. Liaison with suppliers. Tech support.
+- **Other**: SEO/SEM, analytics and tracking, A/B Testing, page speed, AI-assisted code and content generation. API integrations.
 
 ## Work Experience
 
-### Hiatus
+### Work Gap. Time off
+
+Took a break from full-time employment to focus on family and business, explore advancements in AI and acquire new skills.
 
 #### Personal projects
 
 Oct 2024 - Current
 
-Taking a break from full-time work to focus on family, explore advancements in AI, and acquire new technical skills.
-
-- Experimented with AI-assisted coding technologies, including tools like Cursor AI, GitHub Copilot and Anthropic's Claude, to enhance productivity and streamline development workflows.
-- Built a multi-tenant application using Next.js, focusing on scalability, tenant isolation, and granular role-based access control.
-- Explored advancements in AI-driven content generation and its integration into modern web platforms.
-- Continued to refine skills in TypeScript, React, and Next.js while staying updated on emerging trends in software engineering.
+- Using **AI-assisted coding** technologies like Cursor AI, GitHub Copilot and Anthropic's Claude to enhance productivity and streamline development workflows.
+- **Built a multi-tenant CRM** application using Next.js, TailwindCSS and PostgreSQL focusing on scalability, tenant isolation, and access control based on Google Zanzibar for fine-grained auth.
+- Explored AI technologies: Agents, RAG, Vector databases and platforms for data governance and testing of agents.
+- **Built AI agents** while participating in HuggingFace hackathons using smolagents, llamaindex and langgraph Python frameworks.
+- Built [**Clide**](https://github.com/AndreiRailean/clide) - tool for running isolated dev environments inside docker. Written in bash
+- Built [**Clocktop**](https://github.com/AndreiRailean/clocktop) - an interactive terminal clock widget. Written in Rust 
+- Built [**Sum of Good**](https://sumofgood.com/) - Shopify online store for my family business and helped establish retailer relationships for wider distribution of products
+- **Set up a home lab** with 3 Proxmox nodes and a TrueNAS node for running multiple VMs and containers. It is used for
+experimenting with Kubernetes and for building a local mini data center with redundant and highly available services.
+Lots of work with Linux networking, setting up subnets and configuring systemd services.
 
 ### [Ignition](https://ignitionapp.com/)
 
-SaaS platform helping professional service providers engage clients and get paid. I served in various roles within the product engineering team.
+SaaS fintech platform processing billions in payments. Ignition is helping professional service providers engage clients and get paid. I served in various roles within the product engineering team and was with the company as it grew from 20 people to over 200. I have seen many phases of this startup's growth and funding. 
 
 #### Principal Software Engineer
 
@@ -47,11 +59,11 @@ Jul 2021 - Oct 2024
 
 Streamlined software delivery and platform architecture, enabling Ignition to rapidly deliver complex solutions.
 
-**Recent Projects**: _Analytics instrumentation_, _real-time communication framework_ (WebSockets & GraphQL Subscriptions), _in-app notification system_, MYOB integration, and AI content generation infrastructure.
+**Projects**: Analytics instrumentation, real-time communication framework (WebSockets & GraphQL Subscriptions), in-app notification system, MYOB integration, and AI content generation infrastructure.
 
 **Technical**: React, Apollo, NX, Zod, TypeScript. Optimized CI pipelines, created reusable components, automated GraphQL types, established code quality standards.
 
-**Leadership**: Developed hiring processes, evaluated contributions, facilitated collaboration, mentored staff, and organized hackathons.
+**Leadership**: Developed hiring processes, evaluated contributions, facilitated collaboration, mentored staff, and organised hackathons.
 
 #### Lead Frontend Engineer
 
@@ -122,3 +134,9 @@ Bachelor in Computer Science (Mar 2001 - Dec 2004)
 #### Academy of Economic Studies (ASE), Chisinau, Moldova
 
 Bachelor in Banks and Stock Exchanges (Sep 1996 - Feb 1998)
+
+## Recommendations
+
+You can read many [recommendations I have received on
+LinkedIn](https://www.linkedin.com/in/andreirailean/details/recommendations). I can help you contact any
+of the people who left recommendations or anyone else I have worked with upon request.
