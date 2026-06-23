@@ -30,9 +30,7 @@ const ConsentBanner = () => {
 
   return (
     <div className="fixed bottom-0 left-0 z-1000 w-full bg-gray-100 p-4 text-center text-gray-900 dark:bg-gray-800 dark:text-gray-100">
-      <p style={{ margin: 0, paddingBottom: "0.5rem" }}>
-        We use cookies to analyze website traffic
-      </p>
+      <p style={{ margin: 0, paddingBottom: "0.5rem" }}>We use cookies to analyze website traffic</p>
       <Button onClick={handleAccept}>Accept</Button>
     </div>
   )

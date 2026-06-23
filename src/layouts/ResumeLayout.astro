@@ -17,17 +17,15 @@ type Props = {
 
 const { FORCE_THEME = "" } = import.meta.env
 
-const { title, noIndex, description } = Astro.props
-  .frontmatter as Props["frontmatter"]
+const { title, noIndex, description } = Astro.props.frontmatter as Props["frontmatter"]
 
+const pubDate = new Date().toLocaleDateString("en-AU", {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+})
 
-const pubDate = new Date().toLocaleDateString('en-AU', {
-  year: 'numeric',
-  month: 'long',
-  day: 'numeric'
-});
-
-const pageTitle = `${title} - ${pubDate}`;
+const pageTitle = `${title} - ${pubDate}`
 ---
 
 <!doctype html>
