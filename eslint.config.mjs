@@ -1,6 +1,6 @@
 import globals from "globals"
 import tsParser from "@typescript-eslint/parser"
-import astroEslintParser from "astro-eslint-parser"
+import * as astroEslintParser from "astro-eslint-parser"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import eslint from "@eslint/js"
