@@ -56,5 +56,8 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.53.1"
   },
-  "packageManager": "npm@11.7.0"
+  "packageManager": "npm@11.17.0",
+  "allowScripts": {
+    "esbuild": true
+  }
 }
