@@ -24,7 +24,12 @@ export default defineConfig({
   ],
   output: "static",
   server: {
+    // Bind all interfaces so the dev server is reachable when running on a
+    // remote box rather than localhost.
+    host: true,
     port: 4354,
-    // allowedHosts: ["localhost", "ngrok domain here"],
+    // Vite rejects requests whose Host header is not an IP or localhost, so
+    // Tailscale MagicDNS names have to be allowlisted explicitly.
+    allowedHosts: [".ts.net"],
   },
 })
