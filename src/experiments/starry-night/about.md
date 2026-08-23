@@ -77,6 +77,12 @@ Most of the interesting decisions came from something looking wrong first.
 - **Big circles look machine-drawn.** Past a few pixels, perfect circles became
   obviously synthetic. Large stars now get an irregular outline while small ones
   stay circular, since at two pixels nobody can tell.
+- **One conspicuous star gives away every other.** All the dots in a layer fade
+  on one envelope, which nobody notices while no single dot stands out. Grow a
+  few and it collapses: you watch a big star swell and fade, and having learnt
+  the rhythm you can then see it in the small stars beside it. Capping their
+  number or spacing them apart only thins the evidence. Past a threshold size a
+  star now runs on its own clock, so there is no shared fate left to spot.
 - **Soft gradients band.** Alpha climbing to about a fifth over a few hundred
   pixels quantises into concentric contour rings at 8-bit precision, and more
   colour stops cannot help. Jittering the alpha channel breaks the rings into

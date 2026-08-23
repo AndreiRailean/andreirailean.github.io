@@ -125,6 +125,18 @@ export function initialPhases(count: number): number[] {
     .map((entry) => entry.phase)
 }
 
+/**
+ * Radius at which a star stops sharing its layer's clock and keeps its own.
+ *
+ * All the dots in a layer fade on one envelope, which is invisible while no
+ * single dot is conspicuous. A big star breaks that: you watch it swell and
+ * fade, and having seen the rhythm you can then see it in the small stars
+ * beside it. Above this size a star runs on its own clock, so there is no
+ * shared fate left to notice. Sitting at the default `nearRadius`, nothing
+ * qualifies and nothing changes.
+ */
+export const SOLO_MIN_RADIUS = 3
+
 /** Exponent at the low end of the size mix; 1 (uniform) sits at the high end. */
 const MAX_SIZE_EXPONENT = 9
 
@@ -147,13 +159,14 @@ const smoothstep = (t: number) => t * t * (3 - 2 * t)
 /**
  * Opacity multiplier across a layer's life, from birth (0) to death (1).
  *
- * `hold` is the fraction of the lifetime spent at full opacity; the default 0
- * gives a pure fade-in/fade-out bell with no plateau. Raise it if the sky feels
- * too busy — stars then persist rather than continuously breathing.
+ * `fade` is the fraction of the lifetime spent fading, at each end. 0.5 leaves
+ * no plateau at all and gives a pure bell; small values hold full brightness
+ * for most of the life and cross in and out quickly. Expressed as the ramp
+ * rather than the plateau because the ramp is the part you can see.
  */
-export function envelope(phase: number, hold = 0): number {
+export function envelope(phase: number, fade = 0.5): number {
   const t = clamp01(phase)
-  const ramp = (1 - clamp01(hold)) / 2
+  const ramp = Math.min(0.5, Math.max(0, fade))
   if (ramp <= 0) return 1
   if (t < ramp) return smoothstep(t / ramp)
   if (t <= 1 - ramp) return 1

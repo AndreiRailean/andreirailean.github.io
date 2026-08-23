@@ -7,6 +7,8 @@ import {
   initialLifetimesMs,
   initialPhases,
   randomLifetimeMs,
+  SOLO_MIN_RADIUS,
+  type LayerCharacter,
 } from "@/experiments/starry-night/character"
 import { createGlimmer, drawGlimmer, isGlimmerAlive, type Glimmer } from "@/experiments/starry-night/glimmer"
 import {
@@ -27,8 +29,21 @@ type Dot = {
   outline: Outline | null
 }
 
+/**
+ * A star large enough to run on its own clock rather than its layer's, so that
+ * watching it fade reveals nothing about its neighbours. It respawns on its own
+ * schedule too, and survives its layer being replaced.
+ */
+type SoloDot = Dot & {
+  peakAlpha: number
+  phase: number
+  lifetimeMs: number
+}
+
 type Layer = {
   dots: Dot[]
+  /** Large stars, each independently clocked. Usually empty. */
+  solo: SoloDot[]
   peakAlpha: number
   lifetimeMs: number
   /** Position in this layer's life, 0..1. Survives setting changes and resizes. */
@@ -70,21 +85,50 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
   let frameId = 0
   let lastFrameMs = 0
 
-  function buildLayer(index: number, phase: number, lifetimeMs: number): Layer {
-    const character = characterAt(DEPTH_POLICIES[settings.mode](index, settings.layerCount), settings.nearRadius)
-    const count = dotCountFor(character, width, height, settings.densityScale)
-    const dots: Dot[] = Array.from({ length: count }, () => {
-      const radius = biasedRadius(character.minRadius, character.maxRadius, settings.sizeMix)
-      const wobbles = settings.wobble > 0 && radius >= MIN_OUTLINE_RADIUS
-      return {
-        x: Math.random() * width,
-        y: Math.random() * height,
-        radius,
-        outline: wobbles ? createOutline(settings.wobble) : null,
-      }
-    })
+  function makeDot(character: LayerCharacter): Dot {
+    const radius = biasedRadius(character.minRadius, character.maxRadius, settings.sizeMix)
+    return {
+      x: Math.random() * width,
+      y: Math.random() * height,
+      radius,
+      outline: settings.wobble > 0 && radius >= MIN_OUTLINE_RADIUS ? createOutline(settings.wobble) : null,
+    }
+  }
 
-    return { dots, peakAlpha: character.peakAlpha, lifetimeMs, phase }
+  function characterFor(index: number): LayerCharacter {
+    return characterAt(DEPTH_POLICIES[settings.mode](index, settings.layerCount), settings.nearRadius)
+  }
+
+  /**
+   * Builds a layer, sending any star over the solo threshold onto its own clock.
+   *
+   * `solo` is carried over when supplied, so a layer respawning does not reset
+   * the big stars riding on it — they are not part of its cycle. It is left out
+   * on a resize or a settings change, where their positions and their
+   * eligibility both depend on something that just moved.
+   */
+  function buildLayer(index: number, phase: number, lifetimeMs: number, solo?: SoloDot[]): Layer {
+    const character = characterFor(index)
+    const count = dotCountFor(character, width, height, settings.densityScale)
+
+    const dots: Dot[] = []
+    const carried: SoloDot[] = solo ?? []
+
+    for (let made = 0; made < count; made += 1) {
+      const dot = makeDot(character)
+      if (dot.radius < SOLO_MIN_RADIUS) {
+        dots.push(dot)
+      } else if (!solo) {
+        carried.push({
+          ...dot,
+          peakAlpha: character.peakAlpha,
+          phase: Math.random(),
+          lifetimeMs: freshLifetime(),
+        })
+      }
+    }
+
+    return { dots, solo: carried, peakAlpha: character.peakAlpha, lifetimeMs, phase }
   }
 
   function freshLifetime() {
@@ -160,14 +204,14 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
     context.fillRect(0, 0, width, height)
 
     for (const layer of cloudLayers) {
-      drawCloudLayer(context, layer, width, height, settings.hold, settings.clouds)
+      drawCloudLayer(context, layer, width, height, settings.fade, settings.clouds)
     }
 
     context.globalAlpha = 1
     context.fillStyle = rgba(palette.star, 1)
 
     for (const layer of layers) {
-      const alpha = layer.peakAlpha * envelope(layer.phase, settings.hold)
+      const alpha = layer.peakAlpha * envelope(layer.phase, settings.fade)
       if (alpha < 0.002) continue
 
       // One path per layer: every dot in it shares an alpha, so a single fill
@@ -187,6 +231,25 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
       context.fill()
     }
 
+    // Each solo star carries its own alpha, so it cannot join a batched path.
+    // At the default size none exist; past it the count climbs with `nearRadius`
+    // and falls again as `sizeMix` drops. Even at the extreme these are a few
+    // hundred small fills, which canvas handles without trouble.
+    for (const layer of layers) {
+      for (const dot of layer.solo) {
+        const alpha = dot.peakAlpha * envelope(dot.phase, settings.fade)
+        if (alpha < 0.002) continue
+        context.globalAlpha = alpha
+        context.beginPath()
+        if (dot.outline) {
+          traceOutline(context, dot.x, dot.y, dot.radius, dot.outline)
+        } else {
+          context.arc(dot.x, dot.y, dot.radius, 0, Math.PI * 2)
+        }
+        context.fill()
+      }
+    }
+
     for (const glimmer of glimmers) drawGlimmer(context, glimmer, palette.star)
 
     context.globalAlpha = 1
@@ -197,7 +260,7 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
    * appears where there was no star bright enough to flare.
    */
   function spawnGlimmer() {
-    const weights = layers.map((layer) => layer.peakAlpha * envelope(layer.phase, settings.hold))
+    const weights = layers.map((layer) => layer.peakAlpha * envelope(layer.phase, settings.fade))
     const total = weights.reduce((sum, weight) => sum + weight, 0)
     if (total <= 0) return
 
@@ -206,8 +269,9 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
       remaining -= weights[index]
       if (remaining > 0) continue
 
-      const dots = layers[index].dots
-      const dot = dots[Math.floor(Math.random() * dots.length)]
+      const layer = layers[index]
+      const candidates = [...layer.dots, ...layer.solo]
+      const dot = candidates[Math.floor(Math.random() * candidates.length)]
       if (dot) glimmers.push(createGlimmer(dot.x, dot.y, dot.radius, dot.outline))
       return
     }
@@ -224,7 +288,23 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
   function advance(deltaMs: number) {
     layers.forEach((layer, index) => {
       layer.phase += deltaMs / layer.lifetimeMs
-      if (layer.phase >= 1) layers[index] = buildLayer(index, 0, freshLifetime())
+      if (layer.phase >= 1) layers[index] = buildLayer(index, 0, freshLifetime(), layer.solo)
+      advanceSolo(layers[index], deltaMs)
+    })
+  }
+
+  /** Each big star ages and respawns alone, elsewhere on screen. */
+  function advanceSolo(layer: Layer, deltaMs: number) {
+    const character = characterFor(layers.indexOf(layer))
+    layer.solo.forEach((dot, index) => {
+      dot.phase += deltaMs / dot.lifetimeMs
+      if (dot.phase < 1) return
+      layer.solo[index] = {
+        ...makeDot(character),
+        peakAlpha: character.peakAlpha,
+        phase: 0,
+        lifetimeMs: freshLifetime(),
+      }
     })
   }
 

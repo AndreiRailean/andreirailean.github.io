@@ -10,11 +10,12 @@ export type Settings = {
   mode: Mode
   invert: boolean
   layerCount: number
-  hold: number
   glimmersPerSecond: number
   densityScale: number
   /** Radius of the largest stars, in css px; the small end is unaffected. */
   nearRadius: number
+  /** Fraction of a life spent fading, at each end. 0.5 is a pure bell. */
+  fade: number
   /** 1 spreads sizes evenly; lower values make each larger size rarer. */
   sizeMix: number
   /** How far a large star's outline departs from a circle. 0 keeps circles. */
@@ -109,13 +110,13 @@ export const CONTROLS: Control[] = [
     hint: "Colour of the mottling and of these controls. Stars stay neutral, so this is the only hue in the piece. Around 225 is cool blue, 30 is warm clay.",
   },
   {
-    key: "hold",
-    label: "hold",
-    min: 0,
-    max: 0.9,
-    step: 0.05,
+    key: "fade",
+    label: "fade",
+    min: 0.02,
+    max: 0.5,
+    step: 0.01,
     format: (v) => v.toFixed(2),
-    hint: "Fraction of a layer's life spent at full brightness. 0 fades straight in and back out with no plateau.",
+    hint: "How much of a life is spent fading, at each end. 0.5 fades the whole way in and straight back out. Lower values hold full brightness longer and cross in and out more quickly, which makes a big star's arrival less of a performance.",
   },
   {
     key: "glimmersPerSecond",
@@ -150,7 +151,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mode: "depth",
   invert: false,
   layerCount: 14,
-  hold: 0,
+  fade: 0.5,
   glimmersPerSecond: 0.5,
   densityScale: 1,
   nearRadius: 3,
@@ -179,7 +180,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       mode: "depth",
       invert: true,
       layerCount: 18,
-      hold: 0.05,
+      fade: 0.475,
       glimmersPerSecond: 2.1,
       densityScale: 1.2,
       nearRadius: 5.7,
@@ -198,7 +199,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       mode: "depth",
       invert: false,
       layerCount: 18,
-      hold: 0.1,
+      fade: 0.45,
       glimmersPerSecond: 1.75,
       densityScale: 0.6,
       nearRadius: 2.6,
