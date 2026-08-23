@@ -145,6 +145,21 @@ export function initialPhases(count: number): number[] {
  */
 export const SOLO_MIN_RADIUS = 3
 
+/**
+ * Where to send something that has been asked to leave, without its brightness
+ * jumping.
+ *
+ * The envelope is symmetric, so a thing still fading in has an exact twin on the
+ * way down at `1 - phase`: same alpha, opposite direction. Anything at full
+ * brightness goes to the start of its fade-out instead, and anything already
+ * leaving is left alone.
+ */
+export function exitPhase(phase: number, fade: number): number {
+  if (phase >= 1 - fade) return phase
+  if (phase < fade) return 1 - phase
+  return 1 - fade
+}
+
 /** Exponent at the low end of the size mix; 1 (uniform) sits at the high end. */
 const MAX_SIZE_EXPONENT = 9
 

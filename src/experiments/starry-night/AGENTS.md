@@ -37,6 +37,13 @@ Every item below was a real bug in this experiment, not a hypothetical.
   with hue at fixed lightness, so the track flips to a contrasting scheme partway
   around the wheel. The track is hand-styled against `--track`, which is
   deliberately hue-independent.
+- **Full-screen composites cost far more than stars.** Measured at 2560x1440:
+  4231 stars with 1176 separate fills ran at 60fps, while five per-layer
+  full-viewport cloud composites dropped it to 19. Star count is close to free;
+  every additional full-screen alpha blend is roughly 5ms in software raster.
+  Cloud layers are therefore combined in a reduced-scale scratch buffer and
+  scaled up once per set. Do not go back to blending each layer straight onto
+  the canvas, and be wary of adding a third full-screen pass.
 - **Alpha gradients need dithering.** A soft gradient ramping to a low alpha over
   a few hundred pixels bands into concentric rings at 8-bit precision. More
   colour stops do not help. See `dither` in `clouds.ts`.

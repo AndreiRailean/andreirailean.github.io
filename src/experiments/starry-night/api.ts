@@ -1,4 +1,5 @@
 import type { Controls } from "@/experiments/starry-night/controls"
+import type { Starfield, StarfieldStats } from "@/experiments/starry-night/starfield"
 import type { WakeLock } from "@/experiments/starry-night/wakelock"
 import { CONTROLS, normalizeSettings, PRESETS, type Settings } from "@/experiments/starry-night/settings"
 
@@ -29,6 +30,8 @@ export type ExperimentApi = {
   url: () => string
   /** Whether the screen is currently being held awake. */
   awake: () => boolean
+  /** What the sky costs to draw right now, and how fast it is running. */
+  stats: () => StarfieldStats
 }
 
 declare global {
@@ -51,6 +54,7 @@ export function announceApi(): void {
     ["experiment.panel(true)", "open the settings panel"],
     ["experiment.idle(false)", "stop the chrome hiding itself"],
     ["experiment.awake()", "is the display being held awake"],
+    ["experiment.stats()", "dots, fill calls per frame, and fps"],
     ["experiment.url()", "a link that restores this exact state"],
   ]
   const width = Math.max(...lines.map(([call]) => call.length))
@@ -59,7 +63,7 @@ export function announceApi(): void {
   console.log(`%cStarry Night%c is scriptable from here.\n\n${body}\n`, "font-weight:600", "font-weight:400")
 }
 
-export function createApi(controls: Controls, wakeLock: WakeLock): ExperimentApi {
+export function createApi(controls: Controls, wakeLock: WakeLock, sky: Starfield): ExperimentApi {
   return {
     get: () => controls.getSettings(),
 
@@ -96,5 +100,7 @@ export function createApi(controls: Controls, wakeLock: WakeLock): ExperimentApi
     url: () => window.location.href,
 
     awake: () => wakeLock.held(),
+
+    stats: () => sky.stats(),
   }
 }

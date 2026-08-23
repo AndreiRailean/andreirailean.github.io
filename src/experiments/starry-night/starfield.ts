@@ -5,6 +5,7 @@ import {
   dotCountFor,
   envelope,
   initialLifetimesMs,
+  exitPhase,
   initialPhases,
   randomLifetimeMs,
   SOLO_MIN_RADIUS,
@@ -14,7 +15,8 @@ import { createGlimmer, drawGlimmer, isGlimmerAlive, type Glimmer } from "@/expe
 import {
   CLOUD_LIFETIME_FACTOR,
   createCloudLayer,
-  drawCloudLayer,
+  createCloudScratch,
+  drawCloudSet,
   type CloudLayer,
 } from "@/experiments/starry-night/clouds"
 import { cloudTint, paletteFor, rgba, type Palette } from "@/experiments/starry-night/palette"
@@ -50,8 +52,22 @@ type Layer = {
   phase: number
 }
 
+/** What the sky currently costs to draw, for the console and for tuning. */
+export type StarfieldStats = {
+  layers: number
+  dots: number
+  soloStars: number
+  /** Batched layer paths plus one per solo star plus the cloud composites. */
+  fillCalls: number
+  cloudLayers: number
+  hazeLayers: number
+  /** Rolling average, so a heavy setting shows up as a number. */
+  fps: number
+}
+
 export type Starfield = {
   setSettings: (settings: Settings) => void
+  stats: () => StarfieldStats
   start: () => void
   stop: () => void
   destroy: () => void
@@ -68,6 +84,13 @@ const HAZE_LAYERS = 2
 
 const randomBetween = (min: number, max: number) => min + Math.random() * (max - min)
 
+/**
+ * How long a retiring layer gets to leave. Staggered, so a settings change
+ * reads as the sky dissolving rather than as one synchronised blink.
+ */
+const RETIRE_MIN_MS = 250
+const RETIRE_MAX_MS = 900
+
 function require2dContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
   const context = canvas.getContext("2d")
   if (!context) throw new Error("Starry Night: canvas 2D context unavailable")
@@ -81,6 +104,7 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
   let settings: Settings = { ...DEFAULT_SETTINGS, ...initial }
   let palette: Palette = paletteFor(settings.invert)
   let layers: Layer[] = []
+  let cloudScratch: CanvasRenderingContext2D | null = null
   let cloudLayers: CloudLayer[] = []
   let hazeLayers: CloudLayer[] = []
   let glimmers: Glimmer[] = []
@@ -88,6 +112,7 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
   let height = 0
   let frameId = 0
   let lastFrameMs = 0
+  let smoothedFrameMs = 16.7
 
   function makeDot(character: LayerCharacter): Dot {
     const radius = biasedRadius(character.minRadius, character.maxRadius, settings.sizeMix)
@@ -111,28 +136,35 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
    * on a resize or a settings change, where their positions and their
    * eligibility both depend on something that just moved.
    */
-  function buildLayer(index: number, phase: number, lifetimeMs: number, solo?: SoloDot[]): Layer {
+  function buildLayer(index: number, phase: number, lifetimeMs: number, carried?: SoloDot[]): Layer {
     const character = characterFor(index)
     const count = dotCountFor(character, width, height, settings.densityScale)
 
     const dots: Dot[] = []
-    const carried: SoloDot[] = solo ?? []
+    const promoted: SoloDot[] = []
 
     for (let made = 0; made < count; made += 1) {
       const dot = makeDot(character)
       if (dot.radius < SOLO_MIN_RADIUS) {
         dots.push(dot)
-      } else if (!solo) {
-        carried.push({
-          ...dot,
-          peakAlpha: character.peakAlpha,
-          phase: Math.random(),
-          lifetimeMs: freshLifetime(),
-        })
+        continue
       }
+      promoted.push({
+        ...dot,
+        peakAlpha: character.peakAlpha,
+        phase: Math.random(),
+        lifetimeMs: freshLifetime(),
+      })
     }
 
-    return { dots, solo: carried, peakAlpha: character.peakAlpha, lifetimeMs, phase }
+    // Big stars are not part of the layer's cycle, so those already running keep
+    // their own clocks across a respawn. The population is then topped up or
+    // trimmed to whatever the current settings imply — carrying the old array
+    // wholesale meant a layer could never gain a big star once it had none, so
+    // raising the size did nothing.
+    const solo = carried ? [...carried.slice(0, promoted.length), ...promoted.slice(carried.length)] : promoted
+
+    return { dots, solo, peakAlpha: character.peakAlpha, lifetimeMs, phase }
   }
 
   function freshLifetime() {
@@ -163,17 +195,22 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
     return randomBetween(settings.minLifetimeMs, settings.maxLifetimeMs) * CLOUD_LIFETIME_FACTOR
   }
 
-  /** Skipped entirely at zero intensity, so the buffers are not even allocated. */
-  function buildCloudSet(count: number, intensity: number, tint: (a: number) => string) {
-    if (intensity <= 0 || width === 0 || height === 0) return []
+  /**
+   * Built regardless of intensity. Zero simply draws nothing, which makes
+   * turning clouds on instant instead of waiting on an allocation, and means a
+   * settings change never has to distinguish "hidden" from "absent".
+   */
+  function buildCloudSet(count: number, tint: (a: number) => string) {
+    if (width === 0 || height === 0) return []
     return initialPhases(count)
-      .map((phase, index) => createCloudLayer(width, height, tint, cloudLifetime(), phase + index * 0))
+      .map((phase) => createCloudLayer(width, height, tint, cloudLifetime(), phase))
       .filter((layer): layer is CloudLayer => layer !== null)
   }
 
   function rebuildClouds() {
-    cloudLayers = buildCloudSet(CLOUD_LAYERS, settings.clouds, cloudTint(palette, settings.hue))
-    hazeLayers = buildCloudSet(HAZE_LAYERS, settings.haze, (alpha) => rgba(palette.background, alpha))
+    cloudScratch = createCloudScratch(width, height)
+    cloudLayers = buildCloudSet(CLOUD_LAYERS, cloudTint(palette, settings.hue))
+    hazeLayers = buildCloudSet(HAZE_LAYERS, (alpha) => rgba(palette.background, alpha))
   }
 
   function advanceCloudSet(set: CloudLayer[], deltaMs: number, tint: (a: number) => string) {
@@ -205,8 +242,8 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
     context.fillStyle = rgba(palette.background, 1)
     context.fillRect(0, 0, width, height)
 
-    for (const layer of cloudLayers) {
-      drawCloudLayer(context, layer, width, height, settings.fade, settings.curve, settings.clouds)
+    if (cloudScratch) {
+      drawCloudSet(context, cloudScratch, cloudLayers, width, height, settings.fade, settings.curve, settings.clouds)
     }
 
     context.globalAlpha = 1
@@ -254,8 +291,8 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
 
     for (const glimmer of glimmers) drawGlimmer(context, glimmer, palette.star)
 
-    for (const layer of hazeLayers) {
-      drawCloudLayer(context, layer, width, height, settings.fade, settings.curve, settings.haze)
+    if (cloudScratch) {
+      drawCloudSet(context, cloudScratch, hazeLayers, width, height, settings.fade, settings.curve, settings.haze)
     }
 
     context.globalAlpha = 1
@@ -291,21 +328,13 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
     glimmers = glimmers.filter(isGlimmerAlive)
   }
 
-  function advance(deltaMs: number) {
-    layers.forEach((layer, index) => {
-      layer.phase += deltaMs / layer.lifetimeMs
-      if (layer.phase >= 1) layers[index] = buildLayer(index, 0, freshLifetime(), layer.solo)
-      advanceSolo(layers[index], deltaMs)
-    })
-  }
-
   /** Each big star ages and respawns alone, elsewhere on screen. */
-  function advanceSolo(layer: Layer, deltaMs: number) {
-    const character = characterFor(layers.indexOf(layer))
-    layer.solo.forEach((dot, index) => {
+  function advanceSolo(layer: Layer, index: number, deltaMs: number) {
+    const character = characterFor(index)
+    layer.solo.forEach((dot, slot) => {
       dot.phase += deltaMs / dot.lifetimeMs
       if (dot.phase < 1) return
-      layer.solo[index] = {
+      layer.solo[slot] = {
         ...makeDot(character),
         peakAlpha: character.peakAlpha,
         phase: 0,
@@ -314,9 +343,49 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
     })
   }
 
+  /**
+   * Ages every layer, and reconciles their number with the setting.
+   *
+   * Layers are never replaced where they stand. A dead one is rebuilt with
+   * whatever the settings now say, a surplus one is simply let go, and a
+   * shortfall is filled with newcomers that fade up from nothing. Between that
+   * and `retire`, the array converges on the target without anything jumping.
+   */
+  function advance(deltaMs: number) {
+    let surplus = Math.max(0, layers.length - settings.layerCount)
+    const alive: Layer[] = []
+
+    layers.forEach((layer, index) => {
+      layer.phase += deltaMs / layer.lifetimeMs
+
+      if (layer.phase < 1) {
+        advanceSolo(layer, index, deltaMs)
+        alive.push(layer)
+        return
+      }
+
+      if (surplus > 0) {
+        surplus -= 1
+        return
+      }
+
+      const reborn = buildLayer(alive.length, 0, freshLifetime(), layer.solo)
+      advanceSolo(reborn, alive.length, deltaMs)
+      alive.push(reborn)
+    })
+
+    while (alive.length < settings.layerCount) {
+      alive.push(buildLayer(alive.length, 0, freshLifetime()))
+    }
+
+    layers = alive
+  }
+
   function frame(nowMs: number) {
     const deltaMs = lastFrameMs === 0 ? 0 : Math.min(nowMs - lastFrameMs, MAX_FRAME_MS)
     lastFrameMs = nowMs
+    // Exponential average: one slow frame should not read as a slow sky.
+    if (deltaMs > 0) smoothedFrameMs += (deltaMs - smoothedFrameMs) * 0.05
     advance(deltaMs)
     advanceClouds(deltaMs)
     advanceGlimmers(deltaMs)
@@ -356,16 +425,63 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
     frameId = 0
   }
 
+  /**
+   * Hurries something off stage: same brightness, now descending, and with its
+   * remaining time compressed into well under a second.
+   *
+   * This is what lets a geometry change be smooth without being slow. Waiting
+   * for layers to die naturally would take up to their full lifespan, so a
+   * setting could not be judged; rebuilding in place teleports every star. This
+   * does neither — the old sky dissolves and the new one forms in its place.
+   */
+  function retire(layer: Layer) {
+    const send = (phase: number) => {
+      const exit = exitPhase(phase, settings.fade)
+      return { exit, lifetimeMs: randomBetween(RETIRE_MIN_MS, RETIRE_MAX_MS) / (1 - exit || 1e-3) }
+    }
+
+    const sent = send(layer.phase)
+    layer.phase = sent.exit
+    layer.lifetimeMs = sent.lifetimeMs
+
+    layer.solo.forEach((dot) => {
+      const dotSent = send(dot.phase)
+      dot.phase = dotSent.exit
+      dot.lifetimeMs = dotSent.lifetimeMs
+    })
+  }
+
   function setSettings(next: Settings) {
     const before = settings
     settings = { ...next }
     palette = paletteFor(settings.invert)
 
-    // Only geometry changes justify moving stars. Dragging hue or fade used to
-    // reshuffle the entire sky, which made a setting impossible to judge.
-    if (needsRebuild(before, settings)) rebuildLayers()
-    if (needsCloudRebuild(before, settings)) rebuildClouds()
+    // Nothing is rebuilt in place. Anything whose look has changed is asked to
+    // leave, and its replacement is built from the new settings when it goes.
+    if (needsRebuild(before, settings)) layers.forEach(retire)
+    if (needsCloudRebuild(before, settings)) {
+      for (const layer of [...cloudLayers, ...hazeLayers]) {
+        const exit = exitPhase(layer.phase, settings.fade)
+        layer.phase = exit
+        layer.lifetimeMs = randomBetween(RETIRE_MIN_MS, RETIRE_MAX_MS) / (1 - exit || 1e-3)
+      }
+    }
     if (prefersReducedMotion.matches) drawStill()
+  }
+
+  function stats(): StarfieldStats {
+    const soloStars = layers.reduce((sum, layer) => sum + layer.solo.length, 0)
+    const dots = layers.reduce((sum, layer) => sum + layer.dots.length, 0) + soloStars
+    return {
+      layers: layers.length,
+      dots,
+      soloStars,
+      // Two composites now, whatever the layer counts.
+      fillCalls: layers.length + soloStars + 2,
+      cloudLayers: cloudLayers.length,
+      hazeLayers: hazeLayers.length,
+      fps: Math.round(1000 / smoothedFrameMs),
+    }
   }
 
   function destroy() {
@@ -378,5 +494,5 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
   rebuildClouds()
   window.addEventListener("resize", handleResize)
 
-  return { setSettings, start, stop, destroy }
+  return { setSettings, stats, start, stop, destroy }
 }

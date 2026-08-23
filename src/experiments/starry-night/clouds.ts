@@ -111,28 +111,70 @@ function dither(context: CanvasRenderingContext2D, width: number, height: number
   context.putImageData(image, 0, 0)
 }
 
-export function drawCloudLayer(
+/**
+ * Scratch buffer the cloud layers are combined in, at the same reduced scale
+ * they are drawn at. Sized to the viewport, so it must be remade on resize.
+ */
+export function createCloudScratch(width: number, height: number) {
+  const canvas = document.createElement("canvas")
+  canvas.width = Math.max(1, Math.round(width / DOWNSCALE))
+  canvas.height = Math.max(1, Math.round(height / DOWNSCALE))
+  return canvas.getContext("2d")
+}
+
+/**
+ * Draws a whole set of cloud layers using one full-screen composite.
+ *
+ * Each layer used to be blended straight onto the canvas, which meant a
+ * full-viewport alpha composite per layer per frame — measured at roughly 5ms
+ * each at 2560x1440, so five of them cost more than every star put together.
+ * They are combined in the reduced-scale scratch first, where a layer costs a
+ * sixteenth as much, and only the result is scaled up.
+ *
+ * Intensity therefore applies to the combined result rather than per layer.
+ * The composite maths differ slightly from before; visually it reads as one
+ * master opacity, which is what the control was always trying to be.
+ */
+export function drawCloudSet(
   context: CanvasRenderingContext2D,
-  layer: CloudLayer,
+  scratch: CanvasRenderingContext2D,
+  layers: CloudLayer[],
   width: number,
   height: number,
   fade: number,
   curve: number,
   intensity: number,
 ): void {
-  const alpha = intensity * envelope(layer.phase, fade, curve)
-  if (alpha < 0.002) return
+  if (intensity <= 0.002 || layers.length === 0) return
+
+  const scratchWidth = scratch.canvas.width
+  const scratchHeight = scratch.canvas.height
+  scratch.clearRect(0, 0, scratchWidth, scratchHeight)
 
   const slack = MARGIN - 1
-  const t = Math.min(1, Math.max(0, layer.phase))
-  const at = (from: number, to: number) => from + (to - from) * t
+  let visible = false
 
-  context.globalAlpha = alpha
-  context.drawImage(
-    layer.buffer,
-    -slack * width * at(layer.from.x, layer.to.x),
-    -slack * height * at(layer.from.y, layer.to.y),
-    width * MARGIN,
-    height * MARGIN,
-  )
+  for (const layer of layers) {
+    const alpha = envelope(layer.phase, fade, curve)
+    if (alpha < 0.002) continue
+    visible = true
+
+    const t = Math.min(1, Math.max(0, layer.phase))
+    const at = (from: number, to: number) => from + (to - from) * t
+
+    scratch.globalAlpha = alpha
+    scratch.drawImage(
+      layer.buffer,
+      -slack * scratchWidth * at(layer.from.x, layer.to.x),
+      -slack * scratchHeight * at(layer.from.y, layer.to.y),
+      scratchWidth * MARGIN,
+      scratchHeight * MARGIN,
+    )
+  }
+
+  scratch.globalAlpha = 1
+  if (!visible) return
+
+  context.globalAlpha = intensity
+  context.drawImage(scratch.canvas, 0, 0, width, height)
 }

@@ -45,6 +45,18 @@ Route external input through one validator shared with the query string, so the
 API cannot produce a state a URL could not. These APIs are the natural first
 thing to put under test when this repo gets a test runner.
 
+Expose a `stats()`-style read of internal counts too. Without one there is no
+way to tell whether a transition converged or a population was rebuilt, and a
+screenshot cannot show it — one real regression here was invisible until the
+counts were readable.
+
+`webcheck` cannot evaluate JS, so exercising the API headlessly needs a small
+CDP harness: launch chromium with `--remote-debugging-port=0`, read the port
+from `DevToolsActivePort`, then `Runtime.evaluate` with `awaitPromise`. Add
+`Emulation.setDeviceMetricsOverride` to test at a realistic viewport. Note that
+headless runs without a GPU, so absolute frame times are pessimistic — trust the
+ratios between configurations, not the numbers.
+
 ## Verifying
 
 There is no test runner. `npm run build` covers `astro check`, `npm run lint`
