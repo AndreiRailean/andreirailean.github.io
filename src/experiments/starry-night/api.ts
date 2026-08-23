@@ -1,4 +1,5 @@
 import type { Controls } from "@/experiments/starry-night/controls"
+import type { WakeLock } from "@/experiments/starry-night/wakelock"
 import { CONTROLS, normalizeSettings, PRESETS, type Settings } from "@/experiments/starry-night/settings"
 
 /**
@@ -26,6 +27,8 @@ export type ExperimentApi = {
   idle: (force?: boolean | null) => void
   /** The shareable URL for the current settings. */
   url: () => string
+  /** Whether the screen is currently being held awake. */
+  awake: () => boolean
 }
 
 declare global {
@@ -34,7 +37,7 @@ declare global {
   }
 }
 
-export function createApi(controls: Controls): ExperimentApi {
+export function createApi(controls: Controls, wakeLock: WakeLock): ExperimentApi {
   return {
     get: () => controls.getSettings(),
 
@@ -69,5 +72,7 @@ export function createApi(controls: Controls): ExperimentApi {
     },
 
     url: () => window.location.href,
+
+    awake: () => wakeLock.held(),
   }
 }

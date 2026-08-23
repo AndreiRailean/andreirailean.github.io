@@ -151,7 +151,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mode: "depth",
   invert: false,
   layerCount: 14,
-  fade: 0.5,
+  fade: 0.1,
   glimmersPerSecond: 0.5,
   densityScale: 1,
   nearRadius: 3,

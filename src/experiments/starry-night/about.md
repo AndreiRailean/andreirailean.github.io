@@ -45,6 +45,11 @@ and `3` load presets, `c` opens the panel, `Escape` closes it. Every control has
 a tooltip, and every setting lives in the address bar — so any state worth
 keeping can be copied, shared, or handed back to be saved as a preset.
 
+While it is on screen it holds the display awake, the way a video does, since
+the point is to leave it running. Browsers only allow that on a secure
+connection, so opening the page over plain http from another machine gets the
+animation but not the wake lock.
+
 The controls worth reaching for first: **layers** decides whether you perceive the
 mechanism or only the effect. **size mix** decides how rare the big stars are — at
 1 every size is equally likely, and turning it down makes each larger size
