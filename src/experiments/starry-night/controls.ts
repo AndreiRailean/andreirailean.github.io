@@ -6,12 +6,22 @@ const COPY_LABEL = "copy link to these settings"
 /** Idle gap before the pointer and the controls both disappear, video-player style. */
 const IDLE_MS = 2500
 
-export type Controls = { destroy: () => void }
+export type Controls = {
+  destroy: () => void
+  getSettings: () => Settings
+  apply: (next: Settings) => void
+  setPanelOpen: (open: boolean) => void
+  isPanelOpen: () => boolean
+  /** true or false pins the state; null hands control back to the idle timer. */
+  setIdle: (idle: boolean | null) => void
+}
 
 type Options = {
   root: HTMLElement
   settings: Settings
   onChange: (settings: Settings) => void
+  /** Where the written note lives. Omitted, no link is shown. */
+  aboutHref?: string
 }
 
 /**
@@ -62,11 +72,12 @@ function button(label: string, className = ""): HTMLButtonElement {
   return element
 }
 
-export function createControls({ root, settings, onChange }: Options): Controls {
+export function createControls({ root, settings, onChange, aboutHref }: Options): Controls {
   let current: Settings = { ...settings }
   let panelOpen = false
   let pointerOverUi = false
   let idleTimer = 0
+  let pinnedIdle: boolean | null = null
 
   const bar = document.createElement("div")
   bar.className = "bar"
@@ -80,7 +91,7 @@ export function createControls({ root, settings, onChange }: Options): Controls 
   // --- idle handling -------------------------------------------------------
 
   function setIdle(idle: boolean) {
-    document.body.dataset.idle = String(idle)
+    document.documentElement.dataset.idle = String(idle)
   }
 
   /**
@@ -90,8 +101,16 @@ export function createControls({ root, settings, onChange }: Options): Controls 
    */
   function goActive() {
     window.clearTimeout(idleTimer)
+    if (pinnedIdle !== null) {
+      setIdle(pinnedIdle)
+      return
+    }
     setIdle(false)
-    if (panelOpen || pointerOverUi) return
+    // Deliberately not suppressed by an open panel: it fades along with the
+    // rest of the chrome and, since fading never closes it, comes back open.
+    // Only the pointer actually resting on the UI holds it, so a slider cannot
+    // vanish mid-drag.
+    if (pointerOverUi) return
     idleTimer = window.setTimeout(() => setIdle(true), IDLE_MS)
   }
 
@@ -99,14 +118,26 @@ export function createControls({ root, settings, onChange }: Options): Controls 
 
   const presetButtons = PRESETS.map((preset, index) => {
     const element = button(`${index + 1} ${preset.label}`, "preset")
+    element.title = `${preset.hint} (key ${index + 1})`
     element.addEventListener("click", () => apply({ ...preset.settings }))
     return element
   })
 
   const settingsToggle = button("adjust", "toggle")
+  settingsToggle.title = "Show or hide these controls (key c, Escape closes)"
   settingsToggle.addEventListener("click", () => setPanelOpen(!panelOpen))
 
   bar.append(...presetButtons, settingsToggle)
+
+  // The gallery placard: present when you look for it, gone while you watch.
+  if (aboutHref) {
+    const about = document.createElement("a")
+    about.className = "about"
+    about.href = aboutHref
+    about.textContent = "about"
+    about.title = "A written note on this piece and how it came to look this way"
+    bar.append(about)
+  }
 
   const modeButtons = new Map<Mode, HTMLButtonElement>()
   const valueLabels = new Map<string, HTMLSpanElement>()
@@ -114,6 +145,8 @@ export function createControls({ root, settings, onChange }: Options): Controls 
 
   const modeRow = document.createElement("div")
   modeRow.className = "row"
+  modeRow.title =
+    "How each layer's size and brightness get chosen. Tiers spread the layers from far to near; random rerolls a layer's character every time it respawns; identical gives every layer the same one."
   const modeLabel = document.createElement("span")
   modeLabel.className = "label"
   modeLabel.textContent = "layer depth"
@@ -128,9 +161,24 @@ export function createControls({ root, settings, onChange }: Options): Controls 
   modeRow.append(modeLabel, modeGroup)
   panel.append(modeRow)
 
+  const invertRow = document.createElement("div")
+  invertRow.className = "row"
+  invertRow.title = "Swap between light stars on a dark ground and dark stars on a light one."
+  const invertLabel = document.createElement("span")
+  invertLabel.className = "label"
+  invertLabel.textContent = "invert"
+  const invertGroup = document.createElement("div")
+  invertGroup.className = "modes"
+  const invertButton = button("dark sky", "mode")
+  invertButton.addEventListener("click", () => apply({ ...current, invert: !current.invert }))
+  invertGroup.append(invertButton)
+  invertRow.append(invertLabel, invertGroup)
+  panel.append(invertRow)
+
   for (const control of CONTROLS) {
     const row = document.createElement("div")
     row.className = "row"
+    row.title = control.hint
 
     const label = document.createElement("span")
     label.className = "label"
@@ -158,6 +206,7 @@ export function createControls({ root, settings, onChange }: Options): Controls 
   const copyRow = document.createElement("div")
   copyRow.className = "row copy"
   const copyButton = button(COPY_LABEL, "copy")
+  copyButton.title = "Copy this page's address, which carries every setting above."
   copyButton.addEventListener("click", async () => {
     const copied = await copyText(window.location.href)
     copyButton.textContent = copied ? "copied" : "copy failed"
@@ -171,13 +220,22 @@ export function createControls({ root, settings, onChange }: Options): Controls 
   // --- state ---------------------------------------------------------------
 
   function render() {
+    invertButton.textContent = current.invert ? "light sky" : "dark sky"
+    invertButton.dataset.active = String(current.invert)
     for (const [mode, element] of modeButtons) {
       element.dataset.active = String(mode === current.mode)
     }
     for (const control of CONTROLS) {
       const slider = sliders.get(control.key)
       const value = valueLabels.get(control.key)
-      if (slider) slider.value = String(current[control.key])
+      if (slider) {
+        slider.value = String(current[control.key])
+        // Webkit has no ::-moz-range-progress equivalent, so the filled portion
+        // is drawn as a gradient and needs the position handed to CSS.
+        const span = control.max - control.min
+        const filled = span === 0 ? 0 : ((current[control.key] - control.min) / span) * 100
+        slider.style.setProperty("--fill", `${filled}%`)
+      }
       if (value) value.textContent = control.format(current[control.key])
     }
     presetButtons.forEach((element, index) => {
@@ -229,6 +287,14 @@ export function createControls({ root, settings, onChange }: Options): Controls 
     if (preset) apply({ ...preset.settings })
   }
 
+  /** Clicking away dismisses the panel, as a popover should. */
+  const onPointerDownAway = (event: PointerEvent) => {
+    if (!panelOpen) return
+    const target = event.target
+    if (target instanceof Node && root.contains(target)) return
+    setPanelOpen(false)
+  }
+
   const onPointerEnter = () => {
     pointerOverUi = true
     goActive()
@@ -243,6 +309,7 @@ export function createControls({ root, settings, onChange }: Options): Controls 
   window.addEventListener("wheel", onActivity, { passive: true })
   window.addEventListener("touchstart", onActivity, { passive: true })
   window.addEventListener("keydown", onKeyDown)
+  window.addEventListener("pointerdown", onPointerDownAway)
   root.addEventListener("pointerenter", onPointerEnter)
   root.addEventListener("pointerleave", onPointerLeave)
 
@@ -250,6 +317,14 @@ export function createControls({ root, settings, onChange }: Options): Controls 
   goActive()
 
   return {
+    getSettings: () => ({ ...current }),
+    apply,
+    setPanelOpen,
+    isPanelOpen: () => panelOpen,
+    setIdle(idle) {
+      pinnedIdle = idle
+      goActive()
+    },
     destroy() {
       window.clearTimeout(idleTimer)
       window.removeEventListener("mousemove", onActivity)
@@ -257,6 +332,7 @@ export function createControls({ root, settings, onChange }: Options): Controls 
       window.removeEventListener("wheel", onActivity)
       window.removeEventListener("touchstart", onActivity)
       window.removeEventListener("keydown", onKeyDown)
+      window.removeEventListener("pointerdown", onPointerDownAway)
       root.removeEventListener("pointerenter", onPointerEnter)
       root.removeEventListener("pointerleave", onPointerLeave)
       root.replaceChildren()

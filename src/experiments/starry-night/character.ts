@@ -34,17 +34,20 @@ const NEAR: LayerCharacter = {
   peakAlpha: 0.95,
 }
 
+/** Keeps the near tier's min/max radii in proportion as its size is scaled. */
+const NEAR_RADIUS_RATIO = NEAR.minRadius / NEAR.maxRadius
+
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
 
 const lerp = (from: number, to: number, t: number) => from + (to - from) * t
 
 /** Interpolates the far/near extremes into the character for an arbitrary depth. */
-export function characterAt(depth: number): LayerCharacter {
+export function characterAt(depth: number, nearMaxRadius = NEAR.maxRadius): LayerCharacter {
   const t = clamp01(depth)
   return {
     density: lerp(FAR.density, NEAR.density, t),
-    minRadius: lerp(FAR.minRadius, NEAR.minRadius, t),
-    maxRadius: lerp(FAR.maxRadius, NEAR.maxRadius, t),
+    minRadius: lerp(FAR.minRadius, nearMaxRadius * NEAR_RADIUS_RATIO, t),
+    maxRadius: lerp(FAR.maxRadius, nearMaxRadius, t),
     peakAlpha: lerp(FAR.peakAlpha, NEAR.peakAlpha, t),
   }
 }
@@ -120,6 +123,23 @@ export function initialPhases(count: number): number[] {
     .map((phase) => ({ phase, sortKey: Math.random() }))
     .sort((a, b) => a.sortKey - b.sortKey)
     .map((entry) => entry.phase)
+}
+
+/** Exponent at the low end of the size mix; 1 (uniform) sits at the high end. */
+const MAX_SIZE_EXPONENT = 9
+
+/**
+ * A radius from [min, max], biased toward the small end.
+ *
+ * `mix` of 1 is uniform: every size in the range equally likely. Lower values
+ * raise the exponent applied to a uniform variate, so the bigger a size is the
+ * rarer it becomes — which is what puts a few large stars among many small
+ * ones. It applies within every layer's own range, so the whole size ladder
+ * shifts together rather than only the largest tier.
+ */
+export function biasedRadius(min: number, max: number, mix: number): number {
+  const exponent = MAX_SIZE_EXPONENT ** (1 - clamp01(mix))
+  return min + (max - min) * Math.random() ** exponent
 }
 
 const smoothstep = (t: number) => t * t * (3 - 2 * t)

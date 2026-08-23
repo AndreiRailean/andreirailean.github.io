@@ -1,3 +1,6 @@
+import { rgba, type Rgb } from "@/experiments/starry-night/palette"
+import { traceOutline, type Outline } from "@/experiments/starry-night/shape"
+
 /**
  * A single star briefly flaring.
  *
@@ -12,6 +15,8 @@ export type Glimmer = {
   y: number
   /** Radius of the star underneath; the flare is drawn proportional to it. */
   radius: number
+  /** The star's outline, so a flare on a wobbled star keeps its shape. */
+  outline: Outline | null
   durationMs: number
   elapsedMs: number
 }
@@ -24,11 +29,12 @@ const CORE_SCALE = 1.6
 const HALO_SCALE = 6
 const HALO_ALPHA = 0.3
 
-export function createGlimmer(x: number, y: number, radius: number): Glimmer {
+export function createGlimmer(x: number, y: number, radius: number, outline: Outline | null): Glimmer {
   return {
     x,
     y,
     radius,
+    outline,
     durationMs: MIN_DURATION_MS + Math.random() * (MAX_DURATION_MS - MIN_DURATION_MS),
     elapsedMs: 0,
   }
@@ -52,18 +58,18 @@ export function glimmerEnvelope(progress: number): number {
 }
 
 /**
- * Draws a halo plus a brightened core over the star already painted underneath.
- * Assumes a light star colour — the halo is white.
+ * Draws a halo plus an intensified core over the star already painted
+ * underneath, in whichever colour the stars themselves are.
  */
-export function drawGlimmer(context: CanvasRenderingContext2D, glimmer: Glimmer): void {
+export function drawGlimmer(context: CanvasRenderingContext2D, glimmer: Glimmer, star: Rgb): void {
   const intensity = glimmerEnvelope(glimmer.elapsedMs / glimmer.durationMs)
   if (intensity <= 0.002) return
 
-  const { x, y, radius } = glimmer
+  const { x, y, radius, outline } = glimmer
   const haloRadius = radius * HALO_SCALE
   const halo = context.createRadialGradient(x, y, 0, x, y, haloRadius)
-  halo.addColorStop(0, `rgba(255, 255, 255, ${intensity * HALO_ALPHA})`)
-  halo.addColorStop(1, "rgba(255, 255, 255, 0)")
+  halo.addColorStop(0, rgba(star, intensity * HALO_ALPHA))
+  halo.addColorStop(1, rgba(star, 0))
 
   context.globalAlpha = 1
   context.fillStyle = halo
@@ -72,9 +78,15 @@ export function drawGlimmer(context: CanvasRenderingContext2D, glimmer: Glimmer)
   context.fill()
 
   context.globalAlpha = intensity
-  context.fillStyle = "#ffffff"
+  context.fillStyle = rgba(star, 1)
   context.beginPath()
-  context.arc(x, y, radius * CORE_SCALE, 0, Math.PI * 2)
+  if (outline) {
+    // Same multipliers and rotation, larger reach: the flare is the star's own
+    // silhouette swelling, not a circle appearing over a blob.
+    traceOutline(context, x, y, radius * CORE_SCALE, outline)
+  } else {
+    context.arc(x, y, radius * CORE_SCALE, 0, Math.PI * 2)
+  }
   context.fill()
   context.globalAlpha = 1
 }

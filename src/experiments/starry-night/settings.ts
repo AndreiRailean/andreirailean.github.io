@@ -8,15 +8,26 @@ import { isMode, type Mode } from "@/experiments/starry-night/character"
  */
 export type Settings = {
   mode: Mode
+  invert: boolean
   layerCount: number
   hold: number
   glimmersPerSecond: number
   densityScale: number
+  /** Radius of the largest stars, in css px; the small end is unaffected. */
+  nearRadius: number
+  /** 1 spreads sizes evenly; lower values make each larger size rarer. */
+  sizeMix: number
+  /** How far a large star's outline departs from a circle. 0 keeps circles. */
+  wobble: number
+  /** Strength of the soft mottling behind the stars. 0 turns it off. */
+  clouds: number
+  /** Hue, in degrees, of the mottling and of the controls themselves. */
+  hue: number
   minLifetimeMs: number
   maxLifetimeMs: number
 }
 
-export type NumericKey = Exclude<keyof Settings, "mode">
+export type NumericKey = Exclude<keyof Settings, "mode" | "invert">
 
 export type Control = {
   key: NumericKey
@@ -25,6 +36,8 @@ export type Control = {
   max: number
   step: number
   format: (value: number) => string
+  /** Shown as a tooltip on the row. */
+  hint: string
 }
 
 /**
@@ -39,6 +52,7 @@ export const CONTROLS: Control[] = [
     max: 28,
     step: 1,
     format: (v) => String(v),
+    hint: "How many independent fade layers build the sky. Each runs on its own clock, so more layers means any single one is harder to notice.",
   },
   {
     key: "densityScale",
@@ -47,6 +61,52 @@ export const CONTROLS: Control[] = [
     max: 3,
     step: 0.05,
     format: (v) => `${v.toFixed(2)}x`,
+    hint: "Multiplies how many stars every layer holds. Star count already scales with the size of the window; this scales it further.",
+  },
+  {
+    key: "nearRadius",
+    label: "max size",
+    min: 1.5,
+    max: 16,
+    step: 0.1,
+    format: (v) => `${v.toFixed(1)}px`,
+    hint: "Radius of the largest stars. Only the near end of the size range grows, so the big ones stay the rare ones.",
+  },
+  {
+    key: "sizeMix",
+    label: "size mix",
+    min: 0,
+    max: 1,
+    step: 0.05,
+    format: (v) => v.toFixed(2),
+    hint: "How the sizes between the smallest and the maximum are shared out. At 1 every size is equally likely. Turn it down and each larger size gets rarer than the one below it, leaving a few big stars among many small ones.",
+  },
+  {
+    key: "wobble",
+    label: "wobble",
+    min: 0,
+    max: 0.45,
+    step: 0.01,
+    format: (v) => v.toFixed(2),
+    hint: "How far a large star's outline strays from a circle. Small stars stay circular whatever this says, since the irregularity would be invisible.",
+  },
+  {
+    key: "clouds",
+    label: "clouds",
+    min: 0,
+    max: 1,
+    step: 0.05,
+    format: (v) => v.toFixed(2),
+    hint: "Strength of the soft mottling behind the stars, which keeps the ground from being one flat colour. It fades in and out on its own clocks like the stars do. 0 removes it; use hue to change its colour.",
+  },
+  {
+    key: "hue",
+    label: "hue",
+    min: 0,
+    max: 360,
+    step: 1,
+    format: (v) => `${Math.round(v)}°`,
+    hint: "Colour of the mottling and of these controls. Stars stay neutral, so this is the only hue in the piece. Around 225 is cool blue, 30 is warm clay.",
   },
   {
     key: "hold",
@@ -55,6 +115,7 @@ export const CONTROLS: Control[] = [
     max: 0.9,
     step: 0.05,
     format: (v) => v.toFixed(2),
+    hint: "Fraction of a layer's life spent at full brightness. 0 fades straight in and back out with no plateau.",
   },
   {
     key: "glimmersPerSecond",
@@ -63,6 +124,7 @@ export const CONTROLS: Control[] = [
     max: 6,
     step: 0.05,
     format: (v) => `${v.toFixed(2)}/s`,
+    hint: "Average single-star flares per second across the whole sky. A flare is a fast brightness spike on one star, unrelated to the layer fades.",
   },
   {
     key: "minLifetimeMs",
@@ -71,6 +133,7 @@ export const CONTROLS: Control[] = [
     max: 40_000,
     step: 500,
     format: (v) => `${(v / 1000).toFixed(1)}s`,
+    hint: "Shortest time a layer takes to fade in and out. Every layer draws its own lifespan from this range, which is what keeps them out of step.",
   },
   {
     key: "maxLifetimeMs",
@@ -79,15 +142,22 @@ export const CONTROLS: Control[] = [
     max: 60_000,
     step: 500,
     format: (v) => `${(v / 1000).toFixed(1)}s`,
+    hint: "Longest time a layer takes to fade in and out. A wider gap from the minimum makes the layers drift apart faster.",
   },
 ]
 
 export const DEFAULT_SETTINGS: Settings = {
   mode: "depth",
+  invert: false,
   layerCount: 14,
   hold: 0,
   glimmersPerSecond: 0.5,
   densityScale: 1,
+  nearRadius: 3,
+  sizeMix: 1,
+  wobble: 0.22,
+  clouds: 0.15,
+  hue: 247,
   minLifetimeMs: 6_000,
   maxLifetimeMs: 26_000,
 }
@@ -96,28 +166,46 @@ export const DEFAULT_SETTINGS: Settings = {
  * Starting points, not conclusions. Keys 1-3 load these; the intent is that you
  * explore with the sliders, then a URL worth keeping gets baked in here.
  */
-export const PRESETS: { label: string; settings: Settings }[] = [
-  { label: "deep field", settings: { ...DEFAULT_SETTINGS } },
+export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
   {
-    label: "sparse",
+    label: "deep field",
+    hint: "Many faint layers on a dark sky. The starting point.",
+    settings: { ...DEFAULT_SETTINGS },
+  },
+  {
+    label: "clay",
+    hint: "Dark stars pressed into a warm light ground.",
     settings: {
       mode: "depth",
-      layerCount: 5,
-      hold: 0.3,
-      glimmersPerSecond: 0.3,
-      densityScale: 1.6,
-      minLifetimeMs: 10_000,
-      maxLifetimeMs: 30_000,
+      invert: true,
+      layerCount: 18,
+      hold: 0.05,
+      glimmersPerSecond: 2.1,
+      densityScale: 1.2,
+      nearRadius: 5.7,
+      sizeMix: 1,
+      wobble: 0.22,
+      clouds: 0.2,
+      hue: 30,
+      minLifetimeMs: 2500,
+      maxLifetimeMs: 6000,
     },
   },
   {
     label: "alive",
+    hint: "Short lifespans and frequent flares, so the sky never settles.",
     settings: {
       mode: "depth",
+      invert: false,
       layerCount: 18,
       hold: 0.1,
       glimmersPerSecond: 1.75,
       densityScale: 0.6,
+      nearRadius: 2.6,
+      sizeMix: 1,
+      wobble: 0.22,
+      clouds: 0.22,
+      hue: 225,
       minLifetimeMs: 3500,
       maxLifetimeMs: 10500,
     },
@@ -127,32 +215,27 @@ export const PRESETS: { label: string; settings: Settings }[] = [
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
 /**
- * Reads one number from a query string.
+ * Fills gaps from `base` and forces every value into legal bounds.
  *
- * An absent param is `null` and `Number(null)` is 0, so a naive numeric read
- * silently substitutes zero for "not specified" — which is how glimmers once got
- * switched off by default. Absent, blank and unparseable all fall back.
+ * Every route that accepts settings from outside — the query string, the console
+ * API — passes through here, so bounds live in exactly one place and the two can
+ * never disagree about what is valid.
  */
-function readNumber(params: URLSearchParams, control: Control, fallback: number): number {
-  const raw = params.get(control.key)
-  if (raw === null || raw.trim() === "") return fallback
-  const value = Number(raw)
-  if (!Number.isFinite(value)) return fallback
-  return clamp(value, control.min, control.max)
-}
-
-export function settingsFromQuery(params: URLSearchParams): Settings {
-  const settings = { ...DEFAULT_SETTINGS }
-
-  const mode = params.get("mode")
-  if (isMode(mode)) settings.mode = mode
-
-  for (const control of CONTROLS) {
-    settings[control.key] = readNumber(params, control, DEFAULT_SETTINGS[control.key])
+export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEFAULT_SETTINGS): Settings {
+  const merged = { ...base, ...patch }
+  const settings: Settings = {
+    ...merged,
+    mode: isMode(merged.mode) ? merged.mode : base.mode,
+    invert: Boolean(merged.invert),
   }
 
-  // A dragged "min" slider must not overtake "max", or lifetimes come out
-  // reversed and every layer respawns instantly.
+  for (const control of CONTROLS) {
+    const value = Number(settings[control.key])
+    settings[control.key] = Number.isFinite(value) ? clamp(value, control.min, control.max) : base[control.key]
+  }
+
+  // A dragged "min" must not overtake "max", or lifetimes come out reversed and
+  // every layer respawns instantly.
   if (settings.minLifetimeMs > settings.maxLifetimeMs) {
     settings.maxLifetimeMs = settings.minLifetimeMs
   }
@@ -160,10 +243,37 @@ export function settingsFromQuery(params: URLSearchParams): Settings {
   return settings
 }
 
+/**
+ * Reads settings from a query string.
+ *
+ * An absent param is `null` and `Number(null)` is 0, which is a legal value for
+ * most of these — that once disabled glimmers by default. Absent, blank and
+ * unparseable are all skipped so the default survives.
+ */
+export function settingsFromQuery(params: URLSearchParams): Settings {
+  const patch: Partial<Settings> = {}
+
+  const mode = params.get("mode")
+  if (isMode(mode)) patch.mode = mode
+
+  const invert = params.get("invert")
+  if (invert !== null) patch.invert = invert !== "0" && invert !== "false"
+
+  for (const control of CONTROLS) {
+    const raw = params.get(control.key)
+    if (raw === null || raw.trim() === "") continue
+    const value = Number(raw)
+    if (Number.isFinite(value)) patch[control.key] = value
+  }
+
+  return normalizeSettings(patch)
+}
+
 /** Only values that differ from the defaults, so shared URLs stay readable. */
 export function settingsToQuery(settings: Settings): URLSearchParams {
   const params = new URLSearchParams()
   if (settings.mode !== DEFAULT_SETTINGS.mode) params.set("mode", settings.mode)
+  if (settings.invert !== DEFAULT_SETTINGS.invert) params.set("invert", settings.invert ? "1" : "0")
   for (const control of CONTROLS) {
     if (settings[control.key] !== DEFAULT_SETTINGS[control.key]) {
       params.set(control.key, String(settings[control.key]))

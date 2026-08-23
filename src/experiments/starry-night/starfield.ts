@@ -1,4 +1,5 @@
 import {
+  biasedRadius,
   characterAt,
   DEPTH_POLICIES,
   dotCountFor,
@@ -8,9 +9,23 @@ import {
   randomLifetimeMs,
 } from "@/experiments/starry-night/character"
 import { createGlimmer, drawGlimmer, isGlimmerAlive, type Glimmer } from "@/experiments/starry-night/glimmer"
+import {
+  CLOUD_LIFETIME_FACTOR,
+  createCloudLayer,
+  drawCloudLayer,
+  type CloudLayer,
+} from "@/experiments/starry-night/clouds"
+import { cloudTint, paletteFor, rgba, type Palette } from "@/experiments/starry-night/palette"
+import { createOutline, MIN_OUTLINE_RADIUS, traceOutline, type Outline } from "@/experiments/starry-night/shape"
 import { DEFAULT_SETTINGS, type Settings } from "@/experiments/starry-night/settings"
 
-type Dot = { x: number; y: number; radius: number }
+type Dot = {
+  x: number
+  y: number
+  radius: number
+  /** Null for small stars, which stay circular. */
+  outline: Outline | null
+}
 
 type Layer = {
   dots: Dot[]
@@ -27,11 +42,11 @@ export type Starfield = {
   destroy: () => void
 }
 
-const BACKGROUND = "#05070f"
-const STAR_COLOR = "#ffffff"
-
 /** A big delta after the tab was backgrounded would teleport every layer. */
 const MAX_FRAME_MS = 100
+
+/** Few enough that overlaps stay legible as mottling rather than a haze. */
+const CLOUD_LAYERS = 3
 
 const randomBetween = (min: number, max: number) => min + Math.random() * (max - min)
 
@@ -46,7 +61,9 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
   const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)")
 
   let settings: Settings = { ...DEFAULT_SETTINGS, ...initial }
+  let palette: Palette = paletteFor(settings.invert)
   let layers: Layer[] = []
+  let cloudLayers: CloudLayer[] = []
   let glimmers: Glimmer[] = []
   let width = 0
   let height = 0
@@ -54,13 +71,18 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
   let lastFrameMs = 0
 
   function buildLayer(index: number, phase: number, lifetimeMs: number): Layer {
-    const character = characterAt(DEPTH_POLICIES[settings.mode](index, settings.layerCount))
+    const character = characterAt(DEPTH_POLICIES[settings.mode](index, settings.layerCount), settings.nearRadius)
     const count = dotCountFor(character, width, height, settings.densityScale)
-    const dots: Dot[] = Array.from({ length: count }, () => ({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      radius: randomBetween(character.minRadius, character.maxRadius),
-    }))
+    const dots: Dot[] = Array.from({ length: count }, () => {
+      const radius = biasedRadius(character.minRadius, character.maxRadius, settings.sizeMix)
+      const wobbles = settings.wobble > 0 && radius >= MIN_OUTLINE_RADIUS
+      return {
+        x: Math.random() * width,
+        y: Math.random() * height,
+        radius,
+        outline: wobbles ? createOutline(settings.wobble) : null,
+      }
+    })
 
     return { dots, peakAlpha: character.peakAlpha, lifetimeMs, phase }
   }
@@ -89,6 +111,39 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
     })
   }
 
+  function cloudLifetime() {
+    return randomBetween(settings.minLifetimeMs, settings.maxLifetimeMs) * CLOUD_LIFETIME_FACTOR
+  }
+
+  /** Skipped entirely at zero intensity, so the buffers are not even allocated. */
+  function rebuildClouds() {
+    if (settings.clouds <= 0 || width === 0 || height === 0) {
+      cloudLayers = []
+      return
+    }
+    const phases = initialPhases(CLOUD_LAYERS)
+    cloudLayers = phases
+      .map((phase, index) =>
+        createCloudLayer(
+          width,
+          height,
+          cloudTint(palette, settings.hue),
+          cloudLayers[index]?.lifetimeMs ?? cloudLifetime(),
+          cloudLayers[index]?.phase ?? phase,
+        ),
+      )
+      .filter((layer): layer is CloudLayer => layer !== null)
+  }
+
+  function advanceClouds(deltaMs: number) {
+    cloudLayers.forEach((layer, index) => {
+      layer.phase += deltaMs / layer.lifetimeMs
+      if (layer.phase < 1) return
+      const replacement = createCloudLayer(width, height, cloudTint(palette, settings.hue), cloudLifetime(), 0)
+      if (replacement) cloudLayers[index] = replacement
+    })
+  }
+
   function measure() {
     // Backing store in device pixels, drawing coordinates in CSS pixels —
     // without this, sub-pixel dots turn to mush on a high-DPI screen.
@@ -101,9 +156,15 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
   }
 
   function draw() {
-    context.fillStyle = BACKGROUND
+    context.fillStyle = palette.background
     context.fillRect(0, 0, width, height)
-    context.fillStyle = STAR_COLOR
+
+    for (const layer of cloudLayers) {
+      drawCloudLayer(context, layer, width, height, settings.hold, settings.clouds)
+    }
+
+    context.globalAlpha = 1
+    context.fillStyle = rgba(palette.star, 1)
 
     for (const layer of layers) {
       const alpha = layer.peakAlpha * envelope(layer.phase, settings.hold)
@@ -114,6 +175,10 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
       context.globalAlpha = alpha
       context.beginPath()
       for (const dot of layer.dots) {
+        if (dot.outline) {
+          traceOutline(context, dot.x, dot.y, dot.radius, dot.outline)
+          continue
+        }
         // moveTo lands exactly on the arc's start point, so consecutive dots
         // are separate subpaths rather than being joined by a line.
         context.moveTo(dot.x + dot.radius, dot.y)
@@ -122,7 +187,7 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
       context.fill()
     }
 
-    for (const glimmer of glimmers) drawGlimmer(context, glimmer)
+    for (const glimmer of glimmers) drawGlimmer(context, glimmer, palette.star)
 
     context.globalAlpha = 1
   }
@@ -143,7 +208,7 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
 
       const dots = layers[index].dots
       const dot = dots[Math.floor(Math.random() * dots.length)]
-      if (dot) glimmers.push(createGlimmer(dot.x, dot.y, dot.radius))
+      if (dot) glimmers.push(createGlimmer(dot.x, dot.y, dot.radius, dot.outline))
       return
     }
   }
@@ -167,6 +232,7 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
     const deltaMs = lastFrameMs === 0 ? 0 : Math.min(nowMs - lastFrameMs, MAX_FRAME_MS)
     lastFrameMs = nowMs
     advance(deltaMs)
+    advanceClouds(deltaMs)
     advanceGlimmers(deltaMs)
     draw()
     frameId = requestAnimationFrame(frame)
@@ -184,6 +250,7 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
   function handleResize() {
     measure()
     rebuildLayers()
+    rebuildClouds()
     if (prefersReducedMotion.matches) drawStill()
   }
 
@@ -205,7 +272,9 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
 
   function setSettings(next: Settings) {
     settings = { ...next }
+    palette = paletteFor(settings.invert)
     rebuildLayers()
+    rebuildClouds()
     if (prefersReducedMotion.matches) drawStill()
   }
 
@@ -216,6 +285,7 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
 
   measure()
   rebuildLayers()
+  rebuildClouds()
   window.addEventListener("resize", handleResize)
 
   return { setSettings, start, stop, destroy }
