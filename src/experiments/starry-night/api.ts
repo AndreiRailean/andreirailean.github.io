@@ -1,7 +1,7 @@
 import type { Controls } from "@/experiments/starry-night/controls"
 import type { Starfield, StarfieldStats } from "@/experiments/starry-night/starfield"
 import type { WakeLock } from "@/experiments/starry-night/wakelock"
-import { CONTROLS, normalizeSettings, PRESETS, type Settings } from "@/experiments/starry-night/settings"
+import { CONTROLS, keysOf, normalizeSettings, PRESETS, type Settings } from "@/experiments/starry-night/settings"
 
 /**
  * A console handle on the piece, at `window.experiment`.
@@ -20,8 +20,8 @@ export type ExperimentApi = {
   preset: (which: number | string) => Settings
   /** Preset names, in keyboard order. */
   presets: () => string[]
-  /** Every control with its bounds and tooltip. */
-  controls: () => { key: string; label: string; min: number; max: number; hint: string }[]
+  /** Every control with its bounds and blurb. A range control lists both keys. */
+  controls: () => { keys: string[]; label: string; min: number; max: number; hint: string }[]
   /** Open or close the settings panel; omit to toggle. Returns the new state. */
   panel: (open?: boolean) => boolean
   /** Pin idle on or off — hiding the cursor and chrome. Omit to resume auto. */
@@ -85,7 +85,14 @@ export function createApi(controls: Controls, wakeLock: WakeLock, sky: Starfield
 
     presets: () => PRESETS.map(({ label }) => label),
 
-    controls: () => CONTROLS.map(({ key, label, min, max, hint }) => ({ key, label, min, max, hint })),
+    controls: () =>
+      CONTROLS.map((control) => ({
+        keys: keysOf(control),
+        label: control.label,
+        min: control.min,
+        max: control.max,
+        hint: control.hint,
+      })),
 
     panel(open) {
       const next = open ?? !controls.isPanelOpen()

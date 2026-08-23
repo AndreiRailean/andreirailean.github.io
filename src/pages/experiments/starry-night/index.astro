@@ -148,7 +148,7 @@
 
       .row {
         display: grid;
-        grid-template-columns: 5rem 1fr 3.5rem;
+        grid-template-columns: 5rem 1fr 4.75rem;
         align-items: center;
         gap: 0.6rem;
       }
@@ -228,6 +228,59 @@
         border: none;
         border-radius: 50%;
         background: var(--accent);
+      }
+
+      /* Two handles on one axis. Both inputs overlay a single painted track;
+         only the thumbs take pointer events, so whichever is grabbed is the one
+         that moves and the track beneath stays a single continuous line. */
+      .span {
+        position: relative;
+        height: 1rem;
+      }
+
+      .span::before,
+      .span::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        height: 0.25rem;
+        border-radius: 999px;
+        transform: translateY(-50%);
+      }
+
+      .span::before {
+        right: 0;
+        left: 0;
+        background: var(--track);
+      }
+
+      .span::after {
+        right: calc(100% - var(--to, 100%));
+        left: var(--from, 0%);
+        background: var(--accent);
+      }
+
+      .span input[type="range"] {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+
+      .span input[type="range"]::-webkit-slider-runnable-track {
+        background: transparent;
+      }
+
+      .span input[type="range"]::-webkit-slider-thumb {
+        pointer-events: auto;
+      }
+
+      .span input[type="range"]::-moz-range-track,
+      .span input[type="range"]::-moz-range-progress {
+        background: transparent;
+      }
+
+      .span input[type="range"]::-moz-range-thumb {
+        pointer-events: auto;
       }
 
       @media (prefers-reduced-motion: reduce) {

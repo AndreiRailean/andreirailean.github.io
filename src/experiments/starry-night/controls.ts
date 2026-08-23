@@ -1,7 +1,9 @@
 import { MODES, type Mode } from "@/experiments/starry-night/character"
+import type { Control, NumericKey } from "@/experiments/starry-night/settings"
 import {
   CONTROLS,
   DEPTH_HINT,
+  keysOf,
   MODE_LABELS,
   PRESETS,
   normalizeSettings,
@@ -183,6 +185,26 @@ export function createControls({ root, settings, onChange, aboutHref }: Options)
   invertRow.append(invertLabel, invertGroup)
   panel.append(invertRow)
 
+  /** One slider per numeric setting, so both kinds can share the update path. */
+  const spans = new Map<string, HTMLElement>()
+
+  function makeSlider(control: Control, key: NumericKey): HTMLInputElement {
+    const slider = document.createElement("input")
+    slider.type = "range"
+    slider.min = String(control.min)
+    slider.max = String(control.max)
+    slider.step = String(control.step)
+    slider.className = key
+    slider.addEventListener("input", () => {
+      // Through the same validator the query string uses; the panel used to
+      // skip it, which let a lifespan minimum be dragged past its maximum.
+      const patch = { ...current, [key]: Number(slider.value) }
+      apply(normalizeSettings(reconcile(patch, key)))
+    })
+    sliders.set(key, slider)
+    return slider
+  }
+
   for (const control of CONTROLS) {
     const row = document.createElement("div")
     row.className = "row"
@@ -192,26 +214,21 @@ export function createControls({ root, settings, onChange, aboutHref }: Options)
     label.className = "label"
     label.textContent = control.label
 
-    const slider = document.createElement("input")
-    slider.type = "range"
-    slider.min = String(control.min)
-    slider.max = String(control.max)
-    slider.step = String(control.step)
-    slider.addEventListener("input", () => {
-      // Through the same validator the query string uses; the panel used to
-      // skip it, which let life min be dragged past life max.
-      const patch = { ...current, [control.key]: Number(slider.value) }
-      apply(normalizeSettings(reconcile(patch, control.key)))
-    })
-
     const value = document.createElement("span")
     value.className = "value"
 
-    row.append(label, slider, value)
-    panel.append(row)
+    if (control.kind === "range") {
+      const span = document.createElement("div")
+      span.className = "span"
+      span.append(...control.keys.map((key) => makeSlider(control, key)))
+      spans.set(control.keys.join("-"), span)
+      row.append(label, span, value)
+    } else {
+      row.append(label, makeSlider(control, control.key), value)
+    }
 
-    sliders.set(control.key, slider)
-    valueLabels.set(control.key, value)
+    panel.append(row)
+    valueLabels.set(keysOf(control).join("-"), value)
   }
 
   const copyRow = document.createElement("div")
@@ -237,18 +254,32 @@ export function createControls({ root, settings, onChange, aboutHref }: Options)
       element.dataset.active = String(mode === current.mode)
     }
     for (const control of CONTROLS) {
-      const slider = sliders.get(control.key)
-      const value = valueLabels.get(control.key)
-      if (slider) {
-        slider.value = String(current[control.key])
+      const keys = keysOf(control)
+      const position = (key: NumericKey) => ((current[key] - control.min) / (control.max - control.min || 1)) * 100
+
+      for (const key of keys) {
+        const slider = sliders.get(key)
+        if (!slider) continue
+        slider.value = String(current[key])
         // Webkit has no ::-moz-range-progress equivalent, so the filled portion
         // is drawn as a gradient and needs the position handed to CSS.
-        const span = control.max - control.min
-        const filled = span === 0 ? 0 : ((current[control.key] - control.min) / span) * 100
-        slider.style.setProperty("--fill", `${filled}%`)
+        slider.style.setProperty("--fill", `${position(key)}%`)
       }
-      if (value) value.textContent = control.format(current[control.key])
+
+      const span = spans.get(keys.join("-"))
+      if (span && control.kind === "range") {
+        span.style.setProperty("--from", `${position(control.keys[0])}%`)
+        span.style.setProperty("--to", `${position(control.keys[1])}%`)
+      }
+
+      const value = valueLabels.get(keys.join("-"))
+      if (!value) continue
+      value.textContent =
+        control.kind === "range"
+          ? control.format(current[control.keys[0]], current[control.keys[1]])
+          : control.format(current[control.key])
     }
+
     presetButtons.forEach((element, index) => {
       const preset = PRESETS[index]
       const matches =

@@ -34,16 +34,35 @@ export type Settings = {
 
 export type NumericKey = Exclude<keyof Settings, "mode" | "invert">
 
-export type Control = {
-  key: NumericKey
+type Shared = {
   label: string
   min: number
   max: number
   step: number
-  format: (value: number) => string
   /** Shown as a tooltip on the row. */
   hint: string
 }
+
+export type SliderControl = Shared & {
+  kind: "slider"
+  key: NumericKey
+  format: (value: number) => string
+}
+
+/**
+ * Two handles on one axis. A pair of separate sliders cannot express a bound
+ * pair: they had different ranges, so the same number sat at a different place
+ * on each track and moving one never showed its effect on the other.
+ */
+export type RangeControl = Shared & {
+  kind: "range"
+  keys: [NumericKey, NumericKey]
+  format: (from: number, to: number) => string
+}
+
+export type Control = SliderControl | RangeControl
+
+export const keysOf = (control: Control): NumericKey[] => (control.kind === "range" ? control.keys : [control.key])
 
 /**
  * Bounds live here rather than in the markup so the sliders and the query-string
@@ -51,6 +70,7 @@ export type Control = {
  */
 export const CONTROLS: Control[] = [
   {
+    kind: "slider",
     key: "layerCount",
     label: "layers",
     min: 1,
@@ -60,6 +80,7 @@ export const CONTROLS: Control[] = [
     hint: "How many independent fade layers build the sky. Each runs on its own clock, so more layers means any single one is harder to notice.",
   },
   {
+    kind: "slider",
     key: "densityScale",
     label: "density",
     min: 0.1,
@@ -69,6 +90,7 @@ export const CONTROLS: Control[] = [
     hint: "Multiplies how many stars every layer holds. Star count already scales with the size of the window; this scales it further.",
   },
   {
+    kind: "slider",
     key: "nearRadius",
     label: "max size",
     min: 1.5,
@@ -78,6 +100,7 @@ export const CONTROLS: Control[] = [
     hint: "Largest a star may get, in the nearest layers. Every layer's stars start from the same small floor, so this raises the ceiling only — size mix decides how often that ceiling is actually reached.",
   },
   {
+    kind: "slider",
     key: "sizeMix",
     label: "size mix",
     min: 0,
@@ -87,6 +110,7 @@ export const CONTROLS: Control[] = [
     hint: "How sizes are shared out between the floor and each layer's ceiling. At 1 every size in the range is equally likely. Turn it down and each larger size becomes rarer than the one below, so a high max size gives fine grain with the occasional big star rather than a sky full of them.",
   },
   {
+    kind: "slider",
     key: "wobble",
     label: "wobble",
     min: 0,
@@ -96,6 +120,7 @@ export const CONTROLS: Control[] = [
     hint: "How far a large star's outline strays from a circle. Small stars stay circular whatever this says, since the irregularity would be invisible.",
   },
   {
+    kind: "slider",
     key: "clouds",
     label: "clouds",
     min: 0,
@@ -105,6 +130,7 @@ export const CONTROLS: Control[] = [
     hint: "Strength of the soft mottling behind the stars, which keeps the ground from being one flat colour. It fades in and out on its own clocks like the stars do. 0 removes it; use hue to change its colour.",
   },
   {
+    kind: "slider",
     key: "haze",
     label: "haze",
     min: 0,
@@ -114,6 +140,7 @@ export const CONTROLS: Control[] = [
     hint: "Drifting cloud drawn over the stars rather than behind them, in the background colour, so it dims whatever it passes across. Thicker haze hides more. It drifts as it fades, so the sky is briefly clearer in some places than others.",
   },
   {
+    kind: "slider",
     key: "hue",
     label: "hue",
     min: 0,
@@ -123,6 +150,7 @@ export const CONTROLS: Control[] = [
     hint: "Colour of the mottling and of these controls. Stars stay neutral, so this is the only hue in the piece. Around 225 is cool blue, 30 is warm clay.",
   },
   {
+    kind: "slider",
     key: "fade",
     label: "fade",
     min: 0.02,
@@ -132,6 +160,7 @@ export const CONTROLS: Control[] = [
     hint: "How much of a life is spent fading, at each end. 0.5 fades the whole way in and straight back out. Lower values hold full brightness longer and cross in and out more quickly, which makes a big star's arrival less of a performance.",
   },
   {
+    kind: "slider",
     key: "curve",
     label: "curve",
     min: 0.4,
@@ -141,6 +170,7 @@ export const CONTROLS: Control[] = [
     hint: "Shape of the fade, as distinct from its length. The ramp is already eased rather than linear; this bends it further. Above 1 a star stays faint for longer and then comes up quickly, which reads more like a light being turned up than a value being interpolated. Below 1 it brightens early and holds.",
   },
   {
+    kind: "slider",
     key: "glimmersPerSecond",
     label: "glimmer",
     min: 0,
@@ -150,22 +180,14 @@ export const CONTROLS: Control[] = [
     hint: "Average single-star flares per second across the whole sky. A flare is a fast brightness spike on one star, unrelated to the layer fades.",
   },
   {
-    key: "minLifetimeMs",
-    label: "life min",
-    min: 1_000,
-    max: 40_000,
-    step: 500,
-    format: (v) => `${(v / 1000).toFixed(1)}s`,
-    hint: "Shortest time a layer takes to fade in and out. Every layer draws its own lifespan from this range, which is what keeps them out of step.",
-  },
-  {
-    key: "maxLifetimeMs",
-    label: "life max",
+    kind: "range",
+    keys: ["minLifetimeMs", "maxLifetimeMs"],
+    label: "lifespan",
     min: 1_000,
     max: 60_000,
     step: 500,
-    format: (v) => `${(v / 1000).toFixed(1)}s`,
-    hint: "Longest time a layer takes to fade in and out. A wider gap from the minimum makes the layers drift apart faster.",
+    format: (from, to) => `${(from / 1000).toFixed(1)}–${(to / 1000).toFixed(1)}s`,
+    hint: "How long a layer takes to fade in and back out. Every layer draws its own lifespan from between these two, which is what keeps them out of step — a wider gap makes them scatter faster. Dragging one handle past the other carries it along.",
   },
 ]
 
@@ -251,6 +273,14 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
   },
 ]
 
+/**
+ * Bounds for every numeric setting, flattened out of the control list so the
+ * validator never has to know how a control is presented.
+ */
+export const BOUNDS = Object.fromEntries(
+  CONTROLS.flatMap((control) => keysOf(control).map((key) => [key, { min: control.min, max: control.max }] as const)),
+) as Record<NumericKey, { min: number; max: number }>
+
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
 /**
@@ -268,9 +298,9 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
     invert: Boolean(merged.invert),
   }
 
-  for (const control of CONTROLS) {
-    const value = Number(settings[control.key])
-    settings[control.key] = Number.isFinite(value) ? clamp(value, control.min, control.max) : base[control.key]
+  for (const [key, bound] of Object.entries(BOUNDS) as [NumericKey, { min: number; max: number }][]) {
+    const value = Number(settings[key])
+    settings[key] = Number.isFinite(value) ? clamp(value, bound.min, bound.max) : base[key]
   }
 
   // A dragged "min" must not overtake "max", or lifetimes come out reversed and
@@ -298,11 +328,11 @@ export function settingsFromQuery(params: URLSearchParams): Settings {
   const invert = params.get("invert")
   if (invert !== null) patch.invert = invert !== "0" && invert !== "false"
 
-  for (const control of CONTROLS) {
-    const raw = params.get(control.key)
+  for (const key of Object.keys(BOUNDS) as NumericKey[]) {
+    const raw = params.get(key)
     if (raw === null || raw.trim() === "") continue
     const value = Number(raw)
-    if (Number.isFinite(value)) patch[control.key] = value
+    if (Number.isFinite(value)) patch[key] = value
   }
 
   return normalizeSettings(patch)
@@ -360,10 +390,8 @@ export function settingsToQuery(settings: Settings): URLSearchParams {
   const params = new URLSearchParams()
   if (settings.mode !== DEFAULT_SETTINGS.mode) params.set("mode", settings.mode)
   if (settings.invert !== DEFAULT_SETTINGS.invert) params.set("invert", settings.invert ? "1" : "0")
-  for (const control of CONTROLS) {
-    if (settings[control.key] !== DEFAULT_SETTINGS[control.key]) {
-      params.set(control.key, String(settings[control.key]))
-    }
+  for (const key of Object.keys(BOUNDS) as NumericKey[]) {
+    if (settings[key] !== DEFAULT_SETTINGS[key]) params.set(key, String(settings[key]))
   }
   return params
 }
