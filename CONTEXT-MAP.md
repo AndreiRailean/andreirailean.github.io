@@ -8,6 +8,9 @@ deployment, and deliberately nothing else.
 | **Site**        | `src/pages`, `src/components`, `src/layouts`, `src/styles`, `src/lib` | none yet                     | none yet                   |
 | **Experiments** | `src/experiments`, `src/pages/experiments`                            | `src/experiments/CONTEXT.md` | `src/experiments/docs/adr` |
 
+Decisions that cut across both contexts — tooling, CI, repo conventions — live in
+`docs/adr/` at the root.
+
 An experiment imports nothing from the site — no layout, no stylesheet, no
 component. The boundary runs one way only: the site may eventually link to an
 experiment, but no experiment reaches back.
