@@ -245,7 +245,7 @@
       import { createStarfield } from "@/experiments/starry-night/starfield"
       import { createControls } from "@/experiments/starry-night/controls"
       import { settingsFromQuery } from "@/experiments/starry-night/settings"
-      import { createApi } from "@/experiments/starry-night/api"
+      import { announceApi, createApi } from "@/experiments/starry-night/api"
       import { keepAwake } from "@/experiments/starry-night/wakelock"
 
       function requireElement<T extends Element>(id: string, type: new () => T): T {
@@ -292,6 +292,7 @@
 
       // Console handle. See src/experiments/AGENTS.md.
       window.experiment = createApi(controls, wakeLock)
+      announceApi()
 
       // Two escape hatches for tools that cannot evaluate JS: ?panel=1 opens the
       // settings panel on load, ?idle=0 stops the chrome hiding itself. Neither

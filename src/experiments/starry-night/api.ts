@@ -37,6 +37,28 @@ declare global {
   }
 }
 
+/**
+ * Printed once on load rather than on devtools opening, which cannot be detected
+ * reliably. The console keeps it, so it is waiting whenever the panel is opened.
+ */
+export function announceApi(): void {
+  const lines = [
+    ["experiment.get()", "current settings"],
+    ["experiment.set({ hue: 30 })", "change one or more"],
+    ['experiment.preset("clay")', "load a preset by name or number"],
+    ["experiment.presets()", "what the presets are called"],
+    ["experiment.controls()", "every control, with its bounds and blurb"],
+    ["experiment.panel(true)", "open the settings panel"],
+    ["experiment.idle(false)", "stop the chrome hiding itself"],
+    ["experiment.awake()", "is the display being held awake"],
+    ["experiment.url()", "a link that restores this exact state"],
+  ]
+  const width = Math.max(...lines.map(([call]) => call.length))
+  const body = lines.map(([call, note]) => `  ${call.padEnd(width)}   ${note}`).join("\n")
+
+  console.log(`%cStarry Night%c is scriptable from here.\n\n${body}\n`, "font-weight:600", "font-weight:400")
+}
+
 export function createApi(controls: Controls, wakeLock: WakeLock): ExperimentApi {
   return {
     get: () => controls.getSettings(),

@@ -71,7 +71,7 @@ export const CONTROLS: Control[] = [
     max: 16,
     step: 0.1,
     format: (v) => `${v.toFixed(1)}px`,
-    hint: "Radius of the largest stars. Only the near end of the size range grows, so the big ones stay the rare ones.",
+    hint: "Largest a star may get, in the nearest layers. Every layer's stars start from the same small floor, so this raises the ceiling only — size mix decides how often that ceiling is actually reached.",
   },
   {
     key: "sizeMix",
@@ -80,7 +80,7 @@ export const CONTROLS: Control[] = [
     max: 1,
     step: 0.05,
     format: (v) => v.toFixed(2),
-    hint: "How the sizes between the smallest and the maximum are shared out. At 1 every size is equally likely. Turn it down and each larger size gets rarer than the one below it, leaving a few big stars among many small ones.",
+    hint: "How sizes are shared out between the floor and each layer's ceiling. At 1 every size in the range is equally likely. Turn it down and each larger size becomes rarer than the one below, so a high max size gives fine grain with the occasional big star rather than a sky full of them.",
   },
   {
     key: "wobble",
@@ -146,6 +146,16 @@ export const CONTROLS: Control[] = [
     hint: "Longest time a layer takes to fade in and out. A wider gap from the minimum makes the layers drift apart faster.",
   },
 ]
+
+/** Button text for the depth policies. The URL keeps the underlying names. */
+export const MODE_LABELS: Record<Mode, string> = {
+  depth: "tiers",
+  random: "random",
+  identical: "same",
+}
+
+export const DEPTH_HINT =
+  "Every layer is given a depth from far to near, and that depth sets three things: how many stars the layer holds, how large they may get, and how bright they are. This chooses how the depths are handed out. Tiers spreads them evenly from far to near. Random gives a layer a fresh depth each time it respawns, so its character keeps changing. Same puts every layer in the middle, leaving them to differ only by chance."
 
 export const DEFAULT_SETTINGS: Settings = {
   mode: "depth",

@@ -13,29 +13,37 @@ export type LayerCharacter = {
   peakAlpha: number
 }
 
+/**
+ * The floor every layer draws from, whatever its depth.
+ *
+ * Deliberately not scaled by depth or by the size control. Raising the ceiling
+ * used to raise the floor with it, so a large "max size" left no small stars
+ * anywhere and the size mix had nothing to bias toward — which is not what
+ * either control claims to do. Depth and size now move the ceiling only.
+ *
+ * Kept at or above 0.7 css px: smaller than that is sub-pixel at DPR 1, where
+ * antialiasing spreads the dot and it can never reach its nominal alpha.
+ */
+const MIN_RADIUS = 0.7
+
+/** What a depth tier varies. The floor is shared, so it is not here. */
+type Tier = { density: number; maxRadius: number; peakAlpha: number }
+
 /** depth 0: many, tiny, dim. */
-const FAR: LayerCharacter = {
+const FAR: Tier = {
   // Per-layer density is deliberately low: the sky is built from many thin
   // layers rather than a few dense ones, so no single fade dominates.
   density: 60,
-  // Kept above ~0.7 so a dot is never sub-pixel at DPR 1: a 0.4px radius
-  // covers half a pixel, so antialiasing spreads it thin and it can never
-  // reach its nominal alpha.
-  minRadius: 0.7,
   maxRadius: 1.1,
   peakAlpha: 0.5,
 }
 
 /** depth 1: few, large, bright. */
-const NEAR: LayerCharacter = {
+const NEAR: Tier = {
   density: 8,
-  minRadius: 1.4,
   maxRadius: 2.6,
   peakAlpha: 0.95,
 }
-
-/** Keeps the near tier's min/max radii in proportion as its size is scaled. */
-const NEAR_RADIUS_RATIO = NEAR.minRadius / NEAR.maxRadius
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
 
@@ -46,7 +54,7 @@ export function characterAt(depth: number, nearMaxRadius = NEAR.maxRadius): Laye
   const t = clamp01(depth)
   return {
     density: lerp(FAR.density, NEAR.density, t),
-    minRadius: lerp(FAR.minRadius, nearMaxRadius * NEAR_RADIUS_RATIO, t),
+    minRadius: MIN_RADIUS,
     maxRadius: lerp(FAR.maxRadius, nearMaxRadius, t),
     peakAlpha: lerp(FAR.peakAlpha, NEAR.peakAlpha, t),
   }

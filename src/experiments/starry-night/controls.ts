@@ -1,5 +1,12 @@
 import { MODES, type Mode } from "@/experiments/starry-night/character"
-import { CONTROLS, PRESETS, settingsToQuery, type Settings } from "@/experiments/starry-night/settings"
+import {
+  CONTROLS,
+  DEPTH_HINT,
+  MODE_LABELS,
+  PRESETS,
+  settingsToQuery,
+  type Settings,
+} from "@/experiments/starry-night/settings"
 
 const COPY_LABEL = "copy link to these settings"
 
@@ -145,15 +152,14 @@ export function createControls({ root, settings, onChange, aboutHref }: Options)
 
   const modeRow = document.createElement("div")
   modeRow.className = "row"
-  modeRow.title =
-    "How each layer's size and brightness get chosen. Tiers spread the layers from far to near; random rerolls a layer's character every time it respawns; identical gives every layer the same one."
+  modeRow.title = DEPTH_HINT
   const modeLabel = document.createElement("span")
   modeLabel.className = "label"
-  modeLabel.textContent = "layer depth"
+  modeLabel.textContent = "depth"
   const modeGroup = document.createElement("div")
   modeGroup.className = "modes"
   for (const mode of MODES) {
-    const element = button(mode, "mode")
+    const element = button(MODE_LABELS[mode], "mode")
     element.addEventListener("click", () => apply({ ...current, mode }))
     modeButtons.set(mode, element)
     modeGroup.append(element)

@@ -27,6 +27,13 @@ where you could watch a layer arrive and leave — which read as three things
 taking turns rather than as a sky. The fix was more layers, each thinner: at
 fourteen the machinery disappears and only the result is left.
 
+Each layer is given a **depth**, from far to near, and that depth decides three
+things: how many stars the layer holds, how large they may get, and how bright
+they are. Sizes then work from a single floor upward — every layer's stars start
+at the same smallest radius, and depth raises only the ceiling. How often that
+ceiling is actually reached is a separate question, which is why a sky can be
+mostly fine grain with the occasional boulder rather than uniformly coarse.
+
 A second, independent mechanism sits on top. A **glimmer** is one star briefly
 flaring — a fast attack over about eighty milliseconds, then an eased decay.
 Glimmers have nothing to do with the layer cycle; they run on their own
@@ -88,6 +95,12 @@ Most of the interesting decisions came from something looking wrong first.
   the rhythm you can then see it in the small stars beside it. Capping their
   number or spacing them apart only thins the evidence. Past a threshold size a
   star now runs on its own clock, so there is no shared fate left to spot.
+- **A ceiling that drags the floor with it is not a ceiling.** Raising the
+  largest star size used to raise the smallest one too, in proportion. At the
+  top of its range the nearest layers had no small stars available at all, so
+  asking for "a few big ones among many small" produced a sky of nothing but
+  big ones, and the control meant to bias sizes downward had nothing to bias
+  toward. The floor is now shared by every layer and fixed.
 - **Soft gradients band.** Alpha climbing to about a fifth over a few hundred
   pixels quantises into concentric contour rings at 8-bit precision, and more
   colour stops cannot help. Jittering the alpha channel breaks the rings into
