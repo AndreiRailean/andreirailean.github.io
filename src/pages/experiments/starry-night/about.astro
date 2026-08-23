@@ -23,6 +23,7 @@ const formatDate = (date: Date) => date.toLocaleDateString("en-GB", { day: "nume
     <style is:global>
       html {
         --bg: #05070f;
+        --sheet: rgb(6 8 17 / 72%);
         --fg: #d6dbe8;
         --bright: #f2f5fb;
         --muted: #79839c;
@@ -30,11 +31,25 @@ const formatDate = (date: Date) => date.toLocaleDateString("en-GB", { day: "nume
         --accent: hsl(225, 40%, 68%);
       }
 
+      html {
+        background: var(--bg);
+      }
+
       html,
       body {
         margin: 0;
-        background: var(--bg);
         color: var(--fg);
+      }
+
+      /* The piece runs behind its own note, dimmed enough to read over. */
+      #sky {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        display: block;
+        width: 100%;
+        height: 100%;
+        opacity: 0.55;
       }
 
       body {
@@ -48,8 +63,21 @@ const formatDate = (date: Date) => date.toLocaleDateString("en-GB", { day: "nume
       }
 
       main {
+        position: relative;
+        z-index: 1;
         max-width: 40rem;
         margin: 0 auto;
+      }
+
+      /* Blur plus opacity rather than either alone: opacity by itself leaves
+         dots showing through the text, and blur by itself is not enough
+         contrast where a bright star sits under a line of type. */
+      .sheet {
+        padding: clamp(1.5rem, 4vw, 2.75rem);
+        background: var(--sheet);
+        border: 1px solid var(--edge);
+        border-radius: 0.75rem;
+        backdrop-filter: blur(16px) saturate(130%);
       }
 
       nav {
@@ -132,24 +160,50 @@ const formatDate = (date: Date) => date.toLocaleDateString("en-GB", { day: "nume
     </style>
   </head>
   <body>
+    <canvas id="sky"></canvas>
     <main>
-      <nav>
-        <a href="/experiments/starry-night/">← run it</a>
-        <a href="/experiments/">all experiments</a>
-      </nav>
-      <h1>{title}</h1>
-      <p class="dates">
-        <time datetime={started.toISOString()}>{formatDate(started)}</time>
-        {
-          formatDate(updated) !== formatDate(started) && (
-            <>
-              {" · last changed "}
-              <time datetime={updated.toISOString()}>{formatDate(updated)}</time>
-            </>
-          )
-        }
-      </p>
-      <Content />
+      <div class="sheet">
+        <nav>
+          <a href="/experiments/starry-night/">← run it</a>
+          <a href="/experiments/">all experiments</a>
+        </nav>
+        <h1>{title}</h1>
+        <p class="dates">
+          <time datetime={started.toISOString()}>{formatDate(started)}</time>
+          {
+            formatDate(updated) !== formatDate(started) && (
+              <>
+                {" · last changed "}
+                <time datetime={updated.toISOString()}>{formatDate(updated)}</time>
+              </>
+            )
+          }
+        </p>
+        <Content />
+      </div>
     </main>
+
+    <script>
+      import { createStarfield } from "@/experiments/starry-night/starfield"
+      import { normalizeSettings } from "@/experiments/starry-night/settings"
+
+      const canvas = document.getElementById("sky")
+      if (canvas instanceof HTMLCanvasElement) {
+        // Calmer than the piece proper: this one is scenery, not the subject.
+        const sky = createStarfield(
+          canvas,
+          normalizeSettings({
+            densityScale: 0.7,
+            nearRadius: 2.2,
+            clouds: 0.12,
+            hue: 247,
+            glimmersPerSecond: 0.25,
+            minLifetimeMs: 9000,
+            maxLifetimeMs: 30000,
+          }),
+        )
+        sky.start()
+      }
+    </script>
   </body>
 </html>
