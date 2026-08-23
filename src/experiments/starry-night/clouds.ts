@@ -17,6 +17,15 @@ const DOWNSCALE = 4
 const BLOBS_PER_LAYER = 3
 
 /**
+ * How much wider than the viewport each buffer is rendered.
+ *
+ * Drift needs somewhere to drift from. The buffer covers more than the screen
+ * and is drawn at a moving offset inside that slack, so the edges never come
+ * into view. Costs nothing per frame — it is the same single drawImage.
+ */
+const MARGIN = 1.4
+
+/**
  * Alpha jitter, in 8-bit levels, applied once after the gradients are drawn.
  *
  * A cloud's alpha climbs from 0 to roughly 0.2 over several hundred pixels, so
@@ -34,6 +43,13 @@ export type CloudLayer = {
   buffer: HTMLCanvasElement
   lifetimeMs: number
   phase: number
+  /**
+   * Where the buffer sits within its slack, at birth and at death, each 0..1.
+   * Tying drift to the life rather than to a velocity bounds it by
+   * construction: a cloud cannot outrun its own margin.
+   */
+  from: { x: number; y: number }
+  to: { x: number; y: number }
 }
 
 export function createCloudLayer(
@@ -43,8 +59,8 @@ export function createCloudLayer(
   lifetimeMs: number,
   phase: number,
 ): CloudLayer | null {
-  const bufferWidth = Math.max(1, Math.round(width / DOWNSCALE))
-  const bufferHeight = Math.max(1, Math.round(height / DOWNSCALE))
+  const bufferWidth = Math.max(1, Math.round((width * MARGIN) / DOWNSCALE))
+  const bufferHeight = Math.max(1, Math.round((height * MARGIN) / DOWNSCALE))
 
   const buffer = document.createElement("canvas")
   buffer.width = bufferWidth
@@ -75,7 +91,13 @@ export function createCloudLayer(
 
   dither(context, bufferWidth, bufferHeight)
 
-  return { buffer, lifetimeMs, phase }
+  return {
+    buffer,
+    lifetimeMs,
+    phase,
+    from: { x: Math.random(), y: Math.random() },
+    to: { x: Math.random(), y: Math.random() },
+  }
 }
 
 function dither(context: CanvasRenderingContext2D, width: number, height: number): void {
@@ -100,6 +122,17 @@ export function drawCloudLayer(
 ): void {
   const alpha = intensity * envelope(layer.phase, fade, curve)
   if (alpha < 0.002) return
+
+  const slack = MARGIN - 1
+  const t = Math.min(1, Math.max(0, layer.phase))
+  const at = (from: number, to: number) => from + (to - from) * t
+
   context.globalAlpha = alpha
-  context.drawImage(layer.buffer, 0, 0, width, height)
+  context.drawImage(
+    layer.buffer,
+    -slack * width * at(layer.from.x, layer.to.x),
+    -slack * height * at(layer.from.y, layer.to.y),
+    width * MARGIN,
+    height * MARGIN,
+  )
 }

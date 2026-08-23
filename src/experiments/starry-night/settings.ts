@@ -24,6 +24,8 @@ export type Settings = {
   wobble: number
   /** Strength of the soft mottling behind the stars. 0 turns it off. */
   clouds: number
+  /** Strength of the drifting haze drawn over the stars, dimming what it covers. */
+  haze: number
   /** Hue, in degrees, of the mottling and of the controls themselves. */
   hue: number
   minLifetimeMs: number
@@ -103,6 +105,15 @@ export const CONTROLS: Control[] = [
     hint: "Strength of the soft mottling behind the stars, which keeps the ground from being one flat colour. It fades in and out on its own clocks like the stars do. 0 removes it; use hue to change its colour.",
   },
   {
+    key: "haze",
+    label: "haze",
+    min: 0,
+    max: 1,
+    step: 0.05,
+    format: (v) => v.toFixed(2),
+    hint: "Drifting cloud drawn over the stars rather than behind them, in the background colour, so it dims whatever it passes across. Thicker haze hides more. It drifts as it fades, so the sky is briefly clearer in some places than others.",
+  },
+  {
     key: "hue",
     label: "hue",
     min: 0,
@@ -180,6 +191,7 @@ export const DEFAULT_SETTINGS: Settings = {
   sizeMix: 1,
   wobble: 0.22,
   clouds: 0.15,
+  haze: 0.2,
   hue: 247,
   minLifetimeMs: 6_000,
   maxLifetimeMs: 26_000,
@@ -210,6 +222,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       sizeMix: 0.65,
       wobble: 0.22,
       clouds: 0.25,
+      haze: 0,
       hue: 30,
       minLifetimeMs: 2500,
       maxLifetimeMs: 9500,
@@ -230,6 +243,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       sizeMix: 1,
       wobble: 0.22,
       clouds: 0.22,
+      haze: 0,
       hue: 225,
       minLifetimeMs: 3500,
       maxLifetimeMs: 10500,
@@ -292,6 +306,53 @@ export function settingsFromQuery(params: URLSearchParams): Settings {
   }
 
   return normalizeSettings(patch)
+}
+
+/**
+ * Keeps the lifespan pair in order, moving whichever end is not being dragged.
+ *
+ * normalizeSettings can only push the maximum up, which fights someone dragging
+ * the maximum down. Here the changed key is known, so the other end gives way.
+ */
+export function reconcile(next: Settings, changed: keyof Settings): Settings {
+  if (changed === "minLifetimeMs" && next.minLifetimeMs > next.maxLifetimeMs) {
+    return { ...next, maxLifetimeMs: next.minLifetimeMs }
+  }
+  if (changed === "maxLifetimeMs" && next.maxLifetimeMs < next.minLifetimeMs) {
+    return { ...next, minLifetimeMs: next.maxLifetimeMs }
+  }
+  return next
+}
+
+/** Settings that decide where stars are, so changing one must rebuild them. */
+const GEOMETRY_KEYS = [
+  "mode",
+  "layerCount",
+  "densityScale",
+  "nearRadius",
+  "sizeMix",
+  "wobble",
+] as const satisfies readonly (keyof Settings)[]
+
+/**
+ * Whether a change needs the stars rebuilt.
+ *
+ * Most settings are read per frame and have no baked state, so rebuilding for
+ * them just teleports every star for no reason — dragging hue used to reshuffle
+ * the whole sky.
+ */
+export function needsRebuild(before: Settings, after: Settings): boolean {
+  return GEOMETRY_KEYS.some((key) => before[key] !== after[key])
+}
+
+/** Cloud buffers bake their tint, so only these force them to be re-rendered. */
+export function needsCloudRebuild(before: Settings, after: Settings): boolean {
+  return (
+    before.hue !== after.hue ||
+    before.invert !== after.invert ||
+    before.clouds <= 0 !== after.clouds <= 0 ||
+    before.haze <= 0 !== after.haze <= 0
+  )
 }
 
 /** Only values that differ from the defaults, so shared URLs stay readable. */

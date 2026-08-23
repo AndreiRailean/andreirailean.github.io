@@ -4,6 +4,8 @@ import {
   DEPTH_HINT,
   MODE_LABELS,
   PRESETS,
+  normalizeSettings,
+  reconcile,
   settingsToQuery,
   type Settings,
 } from "@/experiments/starry-night/settings"
@@ -196,7 +198,10 @@ export function createControls({ root, settings, onChange, aboutHref }: Options)
     slider.max = String(control.max)
     slider.step = String(control.step)
     slider.addEventListener("input", () => {
-      apply({ ...current, [control.key]: Number(slider.value) })
+      // Through the same validator the query string uses; the panel used to
+      // skip it, which let life min be dragged past life max.
+      const patch = { ...current, [control.key]: Number(slider.value) }
+      apply(normalizeSettings(reconcile(patch, control.key)))
     })
 
     const value = document.createElement("span")

@@ -6,7 +6,8 @@
 export type Rgb = readonly [number, number, number]
 
 export type Palette = {
-  background: string
+  /** Components, so the occluding haze can be drawn in it at partial alpha. */
+  background: Rgb
   /** Star colour as components, since alpha is applied per layer and per flare. */
   star: Rgb
   /**
@@ -18,14 +19,14 @@ export type Palette = {
 }
 
 export const NIGHT: Palette = {
-  background: "#05070f",
+  background: [5, 7, 15],
   star: [255, 255, 255],
   cloud: { saturation: 24, lightness: 30 },
 }
 
 /** The mirror of NIGHT: its background becomes the stars and vice versa. */
 export const DAY: Palette = {
-  background: "#f4f6fb",
+  background: [244, 246, 251],
   star: [5, 7, 15],
   cloud: { saturation: 20, lightness: 72 },
 }

@@ -19,7 +19,7 @@ import {
 } from "@/experiments/starry-night/clouds"
 import { cloudTint, paletteFor, rgba, type Palette } from "@/experiments/starry-night/palette"
 import { createOutline, MIN_OUTLINE_RADIUS, traceOutline, type Outline } from "@/experiments/starry-night/shape"
-import { DEFAULT_SETTINGS, type Settings } from "@/experiments/starry-night/settings"
+import { DEFAULT_SETTINGS, needsCloudRebuild, needsRebuild, type Settings } from "@/experiments/starry-night/settings"
 
 type Dot = {
   x: number
@@ -63,6 +63,9 @@ const MAX_FRAME_MS = 100
 /** Few enough that overlaps stay legible as mottling rather than a haze. */
 const CLOUD_LAYERS = 3
 
+/** Fewer still: haze hides stars, so overlapping it thickly buries the sky. */
+const HAZE_LAYERS = 2
+
 const randomBetween = (min: number, max: number) => min + Math.random() * (max - min)
 
 function require2dContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
@@ -79,6 +82,7 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
   let palette: Palette = paletteFor(settings.invert)
   let layers: Layer[] = []
   let cloudLayers: CloudLayer[] = []
+  let hazeLayers: CloudLayer[] = []
   let glimmers: Glimmer[] = []
   let width = 0
   let height = 0
@@ -160,32 +164,30 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
   }
 
   /** Skipped entirely at zero intensity, so the buffers are not even allocated. */
-  function rebuildClouds() {
-    if (settings.clouds <= 0 || width === 0 || height === 0) {
-      cloudLayers = []
-      return
-    }
-    const phases = initialPhases(CLOUD_LAYERS)
-    cloudLayers = phases
-      .map((phase, index) =>
-        createCloudLayer(
-          width,
-          height,
-          cloudTint(palette, settings.hue),
-          cloudLayers[index]?.lifetimeMs ?? cloudLifetime(),
-          cloudLayers[index]?.phase ?? phase,
-        ),
-      )
+  function buildCloudSet(count: number, intensity: number, tint: (a: number) => string) {
+    if (intensity <= 0 || width === 0 || height === 0) return []
+    return initialPhases(count)
+      .map((phase, index) => createCloudLayer(width, height, tint, cloudLifetime(), phase + index * 0))
       .filter((layer): layer is CloudLayer => layer !== null)
   }
 
-  function advanceClouds(deltaMs: number) {
-    cloudLayers.forEach((layer, index) => {
+  function rebuildClouds() {
+    cloudLayers = buildCloudSet(CLOUD_LAYERS, settings.clouds, cloudTint(palette, settings.hue))
+    hazeLayers = buildCloudSet(HAZE_LAYERS, settings.haze, (alpha) => rgba(palette.background, alpha))
+  }
+
+  function advanceCloudSet(set: CloudLayer[], deltaMs: number, tint: (a: number) => string) {
+    set.forEach((layer, index) => {
       layer.phase += deltaMs / layer.lifetimeMs
       if (layer.phase < 1) return
-      const replacement = createCloudLayer(width, height, cloudTint(palette, settings.hue), cloudLifetime(), 0)
-      if (replacement) cloudLayers[index] = replacement
+      const replacement = createCloudLayer(width, height, tint, cloudLifetime(), 0)
+      if (replacement) set[index] = replacement
     })
+  }
+
+  function advanceClouds(deltaMs: number) {
+    advanceCloudSet(cloudLayers, deltaMs, cloudTint(palette, settings.hue))
+    advanceCloudSet(hazeLayers, deltaMs, (alpha) => rgba(palette.background, alpha))
   }
 
   function measure() {
@@ -200,7 +202,7 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
   }
 
   function draw() {
-    context.fillStyle = palette.background
+    context.fillStyle = rgba(palette.background, 1)
     context.fillRect(0, 0, width, height)
 
     for (const layer of cloudLayers) {
@@ -251,6 +253,10 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
     }
 
     for (const glimmer of glimmers) drawGlimmer(context, glimmer, palette.star)
+
+    for (const layer of hazeLayers) {
+      drawCloudLayer(context, layer, width, height, settings.fade, settings.curve, settings.haze)
+    }
 
     context.globalAlpha = 1
   }
@@ -351,10 +357,14 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
   }
 
   function setSettings(next: Settings) {
+    const before = settings
     settings = { ...next }
     palette = paletteFor(settings.invert)
-    rebuildLayers()
-    rebuildClouds()
+
+    // Only geometry changes justify moving stars. Dragging hue or fade used to
+    // reshuffle the entire sky, which made a setting impossible to judge.
+    if (needsRebuild(before, settings)) rebuildLayers()
+    if (needsCloudRebuild(before, settings)) rebuildClouds()
     if (prefersReducedMotion.matches) drawStill()
   }
 
