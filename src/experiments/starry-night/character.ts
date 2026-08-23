@@ -1,0 +1,203 @@
+/**
+ * A layer's look and lifespan, all derived from a single `depth` value.
+ *
+ * The three visual variants this experiment compares differ only in how they
+ * *sample* depth — never in the underlying character space — so the comparison
+ * stays apples-to-apples.
+ */
+export type LayerCharacter = {
+  /** Dots per megapixel of viewport, so density is resolution-independent. */
+  density: number
+  minRadius: number
+  maxRadius: number
+  peakAlpha: number
+}
+
+/**
+ * The floor every layer draws from, whatever its depth.
+ *
+ * Deliberately not scaled by depth or by the size control. Raising the ceiling
+ * used to raise the floor with it, so a large "max size" left no small stars
+ * anywhere and the size mix had nothing to bias toward — which is not what
+ * either control claims to do. Depth and size now move the ceiling only.
+ *
+ * Kept at or above 0.7 css px: smaller than that is sub-pixel at DPR 1, where
+ * antialiasing spreads the dot and it can never reach its nominal alpha.
+ */
+const MIN_RADIUS = 0.7
+
+/** What a depth tier varies. The floor is shared, so it is not here. */
+type Tier = { density: number; maxRadius: number; peakAlpha: number }
+
+/** depth 0: many, tiny, dim. */
+const FAR: Tier = {
+  // Per-layer density is deliberately low: the sky is built from many thin
+  // layers rather than a few dense ones, so no single fade dominates.
+  density: 60,
+  maxRadius: 1.1,
+  peakAlpha: 0.5,
+}
+
+/** depth 1: few, large, bright. */
+const NEAR: Tier = {
+  density: 8,
+  maxRadius: 2.6,
+  peakAlpha: 0.95,
+}
+
+const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
+
+const lerp = (from: number, to: number, t: number) => from + (to - from) * t
+
+/** Interpolates the far/near extremes into the character for an arbitrary depth. */
+export function characterAt(depth: number, nearMaxRadius = NEAR.maxRadius): LayerCharacter {
+  const t = clamp01(depth)
+  return {
+    density: lerp(FAR.density, NEAR.density, t),
+    minRadius: MIN_RADIUS,
+    maxRadius: lerp(FAR.maxRadius, nearMaxRadius, t),
+    peakAlpha: lerp(FAR.peakAlpha, NEAR.peakAlpha, t),
+  }
+}
+
+export const MODES = ["depth", "random", "identical"] as const
+
+export type Mode = (typeof MODES)[number]
+
+export function isMode(value: unknown): value is Mode {
+  return typeof value === "string" && (MODES as readonly string[]).includes(value)
+}
+
+/** Chooses the depth a layer is born at. Called once per layer birth. */
+type DepthPolicy = (layerIndex: number, layerCount: number) => number
+
+export const DEPTH_POLICIES: Record<Mode, DepthPolicy> = {
+  /** Fixed tiers spread across the full range: 0, 0.5, 1 for three layers. */
+  depth: (index, count) => (count < 2 ? 0.5 : index / (count - 1)),
+  /** A fresh roll on every respawn, so a layer's tier changes over time. */
+  random: () => Math.random(),
+  /** Every layer parked mid-range, forever — no depth cue at all. */
+  identical: () => 0.5,
+}
+
+/** Viewport the densities above are tuned against, in megapixels (1920x1080). */
+const REFERENCE_MEGAPIXELS = 2.07
+
+/**
+ * How many dots a character wants, for a viewport measured in CSS pixels.
+ *
+ * Count grows with area^0.75 rather than with area itself. A phone is held far
+ * closer than a desktop monitor, so matching dots-per-area leaves small screens
+ * looking empty; the exponent compresses that spread. Anchored so a 1920x1080
+ * viewport comes out exactly as tuned.
+ */
+export function dotCountFor(character: LayerCharacter, width: number, height: number, densityScale = 1): number {
+  const megapixels = (width * height) / 1_000_000
+  const scale = REFERENCE_MEGAPIXELS * (megapixels / REFERENCE_MEGAPIXELS) ** 0.75
+  return Math.max(1, Math.round(character.density * scale * densityScale))
+}
+
+/** A lifespan for a newly born layer, independent of its depth. */
+export function randomLifetimeMs(minMs: number, maxMs: number): number {
+  return minMs + Math.random() * (maxMs - minMs)
+}
+
+/**
+ * Opening lifespans, spread geometrically across the range and then shuffled.
+ *
+ * Two layers whose lifespans are near-equal stay in near-lockstep for minutes:
+ * their beat period is L1*L2/|L1-L2|, so 15s against 15.5s holds together for
+ * about eight of them. Spreading the first set by a constant *ratio* keeps every
+ * pair's beat period short, so the layers drift apart immediately rather than
+ * waiting on luck. Respawns draw freely — by then the clocks are scattered.
+ */
+export function initialLifetimesMs(count: number, minMs: number, maxMs: number): number[] {
+  if (count < 2) return [randomLifetimeMs(minMs, maxMs)]
+  const ratio = maxMs / minMs
+  return Array.from({ length: count }, (_, index) => minMs * ratio ** (index / (count - 1)))
+    .map((lifetimeMs) => ({ lifetimeMs, sortKey: Math.random() }))
+    .sort((a, b) => a.sortKey - b.sortKey)
+    .map((entry) => entry.lifetimeMs)
+}
+
+/**
+ * Evenly spread starting phases, shuffled so that where a layer sits in its
+ * fade cycle bears no relation to its depth. Without the shuffle the opening
+ * seconds read as a gradient sweeping from far to near, and an evenly spread
+ * start is what keeps the sky populated before the clocks have drifted apart.
+ */
+export function initialPhases(count: number): number[] {
+  return Array.from({ length: count }, (_, index) => (index + 0.5) / count)
+    .map((phase) => ({ phase, sortKey: Math.random() }))
+    .sort((a, b) => a.sortKey - b.sortKey)
+    .map((entry) => entry.phase)
+}
+
+/**
+ * Radius at which a star stops sharing its layer's clock and keeps its own.
+ *
+ * All the dots in a layer fade on one envelope, which is invisible while no
+ * single dot is conspicuous. A big star breaks that: you watch it swell and
+ * fade, and having seen the rhythm you can then see it in the small stars
+ * beside it. Above this size a star runs on its own clock, so there is no
+ * shared fate left to notice. Sitting at the default `nearRadius`, nothing
+ * qualifies and nothing changes.
+ */
+export const SOLO_MIN_RADIUS = 3
+
+/**
+ * Where to send something that has been asked to leave, without its brightness
+ * jumping.
+ *
+ * The envelope is symmetric, so a thing still fading in has an exact twin on the
+ * way down at `1 - phase`: same alpha, opposite direction. Anything at full
+ * brightness goes to the start of its fade-out instead, and anything already
+ * leaving is left alone.
+ */
+export function exitPhase(phase: number, fade: number): number {
+  if (phase >= 1 - fade) return phase
+  if (phase < fade) return 1 - phase
+  return 1 - fade
+}
+
+/** Exponent at the low end of the size mix; 1 (uniform) sits at the high end. */
+const MAX_SIZE_EXPONENT = 9
+
+/**
+ * A radius from [min, max], biased toward the small end.
+ *
+ * `mix` of 1 is uniform: every size in the range equally likely. Lower values
+ * raise the exponent applied to a uniform variate, so the bigger a size is the
+ * rarer it becomes — which is what puts a few large stars among many small
+ * ones. It applies within every layer's own range, so the whole size ladder
+ * shifts together rather than only the largest tier.
+ */
+export function biasedRadius(min: number, max: number, mix: number): number {
+  const exponent = MAX_SIZE_EXPONENT ** (1 - clamp01(mix))
+  return min + (max - min) * Math.random() ** exponent
+}
+
+const smoothstep = (t: number) => t * t * (3 - 2 * t)
+
+/**
+ * Opacity multiplier across a layer's life, from birth (0) to death (1).
+ *
+ * `fade` is the fraction of the lifetime spent fading, at each end. 0.5 leaves
+ * no plateau at all and gives a pure bell; small values hold full brightness for
+ * most of the life and cross in and out quickly. Expressed as the ramp rather
+ * than the plateau because the ramp is the part you can see.
+ *
+ * The ramp itself is smoothstepped, never linear. `curve` is a gamma on top of
+ * that: above 1 a star lingers faint and then comes up quickly, below 1 it
+ * brightens early and holds.
+ */
+export function envelope(phase: number, fade = 0.5, curve = 1): number {
+  const t = clamp01(phase)
+  const ramp = Math.min(0.5, Math.max(0, fade))
+
+  const level = ramp <= 0 ? 1 : t < ramp ? smoothstep(t / ramp) : t <= 1 - ramp ? 1 : smoothstep((1 - t) / ramp)
+
+  // Gamma on the result. The ramp is already eased; this bends the whole shape,
+  // which is what changes the character of an appearance rather than its length.
+  return curve === 1 ? level : level ** curve
+}
