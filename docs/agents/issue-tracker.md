@@ -1,41 +1,37 @@
-# Issue tracker: Local Markdown
+# Issue tracker: GitHub issues
 
-Issues and specs for this repo live as markdown files in `.scratch/`.
+Issues and specs for this repo are **GitHub issues**, reached with `gh`.
 
-## Before writing here: is it public?
+```bash
+gh issue create --title '…' --body '…'
+gh issue list
+gh issue view <n>
+```
 
-**Status: undecided.** This repo is public and `.scratch/` is not in `.gitignore`, so files written here are committable and pushing them makes them permanently public.
+## `.scratch/` is private
 
-Raise it with the repo owner _before_ writing, and let them decide whether to gitignore `.scratch/`, when either is true:
+`.scratch/` is gitignored. It is scratch space for private or throwaway notes,
+and it is **not** the issue tracker. Nothing in it is versioned, reviewed or
+shared, so nothing another person or agent needs to read belongs there.
 
-- this would be the **first** file under `.scratch/`, or
-- the content is something to reconsider publishing — employer or client names, unreleased plans, credentials or tokens, private URLs, personal data, candid notes about identifiable people.
-
-Routine, already-public content (notes about this site's own code) needs no interruption. Once the decision is made, replace this section with the outcome.
+This was an open question: the repo is public and publishes to GitHub Pages, so
+a markdown tracker inside it would have made every ticket permanently public.
+Settled in favour of GitHub issues, recorded in
+`docs/adr/20260823-github-issues-as-the-tracker.md`.
 
 ## Conventions
 
-- One feature per directory: `.scratch/<feature-slug>/`
-- The spec is `.scratch/<feature-slug>/spec.md`
-- Implementation issues are one file per ticket at `.scratch/<feature-slug>/issues/<NN>-<slug>.md`, numbered from `01` — never a single combined tickets file
-- Triage state is recorded as a `Status:` line near the top of each issue file (see `triage-labels.md` for the role strings)
-- Comments and conversation history append to the bottom of the file under a `## Comments` heading
+- One issue per unit of work. Write the reasoning into the body — the future
+  reader is usually an agent with no memory of the conversation.
+- State what is **not** in scope, and link the ADR when a decision constrains
+  the work. An issue that omits this gets re-litigated.
+- Triage state is a GitHub label. See `triage-labels.md`.
+- Discussion belongs in issue comments.
 
 ## When a skill says "publish to the issue tracker"
 
-Create a new file under `.scratch/<feature-slug>/` (creating the directory if needed).
+`gh issue create`. Do not create a markdown file for it.
 
 ## When a skill says "fetch the relevant ticket"
 
-Read the file at the referenced path. The user will normally pass the path or the issue number directly.
-
-## Wayfinding operations
-
-Used by `/wayfinder`. The **map** is a file with one **child** file per ticket.
-
-- **Map**: `.scratch/<effort>/map.md` — the Notes / Decisions-so-far / Fog body.
-- **Child ticket**: `.scratch/<effort>/issues/NN-<slug>.md`, numbered from `01`, with the question in the body. A `Type:` line records the ticket type (`research`/`prototype`/`grilling`/`task`); a `Status:` line records `claimed`/`resolved`.
-- **Blocking**: a `Blocked by: NN, NN` line near the top. A ticket is unblocked when every file it lists is `resolved`.
-- **Frontier**: scan `.scratch/<effort>/issues/` for files that are open, unblocked, and unclaimed; first by number wins.
-- **Claim**: set `Status: claimed` and save before any work.
-- **Resolve**: append the answer under an `## Answer` heading, set `Status: resolved`, then append a context pointer (gist + link) to the map's Decisions-so-far in `map.md`.
+`gh issue view <number>`. The user will normally give the number or the URL.

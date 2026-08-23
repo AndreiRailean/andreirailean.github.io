@@ -2,7 +2,7 @@
 
 The skills speak in terms of five canonical triage roles. This file maps those roles to the actual label strings used in this repo's issue tracker.
 
-This repo uses a local-markdown tracker, so a "label" is written as a `Status:` line near the top of the issue file — e.g. `Status: ready-for-agent`.
+This repo uses GitHub issues, so a label is a real GitHub label: `gh issue edit <n> --add-label ready-for-agent`.
 
 | Label in mattpocock/skills | Label in our tracker | Meaning                                  |
 | -------------------------- | -------------------- | ---------------------------------------- |
