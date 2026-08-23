@@ -1,0 +1,155 @@
+---
+import { getCollection, render } from "astro:content"
+
+// Each experiment renders its own about page in its own visual language, rather
+// than sharing a layout. That is deliberate while the shape of a second
+// experiment is still unknown.
+const entry = (await getCollection("experiments")).find(({ data }) => data.slug === "starry-night")
+if (!entry) throw new Error("Starry Night: missing about.md")
+
+const { Content } = await render(entry)
+const { title, summary, started, updated } = entry.data
+
+const formatDate = (date: Date) => date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} — about</title>
+    <meta name="description" content={summary} />
+    <style is:global>
+      html {
+        --bg: #05070f;
+        --fg: #d6dbe8;
+        --bright: #f2f5fb;
+        --muted: #79839c;
+        --edge: rgb(255 255 255 / 12%);
+        --accent: hsl(225, 40%, 68%);
+      }
+
+      html,
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+      }
+
+      body {
+        font:
+          400 1rem/1.7 ui-sans-serif,
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+        padding: clamp(2rem, 7vh, 5rem) 1.5rem clamp(4rem, 12vh, 8rem);
+      }
+
+      main {
+        max-width: 40rem;
+        margin: 0 auto;
+      }
+
+      nav {
+        display: flex;
+        gap: 1.25rem;
+        margin-bottom: clamp(2rem, 6vh, 4rem);
+        font-size: 0.8125rem;
+        letter-spacing: 0.02em;
+      }
+
+      nav a {
+        color: var(--muted);
+        text-decoration: none;
+      }
+
+      nav a:hover {
+        color: var(--accent);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 500;
+        color: var(--bright);
+        letter-spacing: -0.015em;
+      }
+
+      .dates {
+        margin: 0.6rem 0 2.5rem;
+        font-size: 0.8125rem;
+        color: var(--muted);
+      }
+
+      h2 {
+        margin: 2.75rem 0 0.75rem;
+        font-size: 1.0625rem;
+        font-weight: 500;
+        color: var(--bright);
+      }
+
+      p {
+        margin: 0 0 1.1rem;
+      }
+
+      strong {
+        font-weight: 500;
+        color: var(--bright);
+      }
+
+      code {
+        padding: 0.1em 0.35em;
+        font:
+          400 0.875em/1 ui-monospace,
+          "SF Mono",
+          Menlo,
+          monospace;
+        background: rgb(255 255 255 / 7%);
+        border-radius: 0.25rem;
+      }
+
+      a {
+        color: var(--accent);
+        text-underline-offset: 0.2em;
+      }
+
+      ul {
+        margin: 0 0 1.1rem;
+        padding-left: 1.1rem;
+      }
+
+      li {
+        margin-bottom: 0.5rem;
+      }
+
+      hr {
+        margin: 2.5rem 0;
+        border: 0;
+        border-top: 1px solid var(--edge);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <nav>
+        <a href="/experiments/starry-night/">← run it</a>
+        <a href="/experiments/">all experiments</a>
+      </nav>
+      <h1>{title}</h1>
+      <p class="dates">
+        <time datetime={started.toISOString()}>{formatDate(started)}</time>
+        {
+          formatDate(updated) !== formatDate(started) && (
+            <>
+              {" · last changed "}
+              <time datetime={updated.toISOString()}>{formatDate(updated)}</time>
+            </>
+          )
+        }
+      </p>
+      <Content />
+    </main>
+  </body>
+</html>
