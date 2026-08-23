@@ -204,14 +204,14 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
     context.fillRect(0, 0, width, height)
 
     for (const layer of cloudLayers) {
-      drawCloudLayer(context, layer, width, height, settings.fade, settings.clouds)
+      drawCloudLayer(context, layer, width, height, settings.fade, settings.curve, settings.clouds)
     }
 
     context.globalAlpha = 1
     context.fillStyle = rgba(palette.star, 1)
 
     for (const layer of layers) {
-      const alpha = layer.peakAlpha * envelope(layer.phase, settings.fade)
+      const alpha = layer.peakAlpha * envelope(layer.phase, settings.fade, settings.curve)
       if (alpha < 0.002) continue
 
       // One path per layer: every dot in it shares an alpha, so a single fill
@@ -237,7 +237,7 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
     // hundred small fills, which canvas handles without trouble.
     for (const layer of layers) {
       for (const dot of layer.solo) {
-        const alpha = dot.peakAlpha * envelope(dot.phase, settings.fade)
+        const alpha = dot.peakAlpha * envelope(dot.phase, settings.fade, settings.curve)
         if (alpha < 0.002) continue
         context.globalAlpha = alpha
         context.beginPath()
@@ -260,7 +260,7 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
    * appears where there was no star bright enough to flare.
    */
   function spawnGlimmer() {
-    const weights = layers.map((layer) => layer.peakAlpha * envelope(layer.phase, settings.fade))
+    const weights = layers.map((layer) => layer.peakAlpha * envelope(layer.phase, settings.fade, settings.curve))
     const total = weights.reduce((sum, weight) => sum + weight, 0)
     if (total <= 0) return
 

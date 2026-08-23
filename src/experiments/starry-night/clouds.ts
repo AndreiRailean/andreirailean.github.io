@@ -95,9 +95,10 @@ export function drawCloudLayer(
   width: number,
   height: number,
   fade: number,
+  curve: number,
   intensity: number,
 ): void {
-  const alpha = intensity * envelope(layer.phase, fade)
+  const alpha = intensity * envelope(layer.phase, fade, curve)
   if (alpha < 0.002) return
   context.globalAlpha = alpha
   context.drawImage(layer.buffer, 0, 0, width, height)

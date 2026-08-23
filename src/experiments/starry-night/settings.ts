@@ -16,6 +16,8 @@ export type Settings = {
   nearRadius: number
   /** Fraction of a life spent fading, at each end. 0.5 is a pure bell. */
   fade: number
+  /** Gamma on the fade shape. 1 leaves the eased ramp as it is. */
+  curve: number
   /** 1 spreads sizes evenly; lower values make each larger size rarer. */
   sizeMix: number
   /** How far a large star's outline departs from a circle. 0 keeps circles. */
@@ -119,6 +121,15 @@ export const CONTROLS: Control[] = [
     hint: "How much of a life is spent fading, at each end. 0.5 fades the whole way in and straight back out. Lower values hold full brightness longer and cross in and out more quickly, which makes a big star's arrival less of a performance.",
   },
   {
+    key: "curve",
+    label: "curve",
+    min: 0.4,
+    max: 3,
+    step: 0.05,
+    format: (v) => v.toFixed(2),
+    hint: "Shape of the fade, as distinct from its length. The ramp is already eased rather than linear; this bends it further. Above 1 a star stays faint for longer and then comes up quickly, which reads more like a light being turned up than a value being interpolated. Below 1 it brightens early and holds.",
+  },
+  {
     key: "glimmersPerSecond",
     label: "glimmer",
     min: 0,
@@ -162,6 +173,7 @@ export const DEFAULT_SETTINGS: Settings = {
   invert: false,
   layerCount: 14,
   fade: 0.1,
+  curve: 1,
   glimmersPerSecond: 0.5,
   densityScale: 1,
   nearRadius: 3,
@@ -189,17 +201,18 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     settings: {
       mode: "depth",
       invert: true,
-      layerCount: 18,
-      fade: 0.475,
-      glimmersPerSecond: 2.1,
-      densityScale: 1.2,
-      nearRadius: 5.7,
-      sizeMix: 1,
+      layerCount: 13,
+      fade: 0.13,
+      curve: 1,
+      glimmersPerSecond: 1.45,
+      densityScale: 3,
+      nearRadius: 16,
+      sizeMix: 0.65,
       wobble: 0.22,
-      clouds: 0.2,
+      clouds: 0.25,
       hue: 30,
       minLifetimeMs: 2500,
-      maxLifetimeMs: 6000,
+      maxLifetimeMs: 9500,
     },
   },
   {
@@ -210,6 +223,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       invert: false,
       layerCount: 18,
       fade: 0.45,
+      curve: 1,
       glimmersPerSecond: 1.75,
       densityScale: 0.6,
       nearRadius: 2.6,

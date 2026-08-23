@@ -168,15 +168,21 @@ const smoothstep = (t: number) => t * t * (3 - 2 * t)
  * Opacity multiplier across a layer's life, from birth (0) to death (1).
  *
  * `fade` is the fraction of the lifetime spent fading, at each end. 0.5 leaves
- * no plateau at all and gives a pure bell; small values hold full brightness
- * for most of the life and cross in and out quickly. Expressed as the ramp
- * rather than the plateau because the ramp is the part you can see.
+ * no plateau at all and gives a pure bell; small values hold full brightness for
+ * most of the life and cross in and out quickly. Expressed as the ramp rather
+ * than the plateau because the ramp is the part you can see.
+ *
+ * The ramp itself is smoothstepped, never linear. `curve` is a gamma on top of
+ * that: above 1 a star lingers faint and then comes up quickly, below 1 it
+ * brightens early and holds.
  */
-export function envelope(phase: number, fade = 0.5): number {
+export function envelope(phase: number, fade = 0.5, curve = 1): number {
   const t = clamp01(phase)
   const ramp = Math.min(0.5, Math.max(0, fade))
-  if (ramp <= 0) return 1
-  if (t < ramp) return smoothstep(t / ramp)
-  if (t <= 1 - ramp) return 1
-  return smoothstep((1 - t) / ramp)
+
+  const level = ramp <= 0 ? 1 : t < ramp ? smoothstep(t / ramp) : t <= 1 - ramp ? 1 : smoothstep((1 - t) / ramp)
+
+  // Gamma on the result. The ramp is already eased; this bends the whole shape,
+  // which is what changes the character of an appearance rather than its length.
+  return curve === 1 ? level : level ** curve
 }
