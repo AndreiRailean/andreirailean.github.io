@@ -291,7 +291,7 @@
       const wakeLock = keepAwake()
 
       // Console handle. See src/experiments/AGENTS.md.
-      window.experiment = createApi(controls, wakeLock)
+      window.experiment = createApi(controls, wakeLock, sky)
       announceApi()
 
       // Two escape hatches for tools that cannot evaluate JS: ?panel=1 opens the
