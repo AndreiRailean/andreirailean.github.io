@@ -3,6 +3,12 @@
 Each experiment is a full-page programmed graphic. They are deliberately not a
 framework yet; see the last section.
 
+`CONTEXT.md` beside this file is the section's glossary. `docs/adr/` holds the
+decisions that shaped it — read the one covering an area before changing it, and
+say so explicitly if your work contradicts one rather than quietly overriding
+it. Vocabulary and decisions belonging to a single experiment stay in that
+experiment's own folder.
+
 ## Layout
 
 ```
