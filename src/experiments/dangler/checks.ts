@@ -30,7 +30,13 @@ import { makeCanopy } from "@/experiments/dangler/canopy"
 import { createRopes } from "@/experiments/dangler/rope"
 import { createFrames, updateFrames } from "@/experiments/dangler/frame"
 import { buildArrangement } from "@/experiments/dangler/arrangement"
-import { DEFAULT_SETTINGS, settingsFromQuery, settingsToQuery, normalizeSettings } from "@/experiments/dangler/settings"
+import {
+  DEFAULT_SETTINGS,
+  PRESETS,
+  normalizeSettings,
+  settingsFromQuery,
+  settingsToQuery,
+} from "@/experiments/dangler/settings"
 
 let failures = 0
 const ok = (name: string, pass: boolean, detail = "") => {
@@ -273,6 +279,24 @@ const ok = (name: string, pass: boolean, detail = "") => {
     normalizeSettings({ hue: 9999, wires: -5 }).hue === 360 && normalizeSettings({ wires: -5 }).wires === 1,
   )
   ok("counts are forced to whole numbers", normalizeSettings({ wires: 4.7, segments: 12.2 }).wires === 5)
+}
+
+// 10. presets survive being shared
+{
+  for (const preset of PRESETS) {
+    const settings = normalizeSettings(preset.settings)
+    const back = settingsFromQuery(settingsToQuery(settings))
+    const differs = (Object.keys(settings) as (keyof typeof settings)[]).filter((key) => back[key] !== settings[key])
+    ok(`preset "${preset.label}" survives the query string`, differs.length === 0, differs.join(", "))
+    // A preset is a recorded scene. Written as a spread over the defaults it
+    // would drift the next time one of those was retuned, so every value is
+    // stated and every value must already be legal.
+    const clamped = (Object.keys(settings) as (keyof typeof settings)[]).filter(
+      (key) => preset.settings[key] !== settings[key],
+    )
+    ok(`preset "${preset.label}" is within bounds as written`, clamped.length === 0, clamped.join(", "))
+  }
+  ok("preset labels are unique", new Set(PRESETS.map((p) => p.label)).size === PRESETS.length)
 }
 
 console.log(failures === 0 ? "\nall good" : `\n${failures} FAILING`)

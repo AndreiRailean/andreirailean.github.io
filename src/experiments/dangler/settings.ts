@@ -321,24 +321,50 @@ export const DEFAULT_SETTINGS: Settings = {
 }
 
 /**
- * Starting points, not conclusions.
+ * Recorded scenes.
  *
  * The section's convention is that presets are recorded from exploration rather
- * than designed up front. These three are placeholders marking out the corners
- * worth exploring — the brief, the crowd, and the festive end — and are meant to
- * be replaced by URLs that turned out to be worth keeping.
+ * than designed up front, so each one is written out in full rather than spread
+ * over `DEFAULT_SETTINGS`. A scene someone found by dragging sliders should stay
+ * the scene they found; inheriting the defaults would let it drift silently the
+ * next time one of those is retuned.
  */
 export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
   {
-    label: "three",
-    hint: "The brief: three wires, warm and nearly all one colour, dead still.",
-    settings: { ...DEFAULT_SETTINGS },
+    label: "dreamy",
+    hint: "A narrow lens on a crowded, low canopy of long limp wires, adrift.",
+    settings: {
+      seed: 7,
+      wires: 37,
+      beads: 5,
+      segments: 23,
+      extent: 3.2,
+      ceiling: 3.8,
+      relief: 1.2,
+      // Longer than the canopy is high, so the nearest bulbs fall past the
+      // viewer and out of frame rather than resolving into a string.
+      length: 4.75,
+      stiffness: 0.25,
+      set: 1.21,
+      twist: 1.03,
+      irregularity: 0.66,
+      fieldOfView: 52,
+      pitch: 0,
+      hue: 38,
+      hueSpread: 7.5,
+      variance: 0.74,
+      size: 0.01,
+      bloom: 8.4,
+      facing: 0.38,
+      falloff: 0.34,
+      flicker: 0.48,
+      breeze: 0.2,
+    },
   },
   {
     label: "thicket",
     hint: "The canopy crowded, to see what happens at scale.",
     settings: {
-      ...DEFAULT_SETTINGS,
       seed: 214,
       wires: 34,
       beads: 9,
@@ -347,27 +373,50 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       ceiling: 5.5,
       relief: 1.8,
       length: 3.4,
+      stiffness: 0.55,
+      set: 1.2,
+      twist: 0.35,
       irregularity: 0.75,
+      fieldOfView: 100,
+      pitch: 0,
+      hue: 38,
+      hueSpread: 7,
+      variance: 0.3,
       size: 0.015,
       bloom: 6,
+      facing: 0.55,
       falloff: 0.7,
+      flicker: 0,
+      breeze: 0,
     },
   },
   {
     label: "festive",
     hint: "Colour spread wide open, the way a box of mixed bulbs actually looks.",
     settings: {
-      ...DEFAULT_SETTINGS,
       seed: 91,
       wires: 8,
       beads: 18,
+      segments: 28,
+      extent: 3,
+      ceiling: 4.2,
+      relief: 0.9,
+      length: 3.2,
+      stiffness: 0.55,
+      set: 1.2,
+      twist: 0.35,
+      irregularity: 0.5,
+      fieldOfView: 100,
+      pitch: 0,
       hue: 20,
       hueSpread: 62,
       variance: 0.55,
       size: 0.024,
       bloom: 10,
-      length: 3.2,
-      extent: 3,
+      facing: 0.55,
+      falloff: 0.5,
+      flicker: 0,
+      breeze: 0,
     },
   },
 ]
