@@ -57,7 +57,7 @@ export function announceApi(): void {
   const lines = [
     ["experiment.get()", "current settings"],
     ["experiment.set({ breeze: 0.3 })", "change one or more"],
-    ['experiment.preset("thicket")', "load a preset by name or number"],
+    [`experiment.preset(${JSON.stringify(PRESETS[0]?.label ?? "")})`, "load a preset by name or number"],
     ["experiment.presets()", "what the presets are called"],
     ["experiment.controls()", "every control, with its bounds and blurb"],
     ["experiment.reroll()", "a fresh arrangement (or press r)"],
