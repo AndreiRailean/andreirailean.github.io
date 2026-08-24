@@ -23,7 +23,7 @@ it hangs with a slight bend rather than falling into a plumb line, and the
 beads protrude from its sides like LEDs on a light string.
 
 Because the camera looks straight up, a bead descending toward the viewer grows
-*and* slides outward from the vanishing point — one number driving both, which
+_and_ slides outward from the vanishing point — one number driving both, which
 is what makes it read as depth rather than as scaling.
 
 ### Space and camera
@@ -124,11 +124,11 @@ Distance dimming applies on top.
 
 Three kinds of variability, kept distinct so each can be reasoned about alone:
 
-| | source | changes over time |
-| --- | --- | --- |
-| `variance` | manufacturing — per-wire, then per-bead | no, baked at build |
-| `facing` | which way the LED points at the camera | only when the wire sways |
-| `flicker` | slow per-bead drift, defaults 0 | yes |
+|            | source                                  | changes over time        |
+| ---------- | --------------------------------------- | ------------------------ |
+| `variance` | manufacturing — per-wire, then per-bead | no, baked at build       |
+| `facing`   | which way the LED points at the camera  | only when the wire sways |
+| `flicker`  | slow per-bead drift, defaults 0         | yes                      |
 
 **`hue spread`** is the deliberate axis: a Gaussian σ in degrees around the base
 hue. One control covers both readings honestly — at σ≈4° bulbs are nominally
@@ -141,7 +141,7 @@ colour, and those co-vary — three sliders for this would be three sliders nobo
 can tell apart.
 
 Variation is **two-level: per-wire, then per-bead.** A string is one batch, so
-each wire draws its own small offset and each bead deviates around *its wire's*
+each wire draws its own small offset and each bead deviates around _its wire's_
 offset rather than the global base. One string then reads a touch warmer or
 dimmer than its neighbour while its own bulbs still differ among themselves.
 This costs one extra PRNG draw and is the difference between "randomised" and
@@ -177,7 +177,7 @@ retrofit:
   and a rewrite.
 - The solver runs on a **fixed timestep with an accumulator**, decoupled from
   render rate. With many wires the frame rate moves, and variable-`dt` Verlet
-  changes the *character* of the sway as it does — the breeze would get springier
+  changes the _character_ of the sway as it does — the breeze would get springier
   when the machine got busier.
 - `segmentCount` is per-wire rather than global, so distance-based LOD later is a
   value change rather than a restructure. LOD is **not** being built now.
@@ -192,14 +192,14 @@ reports.
 Twenty-two, grouped. More than Starry Night's twelve, which is a panel problem
 before it is a design problem.
 
-| group | controls | notes |
-| --- | --- | --- |
-| arrangement | `seed`, `wires`, `beads`, `segments` | the only four forcing a rebuild |
-| canopy | `extent`, `ceiling`, `relief` | live — an anchor is a pinned particle, so dragging `relief` makes the scene sag and settle |
-| wire | `length`, `stiffness`, `set`, `twist`, `irregularity` | live; `irregularity` is one control for per-wire scatter in length, stiffness and set together |
-| camera | `fieldOfView`, `pitch` | default pitch 0 — straight up |
-| light | `hue`, `hueSpread`, `variance`, `size`, `bloom`, `facing`, `falloff`, `flicker` | |
-| motion | `breeze` | defaults 0 |
+| group       | controls                                                                        | notes                                                                                          |
+| ----------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| arrangement | `seed`, `wires`, `beads`, `segments`                                            | the only four forcing a rebuild                                                                |
+| canopy      | `extent`, `ceiling`, `relief`                                                   | live — an anchor is a pinned particle, so dragging `relief` makes the scene sag and settle     |
+| wire        | `length`, `stiffness`, `set`, `twist`, `irregularity`                           | live; `irregularity` is one control for per-wire scatter in length, stiffness and set together |
+| camera      | `fieldOfView`, `pitch`                                                          | default pitch 0 — straight up                                                                  |
+| light       | `hue`, `hueSpread`, `variance`, `size`, `bloom`, `facing`, `falloff`, `flicker` |                                                                                                |
+| motion      | `breeze`                                                                        | defaults 0                                                                                     |
 
 `segments` is in the panel deliberately: at sixty wires it is the knob to reach
 for.
