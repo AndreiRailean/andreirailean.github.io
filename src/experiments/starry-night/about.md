@@ -48,7 +48,8 @@ only slower.
 
 Move the mouse and a small bar appears; the pointer and the controls disappear
 together after a couple of seconds of stillness, like video chrome. Keys `1`, `2`
-and `3` load presets, `c` opens the panel, `Escape` closes it. Every control has
+and `3` load presets, `c` opens the panel, `Escape` closes it, and `f` goes
+fullscreen. Every control has
 a tooltip, and every setting lives in the address bar — so any state worth
 keeping can be copied, shared, or handed back to be saved as a preset.
 

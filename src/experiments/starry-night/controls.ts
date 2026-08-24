@@ -1,4 +1,5 @@
 import { MODES, type Mode } from "@/experiments/starry-night/character"
+import { toggleFullscreen } from "@/experiments/starry-night/fullscreen"
 import type { Control, NumericKey } from "@/experiments/starry-night/settings"
 import {
   CONTROLS,
@@ -316,20 +317,30 @@ export function createControls({ root, settings, onChange, aboutHref }: Options)
 
   const onKeyDown = (event: KeyboardEvent) => {
     goActive()
+
+    // Leave browser and OS chords alone. Cmd+2 used to switch tab and load a
+    // preset at the same time.
+    if (event.ctrlKey || event.metaKey || event.altKey) return
+
     if (event.key === "Escape" && panelOpen) {
       setPanelOpen(false)
       return
     }
-    if (event.key === "c") {
+
+    const key = event.key.toLowerCase()
+    if (key === "c") {
       setPanelOpen(!panelOpen)
       return
     }
-    const index = Number(event.key) - 1
-    const preset = PRESETS[index]
+    if (key === "f") {
+      void toggleFullscreen()
+      return
+    }
+
+    const preset = PRESETS[Number(event.key) - 1]
     if (preset) apply({ ...preset.settings })
   }
 
-  /** Clicking away dismisses the panel, as a popover should. */
   const onPointerDownAway = (event: PointerEvent) => {
     if (!panelOpen) return
     const target = event.target
