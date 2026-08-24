@@ -1,5 +1,6 @@
 import type { Controls } from "@/experiments/starry-night/controls"
 import type { Starfield, StarfieldStats } from "@/experiments/starry-night/starfield"
+import { setFullscreen, toggleFullscreen } from "@/experiments/starry-night/fullscreen"
 import type { WakeLock } from "@/experiments/starry-night/wakelock"
 import { CONTROLS, keysOf, normalizeSettings, PRESETS, type Settings } from "@/experiments/starry-night/settings"
 
@@ -28,6 +29,8 @@ export type ExperimentApi = {
   idle: (force?: boolean | null) => void
   /** The shareable URL for the current settings. */
   url: () => string
+  /** Enter or leave fullscreen; omit to toggle. Resolves to whether it is on. */
+  fullscreen: (on?: boolean) => Promise<boolean>
   /** Whether the screen is currently being held awake. */
   awake: () => boolean
   /** What the sky costs to draw right now, and how fast it is running. */
@@ -53,6 +56,7 @@ export function announceApi(): void {
     ["experiment.controls()", "every control, with its bounds and blurb"],
     ["experiment.panel(true)", "open the settings panel"],
     ["experiment.idle(false)", "stop the chrome hiding itself"],
+    ["experiment.fullscreen()", "toggle fullscreen (or press f)"],
     ["experiment.awake()", "is the display being held awake"],
     ["experiment.stats()", "dots, fill calls per frame, and fps"],
     ["experiment.url()", "a link that restores this exact state"],
@@ -105,6 +109,8 @@ export function createApi(controls: Controls, wakeLock: WakeLock, sky: Starfield
     },
 
     url: () => window.location.href,
+
+    fullscreen: (on) => (on === undefined ? toggleFullscreen() : setFullscreen(on)),
 
     awake: () => wakeLock.held(),
 
