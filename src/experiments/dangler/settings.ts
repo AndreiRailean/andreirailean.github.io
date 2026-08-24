@@ -37,6 +37,7 @@ export type Settings = {
   breeze: number
   gust: number
   gustRate: number
+  tremble: number
 }
 
 export type NumericKey = keyof Settings
@@ -302,6 +303,16 @@ export const CONTROLS: Control[] = [
   },
   {
     group: "motion",
+    key: "tremble",
+    label: "tremble",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    format: (v) => v.toFixed(2),
+    hint: "The object overhead shivering, which shakes the wires by their anchors instead of pushing on them. Because it moves where a wire hangs from rather than blowing on it, the wire is dragged about by roughly the anchor's own travel and no further — so a crowd stays crowded and gets agitated, where a gust of any strength eventually sweeps it apart. Try it with the breeze and the gust at 0.",
+  },
+  {
+    group: "motion",
     key: "breeze",
     label: "breeze",
     min: 0,
@@ -342,6 +353,7 @@ export const DEFAULT_SETTINGS: Settings = {
   breeze: 0,
   gust: 0,
   gustRate: 6,
+  tremble: 0,
 }
 
 /**
@@ -385,6 +397,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       breeze: 0.2,
       gust: 0,
       gustRate: 6,
+      tremble: 0,
     },
   },
   {
@@ -423,37 +436,39 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       breeze: 0.51,
       gust: 0,
       gustRate: 6,
+      tremble: 0,
     },
   },
   {
-    label: "festive",
-    hint: "Colour spread wide open, the way a box of mixed bulbs actually looks.",
+    label: "frantic",
+    hint: "Fifty-one short wires crammed almost overhead, hot pink through green, hit hard and often.",
     settings: {
-      seed: 91,
-      wires: 8,
-      beads: 18,
-      segments: 28,
-      extent: 3,
-      ceiling: 4.2,
-      relief: 0.9,
-      length: 3.2,
-      stiffness: 0.55,
-      set: 1.2,
-      twist: 0.35,
-      irregularity: 0.5,
-      fieldOfView: 100,
+      seed: 7,
+      wires: 51,
+      beads: 4,
+      segments: 20,
+      extent: 0.2,
+      ceiling: 1.8,
+      relief: 1,
+      length: 0.65,
+      stiffness: 0.63,
+      set: 0.39,
+      twist: -0.61,
+      irregularity: 1,
+      fieldOfView: 56,
       pitch: 0,
-      hue: 20,
-      hueSpread: 62,
-      variance: 0.55,
-      size: 0.024,
-      bloom: 10,
-      facing: 0.55,
-      falloff: 0.5,
+      hue: 323,
+      hueSpread: 62.5,
+      variance: 0.74,
+      size: 0.01,
+      bloom: 8.4,
+      facing: 0.38,
+      falloff: 0.49,
       flicker: 0,
       breeze: 0,
-      gust: 0,
-      gustRate: 6,
+      gust: 1,
+      gustRate: 9,
+      tremble: 0,
     },
   },
 ]

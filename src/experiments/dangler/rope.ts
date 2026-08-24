@@ -44,6 +44,18 @@ export type Ropes = {
   readonly particleCount: number
   /** First particle index of wire w; `offset[wireCount]` is the total. */
   readonly offset: Int32Array
+  /**
+   * Per-wire displacement of the anchor from where the canopy pins it, as
+   * `[x, y, z]` triples. Written by the engine, read on the next step.
+   *
+   * Deliberately a *position* and not a force. A force integrates, so a wire
+   * under one keeps accelerating and sweeps a long way out; moving the anchor
+   * drags the wire by roughly the anchor's own travel and no further, because
+   * the anchor still holds it. Measured on a 0.65m wire: 7mm of anchor step
+   * settles at 26mm of tip travel, where a held 14 m/s² was still climbing
+   * through 914mm. That bounded quality is the whole point of it.
+   */
+  readonly anchorOffsets: Float32Array
   readonly px: Float32Array
   readonly py: Float32Array
   readonly pz: Float32Array
@@ -194,6 +206,7 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
   const oy = new Float32Array(particleCount)
   const oz = new Float32Array(particleCount)
 
+  const anchorOffsets = new Float32Array(wireCount * 3)
   const anchorX = new Float32Array(wireCount)
   const anchorY = new Float32Array(wireCount)
   const anchorZ = new Float32Array(wireCount)
@@ -333,13 +346,18 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
       const end = offset[w + 1]
       const span = end - start - 1
 
-      // The anchor is pinned to the canopy: written, never integrated.
-      px[start] = anchorX[w]
-      py[start] = anchorY[w]
-      pz[start] = anchorZ[w]
-      ox[start] = anchorX[w]
-      oy[start] = anchorY[w]
-      oz[start] = anchorZ[w]
+      // The anchor is pinned to the canopy: written, never integrated. Its
+      // previous position is written too, so it carries no velocity of its own
+      // — it teleports, and the wire below is dragged after it.
+      const ax = anchorX[w] + anchorOffsets[w * 3]
+      const ay = anchorY[w] + anchorOffsets[w * 3 + 1]
+      const az = anchorZ[w] + anchorOffsets[w * 3 + 2]
+      px[start] = ax
+      py[start] = ay
+      pz[start] = az
+      ox[start] = ax
+      oy[start] = ay
+      oz[start] = az
 
       for (let i = start + 1; i < end; i++) {
         // Lower down is more exposed, and the top of a wire is shielded by
@@ -531,6 +549,7 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
     wireCount,
     particleCount,
     offset,
+    anchorOffsets,
     px,
     py,
     pz,
@@ -548,6 +567,9 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
 
     settle(only = everyWire) {
       if (only.length === 0) return
+      // Settle to where the canopy actually pins the wires, not to wherever a
+      // tremble happened to have the anchors when this was called.
+      anchorOffsets.fill(0)
 
       // Runs to rest rather than for a fixed count, because how long a scene
       // takes to fall still depends on how long and how limp its wires are.

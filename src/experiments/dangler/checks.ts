@@ -29,7 +29,7 @@ declare const process: { exit(code: number): never }
 import { makeCanopy } from "@/experiments/dangler/canopy"
 import { createRopes } from "@/experiments/dangler/rope"
 import { createFrames, updateFrames } from "@/experiments/dangler/frame"
-import { gustEnvelope, scheduleGusts, type Gust } from "@/experiments/dangler/wind"
+import { canopyTremble, gustEnvelope, scheduleGusts, TREMBLE_REACH, type Gust } from "@/experiments/dangler/wind"
 import { buildArrangement } from "@/experiments/dangler/arrangement"
 import {
   DEFAULT_SETTINGS,
@@ -345,6 +345,42 @@ const ok = (name: string, pass: boolean, detail = "") => {
     gustEnvelope(0.35) > 0.9 && gustEnvelope(3) < 0.25 && gustEnvelope(8) < 0.01,
     `0.35s=${gustEnvelope(0.35).toFixed(2)} 3s=${gustEnvelope(3).toFixed(2)} 8s=${gustEnvelope(8).toFixed(3)}`,
   )
+}
+
+// 12. tremble — bounded by construction, which is the entire reason it exists
+{
+  const out = { x: 0, y: 0, z: 0 }
+  canopyTremble(0.3, -0.2, 4.2, 0, out)
+  ok("tremble 0 is perfectly still", out.x === 0 && out.y === 0 && out.z === 0)
+
+  let worst = 0
+  for (let t = 0; t < 200; t += 0.01) {
+    canopyTremble(0.31, -0.22, t, 1, out)
+    worst = Math.max(worst, Math.abs(out.x), Math.abs(out.y), Math.abs(out.z))
+  }
+  // A force integrates and a wire under one keeps going; a displacement cannot
+  // exceed its own reach however long it runs. That bound is the feature.
+  ok("tremble never exceeds its reach", worst <= TREMBLE_REACH + 1e-9, `${worst.toFixed(4)} vs ${TREMBLE_REACH}`)
+  ok("tremble uses most of its reach", worst > TREMBLE_REACH * 0.5, worst.toFixed(4))
+
+  const a = { x: 0, y: 0, z: 0 }
+  const b = { x: 0, y: 0, z: 0 }
+  canopyTremble(0.3, -0.2, 4.2, 0.7, a)
+  canopyTremble(0.3, -0.2, 4.2, 0.7, b)
+  ok("tremble is deterministic", a.x === b.x && a.y === b.y && a.z === b.z)
+  canopyTremble(0.9, 0.4, 4.2, 0.7, b)
+  ok("neighbouring anchors tremble differently", Math.abs(a.x - b.x) > 1e-6 || Math.abs(a.y - b.y) > 1e-6)
+
+  // Well clear of a hanging wire's own swing period, or it pumps rather than
+  // shakes. Counted as sign changes: at least a few cycles a second.
+  let crossings = 0
+  let previous = 0
+  for (let t = 0; t < 10; t += 0.002) {
+    canopyTremble(0.31, -0.22, t, 1, out)
+    if (previous !== 0 && Math.sign(out.x) !== Math.sign(previous)) crossings++
+    previous = out.x
+  }
+  ok("tremble runs well above a wire's swing period", crossings / 2 / 10 > 2, `${(crossings / 2 / 10).toFixed(1)} Hz`)
 }
 
 console.log(failures === 0 ? "\nall good" : `\n${failures} FAILING`)

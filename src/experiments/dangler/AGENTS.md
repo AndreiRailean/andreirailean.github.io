@@ -59,6 +59,17 @@ screen — a wrong wire and a right one both look like a scatter of dots.
   shape and its colour from separately salted generators. Break this and raising
   the wire count reshuffles the wires already on screen — the same class of bug
   as Starry Night resetting every layer's phase on a settings change.
+- **Keep `tremble` well above a wire's swing period.** A hanging wire swings at
+  well under 1Hz, and an anchor shaken near that pumps it instead of shivering
+  it: at the rates first tried, 25mm of anchor travel produced 0.43m of tip
+  travel. The rates in `canopyTremble` are deliberately several times higher, and
+  `TREMBLE_REACH` is small to match. Retuning either without checking the tip
+  response turns the control into a second, worse gust.
+- **`anchorOffsets` is a displacement, never a force, and that is the point.** A
+  force integrates, so a wire under one sweeps steadily outward; an anchor that
+  moves drags its wire about by roughly its own travel and stops. That bound is
+  what lets a crowd be agitated without being blown apart, and it is the only
+  thing `gust` cannot do at any setting.
 - **`ropes.settle()` after a rebuild must take `freshWires`.** Settling
   everything zeroes velocities, so adding one wire visibly calms every other wire
   in a breeze.

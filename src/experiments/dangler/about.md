@@ -63,18 +63,32 @@ decides whether a wire holds its curl or hangs plumb, and a plumb wire is
 invisible from below. **colour spread** runs from a string of nominally
 identical bulbs that measurably are not, up to a proper festive scatter.
 
-It opens dead still. **breeze** is a steady wind; **gust** is bursts arriving on
-top of it. The two are worth thinking of as different weather rather than as
-more and less of the same thing — set the breeze to nothing, the gust high and
-the rate low, and you get long calms broken by a single shove that throws the
-whole canopy at once and then lets it settle.
+It opens dead still, and there are three different ways to disturb it.
+**breeze** is a steady wind. **gust** is bursts arriving on top of it — set the
+breeze to nothing, the gust high and the rate low, and you get long calms broken
+by a single shove that throws the whole canopy at once and then lets it settle.
+**tremble** is not wind at all: it shakes the wires by their anchors, as though
+the branch above were shivering.
 
-That one exists because of an accident. Nudging the canopy's **spread** while
-watching turned out to be far more interesting than the setting itself: moving
-the anchors teleports them, while the wires hanging below do not move, so the
-solver yanks every wire straight at the same instant. It is a whip crack, not a
-draught. Chasing that on purpose — tapping a slider to make the scene flinch —
-was a better argument for gusts than any amount of thinking about wind.
+All three exist because of an accident. Nudging the canopy's **spread** while
+watching turned out to be more interesting than the setting is — it shifts every
+anchor a few millimetres, and since the wires below do not move with them, all of
+them are tugged at the same instant.
+
+Reproducing that as wind failed, and the failure was the useful half. A force
+_integrates_: a wire under one keeps accelerating, so a gust of any strength
+eventually sweeps a crowd apart. Moving an anchor instead drags its wire by
+roughly the anchor's own travel and no further, because the anchor still holds
+it. Measured on a short wire, seven millimetres of anchor step settles at
+twenty-six millimetres of tip travel, where a steady gust was still climbing
+through nine hundred. That bound is not a limitation, it is the whole effect: a
+crowd stays a crowd and comes alive, rather than blowing outward.
+
+Which is why there are two controls rather than one. The tremble also has to run
+well clear of a hanging wire's own swing period, or the anchor stops shaking the
+wire and starts _pumping_ it — the first rates tried turned twenty-five
+millimetres of anchor travel into nearly half a metre of swing, which is the one
+thing it was meant not to do.
 
 While it is on screen it holds the display awake, the way a video does, since
 the point is to leave it running. Browsers only allow that on a secure

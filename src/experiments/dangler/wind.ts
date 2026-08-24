@@ -97,6 +97,57 @@ export function scheduleGusts(seed: number, clock: number, perMinute: number, ou
   }
 }
 
+/**
+ * Largest anchor displacement at `tremble` 1, in world units.
+ *
+ * Small on purpose. The rates below sit well above a hanging wire's own swing
+ * period — a 0.65m wire swings at about 0.6Hz — because near it the anchor
+ * *pumps* the wire instead of shaking it: at the first rates tried, 25mm of
+ * anchor travel drove 0.43m of tip travel, which is swinging, not shivering.
+ * Off resonance the wire follows its anchor and stops, which is the whole
+ * character being aimed at.
+ */
+export const TREMBLE_REACH = 0.03
+
+/**
+ * How far the canopy has shaken the anchor at `(x, y)` from where it is pinned.
+ *
+ * The object overhead is not rigid, and this is it shivering. It is a
+ * *displacement* rather than a force on purpose: a force integrates, so wires
+ * under one sweep steadily outward, while an anchor that trembles drags its wire
+ * about by roughly its own travel and no further. The cluster stays where it is
+ * and comes alive, instead of blowing apart — which is precisely what a gust
+ * cannot do however it is tuned.
+ *
+ * Three incommensurate rates per axis, phased by position, so no two wires
+ * shiver alike and the whole canopy never lines up.
+ */
+export function canopyTremble(
+  x: number,
+  y: number,
+  clock: number,
+  amount: number,
+  out: { x: number; y: number; z: number },
+): void {
+  const reach = amount * TREMBLE_REACH
+  const px = x * 12.9 + y * 4.7
+  const py = y * 11.3 - x * 5.1
+
+  out.x =
+    reach *
+    (0.6 * Math.sin(18.3 * clock + px) +
+      0.3 * Math.sin(29.1 * clock + py + 1.3) +
+      0.1 * Math.sin(45.9 * clock + px * 1.7))
+  out.y =
+    reach *
+    (0.6 * Math.sin(15.9 * clock + py + 2.4) +
+      0.3 * Math.sin(33.3 * clock + px + 0.6) +
+      0.1 * Math.sin(53.7 * clock + py * 1.4))
+  // Vertical too, which is what sends a stretch down the wire rather than
+  // merely swinging it.
+  out.z = reach * 0.7 * (0.7 * Math.sin(23.1 * clock + px + py) + 0.3 * Math.sin(39.3 * clock + px - py + 1.9))
+}
+
 export type Wind = {
   /** Call once per frame, before stepping. */
   update: (settings: Settings, clock: number) => void

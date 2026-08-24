@@ -15,7 +15,7 @@ import { createFrames, updateFrames, type Frames } from "@/experiments/dangler/f
 import { GROUND, VIGNETTE } from "@/experiments/dangler/palette"
 import { createRopes, FIXED_DT, type Ropes } from "@/experiments/dangler/rope"
 import { needsRebuild, type Settings } from "@/experiments/dangler/settings"
-import { createWind } from "@/experiments/dangler/wind"
+import { canopyTremble, createWind } from "@/experiments/dangler/wind"
 
 export type DanglerStats = {
   wires: number
@@ -102,10 +102,10 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
    * behaviour, so the preference is expressed by pinning two settings.
    */
   function withMotionPreference(next: Settings): Settings {
-    return stillOnly.matches ? { ...next, breeze: 0, gust: 0, flicker: 0 } : next
+    return stillOnly.matches ? { ...next, breeze: 0, gust: 0, tremble: 0, flicker: 0 } : next
   }
 
-  const isAnimated = () => settings.breeze > 0 || settings.gust > 0 || settings.flicker > 0
+  const isAnimated = () => settings.breeze > 0 || settings.gust > 0 || settings.tremble > 0 || settings.flicker > 0
 
   function resize(): void {
     const nextWidth = canvas.clientWidth || window.innerWidth
@@ -168,6 +168,27 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
     const anchor = arrangement.specs[wire].anchor
     wind.at(anchor.x, anchor.y, air)
     return air
+  }
+
+  /**
+   * Shakes the anchors, once per frame rather than once per substep.
+   *
+   * Written straight into the solver's own array so this allocates nothing at
+   * any wire count.
+   */
+  function updateTremble(): void {
+    const offsets = ropes.anchorOffsets
+    if (settings.tremble <= 0) {
+      offsets.fill(0)
+      return
+    }
+    for (let w = 0; w < ropes.wireCount; w++) {
+      const anchor = arrangement.specs[w].anchor
+      canopyTremble(anchor.x, anchor.y, clock, settings.tremble, air)
+      offsets[w * 3] = air.x
+      offsets[w * 3 + 1] = air.y
+      offsets[w * 3 + 2] = air.z
+    }
   }
 
   /** Interpolates a bulb's world position and the direction it points. */
@@ -363,6 +384,7 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
     if (isAnimated()) {
       clock += elapsed
       wind.update(settings, clock)
+      updateTremble()
       moved = advance(elapsed, wind.blowing())
     } else if (!ropes.atRest()) {
       moved = advance(elapsed, false)
