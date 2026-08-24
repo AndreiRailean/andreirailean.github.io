@@ -37,12 +37,6 @@ export type ExperimentApi = {
   stats: () => StarfieldStats
 }
 
-declare global {
-  interface Window {
-    experiment?: ExperimentApi
-  }
-}
-
 /**
  * Printed once on load rather than on devtools opening, which cannot be detected
  * reliably. The console keeps it, so it is waiting whenever the panel is opened.

@@ -343,17 +343,20 @@
       // Left running deliberately, so hold the display on.
       const wakeLock = keepAwake()
 
-      // Console handle. See src/experiments/AGENTS.md.
-      window.experiment = createApi(controls, wakeLock, sky)
+      // Console handle. See src/experiments/AGENTS.md. Held locally as well as
+      // on `window`, which is typed `unknown` so the experiments stay
+      // independent of one another — see src/experiments/window.d.ts.
+      const api = createApi(controls, wakeLock, sky)
+      window.experiment = api
       announceApi()
 
       // Two escape hatches for tools that cannot evaluate JS: ?panel=1 opens the
       // settings panel on load, ?idle=0 stops the chrome hiding itself. Neither
       // is a setting, so neither belongs in the shareable query string.
       const params = new URLSearchParams(window.location.search)
-      if (params.get("panel") === "1") window.experiment.panel(true)
+      if (params.get("panel") === "1") api.panel(true)
       const idleParam = params.get("idle")
-      if (idleParam !== null) window.experiment.idle(idleParam !== "0")
+      if (idleParam !== null) api.idle(idleParam !== "0")
     </script>
   </body>
 </html>
