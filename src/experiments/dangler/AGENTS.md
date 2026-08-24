@@ -78,6 +78,13 @@ screen — a wrong wire and a right one both look like a scatter of dots.
   disagree.
 - **Core radii stay at or above `MIN_CORE_PX`**, trading size for alpha below it.
   Starry Night's sub-pixel lesson applies here unchanged.
+- **The wind stays pure.** Gusts are derived from the clock and the seed rather
+  than accumulated, which is what makes them reproducible and checkable outside a
+  browser. A burst lasts about two seconds; no still frame can tell you one was
+  ever scheduled, so `checks.ts` covers the rate, the determinism and the
+  envelope instead. Note `GUST_PEAK` is sampled from the envelope at load rather
+  than written down — retuning the attack or decay must not silently rescale what
+  the `gust` slider means.
 
 ## Shape of the code
 

@@ -29,6 +29,7 @@ declare const process: { exit(code: number): never }
 import { makeCanopy } from "@/experiments/dangler/canopy"
 import { createRopes } from "@/experiments/dangler/rope"
 import { createFrames, updateFrames } from "@/experiments/dangler/frame"
+import { gustEnvelope, scheduleGusts, type Gust } from "@/experiments/dangler/wind"
 import { buildArrangement } from "@/experiments/dangler/arrangement"
 import {
   DEFAULT_SETTINGS,
@@ -297,6 +298,53 @@ const ok = (name: string, pass: boolean, detail = "") => {
     ok(`preset "${preset.label}" is within bounds as written`, clamped.length === 0, clamped.join(", "))
   }
   ok("preset labels are unique", new Set(PRESETS.map((p) => p.label)).size === PRESETS.length)
+}
+
+// 11. gusts — an event lasting a couple of seconds, which no still frame can show
+{
+  const out: Gust[] = []
+  scheduleGusts(7, 0, 0, out)
+  ok("no gusts at rate 0", out.length === 0)
+
+  // Every gust must eventually be scheduled, and each exactly once.
+  const starts = new Set<number>()
+  for (let t = 0; t < 600; t += 0.25) {
+    scheduleGusts(7, t, 6, out)
+    for (const g of out) starts.add(Math.round(g.start * 1000))
+  }
+  const expected = Math.floor(600 / (60 / 6))
+  ok(
+    "gusts arrive at about the requested rate",
+    Math.abs(starts.size - expected) <= 2,
+    `${starts.size} in 600s, wanted ~${expected}`,
+  )
+
+  // Determinism: the same seed and clock must give the same weather.
+  const a: Gust[] = []
+  const b: Gust[] = []
+  scheduleGusts(7, 123.4, 6, a)
+  scheduleGusts(7, 123.4, 6, b)
+  ok("gusts are deterministic", JSON.stringify(a) === JSON.stringify(b))
+  scheduleGusts(8, 123.4, 6, b)
+  ok("a different seed gives different weather", JSON.stringify(a) !== JSON.stringify(b))
+
+  // A gust in play must not be dropped from the schedule while it still matters.
+  let widestGap = 0
+  for (let t = 0; t < 300; t += 0.05) {
+    scheduleGusts(7, t, 6, out)
+    const strongest = Math.max(0, ...out.map((g) => gustEnvelope(t - g.start)))
+    if (strongest < 0.02) widestGap += 0.05
+  }
+  ok("gusts do not leave the scene calm forever", widestGap < 300, `${widestGap.toFixed(1)}s of 300 calm`)
+
+  ok("envelope is silent before the gust", gustEnvelope(-1) === 0 && gustEnvelope(0) === 0)
+  const peak = Math.max(...Array.from({ length: 2000 }, (_, i) => gustEnvelope(i / 200)))
+  ok("envelope peaks at 1, so `gust` means what it says", Math.abs(peak - 1) < 0.005, peak.toFixed(5))
+  ok(
+    "envelope rises fast and falls slow",
+    gustEnvelope(0.35) > 0.9 && gustEnvelope(3) < 0.25 && gustEnvelope(8) < 0.01,
+    `0.35s=${gustEnvelope(0.35).toFixed(2)} 3s=${gustEnvelope(3).toFixed(2)} 8s=${gustEnvelope(8).toFixed(3)}`,
+  )
 }
 
 console.log(failures === 0 ? "\nall good" : `\n${failures} FAILING`)

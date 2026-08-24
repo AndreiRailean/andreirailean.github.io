@@ -15,6 +15,7 @@ import { createFrames, updateFrames, type Frames } from "@/experiments/dangler/f
 import { GROUND, VIGNETTE } from "@/experiments/dangler/palette"
 import { createRopes, FIXED_DT, type Ropes } from "@/experiments/dangler/rope"
 import { needsRebuild, type Settings } from "@/experiments/dangler/settings"
+import { createWind } from "@/experiments/dangler/wind"
 
 export type DanglerStats = {
   wires: number
@@ -41,15 +42,6 @@ export type Dangler = {
   /** Draws the wires and anchors that are normally invisible. */
   setDebug: (on: boolean) => void
 }
-
-/**
- * Peak wind acceleration at `breeze` 1, in world units per second².
- *
- * Against gravity's 9.81 this tilts a wire by up to about eighteen degrees,
- * which is a stiff breeze rather than a gale — the brief asked for a light one
- * and the top of the slider should still be recognisable as wind.
- */
-const WIND_STRENGTH = 3.2
 
 /**
  * Most simulation steps allowed to make up one frame.
@@ -98,8 +90,9 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
   let drawnBeads = 0
   /** Set when the picture needs repainting without anything having moved. */
   let dirty = true
+  const wind = createWind()
   /** Reused, so sampling the wind allocates nothing however many wires there are. */
-  const gust = { x: 0, y: 0, z: 0 }
+  const air = { x: 0, y: 0, z: 0 }
 
   /**
    * Reduced motion gets a still frame, not a slowed one.
@@ -109,10 +102,10 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
    * behaviour, so the preference is expressed by pinning two settings.
    */
   function withMotionPreference(next: Settings): Settings {
-    return stillOnly.matches ? { ...next, breeze: 0, flicker: 0 } : next
+    return stillOnly.matches ? { ...next, breeze: 0, gust: 0, flicker: 0 } : next
   }
 
-  const isAnimated = () => settings.breeze > 0 || settings.flicker > 0
+  const isAnimated = () => settings.breeze > 0 || settings.gust > 0 || settings.flicker > 0
 
   function resize(): void {
     const nextWidth = canvas.clientWidth || window.innerWidth
@@ -165,38 +158,16 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
   /**
    * The wind at one wire, sampled once for the whole of it.
    *
-   * A breeze varies over metres, not over the centimetres between two particles,
-   * so there is nothing to gain from sampling per particle. The lag down a wire
-   * comes from the chain itself: the force is applied hardest at the free end and
-   * the anchor holds the top, so the wire swings rather than being shunted.
-   *
-   * Layered sines rather than noise, because they are cheap, smooth, and never
-   * repeat at any period anyone will sit through. Position enters the phase, so a
-   * gust crosses the canopy instead of arriving everywhere at once.
+   * A breeze varies over metres, not over the centimetres between two
+   * particles, so there is nothing to gain from sampling per particle. The lag
+   * down a wire comes from the chain itself: the force is applied hardest at the
+   * free end and the anchor holds the top, so the wire swings and its tip trails
+   * rather than the whole thing being shunted sideways.
    */
   function windAt(wire: number): { x: number; y: number; z: number } {
     const anchor = arrangement.specs[wire].anchor
-    const t = clock
-    const strength = settings.breeze * WIND_STRENGTH
-
-    // A slowly turning prevailing direction, so the scene has a wind rather than
-    // a jitter, with gusts riding on top of it.
-    const prevailing = 0.37 * t
-    const steady = 0.55 + 0.45 * Math.sin(0.11 * t)
-
-    gust.x =
-      strength *
-      (steady * Math.cos(prevailing) +
-        0.6 * Math.sin(0.83 * t + anchor.x * 0.9 + anchor.y * 0.4) +
-        0.3 * Math.sin(1.9 * t + anchor.y * 1.7))
-    gust.y =
-      strength *
-      (steady * Math.sin(prevailing) +
-        0.6 * Math.sin(0.71 * t + anchor.y * 0.8 - anchor.x * 0.5 + 2.1) +
-        0.3 * Math.sin(2.3 * t + anchor.x * 1.5 + 0.7))
-    // A little vertical, so wires lift slightly rather than only swinging.
-    gust.z = strength * 0.15 * Math.sin(0.53 * t + anchor.x + anchor.y)
-    return gust
+    wind.at(anchor.x, anchor.y, air)
+    return air
   }
 
   /** Interpolates a bulb's world position and the direction it points. */
@@ -391,7 +362,8 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
     let moved = false
     if (isAnimated()) {
       clock += elapsed
-      moved = advance(elapsed, settings.breeze > 0)
+      wind.update(settings, clock)
+      moved = advance(elapsed, wind.blowing())
     } else if (!ropes.atRest()) {
       moved = advance(elapsed, false)
     }

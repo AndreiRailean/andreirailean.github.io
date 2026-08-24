@@ -35,6 +35,8 @@ export type Settings = {
   falloff: number
   flicker: number
   breeze: number
+  gust: number
+  gustRate: number
 }
 
 export type NumericKey = keyof Settings
@@ -280,6 +282,26 @@ export const CONTROLS: Control[] = [
   },
   {
     group: "motion",
+    key: "gust",
+    label: "gust",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    format: (v) => v.toFixed(2),
+    hint: "Strength of the bursts that arrive on top of the breeze. A gust hits hard and leaves the wires to settle, which is what makes it an event rather than the wind briefly picking up — set the breeze to 0 and this alone gives long calms broken by a shove. The front crosses the canopy, so the wires are thrown very nearly together.",
+  },
+  {
+    group: "motion",
+    key: "gustRate",
+    label: "gust rate",
+    min: 0.5,
+    max: 30,
+    step: 0.5,
+    format: (v) => `${v.toFixed(1)}/min`,
+    hint: "How often a gust arrives, on average. Each one is jittered within its slot and varies in strength and direction, so this is a rate rather than a metronome. Slow and strong is a different piece from fast and weak.",
+  },
+  {
+    group: "motion",
     key: "breeze",
     label: "breeze",
     min: 0,
@@ -318,6 +340,8 @@ export const DEFAULT_SETTINGS: Settings = {
   falloff: 0.5,
   flicker: 0,
   breeze: 0,
+  gust: 0,
+  gustRate: 6,
 }
 
 /**
@@ -359,6 +383,8 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       falloff: 0.34,
       flicker: 0.48,
       breeze: 0.2,
+      gust: 0,
+      gustRate: 6,
     },
   },
   {
@@ -395,6 +421,8 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       falloff: 0.34,
       flicker: 0.48,
       breeze: 0.51,
+      gust: 0,
+      gustRate: 6,
     },
   },
   {
@@ -424,6 +452,8 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       falloff: 0.5,
       flicker: 0,
       breeze: 0,
+      gust: 0,
+      gustRate: 6,
     },
   },
 ]

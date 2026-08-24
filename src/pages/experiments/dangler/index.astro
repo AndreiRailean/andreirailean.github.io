@@ -122,14 +122,15 @@
         border-color: var(--ui-on-edge);
       }
 
-      /* Twenty-two rows is nearly twice what one screenful comfortably holds, so
-         the panel scrolls rather than the page growing under it. */
+      /* Two dozen rows, so the panel takes as much height as there is and only
+         scrolls when it genuinely cannot fit. The reserve is the chrome bar
+         below it plus its gap and the window inset. */
       .panel {
         display: flex;
         flex-direction: column;
-        gap: 0.3rem;
+        gap: 0.26rem;
         min-width: 23rem;
-        max-height: min(70vh, 34rem);
+        max-height: calc(100vh - 5.5rem);
         padding: 0.75rem 0.85rem;
         overflow-y: auto;
         overscroll-behavior: contain;
@@ -145,7 +146,7 @@
       }
 
       .group {
-        margin-top: 0.55rem;
+        margin-top: 0.5rem;
         color: var(--ui-heading);
         font-size: 0.6875rem;
         letter-spacing: 0.14em;

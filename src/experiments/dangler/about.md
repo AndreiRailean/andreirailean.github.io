@@ -63,7 +63,18 @@ decides whether a wire holds its curl or hangs plumb, and a plumb wire is
 invisible from below. **colour spread** runs from a string of nominally
 identical bulbs that measurably are not, up to a proper festive scatter.
 
-It opens dead still. **breeze** is there when you want it.
+It opens dead still. **breeze** is a steady wind; **gust** is bursts arriving on
+top of it. The two are worth thinking of as different weather rather than as
+more and less of the same thing — set the breeze to nothing, the gust high and
+the rate low, and you get long calms broken by a single shove that throws the
+whole canopy at once and then lets it settle.
+
+That one exists because of an accident. Nudging the canopy's **spread** while
+watching turned out to be far more interesting than the setting itself: moving
+the anchors teleports them, while the wires hanging below do not move, so the
+solver yanks every wire straight at the same instant. It is a whip crack, not a
+draught. Chasing that on purpose — tapping a slider to make the scene flinch —
+was a better argument for gusts than any amount of thinking about wind.
 
 While it is on screen it holds the display awake, the way a video does, since
 the point is to leave it running. Browsers only allow that on a secure
