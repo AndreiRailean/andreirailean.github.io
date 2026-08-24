@@ -106,7 +106,10 @@ export function buildArrangement(settings: Settings): Arrangement {
 
       hue[b] = settings.hue + wireHue + gaussian(colour) * settings.hueSpread * BEAD_SHARE
       brightness[b] = Math.max(0.15, 1 + (wireBright + gaussian(colour) * settings.variance * BEAD_SHARE) * 0.4)
-      saturation[b] = Math.min(1.4, Math.max(0, 1 + (wireSat + gaussian(colour) * settings.variance * BEAD_SHARE) * 0.5))
+      saturation[b] = Math.min(
+        1.4,
+        Math.max(0, 1 + (wireSat + gaussian(colour) * settings.variance * BEAD_SHARE) * 0.5),
+      )
 
       flickerPhase[b] = beads() * 2 * Math.PI
       flickerRate[b] = 0.12 + beads() * 0.45

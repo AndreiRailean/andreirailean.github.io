@@ -51,8 +51,15 @@ export type Ropes = {
   update: (specs: WireSpec[]) => void
   /** One fixed simulation step. */
   step: (wind: Wind | null) => void
-  /** Runs to rest with heavy damping, then zeroes every velocity. */
-  settle: (maxSteps?: number) => void
+  /**
+   * Runs to rest with heavy damping, then zeroes every velocity.
+   *
+   * `only` restricts it to some wires. A rebuild that appends wires settles just
+   * the new ones: settling everything would zero the velocity of the wires
+   * already on screen, so adding one to a scene in a breeze would visibly calm
+   * all the rest.
+   */
+  settle: (only?: readonly number[]) => void
   /** Largest violation of a link's rest length, in world units. */
   maxError: () => number
   /** Whether the scene is still visibly moving. */
@@ -100,6 +107,15 @@ const SOLVER_ITERATIONS = 5
  * to converge to.
  */
 const LINK_ONLY_PASSES = 1
+
+/**
+ * Hard stop on settling, in steps.
+ *
+ * Only a backstop: settling normally exits as soon as the scene falls still.
+ * At 480Hz this is a little over eight seconds of simulated time, which no
+ * reachable configuration needs.
+ */
+const SETTLE_STEP_CAP = 4000
 
 /** Below this speed, in world units per second, nothing is worth redrawing for. */
 const REST_SPEED = 0.0008
@@ -305,11 +321,11 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
     }
   }
 
-  function integrate(damping: number, wind: Wind | null): void {
+  function integrate(damping: number, wind: Wind | null, only: readonly number[]): void {
     const dt2 = FIXED_DT * FIXED_DT
     let fastest = 0
 
-    for (let w = 0; w < wireCount; w++) {
+    for (const w of only) {
       // Sampled once per wire, not once per particle. A breeze varies over
       // metres; the along-wire lag comes from the chain, not from the field.
       const gust = wind ? wind(w) : null
@@ -368,11 +384,11 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
    * and letting the links have the final word costs nothing and converges some
    * hundredfold better.
    */
-  function solve(): void {
+  function solve(only: readonly number[]): void {
     for (let pass = 0; pass < SOLVER_ITERATIONS; pass++) {
       const downward = pass % 2 === 0
 
-      for (let w = 0; w < wireCount; w++) {
+      for (const w of only) {
         const start = offset[w]
         const end = offset[w + 1]
         const rest = segLength[w]
@@ -461,7 +477,7 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
       }
     }
 
-    error = residual()
+    error = residual(only)
   }
 
   /**
@@ -472,9 +488,9 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
    * other, so a number taken between them describes a state the wire is never
    * actually in.
    */
-  function residual(): number {
+  function residual(only: readonly number[]): number {
     let worst = 0
-    for (let w = 0; w < wireCount; w++) {
+    for (const w of only) {
       const rest = segLength[w]
       for (let i = offset[w]; i < offset[w + 1] - 1; i++) {
         const gap = Math.abs(Math.hypot(px[i + 1] - px[i], py[i + 1] - py[i], pz[i + 1] - pz[i]) - rest)
@@ -483,6 +499,8 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
     }
     return worst
   }
+
+  const everyWire = Array.from({ length: wireCount }, (_, w) => w)
 
   readSpecs()
 
@@ -524,22 +542,29 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
     },
 
     step(wind) {
-      integrate(DAMPING, wind)
-      solve()
+      integrate(DAMPING, wind, everyWire)
+      solve(everyWire)
     },
 
-    settle(maxSteps = 4000) {
+    settle(only = everyWire) {
+      if (only.length === 0) return
+
       // Runs to rest rather than for a fixed count, because how long a scene
       // takes to fall still depends on how long and how limp its wires are.
-      for (let i = 0; i < maxSteps; i++) {
-        integrate(SETTLE_DAMPING, null)
-        solve()
+      for (let i = 0; i < SETTLE_STEP_CAP; i++) {
+        integrate(SETTLE_DAMPING, null, only)
+        solve(only)
         if (!moving && i > 8) break
       }
-      ox.set(px)
-      oy.set(py)
-      oz.set(pz)
-      moving = false
+
+      for (const w of only) {
+        const from = offset[w]
+        const to = offset[w + 1]
+        ox.set(px.subarray(from, to), from)
+        oy.set(py.subarray(from, to), from)
+        oz.set(pz.subarray(from, to), from)
+      }
+      moving = only.length < wireCount
     },
 
     maxError: () => error,
