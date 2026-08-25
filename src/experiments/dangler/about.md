@@ -41,6 +41,13 @@ as one object and start reading as a random spray. Pinned to a surface,
 neighbouring wires hang from similar heights, because that is what being
 attached to the same thing means.
 
+They need not be spread evenly across it. **branches** strings them along a few
+arms instead, the way lights actually get slung over a tree rather than
+distributed by a machine. Each arm starts away from the trunk and has its own
+reach, sweep and droop, so a handful of them reads as several separate danglers
+rather than one mass — the arms converging on a single point is exactly what
+makes an arrangement look like one object, however many arms it has.
+
 Bulbs sit on the sides of the wire rather than on its centreline, alternating as
 they descend, and each one is dimmed by **how squarely it faces you**. An LED
 throws its light along its own axis. That single dot product is why a real
@@ -153,6 +160,13 @@ measuring something rather than by looking at it.
   the animation loop parks itself — but resizing a canvas clears it, and a parked
   loop never drew again. Anything that changes the picture without moving a
   particle now asks for one more frame.
+- **A control that did nothing at all, for months.** `flicker` drew each bulb a
+  rate and then used it as radians per second where it had been written as
+  cycles per second. Every bulb was therefore wavering with a period of between
+  eleven and fifty seconds — technically working, utterly invisible, and lost
+  under any other movement. Nothing in the code looked wrong and no screenshot
+  could show it; it took someone turning the control to maximum, staring at a
+  single bulb, and reporting that nothing happened.
 - **A screenshot could not tell a settled wire from a falling one.** Stills taken
   while the scene was still relaxing showed shapes it never actually holds, and
   nothing in the image said so. The scene reports how far its links are from

@@ -59,6 +59,12 @@ screen — a wrong wire and a right one both look like a scatter of dots.
   shape and its colour from separately salted generators. Break this and raising
   the wire count reshuffles the wires already on screen — the same class of bug
   as Starry Night resetting every layer's phase on a settings change.
+- **Anything with a rate needs its units asserted, not eyeballed.** `flicker`
+  drew a rate in hertz and used it as radians per second, so every bulb wavered
+  with a period of eleven to fifty seconds. The control was live, the maths was
+  fine, and it was invisible — a whole class of bug that neither a type checker
+  nor a screenshot can reach. `checks.ts` now asserts the _timescale_ a viewer
+  would experience, which is the only thing that would have caught it.
 - **Anchor motion must be coherent, or the piece makes people queasy.** This is
   the one failure here that was found by a human rather than by measurement.
   `tremble` moves each anchor independently and reads as the _observer_ being

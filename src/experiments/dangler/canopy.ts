@@ -29,6 +29,8 @@ export type CanopyShape = {
   ceiling: number
   /** How far the surface departs from that mean. 0 is a flat ceiling. */
   relief: number
+  /** Arms the anchors are strung along. 0 spreads them evenly instead. */
+  branches: number
 }
 
 const smoothstep = (t: number) => t * t * (3 - 2 * t)
@@ -54,6 +56,7 @@ export function makeCanopy(seed: number, shape: CanopyShape): Canopy {
   const offsetU = offsets()
   const offsetV = offsets()
 
+  const branchSalt = hashSeed(seed, 0xb2a4c)
   const coarseSalt = hashSeed(seed, 0xc0a125)
   const fineSalt = hashSeed(seed, 0xf19e)
 
@@ -68,11 +71,57 @@ export function makeCanopy(seed: number, shape: CanopyShape): Canopy {
     return shape.ceiling + shape.relief * (lumps + ripple)
   }
 
+  const branches = Math.max(0, Math.round(shape.branches))
+
+  /**
+   * Where one arm of the canopy runs.
+   *
+   * Arms start well away from the trunk rather than at it, which is what makes
+   * them read as separate clumps rather than as spokes on a wheel — the same
+   * arrangement converging on a single point looks like one object, however many
+   * arms it has. Each gets its own reach, sweep and height, so the canopy has a
+   * shape instead of a symmetry.
+   */
+  function arm(index: number) {
+    const rng = makeRng(hashSeed(branchSalt, index))
+    const share = (2 * Math.PI) / Math.max(1, branches)
+    return {
+      // Evenly spaced, then jittered — enough to avoid a rosette, not enough to
+      // let two arms collapse onto each other.
+      heading: index * share + (rng() - 0.5) * share * 0.65,
+      inner: shape.extent * (0.16 + 0.14 * rng()),
+      reach: shape.extent * (0.62 + 0.38 * rng()),
+      sweep: (rng() - 0.5) * 1.2,
+      lift: (rng() - 0.5) * shape.relief * 0.9,
+      droop: shape.relief * 0.45 * rng(),
+    }
+  }
+
   return {
     anchorFor(index) {
       const [u, v] = r2Point(index, offsetU, offsetV)
-      const [x, y] = discPoint(u, v, shape.extent)
-      return { x, y, z: heightAt(x, y) }
+
+      if (branches < 1) {
+        const [x, y] = discPoint(u, v, shape.extent)
+        return { x, y, z: heightAt(x, y) }
+      }
+
+      // Round-robin, so an arm's membership depends on the anchor's index and
+      // never on how many anchors exist — raising the wire count still adds
+      // wires rather than redealing the ones already hanging.
+      const branch = arm(index % branches)
+      const along = u
+      const radius = branch.inner + (branch.reach - branch.inner) * along
+      const heading = branch.heading + branch.sweep * along
+      // A little to either side of the arm, so bulbs hang off it rather than
+      // threading through its exact centre.
+      const offset = shape.extent * 0.055 * (v * 2 - 1)
+
+      const x = Math.cos(heading) * radius - Math.sin(heading) * offset
+      const y = Math.sin(heading) * radius + Math.cos(heading) * offset
+      // Arms bend down toward their tips, which is most of what keeps a branch
+      // from reading as a rod.
+      return { x, y, z: heightAt(x, y) + branch.lift - branch.droop * along * along }
     },
   }
 }

@@ -8,7 +8,7 @@
  * it with a fresh one.
  */
 
-import { buildArrangement, type Arrangement } from "@/experiments/dangler/arrangement"
+import { buildArrangement, flickerAt, type Arrangement } from "@/experiments/dangler/arrangement"
 import { createBeads, type Beads } from "@/experiments/dangler/beads"
 import { makeCamera, nearFade, project, type Camera } from "@/experiments/dangler/camera"
 import { createFrames, updateFrames, type Frames } from "@/experiments/dangler/frame"
@@ -311,10 +311,7 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
       }
 
       if (flickering) {
-        const rate = arrangement.flickerRate[i]
-        const phase = arrangement.flickerPhase[i]
-        const wander = 0.62 * Math.sin(clock * rate + phase) + 0.38 * Math.sin(clock * rate * 2.37 + phase * 1.7)
-        brightness *= 1 + settings.flicker * 0.45 * wander
+        brightness *= flickerAt(arrangement.flickerRate[i], arrangement.flickerPhase[i], clock, settings.flicker)
       }
 
       if (brightness <= 0) continue

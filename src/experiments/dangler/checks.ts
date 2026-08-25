@@ -31,7 +31,7 @@ import { createRopes } from "@/experiments/dangler/rope"
 import { createFrames, updateFrames } from "@/experiments/dangler/frame"
 import { createSway } from "@/experiments/dangler/sway"
 import { canopyTremble, gustEnvelope, scheduleGusts, TREMBLE_REACH, type Gust } from "@/experiments/dangler/wind"
-import { buildArrangement } from "@/experiments/dangler/arrangement"
+import { buildArrangement, flickerAt } from "@/experiments/dangler/arrangement"
 import {
   DEFAULT_SETTINGS,
   PRESETS,
@@ -80,7 +80,7 @@ const ok = (name: string, pass: boolean, detail = "") => {
 
 // 3. THE invariant: anchor i does not move as wire count grows
 {
-  const shape = { extent: 2.6, ceiling: 4, relief: 0.9 }
+  const shape = { extent: 2.6, ceiling: 4, relief: 0.9, branches: 0 }
   const small = makeCanopy(7, shape)
   const big = makeCanopy(7, shape)
   let same = true
@@ -111,7 +111,7 @@ const ok = (name: string, pass: boolean, detail = "") => {
 
 // 4. anchors spread over the disc and heights correlate with position
 {
-  const c = makeCanopy(7, { extent: 2.6, ceiling: 4, relief: 0.9 })
+  const c = makeCanopy(7, { extent: 2.6, ceiling: 4, relief: 0.9, branches: 0 })
   let maxR = 0,
     minZ = 99,
     maxZ = -99
@@ -124,7 +124,7 @@ const ok = (name: string, pass: boolean, detail = "") => {
   ok("anchors stay inside the canopy disc", maxR <= 2.6 + 1e-6, `maxR=${maxR.toFixed(3)}`)
   ok("relief actually varies height", maxZ - minZ > 0.2, `z ∈ [${minZ.toFixed(2)}, ${maxZ.toFixed(2)}]`)
 
-  const flat = makeCanopy(7, { extent: 2.6, ceiling: 4, relief: 0 })
+  const flat = makeCanopy(7, { extent: 2.6, ceiling: 4, relief: 0, branches: 0 })
   ok(
     "relief 0 is a flat ceiling",
     [0, 1, 2, 3].every((i) => Math.abs(flat.anchorFor(i).z - 4) < 1e-6),
@@ -386,7 +386,7 @@ const ok = (name: string, pass: boolean, detail = "") => {
 
 // 13. sway — coherent where tremble is not, which is the entire difference
 {
-  const anchors = makeCanopy(7, { extent: 2.4, ceiling: 4.2, relief: 0.9 })
+  const anchors = makeCanopy(7, { extent: 2.4, ceiling: 4.2, relief: 0.9, branches: 0 })
   const rest = Array.from({ length: 30 }, (_, i) => anchors.anchorFor(i))
   const out = { x: 0, y: 0, z: 0 }
 
@@ -473,6 +473,100 @@ const ok = (name: string, pass: boolean, detail = "") => {
     "the canopy overshoots upright after a gust, rather than gliding back",
     Math.max(...lean) > 0.05 && Math.min(...lean) < -0.005,
     `swings +${Math.max(...lean).toFixed(3)} then ${Math.min(...lean).toFixed(3)}`,
+  )
+}
+
+// 14. flicker — on a timescale a person can actually see
+{
+  ok("flicker 0 leaves a bulb exactly steady", flickerAt(1, 0.4, 3.3, 0) === 1 && flickerAt(1, 0.4, 9.1, 0) === 1)
+
+  const arrangement = buildArrangement(normalizeSettings({ wires: 4, beads: 12, flicker: 1 }))
+  let slowest = Infinity
+  let fastest = 0
+  for (let i = 0; i < arrangement.beadCount; i++) {
+    slowest = Math.min(slowest, arrangement.flickerRate[i])
+    fastest = Math.max(fastest, arrangement.flickerRate[i])
+  }
+  // The bug this replaces put a cycle at eleven to fifty seconds, which is not
+  // a flicker and is invisible under any other motion in the piece.
+  ok("even the slowest bulb cycles within a few seconds", 1 / slowest < 4, `${(1 / slowest).toFixed(2)}s`)
+  ok("even the fastest bulb is not a strobe", 1 / fastest > 0.25, `${(1 / fastest).toFixed(2)}s`)
+
+  // Sample one bulb and ask what a viewer would actually see.
+  const rate = arrangement.flickerRate[0]
+  const phase = arrangement.flickerPhase[0]
+  let low = Infinity
+  let high = -Infinity
+  let biggestSecond = 0
+  for (let t = 0; t < 20; t += 0.01) {
+    const v = flickerAt(rate, phase, t, 1)
+    low = Math.min(low, v)
+    high = Math.max(high, v)
+    biggestSecond = Math.max(biggestSecond, Math.abs(v - flickerAt(rate, phase, t + 1, 1)))
+  }
+  ok("flicker swings a bulb's brightness substantially", high - low > 0.5, `${low.toFixed(2)}..${high.toFixed(2)}`)
+  ok("and does so within a single second", biggestSecond > 0.3, `${biggestSecond.toFixed(2)} in 1s`)
+
+  let halfAmplitude = 0
+  for (let t = 0; t < 20; t += 0.01)
+    halfAmplitude = Math.max(halfAmplitude, Math.abs(flickerAt(rate, phase, t, 0.5) - 1))
+  ok("the control scales it", Math.abs(halfAmplitude - (high - 1) / 2) < 0.02, halfAmplitude.toFixed(3))
+}
+
+// 15. branches — clumps that stay put as the scene grows
+{
+  const shape = { extent: 2.4, ceiling: 4.2, relief: 0.9, branches: 5 }
+  const clustered = makeCanopy(7, shape)
+
+  // Still the invariant that matters most: an anchor belongs to the seed and its
+  // own index, never to how many anchors were asked for.
+  const few = Array.from({ length: 6 }, (_, i) => clustered.anchorFor(i))
+  const many = Array.from({ length: 60 }, (_, i) => clustered.anchorFor(i))
+  ok(
+    "clustered anchor i does not move as the count grows",
+    few.every((a, i) => a.x === many[i].x && a.y === many[i].y && a.z === many[i].z),
+  )
+
+  const anchors = Array.from({ length: 60 }, (_, i) => clustered.anchorFor(i))
+  ok(
+    "clustered anchors stay inside the canopy",
+    anchors.every((a) => Math.hypot(a.x, a.y) <= shape.extent + 1e-6),
+  )
+
+  // Members of one arm should sit closer together than anchors picked at random,
+  // or there are no clumps and the control does nothing.
+  const spread = (list: typeof anchors) => {
+    let total = 0
+    let n = 0
+    for (let i = 0; i < list.length; i++)
+      for (let j = i + 1; j < list.length; j++) {
+        total += Math.hypot(list[i].x - list[j].x, list[i].y - list[j].y)
+        n++
+      }
+    return total / n
+  }
+  const oneArm = anchors.filter((_, i) => i % 5 === 0)
+  ok(
+    "an arm's anchors clump together",
+    spread(oneArm) < spread(anchors) * 0.75,
+    `arm ${spread(oneArm).toFixed(2)}m vs all ${spread(anchors).toFixed(2)}m`,
+  )
+
+  // Arms must not all converge on the trunk, or they read as one object.
+  ok(
+    "arms keep clear of the trunk",
+    anchors.every((a) => Math.hypot(a.x, a.y) > shape.extent * 0.1),
+    `nearest ${Math.min(...anchors.map((a) => Math.hypot(a.x, a.y))).toFixed(3)}m`,
+  )
+
+  const even = makeCanopy(7, { ...shape, branches: 0 })
+  ok(
+    "branches off is the old even scatter, so recorded scenes are untouched",
+    [0, 1, 2, 17].every((i) => {
+      const a = even.anchorFor(i)
+      const b = makeCanopy(7, { extent: 2.4, ceiling: 4.2, relief: 0.9, branches: 0 }).anchorFor(i)
+      return a.x === b.x && a.y === b.y && a.z === b.z
+    }),
   )
 }
 

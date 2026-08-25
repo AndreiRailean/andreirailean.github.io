@@ -24,6 +24,25 @@ const SALT_BEADS = 0xbead
 /** Beads start a little below the anchor; a bulb never sits on the knot. */
 const BEAD_INSET = 0.08
 
+/**
+ * A bulb's brightness multiplier at `clock`, from its own rate and phase.
+ *
+ * Three incommensurate terms, so a bulb never settles into an obvious pulse.
+ * `rate` is in **hertz** — it was once written as hertz and then used as radians
+ * per second, which stretched a bulb's cycle to between eleven and fifty
+ * seconds. The control appeared to do nothing for its entire first life, which
+ * is why the timescale is asserted in `checks.ts` rather than eyeballed.
+ */
+export function flickerAt(rate: number, phase: number, clock: number, amount: number): number {
+  if (amount <= 0) return 1
+  const turn = clock * rate * Math.PI * 2
+  const wander =
+    0.55 * Math.sin(turn + phase) +
+    0.3 * Math.sin(turn * 2.37 + phase * 1.7) +
+    0.15 * Math.sin(turn * 4.13 + phase * 2.9)
+  return 1 + amount * 0.55 * wander
+}
+
 export type Arrangement = {
   specs: WireSpec[]
   beadCount: number
@@ -56,6 +75,7 @@ export function buildArrangement(settings: Settings): Arrangement {
     extent: settings.extent,
     ceiling: settings.ceiling,
     relief: settings.relief,
+    branches: settings.branches,
   })
 
   const specs: WireSpec[] = []
@@ -112,7 +132,11 @@ export function buildArrangement(settings: Settings): Arrangement {
       )
 
       flickerPhase[b] = beads() * 2 * Math.PI
-      flickerRate[b] = 0.12 + beads() * 0.45
+      // In hertz. It was written as though it were, and then used as radians
+      // per second, which put a bulb's cycle somewhere between eleven and fifty
+      // seconds — a slow tide rather than a flicker, and invisible under any
+      // other motion in the piece.
+      flickerRate[b] = 0.35 + beads() * 1.25
 
       b++
     }

@@ -19,6 +19,7 @@ export type Settings = {
   extent: number
   ceiling: number
   relief: number
+  branches: number
   length: number
   stiffness: number
   set: number
@@ -131,6 +132,16 @@ export const CONTROLS: Control[] = [
     step: 0.05,
     format: metres,
     hint: "How uneven the object above is. At 0 it is a flat ceiling and every wire starts at the same distance from you. Raise it and neighbouring anchors still stay close in height, because they are pinned to one lumpy surface rather than scattered independently.",
+  },
+  {
+    group: "canopy",
+    key: "branches",
+    label: "branches",
+    min: 0,
+    max: 14,
+    step: 1,
+    format: (v) => (v < 1 ? "off" : String(v)),
+    hint: "Arms the anchors are strung along, the way lights get slung over a few branches rather than scattered evenly. Off spreads them across the whole canopy. Each arm starts away from the trunk and has its own reach, sweep and height, so a handful of them reads as several separate clumps rather than one mass — and a low count with many wires gives a few dense danglers instead of one.",
   },
   {
     group: "wire",
@@ -280,7 +291,7 @@ export const CONTROLS: Control[] = [
     max: 1,
     step: 0.01,
     format: (v) => v.toFixed(2),
-    hint: "A slow, uneven drift in each bulb's brightness, each on its own clock. 0 leaves them perfectly steady, which is correct for LEDs and a little lifeless.",
+    hint: "Each bulb wavering in brightness on its own clock, somewhere between a third of a second and three seconds a cycle, and never on a regular pulse. 0 leaves them perfectly steady, which is correct for LEDs and a little lifeless. It reads most clearly with the wind turned down, where it is the only thing moving.",
   },
   {
     group: "motion",
@@ -342,6 +353,7 @@ export const DEFAULT_SETTINGS: Settings = {
   extent: 2.4,
   ceiling: 4.2,
   relief: 0.9,
+  branches: 0,
   // Length against ceiling is the ratio that decides the whole composition: it
   // is what sets how hard the strings fan out, and neither number means much
   // alone. Around three-quarters of the height is where the splay reads clearly
@@ -389,6 +401,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       extent: 3.2,
       ceiling: 3.8,
       relief: 1.2,
+      branches: 0,
       // Longer than the canopy is high, so the nearest bulbs fall past the
       // viewer and out of frame rather than resolving into a string.
       length: 4.75,
@@ -429,6 +442,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       // so roughly a fifth of the bulbs are culled at any moment and the rest
       // pass by very close.
       relief: 2,
+      branches: 0,
       length: 1.7,
       // No bend at all. Every wire hangs plumb, and the arrangement comes
       // entirely from where the anchors are and how the breeze moves them.
@@ -450,7 +464,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       gust: 0,
       gustRate: 6,
       tremble: 0,
-      sway: 0,
+      sway: 0.7,
     },
   },
   {
@@ -464,6 +478,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       extent: 0.2,
       ceiling: 1.8,
       relief: 1,
+      branches: 0,
       length: 0.65,
       stiffness: 0.63,
       set: 0.39,
