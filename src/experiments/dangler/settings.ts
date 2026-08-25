@@ -38,6 +38,7 @@ export type Settings = {
   gust: number
   gustRate: number
   tremble: number
+  sway: number
 }
 
 export type NumericKey = keyof Settings
@@ -303,6 +304,16 @@ export const CONTROLS: Control[] = [
   },
   {
     group: "motion",
+    key: "sway",
+    label: "sway",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    format: (v) => v.toFixed(2),
+    hint: "The whole canopy leaning, turning and rising under the wind, the way a tree does — and springing back past upright when a gust passes. It moves as one body, so every anchor keeps its position relative to every other; that coherence is what separates it from tremble, which moves each anchor on its own and reads as the observer being jostled rather than the scene moving. Needs breeze or gust to do anything, since a tree in still air does not move.",
+  },
+  {
+    group: "motion",
     key: "tremble",
     label: "tremble",
     min: 0,
@@ -354,6 +365,7 @@ export const DEFAULT_SETTINGS: Settings = {
   gust: 0,
   gustRate: 6,
   tremble: 0,
+  sway: 0,
 }
 
 /**
@@ -398,6 +410,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       gust: 0,
       gustRate: 6,
       tremble: 0,
+      sway: 0,
     },
   },
   {
@@ -437,6 +450,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       gust: 0,
       gustRate: 6,
       tremble: 0,
+      sway: 0,
     },
   },
   {
@@ -469,6 +483,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       gust: 1,
       gustRate: 9,
       tremble: 0,
+      sway: 0,
     },
   },
 ]

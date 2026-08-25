@@ -3,7 +3,7 @@ slug: dangler
 title: Dangler
 summary: Strings of lights hanging from something unseen overhead, looked at from directly below.
 started: 2026-08-24
-updated: 2026-08-24
+updated: 2026-08-25
 tags:
   - canvas
   - generative
@@ -67,8 +67,8 @@ It opens dead still, and there are three different ways to disturb it.
 **breeze** is a steady wind. **gust** is bursts arriving on top of it — set the
 breeze to nothing, the gust high and the rate low, and you get long calms broken
 by a single shove that throws the whole canopy at once and then lets it settle.
-**tremble** is not wind at all: it shakes the wires by their anchors, as though
-the branch above were shivering.
+**sway** and **tremble** are not wind at all — they move the wires by their
+anchors rather than blowing on them.
 
 All three exist because of an accident. Nudging the canopy's **spread** while
 watching turned out to be more interesting than the setting is — it shifts every
@@ -84,11 +84,30 @@ twenty-six millimetres of tip travel, where a steady gust was still climbing
 through nine hundred. That bound is not a limitation, it is the whole effect: a
 crowd stays a crowd and comes alive, rather than blowing outward.
 
-Which is why there are two controls rather than one. The tremble also has to run
-well clear of a hanging wire's own swing period, or the anchor stops shaking the
-wire and starts _pumping_ it — the first rates tried turned twenty-five
-millimetres of anchor travel into nearly half a metre of swing, which is the one
-thing it was meant not to do.
+Which is why moving the anchors is a control of its own. But _how_ they move
+turned out to matter far more than how far.
+
+**tremble** shakes each anchor independently, and it does not work. It reads as
+the observer being jostled rather than the scene moving — lights bolted to the
+ceiling of a lorry on a bad road, with nothing steady to hold on to. It is
+faintly nauseating, and no amount of making it gentler helps, because the
+problem is not the amount of movement. It is that the canopy stops being an
+object: once every anchor wanders on its own, there is no stable frame left to
+read the scene against.
+
+**sway** moves the whole canopy as one body — leaning about the trunk, turning a
+little, rising and falling — all of it driven by the wind and all of it
+returning to exactly where it started when the air goes still. A tree in wind
+moves a great deal while every branch keeps its relationship to every other, and
+that is the property being preserved: the lean and the turn are rigid rotations,
+so the distance between any two anchors does not change at all. It is
+underdamped, so a gust leaves it rocking back past upright a couple of times
+before it settles, which is most of what makes it read as something heavy.
+
+The difference is measurable, not only felt. Set forty wires going and ask how
+much their tips agree about which way to move: under sway they run at 0.64,
+where 1 would be every wire moving as one. Under tremble it is 0.22, and pure
+chance for forty wires would be 0.16.
 
 While it is on screen it holds the display awake, the way a video does, since
 the point is to leave it running. Browsers only allow that on a secure

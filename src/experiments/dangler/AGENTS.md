@@ -59,6 +59,15 @@ screen — a wrong wire and a right one both look like a scatter of dots.
   shape and its colour from separately salted generators. Break this and raising
   the wire count reshuffles the wires already on screen — the same class of bug
   as Starry Night resetting every layer's phase on a settings change.
+- **Anchor motion must be coherent, or the piece makes people queasy.** This is
+  the one failure here that was found by a human rather than by measurement.
+  `tremble` moves each anchor independently and reads as the _observer_ being
+  jostled, not the scene moving — the canopy stops being an object and there is
+  no stable frame left to read against. Gentler does not fix it; only coherence
+  does. `sway` carries the whole canopy rigidly, so anchor separations are
+  preserved to machine precision, and that check is in `checks.ts` precisely
+  because it is the property the module exists for. Anything new that moves
+  anchors must state which of the two it is being.
 - **Keep `tremble` well above a wire's swing period.** A hanging wire swings at
   well under 1Hz, and an anchor shaken near that pumps it instead of shivering
   it: at the rates first tried, 25mm of anchor travel produced 0.43m of tip

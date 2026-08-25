@@ -15,6 +15,7 @@ import { createFrames, updateFrames, type Frames } from "@/experiments/dangler/f
 import { GROUND, VIGNETTE } from "@/experiments/dangler/palette"
 import { createRopes, FIXED_DT, type Ropes } from "@/experiments/dangler/rope"
 import { needsRebuild, type Settings } from "@/experiments/dangler/settings"
+import { createSway } from "@/experiments/dangler/sway"
 import { canopyTremble, createWind } from "@/experiments/dangler/wind"
 
 export type DanglerStats = {
@@ -91,6 +92,7 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
   /** Set when the picture needs repainting without anything having moved. */
   let dirty = true
   const wind = createWind()
+  const sway = createSway()
   /** Reused, so sampling the wind allocates nothing however many wires there are. */
   const air = { x: 0, y: 0, z: 0 }
 
@@ -102,7 +104,7 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
    * behaviour, so the preference is expressed by pinning two settings.
    */
   function withMotionPreference(next: Settings): Settings {
-    return stillOnly.matches ? { ...next, breeze: 0, gust: 0, tremble: 0, flicker: 0 } : next
+    return stillOnly.matches ? { ...next, breeze: 0, gust: 0, tremble: 0, sway: 0, flicker: 0 } : next
   }
 
   const isAnimated = () => settings.breeze > 0 || settings.gust > 0 || settings.tremble > 0 || settings.flicker > 0
@@ -176,18 +178,44 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
    * Written straight into the solver's own array so this allocates nothing at
    * any wire count.
    */
-  function updateTremble(): void {
+  function updateAnchors(elapsed: number): void {
     const offsets = ropes.anchorOffsets
-    if (settings.tremble <= 0) {
+
+    // The canopy is driven by the wind at its centre, not per wire — it is one
+    // object, and sampling it per anchor would be the very incoherence this is
+    // here to avoid.
+    wind.at(0, 0, air)
+    sway.update(air.x, air.y, clock, elapsed, settings.sway)
+
+    const swaying = settings.sway > 0 && !sway.atRest()
+    if (!swaying && settings.tremble <= 0) {
       offsets.fill(0)
       return
     }
+
     for (let w = 0; w < ropes.wireCount; w++) {
       const anchor = arrangement.specs[w].anchor
-      canopyTremble(anchor.x, anchor.y, clock, settings.tremble, air)
-      offsets[w * 3] = air.x
-      offsets[w * 3 + 1] = air.y
-      offsets[w * 3 + 2] = air.z
+      let x = 0
+      let y = 0
+      let z = 0
+
+      if (swaying) {
+        sway.displace(anchor.x, anchor.y, anchor.z, air)
+        x = air.x
+        y = air.y
+        z = air.z
+      }
+
+      if (settings.tremble > 0) {
+        canopyTremble(anchor.x, anchor.y, clock, settings.tremble, air)
+        x += air.x
+        y += air.y
+        z += air.z
+      }
+
+      offsets[w * 3] = x
+      offsets[w * 3 + 1] = y
+      offsets[w * 3 + 2] = z
     }
   }
 
@@ -384,7 +412,7 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
     if (isAnimated()) {
       clock += elapsed
       wind.update(settings, clock)
-      updateTremble()
+      updateAnchors(elapsed)
       moved = advance(elapsed, wind.blowing())
     } else if (!ropes.atRest()) {
       moved = advance(elapsed, false)

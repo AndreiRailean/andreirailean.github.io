@@ -29,6 +29,7 @@ declare const process: { exit(code: number): never }
 import { makeCanopy } from "@/experiments/dangler/canopy"
 import { createRopes } from "@/experiments/dangler/rope"
 import { createFrames, updateFrames } from "@/experiments/dangler/frame"
+import { createSway } from "@/experiments/dangler/sway"
 import { canopyTremble, gustEnvelope, scheduleGusts, TREMBLE_REACH, type Gust } from "@/experiments/dangler/wind"
 import { buildArrangement } from "@/experiments/dangler/arrangement"
 import {
@@ -381,6 +382,98 @@ const ok = (name: string, pass: boolean, detail = "") => {
     previous = out.x
   }
   ok("tremble runs well above a wire's swing period", crossings / 2 / 10 > 2, `${(crossings / 2 / 10).toFixed(1)} Hz`)
+}
+
+// 13. sway — coherent where tremble is not, which is the entire difference
+{
+  const anchors = makeCanopy(7, { extent: 2.4, ceiling: 4.2, relief: 0.9 })
+  const rest = Array.from({ length: 30 }, (_, i) => anchors.anchorFor(i))
+  const out = { x: 0, y: 0, z: 0 }
+
+  /** Worst change in the distance between any two anchors, as a fraction. */
+  const worstStrain = (moved: { x: number; y: number; z: number }[]) => {
+    let worst = 0
+    for (let i = 0; i < rest.length; i++) {
+      for (let j = i + 1; j < rest.length; j++) {
+        const before = Math.hypot(rest[i].x - rest[j].x, rest[i].y - rest[j].y, rest[i].z - rest[j].z)
+        const after = Math.hypot(moved[i].x - moved[j].x, moved[i].y - moved[j].y, moved[i].z - moved[j].z)
+        if (before > 1e-6) worst = Math.max(worst, Math.abs(after - before) / before)
+      }
+    }
+    return worst
+  }
+
+  // Drive the canopy hard, then read the shape of the anchor cloud.
+  const sway = createSway()
+  let clock = 0
+  for (let i = 0; i < 400; i++) {
+    clock += 1 / 60
+    sway.update(9, 4, clock, 1 / 60, 1)
+  }
+  const swayed = rest.map((a) => {
+    sway.displace(a.x, a.y, a.z, out)
+    return { x: a.x + out.x, y: a.y + out.y, z: a.z + out.z }
+  })
+  let travelled = 0
+  for (let i = 0; i < rest.length; i++) {
+    travelled = Math.max(
+      travelled,
+      Math.hypot(swayed[i].x - rest[i].x, swayed[i].y - rest[i].y, swayed[i].z - rest[i].z),
+    )
+  }
+
+  ok("sway actually moves the canopy", travelled > 0.15, `${travelled.toFixed(3)}m`)
+  // The point of the whole module: lean, twist and bob are rotations and a
+  // translation, so the anchor cloud is carried rigidly and the observer keeps
+  // a frame to read the scene against.
+  ok(
+    "sway keeps every anchor pair exactly as far apart",
+    worstStrain(swayed) < 1e-5,
+    worstStrain(swayed).toExponential(1),
+  )
+
+  const trembled = rest.map((a) => {
+    canopyTremble(a.x, a.y, 3.3, 1, out)
+    return { x: a.x + out.x, y: a.y + out.y, z: a.z + out.z }
+  })
+  ok(
+    "tremble does not — it is a different thing on purpose",
+    worstStrain(trembled) > 1e-3,
+    worstStrain(trembled).toExponential(1),
+  )
+
+  // Still air must put it back exactly where it started, not merely near.
+  for (let i = 0; i < 3000; i++) {
+    clock += 1 / 60
+    sway.update(0, 0, clock, 1 / 60, 1)
+  }
+  sway.displace(rest[0].x, rest[0].y, rest[0].z, out)
+  ok(
+    "sway returns to centre in still air",
+    sway.atRest() && Math.hypot(out.x, out.y, out.z) < 1e-3,
+    `${Math.hypot(out.x, out.y, out.z).toExponential(1)}m off`,
+  )
+
+  const off = createSway()
+  off.update(9, 4, 1.5, 1 / 60, 0)
+  off.displace(rest[0].x, rest[0].y, rest[0].z, out)
+  ok("sway 0 is perfectly still", off.atRest() && out.x === 0 && out.y === 0 && out.z === 0)
+
+  // Underdamped: a gust should leave it rocking back past upright.
+  const kick = createSway()
+  let t = 0
+  const lean: number[] = []
+  for (let i = 0; i < 240; i++) {
+    t += 1 / 60
+    kick.update(i < 30 ? 14 : 0, 0, t, 1 / 60, 1)
+    kick.displace(0, 0, 4.2, out)
+    lean.push(out.x)
+  }
+  ok(
+    "the canopy overshoots upright after a gust, rather than gliding back",
+    Math.max(...lean) > 0.05 && Math.min(...lean) < -0.005,
+    `swings +${Math.max(...lean).toFixed(3)} then ${Math.min(...lean).toFixed(3)}`,
+  )
 }
 
 console.log(failures === 0 ? "\nall good" : `\n${failures} FAILING`)
