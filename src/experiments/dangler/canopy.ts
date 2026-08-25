@@ -76,11 +76,16 @@ export function makeCanopy(seed: number, shape: CanopyShape): Canopy {
   /**
    * Where one arm of the canopy runs.
    *
-   * Arms start well away from the trunk rather than at it, which is what makes
-   * them read as separate clumps rather than as spokes on a wheel — the same
-   * arrangement converging on a single point looks like one object, however many
-   * arms it has. Each gets its own reach, sweep and height, so the canopy has a
-   * shape instead of a symmetry.
+   * An arm covers nearly the whole radius, from just clear of the trunk out to
+   * the rim. Its first version held them back to the outer two thirds, so that
+   * they would read as separate clumps rather than as spokes on a wheel — but
+   * that gap scales with `spread`, so widening the canopy grew a bare disc in
+   * the middle and pushed every bulb toward the edge of the frame. At two arms
+   * it left the radius covered only from 0.45 to 1.51 of a possible 1.94.
+   *
+   * Separation comes from sweep instead, which costs no coverage: arms curve
+   * away from one another as they run, so they diverge without having to start
+   * apart.
    */
   function arm(index: number) {
     const rng = makeRng(hashSeed(branchSalt, index))
@@ -89,9 +94,9 @@ export function makeCanopy(seed: number, shape: CanopyShape): Canopy {
       // Evenly spaced, then jittered — enough to avoid a rosette, not enough to
       // let two arms collapse onto each other.
       heading: index * share + (rng() - 0.5) * share * 0.65,
-      inner: shape.extent * (0.16 + 0.14 * rng()),
-      reach: shape.extent * (0.62 + 0.38 * rng()),
-      sweep: (rng() - 0.5) * 1.2,
+      inner: shape.extent * (0.04 + 0.06 * rng()),
+      reach: shape.extent * (0.82 + 0.18 * rng()),
+      sweep: (rng() - 0.5) * 1.7,
       lift: (rng() - 0.5) * shape.relief * 0.9,
       droop: shape.relief * 0.45 * rng(),
     }

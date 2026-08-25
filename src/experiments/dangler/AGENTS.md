@@ -59,6 +59,24 @@ screen — a wrong wire and a right one both look like a scatter of dots.
   shape and its colour from separately salted generators. Break this and raising
   the wire count reshuffles the wires already on screen — the same class of bug
   as Starry Night resetting every layer's phase on a settings change.
+- **Never let a particle move more than a fraction of its segment in a step.**
+  Verlet reads velocity from the change in position, so a teleporting anchor is
+  indistinguishable from a cannon. Dragging the branch count moves anchors
+  metres, which produced tip speeds of 295 m/s that then _stayed_ there —
+  past about a segment per step the solver has no resolution left and the wire
+  spins indefinitely rather than damping out. `MAX_STEP_FRACTION` in `rope.ts`
+  caps it, well above any wind in the piece so legitimate motion is untouched.
+  Anything new that moves particles discontinuously needs this to stay in place.
+- **A settings change that moves anchors far must re-settle.** Small moves make
+  the pleasant snap that `gust` and `tremble` grew out of; large ones leave the
+  scene thrashing for half a minute and make a control impossible to explore
+  with. See `RESETTLE_ABOVE` in `dangler.ts`.
+- **Arms must span the radius, not the outer part of it.** Their first version
+  held them back to the outer two thirds so they would read as separate clumps,
+  but that gap scales with `spread`, so widening the canopy grew a bare disc in
+  the middle and drove every bulb toward the edge of the frame. Separation comes
+  from `sweep` instead, which costs no coverage. `checks.ts` asserts the span at
+  two arms, which is the hard case.
 - **Anything with a rate needs its units asserted, not eyeballed.** `flicker`
   drew a rate in hertz and used it as radians per second, so every bulb wavered
   with a period of eleven to fifty seconds. The control was live, the maths was

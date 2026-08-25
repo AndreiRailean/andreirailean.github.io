@@ -552,11 +552,28 @@ const ok = (name: string, pass: boolean, detail = "") => {
     `arm ${spread(oneArm).toFixed(2)}m vs all ${spread(anchors).toFixed(2)}m`,
   )
 
-  // Arms must not all converge on the trunk, or they read as one object.
+  // Arms have to cover the radius, or widening the canopy just grows a bare disc
+  // in the middle and pushes every bulb out of frame.
+  const radii = anchors.map((a) => Math.hypot(a.x, a.y))
   ok(
-    "arms keep clear of the trunk",
-    anchors.every((a) => Math.hypot(a.x, a.y) > shape.extent * 0.1),
-    `nearest ${Math.min(...anchors.map((a) => Math.hypot(a.x, a.y))).toFixed(3)}m`,
+    "arms reach in close to the trunk",
+    Math.min(...radii) < shape.extent * 0.16,
+    `nearest ${Math.min(...radii).toFixed(2)}m of ${shape.extent}m`,
+  )
+  ok(
+    "arms reach out to the rim",
+    Math.max(...radii) > shape.extent * 0.85,
+    `furthest ${Math.max(...radii).toFixed(2)}m of ${shape.extent}m`,
+  )
+
+  // Two arms is the hard case: few samples, so a narrow per-arm range shows up
+  // as poor coverage of the canopy as a whole.
+  const pair = Array.from({ length: 40 }, (_, i) => makeCanopy(7, { ...shape, branches: 2 }).anchorFor(i))
+  const pairRadii = pair.map((a) => Math.hypot(a.x, a.y))
+  ok(
+    "even two arms span most of the radius",
+    Math.min(...pairRadii) < shape.extent * 0.16 && Math.max(...pairRadii) > shape.extent * 0.8,
+    `${Math.min(...pairRadii).toFixed(2)}..${Math.max(...pairRadii).toFixed(2)} of ${shape.extent}m`,
   )
 
   const even = makeCanopy(7, { ...shape, branches: 0 })

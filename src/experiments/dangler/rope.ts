@@ -129,6 +129,26 @@ const LINK_ONLY_PASSES = 1
  */
 const SETTLE_STEP_CAP = 4000
 
+/**
+ * Furthest a particle may travel in one step, as a fraction of its own segment.
+ *
+ * Verlet reads velocity from the change in position, so anything that moves a
+ * particle discontinuously — above all an anchor teleporting when the canopy
+ * settings change — is indistinguishable from it having been fired out of a
+ * cannon. Dragging the branch count from 3 to 6 moves anchors up to 2.4m, which
+ * put tip speeds at 295 m/s and, far worse, *kept* them there: once a particle
+ * covers several segment lengths per step the solver has no resolution left, and
+ * the wire spins at a couple of hundred metres a second indefinitely rather than
+ * damping out. It never recovers on its own.
+ *
+ * Capping the implied velocity against the discretisation makes that
+ * unreachable. A third of a segment per step is around 23 m/s at default
+ * settings, which no wind in the piece comes close to — a gust moves a tip at
+ * one or two — so this never touches legitimate motion. It only stops the
+ * simulation destroying itself.
+ */
+const MAX_STEP_FRACTION = 0.35
+
 /** Below this speed, in world units per second, nothing is worth redrawing for. */
 const REST_SPEED = 0.0008
 
@@ -345,6 +365,7 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
       const start = offset[w]
       const end = offset[w + 1]
       const span = end - start - 1
+      const limit = segLength[w] * MAX_STEP_FRACTION
 
       // The anchor is pinned to the canopy: written, never integrated. Its
       // previous position is written too, so it carries no velocity of its own
@@ -367,9 +388,17 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
         const ay = gust ? gust.y * exposure : 0
         const az = (gust ? gust.z * exposure : 0) - GRAVITY
 
-        const vx = (px[i] - ox[i]) * damping
-        const vy = (py[i] - oy[i]) * damping
-        const vz = (pz[i] - oz[i]) * damping
+        let vx = (px[i] - ox[i]) * damping
+        let vy = (py[i] - oy[i]) * damping
+        let vz = (pz[i] - oz[i]) * damping
+
+        const travel = Math.hypot(vx, vy, vz)
+        if (travel > limit) {
+          const scale = limit / travel
+          vx *= scale
+          vy *= scale
+          vz *= scale
+        }
 
         ox[i] = px[i]
         oy[i] = py[i]

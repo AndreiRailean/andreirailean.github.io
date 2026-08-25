@@ -54,6 +54,20 @@ export type Dangler = {
 const MAX_SUBSTEPS = 12
 
 /**
+ * Anchor movement past which a settings change re-settles the scene, in world
+ * units.
+ *
+ * An anchor that moves teleports, and the wire below is left where it was, so
+ * the solver hauls it across. Small moves make a pleasant snap — nudging the
+ * canopy's spread is the nicest accident in the piece and is what `gust` and
+ * `tremble` came from. Large ones do not: changing the branch count moves
+ * anchors metres, which throws the wires far enough to leave the scene thrashing
+ * for half a minute and makes the control impossible to explore with. Above this
+ * the wires are simply put where they belong instead.
+ */
+const RESETTLE_ABOVE = 0.25
+
+/**
  * Narrowing a `const` does not reach into hoisted function declarations, and
  * every draw routine below is one — so the guard has to produce a non-null type
  * rather than assert one at the call site.
@@ -472,8 +486,17 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
 
     setSettings(next) {
       const before = settings
+      const previousAnchors = arrangement.specs.map(({ anchor }) => anchor)
       settings = withMotionPreference(next)
       arrangement = buildArrangement(settings)
+
+      let anchorTravel = 0
+      const shared = Math.min(previousAnchors.length, arrangement.specs.length)
+      for (let w = 0; w < shared; w++) {
+        const from = previousAnchors[w]
+        const to = arrangement.specs[w].anchor
+        anchorTravel = Math.max(anchorTravel, Math.hypot(to.x - from.x, to.y - from.y, to.z - from.z))
+      }
 
       if (needsRebuild(before, settings)) {
         const previousRopes = ropes
@@ -484,6 +507,7 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
         ropes.settle(ropes.freshWires)
       } else {
         ropes.update(arrangement.specs)
+        if (anchorTravel > RESETTLE_ABOVE) ropes.settle()
       }
 
       camera = makeCamera(settings.fieldOfView, settings.pitch, width, height)

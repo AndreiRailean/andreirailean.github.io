@@ -160,6 +160,15 @@ measuring something rather than by looking at it.
   the animation loop parks itself — but resizing a canvas clears it, and a parked
   loop never drew again. Anything that changes the picture without moving a
   particle now asks for one more frame.
+- **A wire that span at two hundred metres a second, for ever.** Moving the
+  anchors is how several of the nicest effects here work, but an anchor
+  _teleports_, and a simulation that infers velocity from the change in position
+  cannot tell that from a cannon. Changing the number of branches moves anchors
+  by metres, and the wires below did not merely lurch — past about one segment
+  length per step there is no resolution left to solve against, so they spun
+  indefinitely instead of damping out. Capping how far a particle may travel in
+  a single step fixed it, and sits far enough above any wind in the piece that
+  nothing else noticed.
 - **A control that did nothing at all, for months.** `flicker` drew each bulb a
   rate and then used it as radians per second where it had been written as
   cycles per second. Every bulb was therefore wavering with a period of between
