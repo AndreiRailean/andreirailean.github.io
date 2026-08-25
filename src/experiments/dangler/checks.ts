@@ -30,6 +30,7 @@ import { makeCanopy } from "@/experiments/dangler/canopy"
 import { createRopes, FIXED_DT } from "@/experiments/dangler/rope"
 import { createFrames, updateFrames } from "@/experiments/dangler/frame"
 import { createSway } from "@/experiments/dangler/sway"
+import { createWind } from "@/experiments/dangler/wind"
 import { canopyTremble, gustEnvelope, scheduleGusts, TREMBLE_REACH, type Gust } from "@/experiments/dangler/wind"
 import { buildArrangement, flickerAt } from "@/experiments/dangler/arrangement"
 import {
@@ -654,6 +655,91 @@ const ok = (name: string, pass: boolean, detail = "") => {
     shapeBefore.map((s, w) => (lengthOf(resampled, w) / s.length).toFixed(3)).join(" "),
   )
   ok("resampling reports nothing as freshly laid out", resampled.freshWires.length === 0)
+}
+
+// 17. frames must be steady in time, not only along the wire
+{
+  // A rotation-minimising frame is minimal along the *curve*. Nothing about
+  // that makes it steady from one rendered frame to the next, and when it is
+  // not, the bulbs riding it turn on their strings. Every other frame check
+  // here passes on a frame that is quietly rotating.
+  const settings = normalizeSettings({
+    wires: 24,
+    beads: 9,
+    segments: 26,
+    extent: 3.5,
+    ceiling: 4,
+    relief: 1.35,
+    branches: 7,
+    length: 4.45,
+    stiffness: 1,
+    set: 2.5,
+    twist: -0.13,
+    irregularity: 0.39,
+    breeze: 0.33,
+    gust: 0.1,
+    gustRate: 17,
+    seed: 398902,
+  })
+  const arrangement = buildArrangement(settings)
+  const ropes = createRopes(arrangement.specs)
+  ropes.settle()
+  const frames = createFrames(ropes.particleCount)
+  const wind = createWind()
+  const air = { x: 0, y: 0, z: 0 }
+  updateFrames(ropes, frames)
+
+  const previous = new Float32Array(ropes.particleCount * 3)
+  const remember = () => {
+    for (let i = 0; i < ropes.particleCount; i++) {
+      previous[i * 3] = frames.nx[i]
+      previous[i * 3 + 1] = frames.ny[i]
+      previous[i * 3 + 2] = frames.nz[i]
+    }
+  }
+  remember()
+
+  const turned = new Float64Array(ropes.particleCount)
+  let clock = 0
+  let worstJump = 0
+  for (let frame = 0; frame < 60 * 12; frame++) {
+    clock += 1 / 60
+    wind.update(settings, clock)
+    for (let i = 0; i < 8; i++) {
+      ropes.step((w) => {
+        const anchor = arrangement.specs[w].anchor
+        wind.at(anchor.x, anchor.y, air)
+        return air
+      })
+    }
+    updateFrames(ropes, frames)
+    for (let i = 0; i < ropes.particleCount; i++) {
+      const dot =
+        frames.nx[i] * previous[i * 3] + frames.ny[i] * previous[i * 3 + 1] + frames.nz[i] * previous[i * 3 + 2]
+      const step = Math.acos(Math.min(1, Math.max(-1, dot)))
+      turned[i] += step
+      if (step > worstJump) worstJump = step
+    }
+    remember()
+  }
+
+  let spinning = 0
+  for (let w = 0; w < ropes.wireCount; w++) {
+    let worst = 0
+    for (let i = ropes.offset[w]; i < ropes.offset[w + 1]; i++) worst = Math.max(worst, turned[i])
+    if (worst > Math.PI) spinning++
+  }
+
+  ok(
+    "frames do not turn on their own under wind",
+    spinning === 0,
+    `${spinning}/${ropes.wireCount} wires turned past half a revolution in 12s`,
+  )
+  ok(
+    "and never lurch between one frame and the next",
+    worstJump < Math.PI / 3,
+    `worst ${((worstJump * 180) / Math.PI).toFixed(0)}°`,
+  )
 }
 
 console.log(failures === 0 ? "\nall good" : `\n${failures} FAILING`)

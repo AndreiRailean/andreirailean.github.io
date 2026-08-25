@@ -44,6 +44,14 @@ screen — a wrong wire and a right one both look like a scatter of dots.
   pump energy in. **The cost is compliance**: a wire holds its shape and swings
   from its anchor as one piece rather than rippling. If the breeze ever needs
   more lag, that is the trade to revisit — not the exactness.
+- **A frame must be carried through time, not only along the wire.** A
+  rotation-minimising frame is minimal along the _curve_; nothing about that
+  makes it steady between rendered frames, and re-propagating it from the wire's
+  start each frame lets any change of shape accumulate into a large roll at the
+  free end. Bulbs ride that frame, so they visibly turn on their strings — and
+  the tip bulbs are the near, large ones. Every other frame check passed
+  throughout: perpendicular, unit, no flips _along_ the wire. `checks.ts` now
+  asserts the temporal property too, which is the only one that catches it.
 - **Never derive a frame from a direction inside a loop that walks a curve.**
   Picking two perpendiculars requires choosing a reference axis, and every choice
   flips somewhere on the sphere, folding the rest shape where the wire curls past
@@ -168,6 +176,22 @@ verbatim from Starry Night. ADR-0002 defers extracting anything shared until a
 second _and_ a third experiment exist; this is the second, so the duplication is
 the evidence for that decision rather than a shortcut around it. **Fix a bug in
 either copy and fix it in both.**
+
+## Known, not fixed
+
+**A tightly coiled wire in wind can still fold.** At `stiffness` 1 with `set`
+near its maximum, a few wires in a large scene buckle to 90°-plus at a joint
+whose rest angle is under 6°, and their frames re-seed when that happens —
+measured, four wires in eighty. The bend constraint transports each link's rest
+direction from _world space_, which leaves the wire's torsion unconstrained and
+ill-conditioned when a link swings far from where it started.
+
+The principled fix is to carry a frame along the wire inside the solver and
+express each rest turn in it, so the constraint depends only on the wire's local
+geometry and never on its orientation. That is a rework of the core constraint
+and has not been done. A maximum-curvature constraint was tried as a cheaper
+substitute and is not worth keeping: it moved the worst joint turn from 174° to
+166°, because the link pass that follows simply undoes it.
 
 ## Verifying a change
 

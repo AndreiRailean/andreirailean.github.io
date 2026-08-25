@@ -169,6 +169,16 @@ measuring something rather than by looking at it.
   indefinitely instead of damping out. Capping how far a particle may travel in
   a single step fixed it, and sits far enough above any wind in the piece that
   nothing else noticed.
+- **The bulbs turned on their strings.** Each bulb hangs off a frame carried
+  along its wire, and that frame is built to rotate as little as possible _along
+  the curve_ — which says nothing whatever about how much it rotates from one
+  moment to the next. Rebuilding it every frame let any change of shape
+  accumulate down the wire, so the frame at the free end swung even where
+  nothing was bent oddly, and the bulbs riding it went round and round. The
+  frame is now carried through time as well as along the wire. Every test of it
+  had passed throughout: it was perpendicular, it was a unit vector, it never
+  flipped between neighbours. None of them asked whether it was the same frame
+  as a moment ago.
 - **The cure for the spinning froze the whole page.** Wires thrown by a
   relocated anchor were fixed by settling the scene whenever the anchors moved
   far — which meant three seconds of frozen browser on every notch of a slider,

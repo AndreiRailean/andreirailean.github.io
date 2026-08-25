@@ -185,10 +185,20 @@ function rotateAxis(
 /**
  * Rotates `v` by the shortest rotation taking unit `a` onto unit `b`.
  *
- * This is what carries a wire's rest shape onto its current one. `k = a × b` is
- * left unnormalised on purpose: the identity below is exact for unit `a` and `b`
- * without it, and skipping the square root matters when this runs once per joint
- * per solver pass.
+ * This carries a wire's rest shape onto its current one, and it has to survive
+ * `a` and `b` being nearly opposite. They do go there: on a tightly coiled wire
+ * in wind, 2% of links end up pointing more than 90° from their own rest
+ * direction, and the worst measured was 0.998 of the way to antiparallel.
+ *
+ * The compact identity for this divides by `1 + a·b`, which at that angle is a
+ * factor of six hundred and almost entirely cancellation error. The result was
+ * a garbage target, so the bend constraint folded the wire into a 99° kink
+ * where its rest angle was under 6° — and every bulb on that wire whipped
+ * around it as the carried frame followed the fold.
+ *
+ * A quaternion costs one more square root and is exact at every angle,
+ * including the antipode, where the rotation is genuinely ambiguous and a
+ * deterministic axis at least keeps neighbouring cases agreeing.
  */
 function rotateArc(
   ax: number,
@@ -202,26 +212,43 @@ function rotateArc(
   vz: number,
   out: Float64Array,
 ): void {
-  const c = ax * bx + ay * by + az * bz
+  let qw = 1 + ax * bx + ay * by + az * bz
+  let qx: number
+  let qy: number
+  let qz: number
 
-  // Already aligned, or opposed — where the rotation axis is undefined. Both are
-  // rare enough between adjacent links that leaving `v` alone is the honest
-  // answer; guessing an axis would add noise where the wire is already straight.
-  if (c > 0.999999 || c < -0.999999) {
-    out[0] = vx
-    out[1] = vy
-    out[2] = vz
-    return
+  if (qw < 1e-6) {
+    // Half a turn. Any axis perpendicular to `a` will do; pick one the same way
+    // every time, so two links in the same state are transported alike.
+    qw = 0
+    if (Math.abs(ax) > Math.abs(az)) {
+      qx = -ay
+      qy = ax
+      qz = 0
+    } else {
+      qx = 0
+      qy = -az
+      qz = ay
+    }
+  } else {
+    qx = ay * bz - az * by
+    qy = az * bx - ax * bz
+    qz = ax * by - ay * bx
   }
 
-  const kx = ay * bz - az * by
-  const ky = az * bx - ax * bz
-  const kz = ax * by - ay * bx
-  const scale = (kx * vx + ky * vy + kz * vz) / (1 + c)
+  const norm = Math.hypot(qx, qy, qz, qw) || 1
+  qx /= norm
+  qy /= norm
+  qz /= norm
+  qw /= norm
 
-  out[0] = vx * c + (ky * vz - kz * vy) + kx * scale
-  out[1] = vy * c + (kz * vx - kx * vz) + ky * scale
-  out[2] = vz * c + (kx * vy - ky * vx) + kz * scale
+  const rx = 2 * (qy * vz - qz * vy)
+  const ry = 2 * (qz * vx - qx * vz)
+  const rz = 2 * (qx * vy - qy * vx)
+
+  out[0] = vx + qw * rx + (qy * rz - qz * ry)
+  out[1] = vy + qw * ry + (qz * rx - qx * rz)
+  out[2] = vz + qw * rz + (qx * ry - qy * rx)
 }
 
 export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
