@@ -72,6 +72,15 @@ export type Ropes = {
    * all the rest.
    */
   settle: (only?: readonly number[]) => void
+  /**
+   * Moves a whole wire bodily, particles and velocities together.
+   *
+   * For when an anchor is *relocated* rather than nudged. A hanging wire's
+   * settled shape does not depend on where it hangs from, so carrying it to the
+   * new place leaves it already settled — nothing is violated, no energy is
+   * injected, and whatever it was doing it keeps doing.
+   */
+  carry: (wire: number, dx: number, dy: number, dz: number) => void
   /** Largest violation of a link's rest length, in world units. */
   maxError: () => number
   /** Whether the scene is still visibly moving. */
@@ -123,11 +132,13 @@ const LINK_ONLY_PASSES = 1
 /**
  * Hard stop on settling, in steps.
  *
- * Only a backstop: settling normally exits as soon as the scene falls still.
- * At 480Hz this is a little over eight seconds of simulated time, which no
- * reachable configuration needs.
+ * Only a backstop: settling normally exits as soon as the scene falls still,
+ * which from a fresh layout takes about fifty steps. It exists because a wire
+ * thrown a long way does *not* reliably come to rest — that case is handled by
+ * carrying it instead, and this bounds the damage if some new path reaches it.
+ * It was 4000, which is three seconds of frozen main thread.
  */
-const SETTLE_STEP_CAP = 4000
+const SETTLE_STEP_CAP = 1200
 
 /**
  * Furthest a particle may travel in one step, as a fraction of its own segment.
@@ -551,24 +562,80 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
 
   readSpecs()
 
+  /**
+   * Redraws a wire's current shape with a different number of particles.
+   *
+   * Used when the segment count changes, which would otherwise mean laying the
+   * wire out afresh and settling it — 106ms for a scene of fifty wires, and it
+   * throws away whatever the wire was doing, which makes the quality knob
+   * unusable to drag. Walking the existing polyline by arc length instead keeps
+   * the wire exactly where it is and costs a pass over its particles.
+   */
+  function resample(source: Ropes, from: number, had: number, to: number, count: number): void {
+    let total = 0
+    for (let i = from; i < from + had - 1; i++) {
+      total += Math.hypot(
+        source.px[i + 1] - source.px[i],
+        source.py[i + 1] - source.py[i],
+        source.pz[i + 1] - source.pz[i],
+      )
+    }
+
+    let at = from
+    let walked = 0
+    for (let j = 0; j < count; j++) {
+      const target = count > 1 ? (total * j) / (count - 1) : 0
+
+      while (at < from + had - 2) {
+        const span = Math.hypot(
+          source.px[at + 1] - source.px[at],
+          source.py[at + 1] - source.py[at],
+          source.pz[at + 1] - source.pz[at],
+        )
+        if (walked + span >= target) break
+        walked += span
+        at++
+      }
+
+      const span =
+        Math.hypot(
+          source.px[at + 1] - source.px[at],
+          source.py[at + 1] - source.py[at],
+          source.pz[at + 1] - source.pz[at],
+        ) || 1
+      const f = Math.min(1, Math.max(0, (target - walked) / span))
+      px[to + j] = source.px[at] + (source.px[at + 1] - source.px[at]) * f
+      py[to + j] = source.py[at] + (source.py[at + 1] - source.py[at]) * f
+      pz[to + j] = source.pz[at] + (source.pz[at + 1] - source.pz[at]) * f
+    }
+  }
+
   /** Wires laid out fresh by this build, rather than carried from the last. */
   const fresh: number[] = []
 
   for (let w = 0; w < wireCount; w++) {
     const count = offset[w + 1] - offset[w]
-    const carried = previous && w < previous.wireCount && previous.offset[w + 1] - previous.offset[w] === count
+    const had = previous && w < previous.wireCount ? previous.offset[w + 1] - previous.offset[w] : 0
 
-    if (!carried) {
+    if (had === 0) {
       layOut(w)
       fresh.push(w)
       continue
     }
 
-    const from = previous.offset[w]
+    const from = previous!.offset[w]
     const to = offset[w]
-    px.set(previous.px.subarray(from, from + count), to)
-    py.set(previous.py.subarray(from, from + count), to)
-    pz.set(previous.pz.subarray(from, from + count), to)
+
+    if (had === count) {
+      px.set(previous!.px.subarray(from, from + count), to)
+      py.set(previous!.py.subarray(from, from + count), to)
+      pz.set(previous!.pz.subarray(from, from + count), to)
+    } else {
+      resample(previous!, from, had, to, count)
+    }
+
+    // Velocity is not carried across a resample, and a plain copy has none to
+    // carry either: both arrive at rest.
     ox.set(px.subarray(to, to + count), to)
     oy.set(py.subarray(to, to + count), to)
     oz.set(pz.subarray(to, to + count), to)
@@ -616,6 +683,19 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
         oz.set(pz.subarray(from, to), from)
       }
       moving = only.length < wireCount
+    },
+
+    carry(wire, dx, dy, dz) {
+      for (let i = offset[wire]; i < offset[wire + 1]; i++) {
+        px[i] += dx
+        py[i] += dy
+        pz[i] += dz
+        // Previous positions move too, or the translation reads as a velocity
+        // and fires the wire off exactly as a teleport does.
+        ox[i] += dx
+        oy[i] += dy
+        oz[i] += dz
+      }
     },
 
     maxError: () => error,

@@ -169,6 +169,15 @@ measuring something rather than by looking at it.
   indefinitely instead of damping out. Capping how far a particle may travel in
   a single step fixed it, and sits far enough above any wind in the piece that
   nothing else noticed.
+- **The cure for the spinning froze the whole page.** Wires thrown by a
+  relocated anchor were fixed by settling the scene whenever the anchors moved
+  far — which meant three seconds of frozen browser on every notch of a slider,
+  because a wire thrown that far never converges and the settle ran to its
+  limit each time. The sliders are the instrument here; one that stalls under
+  the hand is useless however good the scene behind it is. Wires are now simply
+  _carried_ to where their anchors went, which costs about a millisecond and
+  disturbs nothing, because a hanging wire's shape never depended on where it
+  hung from in the first place.
 - **A control that did nothing at all, for months.** `flicker` drew each bulb a
   rate and then used it as radians per second where it had been written as
   cycles per second. Every bulb was therefore wavering with a period of between

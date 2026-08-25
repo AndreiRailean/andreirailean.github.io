@@ -67,10 +67,26 @@ screen — a wrong wire and a right one both look like a scatter of dots.
   spins indefinitely rather than damping out. `MAX_STEP_FRACTION` in `rope.ts`
   caps it, well above any wind in the piece so legitimate motion is untouched.
   Anything new that moves particles discontinuously needs this to stay in place.
-- **A settings change that moves anchors far must re-settle.** Small moves make
-  the pleasant snap that `gust` and `tremble` grew out of; large ones leave the
-  scene thrashing for half a minute and make a control impossible to explore
-  with. See `RESETTLE_ABOVE` in `dangler.ts`.
+- **Never settle synchronously in response to a settings change.** It was tried,
+  as the fix for anchors being dragged, and it froze the main thread for 3056ms
+  on a single notch of the branches slider — a wire thrown a long way does not
+  converge, so the settle ran to its cap every time. A settings change must stay
+  in the low milliseconds; the sliders are the instrument, and one that stalls
+  under the hand is unusable however good the scene is.
+  - Anchors _relocated_ rather than nudged: `ropes.carry` moves the wire with
+    them. A hanging wire's shape does not depend on where it hangs, so it
+    arrives already settled. Keep `CARRY_ABOVE` above a nudge of the spread
+    slider (about 0.05m) so that keeps its snap, and low enough that every wire
+    clears it on a topology change — at 0.25 a few fell through and produced a
+    46 m/s transient.
+  - A changed segment count: `resample` redraws the wire's _current_ shape with
+    the new particle count, by arc length. Laying out and settling instead costs
+    106ms and discards whatever the wire was doing.
+  - A changed **seed**: nothing carries. Every wire's length, stiffness, set and
+    twist are redrawn too, so a carried shape contradicts its own new
+    constraints and the solver resolves it at 139 m/s. `createRopes` is called
+    without a previous scene, and the whole thing is laid out fresh — about
+    37ms, which is fine for a keypress and not for a drag.
 - **Arms must span the radius, not the outer part of it.** Their first version
   held them back to the outer two thirds so they would read as separate clumps,
   but that gap scales with `spread`, so widening the canopy grew a bare disc in

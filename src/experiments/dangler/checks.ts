@@ -27,7 +27,7 @@ import { makeCamera, project } from "@/experiments/dangler/camera"
 // the project that runs outside a browser, and the rest is typed for one.
 declare const process: { exit(code: number): never }
 import { makeCanopy } from "@/experiments/dangler/canopy"
-import { createRopes } from "@/experiments/dangler/rope"
+import { createRopes, FIXED_DT } from "@/experiments/dangler/rope"
 import { createFrames, updateFrames } from "@/experiments/dangler/frame"
 import { createSway } from "@/experiments/dangler/sway"
 import { canopyTremble, gustEnvelope, scheduleGusts, TREMBLE_REACH, type Gust } from "@/experiments/dangler/wind"
@@ -585,6 +585,75 @@ const ok = (name: string, pass: boolean, detail = "") => {
       return a.x === b.x && a.y === b.y && a.z === b.z
     }),
   )
+}
+
+// 16. carrying and resampling — how a settings change avoids throwing the scene
+{
+  const settings = normalizeSettings({ wires: 6, beads: 4, segments: 24, extent: 2, ceiling: 4, length: 3 })
+  const arrangement = buildArrangement(settings)
+  const ropes = createRopes(arrangement.specs)
+  ropes.settle()
+
+  const tipOf = (r: typeof ropes, w: number) => {
+    const t = r.offset[w + 1] - 1
+    return { x: r.px[t], y: r.py[t], z: r.pz[t] }
+  }
+  const lengthOf = (r: typeof ropes, w: number) => {
+    let total = 0
+    for (let i = r.offset[w]; i < r.offset[w + 1] - 1; i++) {
+      total += Math.hypot(r.px[i + 1] - r.px[i], r.py[i + 1] - r.py[i], r.pz[i + 1] - r.pz[i])
+    }
+    return total
+  }
+
+  // The real sequence: the anchors move first, then each wire is carried after
+  // its own. Carrying without moving the anchor would leave the wire hanging
+  // from nowhere, which is not something the engine ever does.
+  const shifted = arrangement.specs.map((spec) => ({
+    ...spec,
+    anchor: { x: spec.anchor.x + 1.5, y: spec.anchor.y - 0.5, z: spec.anchor.z + 0.25 },
+  }))
+  const before = tipOf(ropes, 0)
+  ropes.update(shifted)
+  for (let w = 0; w < shifted.length; w++) ropes.carry(w, 1.5, -0.5, 0.25)
+  const after = tipOf(ropes, 0)
+  ok(
+    "carry moves a wire exactly as far as its anchor went",
+    Math.abs(after.x - before.x - 1.5) < 1e-6 && Math.abs(after.z - before.z - 0.25) < 1e-6,
+  )
+
+  // The velocity a carry must NOT create. A bodily move that reads as one fires
+  // the wire off exactly as a teleport does — which is the whole failure this
+  // replaced, where relocating anchors left wires spinning at 139 m/s.
+  const seen = tipOf(ropes, 0)
+  ropes.step(null)
+  const settledTip = tipOf(ropes, 0)
+  const launched = Math.hypot(settledTip.x - seen.x, settledTip.y - seen.y, settledTip.z - seen.z) / FIXED_DT
+  ok("a carried wire is not launched by it", launched < 0.5, `${launched.toFixed(3)} m/s`)
+
+  // Resampling: the same wire, redrawn with a different number of particles,
+  // has to be in the same place. Otherwise dragging the quality knob rearranges
+  // the scene.
+  const settled = createRopes(arrangement.specs)
+  settled.settle()
+  const shapeBefore = [0, 1, 2].map((w) => ({ tip: tipOf(settled, w), length: lengthOf(settled, w) }))
+
+  const finer = buildArrangement({ ...settings, segments: 48 })
+  const resampled = createRopes(finer.specs, settled)
+  ok("resampling changes the particle count", resampled.particleCount !== settled.particleCount)
+  ok(
+    "a resampled wire keeps its tip where it was",
+    shapeBefore.every((s, w) => {
+      const t = tipOf(resampled, w)
+      return Math.hypot(t.x - s.tip.x, t.y - s.tip.y, t.z - s.tip.z) < 0.02
+    }),
+  )
+  ok(
+    "and keeps its length",
+    shapeBefore.every((s, w) => Math.abs(lengthOf(resampled, w) - s.length) / s.length < 0.02),
+    shapeBefore.map((s, w) => (lengthOf(resampled, w) / s.length).toFixed(3)).join(" "),
+  )
+  ok("resampling reports nothing as freshly laid out", resampled.freshWires.length === 0)
 }
 
 console.log(failures === 0 ? "\nall good" : `\n${failures} FAILING`)
