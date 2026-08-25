@@ -44,6 +44,14 @@ screen — a wrong wire and a right one both look like a scatter of dots.
   pump energy in. **The cost is compliance**: a wire holds its shape and swings
   from its anchor as one piece rather than rippling. If the breeze ever needs
   more lag, that is the trade to revisit — not the exactness.
+- **A frame must be carried through time, not only along the wire.** A
+  rotation-minimising frame is minimal along the _curve_; nothing about that
+  makes it steady between rendered frames, and re-propagating it from the wire's
+  start each frame lets any change of shape accumulate into a large roll at the
+  free end. Bulbs ride that frame, so they visibly turn on their strings — and
+  the tip bulbs are the near, large ones. Every other frame check passed
+  throughout: perpendicular, unit, no flips _along_ the wire. `checks.ts` now
+  asserts the temporal property too, which is the only one that catches it.
 - **Never derive a frame from a direction inside a loop that walks a curve.**
   Picking two perpendiculars requires choosing a reference axis, and every choice
   flips somewhere on the sphere, folding the rest shape where the wire curls past
@@ -59,6 +67,55 @@ screen — a wrong wire and a right one both look like a scatter of dots.
   shape and its colour from separately salted generators. Break this and raising
   the wire count reshuffles the wires already on screen — the same class of bug
   as Starry Night resetting every layer's phase on a settings change.
+- **Never let a particle move more than a fraction of its segment in a step.**
+  Verlet reads velocity from the change in position, so a teleporting anchor is
+  indistinguishable from a cannon. Dragging the branch count moves anchors
+  metres, which produced tip speeds of 295 m/s that then _stayed_ there —
+  past about a segment per step the solver has no resolution left and the wire
+  spins indefinitely rather than damping out. `MAX_STEP_FRACTION` in `rope.ts`
+  caps it, well above any wind in the piece so legitimate motion is untouched.
+  Anything new that moves particles discontinuously needs this to stay in place.
+- **Never settle synchronously in response to a settings change.** It was tried,
+  as the fix for anchors being dragged, and it froze the main thread for 3056ms
+  on a single notch of the branches slider — a wire thrown a long way does not
+  converge, so the settle ran to its cap every time. A settings change must stay
+  in the low milliseconds; the sliders are the instrument, and one that stalls
+  under the hand is unusable however good the scene is.
+  - Anchors _relocated_ rather than nudged: `ropes.carry` moves the wire with
+    them. A hanging wire's shape does not depend on where it hangs, so it
+    arrives already settled. Keep `CARRY_ABOVE` above a nudge of the spread
+    slider (about 0.05m) so that keeps its snap, and low enough that every wire
+    clears it on a topology change — at 0.25 a few fell through and produced a
+    46 m/s transient.
+  - A changed segment count: `resample` redraws the wire's _current_ shape with
+    the new particle count, by arc length. Laying out and settling instead costs
+    106ms and discards whatever the wire was doing.
+  - A changed **seed**: nothing carries. Every wire's length, stiffness, set and
+    twist are redrawn too, so a carried shape contradicts its own new
+    constraints and the solver resolves it at 139 m/s. `createRopes` is called
+    without a previous scene, and the whole thing is laid out fresh — about
+    37ms, which is fine for a keypress and not for a drag.
+- **Arms must span the radius, not the outer part of it.** Their first version
+  held them back to the outer two thirds so they would read as separate clumps,
+  but that gap scales with `spread`, so widening the canopy grew a bare disc in
+  the middle and drove every bulb toward the edge of the frame. Separation comes
+  from `sweep` instead, which costs no coverage. `checks.ts` asserts the span at
+  two arms, which is the hard case.
+- **Anything with a rate needs its units asserted, not eyeballed.** `flicker`
+  drew a rate in hertz and used it as radians per second, so every bulb wavered
+  with a period of eleven to fifty seconds. The control was live, the maths was
+  fine, and it was invisible — a whole class of bug that neither a type checker
+  nor a screenshot can reach. `checks.ts` now asserts the _timescale_ a viewer
+  would experience, which is the only thing that would have caught it.
+- **Anchor motion must be coherent, or the piece makes people queasy.** This is
+  the one failure here that was found by a human rather than by measurement.
+  `tremble` moves each anchor independently and reads as the _observer_ being
+  jostled, not the scene moving — the canopy stops being an object and there is
+  no stable frame left to read against. Gentler does not fix it; only coherence
+  does. `sway` carries the whole canopy rigidly, so anchor separations are
+  preserved to machine precision, and that check is in `checks.ts` precisely
+  because it is the property the module exists for. Anything new that moves
+  anchors must state which of the two it is being.
 - **Keep `tremble` well above a wire's swing period.** A hanging wire swings at
   well under 1Hz, and an anchor shaken near that pumps it instead of shivering
   it: at the rates first tried, 25mm of anchor travel produced 0.43m of tip
@@ -119,6 +176,22 @@ verbatim from Starry Night. ADR-0002 defers extracting anything shared until a
 second _and_ a third experiment exist; this is the second, so the duplication is
 the evidence for that decision rather than a shortcut around it. **Fix a bug in
 either copy and fix it in both.**
+
+## Known, not fixed
+
+**A tightly coiled wire in wind can still fold.** At `stiffness` 1 with `set`
+near its maximum, a few wires in a large scene buckle to 90°-plus at a joint
+whose rest angle is under 6°, and their frames re-seed when that happens —
+measured, four wires in eighty. The bend constraint transports each link's rest
+direction from _world space_, which leaves the wire's torsion unconstrained and
+ill-conditioned when a link swings far from where it started.
+
+The principled fix is to carry a frame along the wire inside the solver and
+express each rest turn in it, so the constraint depends only on the wire's local
+geometry and never on its orientation. That is a rework of the core constraint
+and has not been done. A maximum-curvature constraint was tried as a cheaper
+substitute and is not worth keeping: it moved the worst joint turn from 174° to
+166°, because the link pass that follows simply undoes it.
 
 ## Verifying a change
 

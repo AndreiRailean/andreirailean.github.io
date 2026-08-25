@@ -72,6 +72,15 @@ export type Ropes = {
    * all the rest.
    */
   settle: (only?: readonly number[]) => void
+  /**
+   * Moves a whole wire bodily, particles and velocities together.
+   *
+   * For when an anchor is *relocated* rather than nudged. A hanging wire's
+   * settled shape does not depend on where it hangs from, so carrying it to the
+   * new place leaves it already settled — nothing is violated, no energy is
+   * injected, and whatever it was doing it keeps doing.
+   */
+  carry: (wire: number, dx: number, dy: number, dz: number) => void
   /** Largest violation of a link's rest length, in world units. */
   maxError: () => number
   /** Whether the scene is still visibly moving. */
@@ -123,11 +132,33 @@ const LINK_ONLY_PASSES = 1
 /**
  * Hard stop on settling, in steps.
  *
- * Only a backstop: settling normally exits as soon as the scene falls still.
- * At 480Hz this is a little over eight seconds of simulated time, which no
- * reachable configuration needs.
+ * Only a backstop: settling normally exits as soon as the scene falls still,
+ * which from a fresh layout takes about fifty steps. It exists because a wire
+ * thrown a long way does *not* reliably come to rest — that case is handled by
+ * carrying it instead, and this bounds the damage if some new path reaches it.
+ * It was 4000, which is three seconds of frozen main thread.
  */
-const SETTLE_STEP_CAP = 4000
+const SETTLE_STEP_CAP = 1200
+
+/**
+ * Furthest a particle may travel in one step, as a fraction of its own segment.
+ *
+ * Verlet reads velocity from the change in position, so anything that moves a
+ * particle discontinuously — above all an anchor teleporting when the canopy
+ * settings change — is indistinguishable from it having been fired out of a
+ * cannon. Dragging the branch count from 3 to 6 moves anchors up to 2.4m, which
+ * put tip speeds at 295 m/s and, far worse, *kept* them there: once a particle
+ * covers several segment lengths per step the solver has no resolution left, and
+ * the wire spins at a couple of hundred metres a second indefinitely rather than
+ * damping out. It never recovers on its own.
+ *
+ * Capping the implied velocity against the discretisation makes that
+ * unreachable. A third of a segment per step is around 23 m/s at default
+ * settings, which no wind in the piece comes close to — a gust moves a tip at
+ * one or two — so this never touches legitimate motion. It only stops the
+ * simulation destroying itself.
+ */
+const MAX_STEP_FRACTION = 0.35
 
 /** Below this speed, in world units per second, nothing is worth redrawing for. */
 const REST_SPEED = 0.0008
@@ -154,10 +185,20 @@ function rotateAxis(
 /**
  * Rotates `v` by the shortest rotation taking unit `a` onto unit `b`.
  *
- * This is what carries a wire's rest shape onto its current one. `k = a × b` is
- * left unnormalised on purpose: the identity below is exact for unit `a` and `b`
- * without it, and skipping the square root matters when this runs once per joint
- * per solver pass.
+ * This carries a wire's rest shape onto its current one, and it has to survive
+ * `a` and `b` being nearly opposite. They do go there: on a tightly coiled wire
+ * in wind, 2% of links end up pointing more than 90° from their own rest
+ * direction, and the worst measured was 0.998 of the way to antiparallel.
+ *
+ * The compact identity for this divides by `1 + a·b`, which at that angle is a
+ * factor of six hundred and almost entirely cancellation error. The result was
+ * a garbage target, so the bend constraint folded the wire into a 99° kink
+ * where its rest angle was under 6° — and every bulb on that wire whipped
+ * around it as the carried frame followed the fold.
+ *
+ * A quaternion costs one more square root and is exact at every angle,
+ * including the antipode, where the rotation is genuinely ambiguous and a
+ * deterministic axis at least keeps neighbouring cases agreeing.
  */
 function rotateArc(
   ax: number,
@@ -171,26 +212,43 @@ function rotateArc(
   vz: number,
   out: Float64Array,
 ): void {
-  const c = ax * bx + ay * by + az * bz
+  let qw = 1 + ax * bx + ay * by + az * bz
+  let qx: number
+  let qy: number
+  let qz: number
 
-  // Already aligned, or opposed — where the rotation axis is undefined. Both are
-  // rare enough between adjacent links that leaving `v` alone is the honest
-  // answer; guessing an axis would add noise where the wire is already straight.
-  if (c > 0.999999 || c < -0.999999) {
-    out[0] = vx
-    out[1] = vy
-    out[2] = vz
-    return
+  if (qw < 1e-6) {
+    // Half a turn. Any axis perpendicular to `a` will do; pick one the same way
+    // every time, so two links in the same state are transported alike.
+    qw = 0
+    if (Math.abs(ax) > Math.abs(az)) {
+      qx = -ay
+      qy = ax
+      qz = 0
+    } else {
+      qx = 0
+      qy = -az
+      qz = ay
+    }
+  } else {
+    qx = ay * bz - az * by
+    qy = az * bx - ax * bz
+    qz = ax * by - ay * bx
   }
 
-  const kx = ay * bz - az * by
-  const ky = az * bx - ax * bz
-  const kz = ax * by - ay * bx
-  const scale = (kx * vx + ky * vy + kz * vz) / (1 + c)
+  const norm = Math.hypot(qx, qy, qz, qw) || 1
+  qx /= norm
+  qy /= norm
+  qz /= norm
+  qw /= norm
 
-  out[0] = vx * c + (ky * vz - kz * vy) + kx * scale
-  out[1] = vy * c + (kz * vx - kx * vz) + ky * scale
-  out[2] = vz * c + (kx * vy - ky * vx) + kz * scale
+  const rx = 2 * (qy * vz - qz * vy)
+  const ry = 2 * (qz * vx - qx * vz)
+  const rz = 2 * (qx * vy - qy * vx)
+
+  out[0] = vx + qw * rx + (qy * rz - qz * ry)
+  out[1] = vy + qw * ry + (qz * rx - qx * rz)
+  out[2] = vz + qw * rz + (qx * ry - qy * rx)
 }
 
 export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
@@ -345,6 +403,7 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
       const start = offset[w]
       const end = offset[w + 1]
       const span = end - start - 1
+      const limit = segLength[w] * MAX_STEP_FRACTION
 
       // The anchor is pinned to the canopy: written, never integrated. Its
       // previous position is written too, so it carries no velocity of its own
@@ -367,9 +426,17 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
         const ay = gust ? gust.y * exposure : 0
         const az = (gust ? gust.z * exposure : 0) - GRAVITY
 
-        const vx = (px[i] - ox[i]) * damping
-        const vy = (py[i] - oy[i]) * damping
-        const vz = (pz[i] - oz[i]) * damping
+        let vx = (px[i] - ox[i]) * damping
+        let vy = (py[i] - oy[i]) * damping
+        let vz = (pz[i] - oz[i]) * damping
+
+        const travel = Math.hypot(vx, vy, vz)
+        if (travel > limit) {
+          const scale = limit / travel
+          vx *= scale
+          vy *= scale
+          vz *= scale
+        }
 
         ox[i] = px[i]
         oy[i] = py[i]
@@ -522,24 +589,80 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
 
   readSpecs()
 
+  /**
+   * Redraws a wire's current shape with a different number of particles.
+   *
+   * Used when the segment count changes, which would otherwise mean laying the
+   * wire out afresh and settling it — 106ms for a scene of fifty wires, and it
+   * throws away whatever the wire was doing, which makes the quality knob
+   * unusable to drag. Walking the existing polyline by arc length instead keeps
+   * the wire exactly where it is and costs a pass over its particles.
+   */
+  function resample(source: Ropes, from: number, had: number, to: number, count: number): void {
+    let total = 0
+    for (let i = from; i < from + had - 1; i++) {
+      total += Math.hypot(
+        source.px[i + 1] - source.px[i],
+        source.py[i + 1] - source.py[i],
+        source.pz[i + 1] - source.pz[i],
+      )
+    }
+
+    let at = from
+    let walked = 0
+    for (let j = 0; j < count; j++) {
+      const target = count > 1 ? (total * j) / (count - 1) : 0
+
+      while (at < from + had - 2) {
+        const span = Math.hypot(
+          source.px[at + 1] - source.px[at],
+          source.py[at + 1] - source.py[at],
+          source.pz[at + 1] - source.pz[at],
+        )
+        if (walked + span >= target) break
+        walked += span
+        at++
+      }
+
+      const span =
+        Math.hypot(
+          source.px[at + 1] - source.px[at],
+          source.py[at + 1] - source.py[at],
+          source.pz[at + 1] - source.pz[at],
+        ) || 1
+      const f = Math.min(1, Math.max(0, (target - walked) / span))
+      px[to + j] = source.px[at] + (source.px[at + 1] - source.px[at]) * f
+      py[to + j] = source.py[at] + (source.py[at + 1] - source.py[at]) * f
+      pz[to + j] = source.pz[at] + (source.pz[at + 1] - source.pz[at]) * f
+    }
+  }
+
   /** Wires laid out fresh by this build, rather than carried from the last. */
   const fresh: number[] = []
 
   for (let w = 0; w < wireCount; w++) {
     const count = offset[w + 1] - offset[w]
-    const carried = previous && w < previous.wireCount && previous.offset[w + 1] - previous.offset[w] === count
+    const had = previous && w < previous.wireCount ? previous.offset[w + 1] - previous.offset[w] : 0
 
-    if (!carried) {
+    if (had === 0) {
       layOut(w)
       fresh.push(w)
       continue
     }
 
-    const from = previous.offset[w]
+    const from = previous!.offset[w]
     const to = offset[w]
-    px.set(previous.px.subarray(from, from + count), to)
-    py.set(previous.py.subarray(from, from + count), to)
-    pz.set(previous.pz.subarray(from, from + count), to)
+
+    if (had === count) {
+      px.set(previous!.px.subarray(from, from + count), to)
+      py.set(previous!.py.subarray(from, from + count), to)
+      pz.set(previous!.pz.subarray(from, from + count), to)
+    } else {
+      resample(previous!, from, had, to, count)
+    }
+
+    // Velocity is not carried across a resample, and a plain copy has none to
+    // carry either: both arrive at rest.
     ox.set(px.subarray(to, to + count), to)
     oy.set(py.subarray(to, to + count), to)
     oz.set(pz.subarray(to, to + count), to)
@@ -587,6 +710,19 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
         oz.set(pz.subarray(from, to), from)
       }
       moving = only.length < wireCount
+    },
+
+    carry(wire, dx, dy, dz) {
+      for (let i = offset[wire]; i < offset[wire + 1]; i++) {
+        px[i] += dx
+        py[i] += dy
+        pz[i] += dz
+        // Previous positions move too, or the translation reads as a velocity
+        // and fires the wire off exactly as a teleport does.
+        ox[i] += dx
+        oy[i] += dy
+        oz[i] += dz
+      }
     },
 
     maxError: () => error,

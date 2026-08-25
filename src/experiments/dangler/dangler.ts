@@ -8,13 +8,14 @@
  * it with a fresh one.
  */
 
-import { buildArrangement, type Arrangement } from "@/experiments/dangler/arrangement"
+import { buildArrangement, flickerAt, type Arrangement } from "@/experiments/dangler/arrangement"
 import { createBeads, type Beads } from "@/experiments/dangler/beads"
 import { makeCamera, nearFade, project, type Camera } from "@/experiments/dangler/camera"
 import { createFrames, updateFrames, type Frames } from "@/experiments/dangler/frame"
 import { GROUND, VIGNETTE } from "@/experiments/dangler/palette"
 import { createRopes, FIXED_DT, type Ropes } from "@/experiments/dangler/rope"
 import { needsRebuild, type Settings } from "@/experiments/dangler/settings"
+import { createSway } from "@/experiments/dangler/sway"
 import { canopyTremble, createWind } from "@/experiments/dangler/wind"
 
 export type DanglerStats = {
@@ -51,6 +52,25 @@ export type Dangler = {
  * failure than the tab locking up.
  */
 const MAX_SUBSTEPS = 12
+
+/**
+ * Anchor movement past which a wire is carried to its new place rather than
+ * dragged there, in world units.
+ *
+ * An anchor that moves teleports, and the wire below is left where it was, so
+ * the solver hauls it across. Small moves make a pleasant snap — nudging the
+ * canopy's spread is the nicest accident in the piece and is what `gust` and
+ * `tremble` came from. Large ones do not: changing the branch count moves
+ * anchors metres, which throws the wires hard enough that they never settle.
+ *
+ * Re-settling was tried and is worse than the problem. It blocks: 3056ms of
+ * frozen main thread on one notch of the branches slider, because a wire thrown
+ * that far does not converge and the settle runs to its cap. Carrying costs
+ * about a microsecond — a hanging wire's shape does not depend on where it
+ * hangs from, so the wire arrives already settled and still doing whatever it
+ * was doing.
+ */
+const CARRY_ABOVE = 0.1
 
 /**
  * Narrowing a `const` does not reach into hoisted function declarations, and
@@ -91,6 +111,7 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
   /** Set when the picture needs repainting without anything having moved. */
   let dirty = true
   const wind = createWind()
+  const sway = createSway()
   /** Reused, so sampling the wind allocates nothing however many wires there are. */
   const air = { x: 0, y: 0, z: 0 }
 
@@ -102,7 +123,7 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
    * behaviour, so the preference is expressed by pinning two settings.
    */
   function withMotionPreference(next: Settings): Settings {
-    return stillOnly.matches ? { ...next, breeze: 0, gust: 0, tremble: 0, flicker: 0 } : next
+    return stillOnly.matches ? { ...next, breeze: 0, gust: 0, tremble: 0, sway: 0, flicker: 0 } : next
   }
 
   const isAnimated = () => settings.breeze > 0 || settings.gust > 0 || settings.tremble > 0 || settings.flicker > 0
@@ -176,18 +197,44 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
    * Written straight into the solver's own array so this allocates nothing at
    * any wire count.
    */
-  function updateTremble(): void {
+  function updateAnchors(elapsed: number): void {
     const offsets = ropes.anchorOffsets
-    if (settings.tremble <= 0) {
+
+    // The canopy is driven by the wind at its centre, not per wire — it is one
+    // object, and sampling it per anchor would be the very incoherence this is
+    // here to avoid.
+    wind.at(0, 0, air)
+    sway.update(air.x, air.y, clock, elapsed, settings.sway)
+
+    const swaying = settings.sway > 0 && !sway.atRest()
+    if (!swaying && settings.tremble <= 0) {
       offsets.fill(0)
       return
     }
+
     for (let w = 0; w < ropes.wireCount; w++) {
       const anchor = arrangement.specs[w].anchor
-      canopyTremble(anchor.x, anchor.y, clock, settings.tremble, air)
-      offsets[w * 3] = air.x
-      offsets[w * 3 + 1] = air.y
-      offsets[w * 3 + 2] = air.z
+      let x = 0
+      let y = 0
+      let z = 0
+
+      if (swaying) {
+        sway.displace(anchor.x, anchor.y, anchor.z, air)
+        x = air.x
+        y = air.y
+        z = air.z
+      }
+
+      if (settings.tremble > 0) {
+        canopyTremble(anchor.x, anchor.y, clock, settings.tremble, air)
+        x += air.x
+        y += air.y
+        z += air.z
+      }
+
+      offsets[w * 3] = x
+      offsets[w * 3 + 1] = y
+      offsets[w * 3 + 2] = z
     }
   }
 
@@ -283,10 +330,7 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
       }
 
       if (flickering) {
-        const rate = arrangement.flickerRate[i]
-        const phase = arrangement.flickerPhase[i]
-        const wander = 0.62 * Math.sin(clock * rate + phase) + 0.38 * Math.sin(clock * rate * 2.37 + phase * 1.7)
-        brightness *= 1 + settings.flicker * 0.45 * wander
+        brightness *= flickerAt(arrangement.flickerRate[i], arrangement.flickerPhase[i], clock, settings.flicker)
       }
 
       if (brightness <= 0) continue
@@ -384,7 +428,7 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
     if (isAnimated()) {
       clock += elapsed
       wind.update(settings, clock)
-      updateTremble()
+      updateAnchors(elapsed)
       moved = advance(elapsed, wind.blowing())
     } else if (!ropes.atRest()) {
       moved = advance(elapsed, false)
@@ -447,18 +491,44 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
 
     setSettings(next) {
       const before = settings
+      const previousAnchors = arrangement.specs.map(({ anchor }) => anchor)
       settings = withMotionPreference(next)
       arrangement = buildArrangement(settings)
 
+      let laidOutFresh: readonly number[] = []
+
       if (needsRebuild(before, settings)) {
-        const previousRopes = ropes
+        // A new seed redraws every wire's length, stiffness, set and twist, not
+        // just where it hangs — so nothing carries over and the whole scene is
+        // laid out afresh. Carrying wires through a reroll leaves each one's
+        // shape contradicting its own new constraints, which the solver then
+        // resolves at 139 m/s.
+        const previousRopes = before.seed === settings.seed ? ropes : undefined
         ropes = createRopes(arrangement.specs, previousRopes)
         frames = createFrames(ropes.particleCount)
+        laidOutFresh = ropes.freshWires
         // Only the wires this build laid out fresh; settling the carried ones
         // would zero their velocity and visibly calm a scene in a breeze.
-        ropes.settle(ropes.freshWires)
+        ropes.settle(laidOutFresh)
       } else {
         ropes.update(arrangement.specs)
+      }
+
+      // Wires whose anchor has been *relocated* rather than nudged go with it.
+      // This has to run on both paths: a reroll reallocates but keeps every
+      // wire's particle count, so all of them are carried over and every anchor
+      // is somewhere new — without this the whole scene is dragged across at
+      // once and thrashes.
+      const carried = new Set(laidOutFresh)
+      const shared = Math.min(previousAnchors.length, arrangement.specs.length)
+      for (let w = 0; w < shared; w++) {
+        if (carried.has(w)) continue
+        const from = previousAnchors[w]
+        const to = arrangement.specs[w].anchor
+        const dx = to.x - from.x
+        const dy = to.y - from.y
+        const dz = to.z - from.z
+        if (Math.hypot(dx, dy, dz) > CARRY_ABOVE) ropes.carry(w, dx, dy, dz)
       }
 
       camera = makeCamera(settings.fieldOfView, settings.pitch, width, height)

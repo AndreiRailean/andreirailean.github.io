@@ -3,7 +3,7 @@ slug: dangler
 title: Dangler
 summary: Strings of lights hanging from something unseen overhead, looked at from directly below.
 started: 2026-08-24
-updated: 2026-08-24
+updated: 2026-08-25
 tags:
   - canvas
   - generative
@@ -41,6 +41,13 @@ as one object and start reading as a random spray. Pinned to a surface,
 neighbouring wires hang from similar heights, because that is what being
 attached to the same thing means.
 
+They need not be spread evenly across it. **branches** strings them along a few
+arms instead, the way lights actually get slung over a tree rather than
+distributed by a machine. Each arm starts away from the trunk and has its own
+reach, sweep and droop, so a handful of them reads as several separate danglers
+rather than one mass — the arms converging on a single point is exactly what
+makes an arrangement look like one object, however many arms it has.
+
 Bulbs sit on the sides of the wire rather than on its centreline, alternating as
 they descend, and each one is dimmed by **how squarely it faces you**. An LED
 throws its light along its own axis. That single dot product is why a real
@@ -67,8 +74,8 @@ It opens dead still, and there are three different ways to disturb it.
 **breeze** is a steady wind. **gust** is bursts arriving on top of it — set the
 breeze to nothing, the gust high and the rate low, and you get long calms broken
 by a single shove that throws the whole canopy at once and then lets it settle.
-**tremble** is not wind at all: it shakes the wires by their anchors, as though
-the branch above were shivering.
+**sway** and **tremble** are not wind at all — they move the wires by their
+anchors rather than blowing on them.
 
 All three exist because of an accident. Nudging the canopy's **spread** while
 watching turned out to be more interesting than the setting is — it shifts every
@@ -84,11 +91,30 @@ twenty-six millimetres of tip travel, where a steady gust was still climbing
 through nine hundred. That bound is not a limitation, it is the whole effect: a
 crowd stays a crowd and comes alive, rather than blowing outward.
 
-Which is why there are two controls rather than one. The tremble also has to run
-well clear of a hanging wire's own swing period, or the anchor stops shaking the
-wire and starts _pumping_ it — the first rates tried turned twenty-five
-millimetres of anchor travel into nearly half a metre of swing, which is the one
-thing it was meant not to do.
+Which is why moving the anchors is a control of its own. But _how_ they move
+turned out to matter far more than how far.
+
+**tremble** shakes each anchor independently, and it does not work. It reads as
+the observer being jostled rather than the scene moving — lights bolted to the
+ceiling of a lorry on a bad road, with nothing steady to hold on to. It is
+faintly nauseating, and no amount of making it gentler helps, because the
+problem is not the amount of movement. It is that the canopy stops being an
+object: once every anchor wanders on its own, there is no stable frame left to
+read the scene against.
+
+**sway** moves the whole canopy as one body — leaning about the trunk, turning a
+little, rising and falling — all of it driven by the wind and all of it
+returning to exactly where it started when the air goes still. A tree in wind
+moves a great deal while every branch keeps its relationship to every other, and
+that is the property being preserved: the lean and the turn are rigid rotations,
+so the distance between any two anchors does not change at all. It is
+underdamped, so a gust leaves it rocking back past upright a couple of times
+before it settles, which is most of what makes it read as something heavy.
+
+The difference is measurable, not only felt. Set forty wires going and ask how
+much their tips agree about which way to move: under sway they run at 0.64,
+where 1 would be every wire moving as one. Under tremble it is 0.22, and pure
+chance for forty wires would be 0.16.
 
 While it is on screen it holds the display awake, the way a video does, since
 the point is to leave it running. Browsers only allow that on a secure
@@ -134,6 +160,41 @@ measuring something rather than by looking at it.
   the animation loop parks itself — but resizing a canvas clears it, and a parked
   loop never drew again. Anything that changes the picture without moving a
   particle now asks for one more frame.
+- **A wire that span at two hundred metres a second, for ever.** Moving the
+  anchors is how several of the nicest effects here work, but an anchor
+  _teleports_, and a simulation that infers velocity from the change in position
+  cannot tell that from a cannon. Changing the number of branches moves anchors
+  by metres, and the wires below did not merely lurch — past about one segment
+  length per step there is no resolution left to solve against, so they spun
+  indefinitely instead of damping out. Capping how far a particle may travel in
+  a single step fixed it, and sits far enough above any wind in the piece that
+  nothing else noticed.
+- **The bulbs turned on their strings.** Each bulb hangs off a frame carried
+  along its wire, and that frame is built to rotate as little as possible _along
+  the curve_ — which says nothing whatever about how much it rotates from one
+  moment to the next. Rebuilding it every frame let any change of shape
+  accumulate down the wire, so the frame at the free end swung even where
+  nothing was bent oddly, and the bulbs riding it went round and round. The
+  frame is now carried through time as well as along the wire. Every test of it
+  had passed throughout: it was perpendicular, it was a unit vector, it never
+  flipped between neighbours. None of them asked whether it was the same frame
+  as a moment ago.
+- **The cure for the spinning froze the whole page.** Wires thrown by a
+  relocated anchor were fixed by settling the scene whenever the anchors moved
+  far — which meant three seconds of frozen browser on every notch of a slider,
+  because a wire thrown that far never converges and the settle ran to its
+  limit each time. The sliders are the instrument here; one that stalls under
+  the hand is useless however good the scene behind it is. Wires are now simply
+  _carried_ to where their anchors went, which costs about a millisecond and
+  disturbs nothing, because a hanging wire's shape never depended on where it
+  hung from in the first place.
+- **A control that did nothing at all, for months.** `flicker` drew each bulb a
+  rate and then used it as radians per second where it had been written as
+  cycles per second. Every bulb was therefore wavering with a period of between
+  eleven and fifty seconds — technically working, utterly invisible, and lost
+  under any other movement. Nothing in the code looked wrong and no screenshot
+  could show it; it took someone turning the control to maximum, staring at a
+  single bulb, and reporting that nothing happened.
 - **A screenshot could not tell a settled wire from a falling one.** Stills taken
   while the scene was still relaxing showed shapes it never actually holds, and
   nothing in the image said so. The scene reports how far its links are from

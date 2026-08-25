@@ -19,6 +19,7 @@ export type Settings = {
   extent: number
   ceiling: number
   relief: number
+  branches: number
   length: number
   stiffness: number
   set: number
@@ -38,6 +39,7 @@ export type Settings = {
   gust: number
   gustRate: number
   tremble: number
+  sway: number
 }
 
 export type NumericKey = keyof Settings
@@ -130,6 +132,16 @@ export const CONTROLS: Control[] = [
     step: 0.05,
     format: metres,
     hint: "How uneven the object above is. At 0 it is a flat ceiling and every wire starts at the same distance from you. Raise it and neighbouring anchors still stay close in height, because they are pinned to one lumpy surface rather than scattered independently.",
+  },
+  {
+    group: "canopy",
+    key: "branches",
+    label: "branches",
+    min: 0,
+    max: 14,
+    step: 1,
+    format: (v) => (v < 1 ? "off" : String(v)),
+    hint: "Arms the anchors are strung along, the way lights get slung over a few branches rather than scattered evenly. Off spreads them across the whole canopy. Each arm starts away from the trunk and has its own reach, sweep and height, so a handful of them reads as several separate clumps rather than one mass — and a low count with many wires gives a few dense danglers instead of one.",
   },
   {
     group: "wire",
@@ -279,7 +291,7 @@ export const CONTROLS: Control[] = [
     max: 1,
     step: 0.01,
     format: (v) => v.toFixed(2),
-    hint: "A slow, uneven drift in each bulb's brightness, each on its own clock. 0 leaves them perfectly steady, which is correct for LEDs and a little lifeless.",
+    hint: "Each bulb wavering in brightness on its own clock, somewhere between a third of a second and three seconds a cycle, and never on a regular pulse. 0 leaves them perfectly steady, which is correct for LEDs and a little lifeless. It reads most clearly with the wind turned down, where it is the only thing moving.",
   },
   {
     group: "motion",
@@ -300,6 +312,16 @@ export const CONTROLS: Control[] = [
     step: 0.5,
     format: (v) => `${v.toFixed(1)}/min`,
     hint: "How often a gust arrives, on average. Each one is jittered within its slot and varies in strength and direction, so this is a rate rather than a metronome. Slow and strong is a different piece from fast and weak.",
+  },
+  {
+    group: "motion",
+    key: "sway",
+    label: "sway",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    format: (v) => v.toFixed(2),
+    hint: "The whole canopy leaning, turning and rising under the wind, the way a tree does — and springing back past upright when a gust passes. It moves as one body, so every anchor keeps its position relative to every other; that coherence is what separates it from tremble, which moves each anchor on its own and reads as the observer being jostled rather than the scene moving. Needs breeze or gust to do anything, since a tree in still air does not move.",
   },
   {
     group: "motion",
@@ -331,6 +353,7 @@ export const DEFAULT_SETTINGS: Settings = {
   extent: 2.4,
   ceiling: 4.2,
   relief: 0.9,
+  branches: 0,
   // Length against ceiling is the ratio that decides the whole composition: it
   // is what sets how hard the strings fan out, and neither number means much
   // alone. Around three-quarters of the height is where the splay reads clearly
@@ -354,6 +377,7 @@ export const DEFAULT_SETTINGS: Settings = {
   gust: 0,
   gustRate: 6,
   tremble: 0,
+  sway: 0,
 }
 
 /**
@@ -368,36 +392,42 @@ export const DEFAULT_SETTINGS: Settings = {
 export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
   {
     label: "dreamy",
-    hint: "A narrow lens on a crowded, low canopy of long limp wires, adrift.",
+    hint: "Six arms of long, all but limp wires in cold blue, falling past you, everything barely moving.",
     settings: {
-      seed: 7,
-      wires: 37,
-      beads: 5,
-      segments: 23,
-      extent: 3.2,
-      ceiling: 3.8,
-      relief: 1.2,
+      seed: 310555,
+      wires: 52,
+      beads: 9,
+      segments: 34,
+      extent: 3.5,
+      ceiling: 4,
+      relief: 1.35,
+      branches: 6,
       // Longer than the canopy is high, so the nearest bulbs fall past the
       // viewer and out of frame rather than resolving into a string.
-      length: 4.75,
-      stiffness: 0.25,
-      set: 1.21,
-      twist: 1.03,
-      irregularity: 0.66,
-      fieldOfView: 52,
+      length: 4.45,
+      // All but limp. What little shape the wires hold comes to almost nothing,
+      // so they hang plumb and the arrangement is the canopy's, not theirs.
+      stiffness: 0.01,
+      set: 0.19,
+      twist: -0.93,
+      irregularity: 0.62,
+      fieldOfView: 65,
       pitch: 0,
-      hue: 38,
-      hueSpread: 7.5,
-      variance: 0.74,
+      hue: 196,
+      hueSpread: 10,
+      variance: 0.62,
       size: 0.01,
-      bloom: 8.4,
-      facing: 0.38,
-      falloff: 0.34,
-      flicker: 0.48,
-      breeze: 0.2,
-      gust: 0,
-      gustRate: 6,
+      bloom: 14,
+      // Orientation ignored: with wires this limp every bulb faces much the same
+      // way, and dimming by it would only thin the scene out.
+      facing: 0,
+      falloff: 0.22,
+      flicker: 0.23,
+      breeze: 0.33,
+      gust: 0.1,
+      gustRate: 17,
       tremble: 0,
+      sway: 0.5,
     },
   },
   {
@@ -416,6 +446,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       // so roughly a fifth of the bulbs are culled at any moment and the rest
       // pass by very close.
       relief: 2,
+      branches: 0,
       length: 1.7,
       // No bend at all. Every wire hangs plumb, and the arrangement comes
       // entirely from where the anchors are and how the breeze moves them.
@@ -437,6 +468,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       gust: 0,
       gustRate: 6,
       tremble: 0,
+      sway: 0.7,
     },
   },
   {
@@ -450,6 +482,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       extent: 0.2,
       ceiling: 1.8,
       relief: 1,
+      branches: 0,
       length: 0.65,
       stiffness: 0.63,
       set: 0.39,
@@ -469,6 +502,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       gust: 1,
       gustRate: 9,
       tremble: 0,
+      sway: 0,
     },
   },
 ]

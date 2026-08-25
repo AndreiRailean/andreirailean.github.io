@@ -60,6 +60,49 @@ export function updateFrames(ropes: Ropes, frames: Frames): void {
     ty[end - 1] = ty[end - 2]
     tz[end - 1] = tz[end - 2]
 
+    // Carry each particle's own normal through *time*.
+    //
+    // A rotation-minimising frame is minimal along the curve, not along the
+    // clock. Re-propagating it from the wire's start every rendered frame is
+    // continuous in space and says nothing whatever about continuity in time:
+    // any change of shape accumulates down the wire, so the frame at the free
+    // end swings even when nothing is kinked. Measured on eighty wires in wind,
+    // sixteen of them turned their end frames more than half a revolution, the
+    // worst at three and a half turns in twenty seconds — which is precisely
+    // "the bulbs are spinning on their strings", since the tip bulbs are the
+    // near, large, most visible ones.
+    //
+    // Projecting each stored normal back onto its own tangent is continuous per
+    // particle by construction, and neighbours stay coherent because they began
+    // coherent and their tangents move together. The along-wire propagation
+    // below is then only ever needed to *start* a wire off.
+    let carried = true
+    for (let i = start; i < end; i++) {
+      const along = nx[i] * tx[i] + ny[i] * ty[i] + nz[i] * tz[i]
+      const ux = nx[i] - along * tx[i]
+      const uy = ny[i] - along * ty[i]
+      const uz = nz[i] - along * tz[i]
+      const len = Math.hypot(ux, uy, uz)
+
+      // Nothing stored yet, or the tangent has swung so far that the stored
+      // normal now lies along it and no longer says which way round the wire
+      // is. Seed the whole wire afresh below.
+      //
+      // Repairing just this particle from its neighbour was tried and measures
+      // exactly the same, so the simpler branch wins. It only happens on wires
+      // that have folded, which is a rope problem rather than a frame one.
+      if (len < 1e-3) {
+        carried = false
+        break
+      }
+
+      nx[i] = ux / len
+      ny[i] = uy / len
+      nz[i] = uz / len
+    }
+
+    if (carried) continue
+
     // Seed with any unit vector perpendicular to the first tangent. Which one
     // is arbitrary — it only fixes where "bead angle zero" points.
     const seed = Math.abs(tz[start]) < 0.9 ? [0, 0, 1] : [1, 0, 0]
@@ -74,6 +117,8 @@ export function updateFrames(ropes: Ropes, frames: Frames): void {
     ny[start] = uy
     nz[start] = uz
 
+    // Then carry it down the wire by double reflection, which stays
+    // continuous through an inflection where a Frenet frame would flip.
     for (let i = start; i < end - 1; i++) {
       // Reflect across the plane bisecting the two points.
       const v1x = px[i + 1] - px[i]

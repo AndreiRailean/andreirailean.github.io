@@ -27,10 +27,12 @@ import { makeCamera, project } from "@/experiments/dangler/camera"
 // the project that runs outside a browser, and the rest is typed for one.
 declare const process: { exit(code: number): never }
 import { makeCanopy } from "@/experiments/dangler/canopy"
-import { createRopes } from "@/experiments/dangler/rope"
+import { createRopes, FIXED_DT } from "@/experiments/dangler/rope"
 import { createFrames, updateFrames } from "@/experiments/dangler/frame"
+import { createSway } from "@/experiments/dangler/sway"
+import { createWind } from "@/experiments/dangler/wind"
 import { canopyTremble, gustEnvelope, scheduleGusts, TREMBLE_REACH, type Gust } from "@/experiments/dangler/wind"
-import { buildArrangement } from "@/experiments/dangler/arrangement"
+import { buildArrangement, flickerAt } from "@/experiments/dangler/arrangement"
 import {
   DEFAULT_SETTINGS,
   PRESETS,
@@ -79,7 +81,7 @@ const ok = (name: string, pass: boolean, detail = "") => {
 
 // 3. THE invariant: anchor i does not move as wire count grows
 {
-  const shape = { extent: 2.6, ceiling: 4, relief: 0.9 }
+  const shape = { extent: 2.6, ceiling: 4, relief: 0.9, branches: 0 }
   const small = makeCanopy(7, shape)
   const big = makeCanopy(7, shape)
   let same = true
@@ -110,7 +112,7 @@ const ok = (name: string, pass: boolean, detail = "") => {
 
 // 4. anchors spread over the disc and heights correlate with position
 {
-  const c = makeCanopy(7, { extent: 2.6, ceiling: 4, relief: 0.9 })
+  const c = makeCanopy(7, { extent: 2.6, ceiling: 4, relief: 0.9, branches: 0 })
   let maxR = 0,
     minZ = 99,
     maxZ = -99
@@ -123,7 +125,7 @@ const ok = (name: string, pass: boolean, detail = "") => {
   ok("anchors stay inside the canopy disc", maxR <= 2.6 + 1e-6, `maxR=${maxR.toFixed(3)}`)
   ok("relief actually varies height", maxZ - minZ > 0.2, `z ∈ [${minZ.toFixed(2)}, ${maxZ.toFixed(2)}]`)
 
-  const flat = makeCanopy(7, { extent: 2.6, ceiling: 4, relief: 0 })
+  const flat = makeCanopy(7, { extent: 2.6, ceiling: 4, relief: 0, branches: 0 })
   ok(
     "relief 0 is a flat ceiling",
     [0, 1, 2, 3].every((i) => Math.abs(flat.anchorFor(i).z - 4) < 1e-6),
@@ -381,6 +383,363 @@ const ok = (name: string, pass: boolean, detail = "") => {
     previous = out.x
   }
   ok("tremble runs well above a wire's swing period", crossings / 2 / 10 > 2, `${(crossings / 2 / 10).toFixed(1)} Hz`)
+}
+
+// 13. sway — coherent where tremble is not, which is the entire difference
+{
+  const anchors = makeCanopy(7, { extent: 2.4, ceiling: 4.2, relief: 0.9, branches: 0 })
+  const rest = Array.from({ length: 30 }, (_, i) => anchors.anchorFor(i))
+  const out = { x: 0, y: 0, z: 0 }
+
+  /** Worst change in the distance between any two anchors, as a fraction. */
+  const worstStrain = (moved: { x: number; y: number; z: number }[]) => {
+    let worst = 0
+    for (let i = 0; i < rest.length; i++) {
+      for (let j = i + 1; j < rest.length; j++) {
+        const before = Math.hypot(rest[i].x - rest[j].x, rest[i].y - rest[j].y, rest[i].z - rest[j].z)
+        const after = Math.hypot(moved[i].x - moved[j].x, moved[i].y - moved[j].y, moved[i].z - moved[j].z)
+        if (before > 1e-6) worst = Math.max(worst, Math.abs(after - before) / before)
+      }
+    }
+    return worst
+  }
+
+  // Drive the canopy hard, then read the shape of the anchor cloud.
+  const sway = createSway()
+  let clock = 0
+  for (let i = 0; i < 400; i++) {
+    clock += 1 / 60
+    sway.update(9, 4, clock, 1 / 60, 1)
+  }
+  const swayed = rest.map((a) => {
+    sway.displace(a.x, a.y, a.z, out)
+    return { x: a.x + out.x, y: a.y + out.y, z: a.z + out.z }
+  })
+  let travelled = 0
+  for (let i = 0; i < rest.length; i++) {
+    travelled = Math.max(
+      travelled,
+      Math.hypot(swayed[i].x - rest[i].x, swayed[i].y - rest[i].y, swayed[i].z - rest[i].z),
+    )
+  }
+
+  ok("sway actually moves the canopy", travelled > 0.15, `${travelled.toFixed(3)}m`)
+  // The point of the whole module: lean, twist and bob are rotations and a
+  // translation, so the anchor cloud is carried rigidly and the observer keeps
+  // a frame to read the scene against.
+  ok(
+    "sway keeps every anchor pair exactly as far apart",
+    worstStrain(swayed) < 1e-5,
+    worstStrain(swayed).toExponential(1),
+  )
+
+  const trembled = rest.map((a) => {
+    canopyTremble(a.x, a.y, 3.3, 1, out)
+    return { x: a.x + out.x, y: a.y + out.y, z: a.z + out.z }
+  })
+  ok(
+    "tremble does not — it is a different thing on purpose",
+    worstStrain(trembled) > 1e-3,
+    worstStrain(trembled).toExponential(1),
+  )
+
+  // Still air must put it back exactly where it started, not merely near.
+  for (let i = 0; i < 3000; i++) {
+    clock += 1 / 60
+    sway.update(0, 0, clock, 1 / 60, 1)
+  }
+  sway.displace(rest[0].x, rest[0].y, rest[0].z, out)
+  ok(
+    "sway returns to centre in still air",
+    sway.atRest() && Math.hypot(out.x, out.y, out.z) < 1e-3,
+    `${Math.hypot(out.x, out.y, out.z).toExponential(1)}m off`,
+  )
+
+  const off = createSway()
+  off.update(9, 4, 1.5, 1 / 60, 0)
+  off.displace(rest[0].x, rest[0].y, rest[0].z, out)
+  ok("sway 0 is perfectly still", off.atRest() && out.x === 0 && out.y === 0 && out.z === 0)
+
+  // Underdamped: a gust should leave it rocking back past upright.
+  const kick = createSway()
+  let t = 0
+  const lean: number[] = []
+  for (let i = 0; i < 240; i++) {
+    t += 1 / 60
+    kick.update(i < 30 ? 14 : 0, 0, t, 1 / 60, 1)
+    kick.displace(0, 0, 4.2, out)
+    lean.push(out.x)
+  }
+  ok(
+    "the canopy overshoots upright after a gust, rather than gliding back",
+    Math.max(...lean) > 0.05 && Math.min(...lean) < -0.005,
+    `swings +${Math.max(...lean).toFixed(3)} then ${Math.min(...lean).toFixed(3)}`,
+  )
+}
+
+// 14. flicker — on a timescale a person can actually see
+{
+  ok("flicker 0 leaves a bulb exactly steady", flickerAt(1, 0.4, 3.3, 0) === 1 && flickerAt(1, 0.4, 9.1, 0) === 1)
+
+  const arrangement = buildArrangement(normalizeSettings({ wires: 4, beads: 12, flicker: 1 }))
+  let slowest = Infinity
+  let fastest = 0
+  for (let i = 0; i < arrangement.beadCount; i++) {
+    slowest = Math.min(slowest, arrangement.flickerRate[i])
+    fastest = Math.max(fastest, arrangement.flickerRate[i])
+  }
+  // The bug this replaces put a cycle at eleven to fifty seconds, which is not
+  // a flicker and is invisible under any other motion in the piece.
+  ok("even the slowest bulb cycles within a few seconds", 1 / slowest < 4, `${(1 / slowest).toFixed(2)}s`)
+  ok("even the fastest bulb is not a strobe", 1 / fastest > 0.25, `${(1 / fastest).toFixed(2)}s`)
+
+  // Sample one bulb and ask what a viewer would actually see.
+  const rate = arrangement.flickerRate[0]
+  const phase = arrangement.flickerPhase[0]
+  let low = Infinity
+  let high = -Infinity
+  let biggestSecond = 0
+  for (let t = 0; t < 20; t += 0.01) {
+    const v = flickerAt(rate, phase, t, 1)
+    low = Math.min(low, v)
+    high = Math.max(high, v)
+    biggestSecond = Math.max(biggestSecond, Math.abs(v - flickerAt(rate, phase, t + 1, 1)))
+  }
+  ok("flicker swings a bulb's brightness substantially", high - low > 0.5, `${low.toFixed(2)}..${high.toFixed(2)}`)
+  ok("and does so within a single second", biggestSecond > 0.3, `${biggestSecond.toFixed(2)} in 1s`)
+
+  let halfAmplitude = 0
+  for (let t = 0; t < 20; t += 0.01)
+    halfAmplitude = Math.max(halfAmplitude, Math.abs(flickerAt(rate, phase, t, 0.5) - 1))
+  ok("the control scales it", Math.abs(halfAmplitude - (high - 1) / 2) < 0.02, halfAmplitude.toFixed(3))
+}
+
+// 15. branches — clumps that stay put as the scene grows
+{
+  const shape = { extent: 2.4, ceiling: 4.2, relief: 0.9, branches: 5 }
+  const clustered = makeCanopy(7, shape)
+
+  // Still the invariant that matters most: an anchor belongs to the seed and its
+  // own index, never to how many anchors were asked for.
+  const few = Array.from({ length: 6 }, (_, i) => clustered.anchorFor(i))
+  const many = Array.from({ length: 60 }, (_, i) => clustered.anchorFor(i))
+  ok(
+    "clustered anchor i does not move as the count grows",
+    few.every((a, i) => a.x === many[i].x && a.y === many[i].y && a.z === many[i].z),
+  )
+
+  const anchors = Array.from({ length: 60 }, (_, i) => clustered.anchorFor(i))
+  ok(
+    "clustered anchors stay inside the canopy",
+    anchors.every((a) => Math.hypot(a.x, a.y) <= shape.extent + 1e-6),
+  )
+
+  // Members of one arm should sit closer together than anchors picked at random,
+  // or there are no clumps and the control does nothing.
+  const spread = (list: typeof anchors) => {
+    let total = 0
+    let n = 0
+    for (let i = 0; i < list.length; i++)
+      for (let j = i + 1; j < list.length; j++) {
+        total += Math.hypot(list[i].x - list[j].x, list[i].y - list[j].y)
+        n++
+      }
+    return total / n
+  }
+  const oneArm = anchors.filter((_, i) => i % 5 === 0)
+  ok(
+    "an arm's anchors clump together",
+    spread(oneArm) < spread(anchors) * 0.75,
+    `arm ${spread(oneArm).toFixed(2)}m vs all ${spread(anchors).toFixed(2)}m`,
+  )
+
+  // Arms have to cover the radius, or widening the canopy just grows a bare disc
+  // in the middle and pushes every bulb out of frame.
+  const radii = anchors.map((a) => Math.hypot(a.x, a.y))
+  ok(
+    "arms reach in close to the trunk",
+    Math.min(...radii) < shape.extent * 0.16,
+    `nearest ${Math.min(...radii).toFixed(2)}m of ${shape.extent}m`,
+  )
+  ok(
+    "arms reach out to the rim",
+    Math.max(...radii) > shape.extent * 0.85,
+    `furthest ${Math.max(...radii).toFixed(2)}m of ${shape.extent}m`,
+  )
+
+  // Two arms is the hard case: few samples, so a narrow per-arm range shows up
+  // as poor coverage of the canopy as a whole.
+  const pair = Array.from({ length: 40 }, (_, i) => makeCanopy(7, { ...shape, branches: 2 }).anchorFor(i))
+  const pairRadii = pair.map((a) => Math.hypot(a.x, a.y))
+  ok(
+    "even two arms span most of the radius",
+    Math.min(...pairRadii) < shape.extent * 0.16 && Math.max(...pairRadii) > shape.extent * 0.8,
+    `${Math.min(...pairRadii).toFixed(2)}..${Math.max(...pairRadii).toFixed(2)} of ${shape.extent}m`,
+  )
+
+  const even = makeCanopy(7, { ...shape, branches: 0 })
+  ok(
+    "branches off is the old even scatter, so recorded scenes are untouched",
+    [0, 1, 2, 17].every((i) => {
+      const a = even.anchorFor(i)
+      const b = makeCanopy(7, { extent: 2.4, ceiling: 4.2, relief: 0.9, branches: 0 }).anchorFor(i)
+      return a.x === b.x && a.y === b.y && a.z === b.z
+    }),
+  )
+}
+
+// 16. carrying and resampling — how a settings change avoids throwing the scene
+{
+  const settings = normalizeSettings({ wires: 6, beads: 4, segments: 24, extent: 2, ceiling: 4, length: 3 })
+  const arrangement = buildArrangement(settings)
+  const ropes = createRopes(arrangement.specs)
+  ropes.settle()
+
+  const tipOf = (r: typeof ropes, w: number) => {
+    const t = r.offset[w + 1] - 1
+    return { x: r.px[t], y: r.py[t], z: r.pz[t] }
+  }
+  const lengthOf = (r: typeof ropes, w: number) => {
+    let total = 0
+    for (let i = r.offset[w]; i < r.offset[w + 1] - 1; i++) {
+      total += Math.hypot(r.px[i + 1] - r.px[i], r.py[i + 1] - r.py[i], r.pz[i + 1] - r.pz[i])
+    }
+    return total
+  }
+
+  // The real sequence: the anchors move first, then each wire is carried after
+  // its own. Carrying without moving the anchor would leave the wire hanging
+  // from nowhere, which is not something the engine ever does.
+  const shifted = arrangement.specs.map((spec) => ({
+    ...spec,
+    anchor: { x: spec.anchor.x + 1.5, y: spec.anchor.y - 0.5, z: spec.anchor.z + 0.25 },
+  }))
+  const before = tipOf(ropes, 0)
+  ropes.update(shifted)
+  for (let w = 0; w < shifted.length; w++) ropes.carry(w, 1.5, -0.5, 0.25)
+  const after = tipOf(ropes, 0)
+  ok(
+    "carry moves a wire exactly as far as its anchor went",
+    Math.abs(after.x - before.x - 1.5) < 1e-6 && Math.abs(after.z - before.z - 0.25) < 1e-6,
+  )
+
+  // The velocity a carry must NOT create. A bodily move that reads as one fires
+  // the wire off exactly as a teleport does — which is the whole failure this
+  // replaced, where relocating anchors left wires spinning at 139 m/s.
+  const seen = tipOf(ropes, 0)
+  ropes.step(null)
+  const settledTip = tipOf(ropes, 0)
+  const launched = Math.hypot(settledTip.x - seen.x, settledTip.y - seen.y, settledTip.z - seen.z) / FIXED_DT
+  ok("a carried wire is not launched by it", launched < 0.5, `${launched.toFixed(3)} m/s`)
+
+  // Resampling: the same wire, redrawn with a different number of particles,
+  // has to be in the same place. Otherwise dragging the quality knob rearranges
+  // the scene.
+  const settled = createRopes(arrangement.specs)
+  settled.settle()
+  const shapeBefore = [0, 1, 2].map((w) => ({ tip: tipOf(settled, w), length: lengthOf(settled, w) }))
+
+  const finer = buildArrangement({ ...settings, segments: 48 })
+  const resampled = createRopes(finer.specs, settled)
+  ok("resampling changes the particle count", resampled.particleCount !== settled.particleCount)
+  ok(
+    "a resampled wire keeps its tip where it was",
+    shapeBefore.every((s, w) => {
+      const t = tipOf(resampled, w)
+      return Math.hypot(t.x - s.tip.x, t.y - s.tip.y, t.z - s.tip.z) < 0.02
+    }),
+  )
+  ok(
+    "and keeps its length",
+    shapeBefore.every((s, w) => Math.abs(lengthOf(resampled, w) - s.length) / s.length < 0.02),
+    shapeBefore.map((s, w) => (lengthOf(resampled, w) / s.length).toFixed(3)).join(" "),
+  )
+  ok("resampling reports nothing as freshly laid out", resampled.freshWires.length === 0)
+}
+
+// 17. frames must be steady in time, not only along the wire
+{
+  // A rotation-minimising frame is minimal along the *curve*. Nothing about
+  // that makes it steady from one rendered frame to the next, and when it is
+  // not, the bulbs riding it turn on their strings. Every other frame check
+  // here passes on a frame that is quietly rotating.
+  const settings = normalizeSettings({
+    wires: 24,
+    beads: 9,
+    segments: 26,
+    extent: 3.5,
+    ceiling: 4,
+    relief: 1.35,
+    branches: 7,
+    length: 4.45,
+    stiffness: 1,
+    set: 2.5,
+    twist: -0.13,
+    irregularity: 0.39,
+    breeze: 0.33,
+    gust: 0.1,
+    gustRate: 17,
+    seed: 398902,
+  })
+  const arrangement = buildArrangement(settings)
+  const ropes = createRopes(arrangement.specs)
+  ropes.settle()
+  const frames = createFrames(ropes.particleCount)
+  const wind = createWind()
+  const air = { x: 0, y: 0, z: 0 }
+  updateFrames(ropes, frames)
+
+  const previous = new Float32Array(ropes.particleCount * 3)
+  const remember = () => {
+    for (let i = 0; i < ropes.particleCount; i++) {
+      previous[i * 3] = frames.nx[i]
+      previous[i * 3 + 1] = frames.ny[i]
+      previous[i * 3 + 2] = frames.nz[i]
+    }
+  }
+  remember()
+
+  const turned = new Float64Array(ropes.particleCount)
+  let clock = 0
+  let worstJump = 0
+  for (let frame = 0; frame < 60 * 12; frame++) {
+    clock += 1 / 60
+    wind.update(settings, clock)
+    for (let i = 0; i < 8; i++) {
+      ropes.step((w) => {
+        const anchor = arrangement.specs[w].anchor
+        wind.at(anchor.x, anchor.y, air)
+        return air
+      })
+    }
+    updateFrames(ropes, frames)
+    for (let i = 0; i < ropes.particleCount; i++) {
+      const dot =
+        frames.nx[i] * previous[i * 3] + frames.ny[i] * previous[i * 3 + 1] + frames.nz[i] * previous[i * 3 + 2]
+      const step = Math.acos(Math.min(1, Math.max(-1, dot)))
+      turned[i] += step
+      if (step > worstJump) worstJump = step
+    }
+    remember()
+  }
+
+  let spinning = 0
+  for (let w = 0; w < ropes.wireCount; w++) {
+    let worst = 0
+    for (let i = ropes.offset[w]; i < ropes.offset[w + 1]; i++) worst = Math.max(worst, turned[i])
+    if (worst > Math.PI) spinning++
+  }
+
+  ok(
+    "frames do not turn on their own under wind",
+    spinning === 0,
+    `${spinning}/${ropes.wireCount} wires turned past half a revolution in 12s`,
+  )
+  ok(
+    "and never lurch between one frame and the next",
+    worstJump < Math.PI / 3,
+    `worst ${((worstJump * 180) / Math.PI).toFixed(0)}°`,
+  )
 }
 
 console.log(failures === 0 ? "\nall good" : `\n${failures} FAILING`)
