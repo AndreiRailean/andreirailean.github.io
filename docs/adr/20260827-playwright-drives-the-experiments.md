@@ -57,9 +57,13 @@ a resize cleared the canvas while the loop was parked.
 
 **The machine's own Chromium**, via `executablePath`, rather than Playwright's
 download. One is installed everywhere this repo gets worked on and nothing here
-needs a patched build. The lookup falls through to `undefined`, so a machine
-where `npm install` ran normally uses Playwright's own browser and its own error
-message.
+needs a patched build. Playwright 1.62 has no install script, so its own browsers
+arrive only from an explicit `npx playwright install` — using the system one means
+a checkout is testable without that step. The lookup falls through to `undefined`
+when no candidate exists, which produces Playwright's own "run npx playwright
+install" message, better than anything invented here. CI wants the opposite,
+though: `PW_USE_BUNDLED_CHROMIUM=1` forces the fallback so a runner that happens
+to ship `/usr/bin/chromium` still tests against a known build.
 
 **`globalSetup` rather than Playwright's `webServer`.** Astro 7 runs its dev
 server as a daemon, and decides for itself whether to: `astro dev` detects an
@@ -99,11 +103,15 @@ that would silently test another branch's code.
   opens a page. This removes the reason to add a second runner, and it means
   `checks.ts` could move into `tests/` and lose its `mktemp` dance.
 
-**Left open deliberately:** whether `checks.ts` becomes a spec. It is 746 lines
-of assertions with its own contract — it exits non-zero, it is meant to be run by
+**Left open deliberately:** whether `checks.ts` becomes a spec. It is 746 lines of
+assertions with its own contract — it exits non-zero, it is meant to be run by
 hand after touching the physics, and its header argues for being a script. Moving
 it is a decision about that contract, not a mechanical port, and nothing here
 depends on it.
+
+Resolved the same day by `20260827-a-unit-runner-for-the-experiments`, which also
+revisits the "no second runner" reasoning under Considered Options below: speed,
+not the alias, turned out to be the argument that mattered.
 
 ## Considered Options
 
