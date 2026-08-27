@@ -16,7 +16,7 @@ import {
 
 describe("the query string", () => {
   it("round-trips a custom scene unchanged", () => {
-    const custom = normalizeSettings({ seed: 91, wires: 8, hue: 200, hueSpread: 62, breeze: 0.4, pitch: 12 })
+    const custom = normalizeSettings({ seed: 91, strands: 8, hue: 200, hueSpread: 62, breeze: 0.4, pitch: 12 })
     expect(settingsFromQuery(settingsToQuery(custom))).toEqual(custom)
   })
 
@@ -33,11 +33,11 @@ describe("the query string", () => {
 describe("normalizeSettings", () => {
   it("clamps out-of-range values to the bounds", () => {
     expect(normalizeSettings({ hue: 9999 }).hue).toBe(360)
-    expect(normalizeSettings({ wires: -5 }).wires).toBe(1)
+    expect(normalizeSettings({ strands: -5 }).strands).toBe(1)
   })
 
   it("forces counts to whole numbers", () => {
-    expect(normalizeSettings({ wires: 4.7, segments: 12.2 }).wires).toBe(5)
+    expect(normalizeSettings({ strands: 4.7, segments: 12.2 }).strands).toBe(5)
   })
 })
 

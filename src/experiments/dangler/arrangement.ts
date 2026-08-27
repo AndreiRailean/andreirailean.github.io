@@ -1,20 +1,20 @@
 /**
- * Turns a seed and the settings into wires and bulbs.
+ * Turns a seed and the settings into strands and bulbs.
  *
  * Pure: the same settings always produce the same arrangement, which is what
  * lets a scene survive a URL and what makes `reroll` the only source of a new
  * one.
  *
- * Every wire draws from its own generator, keyed on `(seed, index, purpose)`
+ * Every strand draws from its own generator, keyed on `(seed, index, purpose)`
  * rather than pulling from one shared stream. Two reasons, both learned the hard
- * way elsewhere: wire 7 must be the same wire whether the scene holds eight
- * wires or eighty, and widening the colour spread must not quietly move a wire's
+ * way elsewhere: strand 7 must be the same strand whether the scene holds eight
+ * strands or eighty, and widening the colour spread must not quietly move a strand's
  * shape.
  */
 
 import { makeCanopy } from "@/experiments/dangler/canopy"
 import { gaussian, hashSeed, makeRng } from "@/experiments/dangler/random"
-import type { WireSpec } from "@/experiments/dangler/rope"
+import type { StrandSpec } from "@/experiments/dangler/rope"
 import type { Settings } from "@/experiments/dangler/settings"
 
 const SALT_SHAPE = 0x5ba9e
@@ -44,13 +44,13 @@ export function flickerAt(rate: number, phase: number, clock: number, amount: nu
 }
 
 export type Arrangement = {
-  specs: WireSpec[]
+  specs: StrandSpec[]
   beadCount: number
-  /** Which wire each bulb belongs to. */
-  wireOf: Int32Array
-  /** Position along its wire, 0 at the anchor and 1 at the free end. */
+  /** Which strand each bulb belongs to. */
+  strandOf: Int32Array
+  /** Position along its strand, 0 at the anchor and 1 at the free end. */
   along: Float32Array
-  /** Angle around the wire's axis, measured from the carried frame's normal. */
+  /** Angle around the strand's axis, measured from the carried frame's normal. */
   angle: Float32Array
   hue: Float32Array
   saturation: Float32Array
@@ -60,14 +60,14 @@ export type Arrangement = {
 }
 
 /**
- * Splits a standard deviation between a per-wire and a per-bead draw.
+ * Splits a standard deviation between a per-strand and a per-bead draw.
  *
  * A string of lights is one batch, so its bulbs are alike in a way they are not
  * alike to the next string's. Halving the deviation at each level and combining
  * in quadrature (0.5² + 0.866² = 1) keeps the *total* spread equal to what was
- * asked for, while making a wire read as a wire.
+ * asked for, while making a strand read as a strand.
  */
-const WIRE_SHARE = 0.5
+const STRAND_SHARE = 0.5
 const BEAD_SHARE = 0.866
 
 export function buildArrangement(settings: Settings): Arrangement {
@@ -78,10 +78,10 @@ export function buildArrangement(settings: Settings): Arrangement {
     branches: settings.branches,
   })
 
-  const specs: WireSpec[] = []
-  const beadCount = settings.wires * settings.beads
+  const specs: StrandSpec[] = []
+  const beadCount = settings.strands * settings.beads
 
-  const wireOf = new Int32Array(beadCount)
+  const strandOf = new Int32Array(beadCount)
   const along = new Float32Array(beadCount)
   const angle = new Float32Array(beadCount)
   const hue = new Float32Array(beadCount)
@@ -92,7 +92,7 @@ export function buildArrangement(settings: Settings): Arrangement {
 
   let b = 0
 
-  for (let w = 0; w < settings.wires; w++) {
+  for (let w = 0; w < settings.strands; w++) {
     const shape = makeRng(hashSeed(settings.seed, w, SALT_SHAPE))
     const colour = makeRng(hashSeed(settings.seed, w, SALT_COLOUR))
     const beads = makeRng(hashSeed(settings.seed, w, SALT_BEADS))
@@ -110,25 +110,25 @@ export function buildArrangement(settings: Settings): Arrangement {
     })
 
     // The batch this string came out of: one offset shared by all its bulbs.
-    const wireHue = gaussian(colour) * settings.hueSpread * WIRE_SHARE
-    const wireBright = gaussian(colour) * settings.variance * WIRE_SHARE
-    const wireSat = gaussian(colour) * settings.variance * WIRE_SHARE
+    const strandHue = gaussian(colour) * settings.hueSpread * STRAND_SHARE
+    const strandBright = gaussian(colour) * settings.variance * STRAND_SHARE
+    const strandSat = gaussian(colour) * settings.variance * STRAND_SHARE
     const beadPhase = beads() * 2 * Math.PI
 
     for (let i = 0; i < settings.beads; i++) {
       const t = settings.beads === 1 ? 0.5 : BEAD_INSET + (1 - BEAD_INSET) * (i / (settings.beads - 1))
 
-      wireOf[b] = w
+      strandOf[b] = w
       along[b] = t
       // Bulbs alternate sides down the string, with enough slop that the
       // alternation is never a visible zip.
       angle[b] = beadPhase + Math.PI * i + gaussian(beads) * 0.35
 
-      hue[b] = settings.hue + wireHue + gaussian(colour) * settings.hueSpread * BEAD_SHARE
-      brightness[b] = Math.max(0.15, 1 + (wireBright + gaussian(colour) * settings.variance * BEAD_SHARE) * 0.4)
+      hue[b] = settings.hue + strandHue + gaussian(colour) * settings.hueSpread * BEAD_SHARE
+      brightness[b] = Math.max(0.15, 1 + (strandBright + gaussian(colour) * settings.variance * BEAD_SHARE) * 0.4)
       saturation[b] = Math.min(
         1.4,
-        Math.max(0, 1 + (wireSat + gaussian(colour) * settings.variance * BEAD_SHARE) * 0.5),
+        Math.max(0, 1 + (strandSat + gaussian(colour) * settings.variance * BEAD_SHARE) * 0.5),
       )
 
       flickerPhase[b] = beads() * 2 * Math.PI
@@ -142,5 +142,5 @@ export function buildArrangement(settings: Settings): Arrangement {
     }
   }
 
-  return { specs, beadCount, wireOf, along, angle, hue, saturation, brightness, flickerPhase, flickerRate }
+  return { specs, beadCount, strandOf, along, angle, hue, saturation, brightness, flickerPhase, flickerRate }
 }

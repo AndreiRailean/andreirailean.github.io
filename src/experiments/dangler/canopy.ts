@@ -1,12 +1,12 @@
 import { discPoint, hashSeed, makeRng, r2Point } from "@/experiments/dangler/random"
 
 /**
- * The invisible object the wires hang from.
+ * The invisible object the strands hang from.
  *
  * Anchors are pinned to one uneven thing overhead, which means their heights are
  * *correlated* — neighbours hang from similar heights because a surface is not
  * noise. Scattering heights independently is wrong in a way that is invisible at
- * three wires and unmistakable at thirty: the anchors stop reading as one object
+ * three strands and unmistakable at thirty: the anchors stop reading as one object
  * and start reading as a random spray.
  *
  * A two-octave value-noise height field is the cheapest thing that reads as a
@@ -112,8 +112,8 @@ export function makeCanopy(seed: number, shape: CanopyShape): Canopy {
       }
 
       // Round-robin, so an arm's membership depends on the anchor's index and
-      // never on how many anchors exist — raising the wire count still adds
-      // wires rather than redealing the ones already hanging.
+      // never on how many anchors exist — raising the strand count still adds
+      // strands rather than redealing the ones already hanging.
       const branch = arm(index % branches)
       const along = u
       const radius = branch.inner + (branch.reach - branch.inner) * along

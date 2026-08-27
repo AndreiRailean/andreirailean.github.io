@@ -79,8 +79,8 @@ describe("gustEnvelope", () => {
 
 /**
  * `anchorOffsets` is a displacement, never a force, and that is the point. A
- * force integrates, so a wire under one sweeps steadily outward; an anchor that
- * moves drags its wire about by roughly its own travel and stops. That bound is
+ * force integrates, so a strand under one sweeps steadily outward; an anchor that
+ * moves drags its strand about by roughly its own travel and stops. That bound is
  * what lets a crowd be agitated without being blown apart.
  */
 describe("canopyTremble", () => {
@@ -121,8 +121,8 @@ describe("canopyTremble", () => {
     expect(Math.abs(here.x - there.x) > 1e-6 || Math.abs(here.y - there.y) > 1e-6).toBe(true)
   })
 
-  it("runs well above a wire's own swing period", () => {
-    // A hanging wire swings at well under 1Hz. An anchor shaken near that pumps
+  it("runs well above a strand's own swing period", () => {
+    // A hanging strand swings at well under 1Hz. An anchor shaken near that pumps
     // it instead of shivering it: 25mm of anchor travel once produced 0.43m of
     // tip travel. Counted here as sign changes — at least a few cycles a second.
     let crossings = 0

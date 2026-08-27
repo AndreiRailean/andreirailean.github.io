@@ -10,7 +10,7 @@ import { createWind } from "@/experiments/dangler/wind"
  *
  * Never derive a frame from a direction inside a loop that walks a curve:
  * picking two perpendiculars requires choosing a reference axis, and every
- * choice flips somewhere on the sphere, folding the rest shape where the wire
+ * choice flips somewhere on the sphere, folding the rest shape where the strand
  * curls past it. Both `restDirections` and `frame.ts` transport a frame instead.
  */
 
@@ -33,15 +33,15 @@ const angleBetween = (a: Vector, b: Vector) => Math.acos(Math.min(1, Math.max(-1
 
 const degrees = (radians: number) => (radians * 180) / Math.PI
 
-describe("along the wire", () => {
+describe("along the strand", () => {
   // Finely segmented and strongly curled: the case where a frame derived from a
   // reference axis would flip.
   const { ropes, frames } = framed({ ...DEFAULT_SETTINGS, set: 2.2, twist: 1.5, segments: 60 })
 
   const worstOverParticles = (measure: (i: number) => number) => {
     let worst = 0
-    for (let wire = 0; wire < ropes.wireCount; wire++) {
-      for (let i = ropes.offset[wire]!; i < ropes.offset[wire + 1]!; i++) worst = Math.max(worst, measure(i))
+    for (let strand = 0; strand < ropes.strandCount; strand++) {
+      for (let i = ropes.offset[strand]!; i < ropes.offset[strand + 1]!; i++) worst = Math.max(worst, measure(i))
     }
     return worst
   }
@@ -60,8 +60,8 @@ describe("along the wire", () => {
 
   it("never flips the normal between neighbours", () => {
     let worst = 0
-    for (let wire = 0; wire < ropes.wireCount; wire++) {
-      for (let i = ropes.offset[wire]! + 1; i < ropes.offset[wire + 1]!; i++) {
+    for (let strand = 0; strand < ropes.strandCount; strand++) {
+      for (let i = ropes.offset[strand]! + 1; i < ropes.offset[strand + 1]!; i++) {
         worst = Math.max(worst, angleBetween(normalAt(frames, i), normalAt(frames, i - 1)))
       }
     }
@@ -70,10 +70,10 @@ describe("along the wire", () => {
 })
 
 /**
- * A frame must be carried through time, not only along the wire.
+ * A frame must be carried through time, not only along the strand.
  *
  * A rotation-minimising frame is minimal along the *curve*; nothing about that
- * makes it steady between rendered frames, and re-propagating it from the wire's
+ * makes it steady between rendered frames, and re-propagating it from the strand's
  * start each frame lets any change of shape accumulate into a large roll at the
  * free end. Bulbs ride that frame, so they visibly turn on their strings — and
  * the tip bulbs are the near, large ones.
@@ -83,7 +83,7 @@ describe("along the wire", () => {
  */
 describe("through time", () => {
   const SETTINGS = normalizeSettings({
-    wires: 24,
+    strands: 24,
     beads: 9,
     segments: 26,
     extent: 3.5,
@@ -129,8 +129,8 @@ describe("through time", () => {
       clock += 1 / 60
       wind.update(SETTINGS, clock)
       for (let step = 0; step < SUBSTEPS; step++) {
-        ropes.step((wire) => {
-          const anchor = arrangement.specs[wire]!.anchor
+        ropes.step((strand) => {
+          const anchor = arrangement.specs[strand]!.anchor
           wind.at(anchor.x, anchor.y, air)
           return air
         })
@@ -149,22 +149,22 @@ describe("through time", () => {
     }
 
     let spinning = 0
-    for (let wire = 0; wire < ropes.wireCount; wire++) {
+    for (let strand = 0; strand < ropes.strandCount; strand++) {
       let worst = 0
-      for (let i = ropes.offset[wire]!; i < ropes.offset[wire + 1]!; i++) worst = Math.max(worst, turned[i]!)
+      for (let i = ropes.offset[strand]!; i < ropes.offset[strand + 1]!; i++) worst = Math.max(worst, turned[i]!)
       if (worst > Math.PI) spinning++
     }
-    return { spinning, worstJump, wireCount: ropes.wireCount }
+    return { spinning, worstJump, strandCount: ropes.strandCount }
   }
 
-  // 12 simulated seconds of a 24-wire scene at 8 substeps a frame — seconds of
+  // 12 simulated seconds of a 24-strand scene at 8 substeps a frame — seconds of
   // real work, and the only way to see a frame drift. Run once and read twice,
   // rather than paying for it per assertion.
   const measured = measureUnderWind()
 
   it("does not let frames turn on their own under wind", () => {
-    const { spinning, wireCount } = measured
-    expect(spinning, `${spinning}/${wireCount} wires turned past half a revolution in ${SECONDS}s`).toBe(0)
+    const { spinning, strandCount } = measured
+    expect(spinning, `${spinning}/${strandCount} strands turned past half a revolution in ${SECONDS}s`).toBe(0)
   })
 
   it("never lurches a frame between one rendered frame and the next", () => {

@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest"
 import { makeCanopy } from "@/experiments/dangler/canopy"
 
 /**
- * The invisible object overhead that the wires hang from.
+ * The invisible object overhead that the strands hang from.
  *
  * The invariant that matters most in the whole piece lives here: anchor `i`
  * comes from an R2 sequence indexed by `i`, never from successive draws. Break
- * it and raising the wire count reshuffles the wires already on screen.
+ * it and raising the strand count reshuffles the strands already on screen.
  */
 
 const SHAPE = { extent: 2.6, ceiling: 4, relief: 0.9, branches: 0 }

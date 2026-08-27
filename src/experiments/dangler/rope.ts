@@ -1,57 +1,57 @@
 /**
- * The wires, as Verlet chains with bending resistance.
+ * The strands, as Verlet chains with bending resistance.
  *
- * A wire fixed at one end with a free end is **not** a catenary — a catenary
+ * A strand fixed at one end with a free end is **not** a catenary — a catenary
  * needs both ends fixed. What hangs here is an elastic rod, and its shape comes
  * from bending stiffness fighting gravity. A bend constraint reproduces that
  * directly; an analytic curve has to fake it.
  *
- * Every particle in the scene lives in one set of flat arrays with per-wire
- * index ranges, rather than in an array of per-wire objects. At three wires that
+ * Every particle in the scene lives in one set of flat arrays with per-strand
+ * index ranges, rather than in an array of per-strand objects. At three strands that
  * is a wash. At a hundred it is the difference between a number changing and a
  * rewrite, and the scene is expected to grow.
  *
  * ## What is live and what is not
  *
- * `length`, `stiffness` and `set` are read at solve time from three per-wire
+ * `length`, `stiffness` and `set` are read at solve time from three per-strand
  * scalars, so dragging them relaxes the existing chain into its new shape
  * instead of teleporting it. Only a change in particle *layout* — the segment
- * count — needs the arrays rebuilt. Growing the wire count appends, preserving
- * the wires already on screen along with whatever state they were in.
+ * count — needs the arrays rebuilt. Growing the strand count appends, preserving
+ * the strands already on screen along with whatever state they were in.
  */
 
-export type WireSpec = {
+export type StrandSpec = {
   anchor: { x: number; y: number; z: number }
-  /** Links per wire. Particle count is this plus one. */
+  /** Links per strand. Particle count is this plus one. */
   segments: number
   /** Hang length in world units. */
   length: number
   /** How hard the bend constraint is enforced. 0 is a limp chain. */
   stiffness: number
-  /** Total turn baked into the wire, in radians — its memory of being coiled. */
+  /** Total turn baked into the strand, in radians — its memory of being coiled. */
   set: number
-  /** Where around the wire's axis the coil starts. */
+  /** Where around the strand's axis the coil starts. */
   coilAzimuth: number
-  /** Turns the coil's azimuth makes over the wire's length. */
+  /** Turns the coil's azimuth makes over the strand's length. */
   coilTwist: number
 }
 
-/** Force per unit mass applied to a whole wire, in world units per second². */
-export type Wind = (wireIndex: number) => { x: number; y: number; z: number }
+/** Force per unit mass applied to a whole strand, in world units per second². */
+export type Wind = (strandIndex: number) => { x: number; y: number; z: number }
 
 export type Ropes = {
-  readonly wireCount: number
+  readonly strandCount: number
   readonly particleCount: number
-  /** First particle index of wire w; `offset[wireCount]` is the total. */
+  /** First particle index of strand w; `offset[strandCount]` is the total. */
   readonly offset: Int32Array
   /**
-   * Per-wire displacement of the anchor from where the canopy pins it, as
+   * Per-strand displacement of the anchor from where the canopy pins it, as
    * `[x, y, z]` triples. Written by the engine, read on the next step.
    *
-   * Deliberately a *position* and not a force. A force integrates, so a wire
+   * Deliberately a *position* and not a force. A force integrates, so a strand
    * under one keeps accelerating and sweeps a long way out; moving the anchor
-   * drags the wire by roughly the anchor's own travel and no further, because
-   * the anchor still holds it. Measured on a 0.65m wire: 7mm of anchor step
+   * drags the strand by roughly the anchor's own travel and no further, because
+   * the anchor still holds it. Measured on a 0.65m strand: 7mm of anchor step
    * settles at 26mm of tip travel, where a held 14 m/s² was still climbing
    * through 914mm. That bounded quality is the whole point of it.
    */
@@ -60,33 +60,33 @@ export type Ropes = {
   readonly py: Float32Array
   readonly pz: Float32Array
   /** Applies live parameter changes without disturbing any position. */
-  update: (specs: WireSpec[]) => void
+  update: (specs: StrandSpec[]) => void
   /** One fixed simulation step. */
   step: (wind: Wind | null) => void
   /**
    * Runs to rest with heavy damping, then zeroes every velocity.
    *
-   * `only` restricts it to some wires. A rebuild that appends wires settles just
-   * the new ones: settling everything would zero the velocity of the wires
+   * `only` restricts it to some strands. A rebuild that appends strands settles just
+   * the new ones: settling everything would zero the velocity of the strands
    * already on screen, so adding one to a scene in a breeze would visibly calm
    * all the rest.
    */
   settle: (only?: readonly number[]) => void
   /**
-   * Moves a whole wire bodily, particles and velocities together.
+   * Moves a whole strand bodily, particles and velocities together.
    *
-   * For when an anchor is *relocated* rather than nudged. A hanging wire's
+   * For when an anchor is *relocated* rather than nudged. A hanging strand's
    * settled shape does not depend on where it hangs from, so carrying it to the
    * new place leaves it already settled — nothing is violated, no energy is
    * injected, and whatever it was doing it keeps doing.
    */
-  carry: (wire: number, dx: number, dy: number, dz: number) => void
+  carry: (strand: number, dx: number, dy: number, dz: number) => void
   /** Largest violation of a link's rest length, in world units. */
   maxError: () => number
   /** Whether the scene is still visibly moving. */
   atRest: () => boolean
-  /** Wires laid out fresh by this build, rather than carried from the last. */
-  readonly freshWires: readonly number[]
+  /** Strands laid out fresh by this build, rather than carried from the last. */
+  readonly freshStrands: readonly number[]
 }
 
 /**
@@ -96,7 +96,7 @@ export type Ropes = {
  * solver's effective stiffness is limited by how many passes it gets, so a
  * hanging chain reaches a *steady state* where gravity's injection each step
  * balances what the passes remove — more settling never improves it. Measured on
- * one wire at equal total work: 120Hz with 18 passes left links 0.92% stretched;
+ * one strand at equal total work: 120Hz with 18 passes left links 0.92% stretched;
  * 240Hz with 9 left 0.45%; 480Hz with 5 left 0.20%. Shorter steps beat more
  * iterations roughly four to one.
  */
@@ -123,7 +123,7 @@ const SOLVER_ITERATIONS = 5
  * Passes at the end that enforce the links alone.
  *
  * A single Gauss-Seidel sweep does not make a chain exact — correcting one link
- * disturbs the one before it — so a pass that ends in bending leaves the wire
+ * disturbs the one before it — so a pass that ends in bending leaves the strand
  * measurably stretched. Letting the last one run links-only gives it somewhere
  * to converge to.
  */
@@ -133,7 +133,7 @@ const LINK_ONLY_PASSES = 1
  * Hard stop on settling, in steps.
  *
  * Only a backstop: settling normally exits as soon as the scene falls still,
- * which from a fresh layout takes about fifty steps. It exists because a wire
+ * which from a fresh layout takes about fifty steps. It exists because a strand
  * thrown a long way does *not* reliably come to rest — that case is handled by
  * carrying it instead, and this bounds the damage if some new path reaches it.
  * It was 4000, which is three seconds of frozen main thread.
@@ -149,7 +149,7 @@ const SETTLE_STEP_CAP = 1200
  * cannon. Dragging the branch count from 3 to 6 moves anchors up to 2.4m, which
  * put tip speeds at 295 m/s and, far worse, *kept* them there: once a particle
  * covers several segment lengths per step the solver has no resolution left, and
- * the wire spins at a couple of hundred metres a second indefinitely rather than
+ * the strand spins at a couple of hundred metres a second indefinitely rather than
  * damping out. It never recovers on its own.
  *
  * Capping the implied velocity against the discretisation makes that
@@ -185,15 +185,15 @@ function rotateAxis(
 /**
  * Rotates `v` by the shortest rotation taking unit `a` onto unit `b`.
  *
- * This carries a wire's rest shape onto its current one, and it has to survive
- * `a` and `b` being nearly opposite. They do go there: on a tightly coiled wire
+ * This carries a strand's rest shape onto its current one, and it has to survive
+ * `a` and `b` being nearly opposite. They do go there: on a tightly coiled strand
  * in wind, 2% of links end up pointing more than 90° from their own rest
  * direction, and the worst measured was 0.998 of the way to antiparallel.
  *
  * The compact identity for this divides by `1 + a·b`, which at that angle is a
  * factor of six hundred and almost entirely cancellation error. The result was
- * a garbage target, so the bend constraint folded the wire into a 99° kink
- * where its rest angle was under 6° — and every bulb on that wire whipped
+ * a garbage target, so the bend constraint folded the strand into a 99° kink
+ * where its rest angle was under 6° — and every bulb on that strand whipped
  * around it as the carried frame followed the fold.
  *
  * A quaternion costs one more square root and is exact at every angle,
@@ -251,11 +251,11 @@ function rotateArc(
   out[2] = vz + qw * rz + (qx * ry - qy * rx)
 }
 
-export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
-  const wireCount = specs.length
-  const offset = new Int32Array(wireCount + 1)
-  for (let w = 0; w < wireCount; w++) offset[w + 1] = offset[w] + specs[w].segments + 1
-  const particleCount = offset[wireCount]
+export function createRopes(specs: StrandSpec[], previous?: Ropes): Ropes {
+  const strandCount = specs.length
+  const offset = new Int32Array(strandCount + 1)
+  for (let w = 0; w < strandCount; w++) offset[w + 1] = offset[w] + specs[w].segments + 1
+  const particleCount = offset[strandCount]
 
   const px = new Float32Array(particleCount)
   const py = new Float32Array(particleCount)
@@ -264,16 +264,16 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
   const oy = new Float32Array(particleCount)
   const oz = new Float32Array(particleCount)
 
-  const anchorOffsets = new Float32Array(wireCount * 3)
-  const anchorX = new Float32Array(wireCount)
-  const anchorY = new Float32Array(wireCount)
-  const anchorZ = new Float32Array(wireCount)
-  const segLength = new Float32Array(wireCount)
-  const hasBend = new Uint8Array(wireCount)
+  const anchorOffsets = new Float32Array(strandCount * 3)
+  const anchorX = new Float32Array(strandCount)
+  const anchorY = new Float32Array(strandCount)
+  const anchorZ = new Float32Array(strandCount)
+  const segLength = new Float32Array(strandCount)
+  const hasBend = new Uint8Array(strandCount)
 
   // The rest shape, as the unit direction of the link leaving each particle.
   // Held separately from the positions so `set`, `twist` and `length` can change
-  // the shape a wire is trying to hold without disturbing where it currently is.
+  // the shape a strand is trying to hold without disturbing where it currently is.
   const rdx = new Float32Array(particleCount)
   const rdy = new Float32Array(particleCount)
   const rdz = new Float32Array(particleCount)
@@ -284,30 +284,30 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
   let moving = true
 
   /**
-   * Walks a wire's rest shape, writing the direction of each link.
+   * Walks a strand's rest shape, writing the direction of each link.
    *
    * The shape is a slow helix: a constant turn per joint, whose direction
-   * advances with `twist`. That is the wire's memory of having been coiled, and
-   * it is what the bend constraint holds the wire to.
+   * advances with `twist`. That is the strand's memory of having been coiled, and
+   * it is what the bend constraint holds the strand to.
    */
   function restDirections(w: number): void {
     const spec = specs[w]
     const start = offset[w]
     const count = spec.segments + 1
-    // Stiffness scales the curvature the wire is asked to hold, rather than how
+    // Stiffness scales the curvature the strand is asked to hold, rather than how
     // hard it is asked to hold it. See the bend constraint in `solve`.
     const turn = (spec.set * spec.stiffness) / Math.max(1, spec.segments - 1)
     const cos = Math.cos(turn)
     const sin = Math.sin(turn)
 
-    // The wire starts pointing straight down, with a frame carried alongside it.
+    // The strand starts pointing straight down, with a frame carried alongside it.
     //
     // The frame has to be *transported*, not recomputed from the direction each
     // joint. Deriving two perpendiculars from a direction means choosing a
     // reference axis, and any such choice flips somewhere on the sphere — so as
-    // the wire curls past that point the coil's bending plane jumps, putting a
+    // the strand curls past that point the coil's bending plane jumps, putting a
     // fold in the rest shape the solver then faithfully reproduces. It showed up
-    // as wires crumpling only when finely segmented and strongly coiled, which
+    // as strands crumpling only when finely segmented and strongly coiled, which
     // is exactly when a curl is most likely to cross the boundary.
     let dx = 0
     let dy = 0
@@ -332,7 +332,7 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
       const kz = e1z * ca + e2z * sa
 
       // Direction and frame all turn together, which is what keeps the frame
-      // orthonormal and continuous down the whole wire.
+      // orthonormal and continuous down the whole strand.
       rotateAxis(kx, ky, kz, dx, dy, dz, cos, sin, turned, 0)
       rotateAxis(kx, ky, kz, e1x, e1y, e1z, cos, sin, turned, 3)
       rotateAxis(kx, ky, kz, e2x, e2y, e2z, cos, sin, turned, 6)
@@ -352,7 +352,7 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
     }
   }
 
-  /** Places a wire's particles along its rest shape, hanging from the anchor. */
+  /** Places a strand's particles along its rest shape, hanging from the anchor. */
   function layOut(w: number): void {
     const spec = specs[w]
     const start = offset[w]
@@ -381,7 +381,7 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
   }
 
   function readSpecs(): void {
-    for (let w = 0; w < wireCount; w++) {
+    for (let w = 0; w < strandCount; w++) {
       const spec = specs[w]
       anchorX[w] = spec.anchor.x
       anchorY[w] = spec.anchor.y
@@ -397,8 +397,8 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
     let fastest = 0
 
     for (const w of only) {
-      // Sampled once per wire, not once per particle. A breeze varies over
-      // metres; the along-wire lag comes from the chain, not from the field.
+      // Sampled once per strand, not once per particle. A breeze varies over
+      // metres; the along-strand lag comes from the chain, not from the field.
       const gust = wind ? wind(w) : null
       const start = offset[w]
       const end = offset[w + 1]
@@ -407,7 +407,7 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
 
       // The anchor is pinned to the canopy: written, never integrated. Its
       // previous position is written too, so it carries no velocity of its own
-      // — it teleports, and the wire below is dragged after it.
+      // — it teleports, and the strand below is dragged after it.
       const ax = anchorX[w] + anchorOffsets[w * 3]
       const ay = anchorY[w] + anchorOffsets[w * 3 + 1]
       const az = anchorZ[w] + anchorOffsets[w * 3 + 2]
@@ -419,7 +419,7 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
       oz[start] = az
 
       for (let i = start + 1; i < end; i++) {
-        // Lower down is more exposed, and the top of a wire is shielded by
+        // Lower down is more exposed, and the top of a strand is shielded by
         // whatever it hangs from.
         const exposure = gust ? (i - start) / span : 0
         const ax = gust ? gust.x * exposure : 0
@@ -465,7 +465,7 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
    * left links 2% adrift — noise enough to drown the bend entirely.
    *
    * *Sequence*: with the bend applied last, every pass ends by disturbing the
-   * links it just fixed, and the wire settles visibly stretched. Bending first
+   * links it just fixed, and the strand settles visibly stretched. Bending first
    * and letting the links have the final word costs nothing and converges some
    * hundredfold better.
    */
@@ -479,7 +479,7 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
         const rest = segLength[w]
         const bend = hasBend[w] && pass < SOLVER_ITERATIONS - LINK_ONLY_PASSES
 
-        // Bending. This is the wire's rigidity, and how much of it survives
+        // Bending. This is the strand's rigidity, and how much of it survives
         // gravity is the whole look.
         //
         // Stiffness scales the rest *curvature* and the projection below is
@@ -487,22 +487,22 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
         // Scaling the constraint's strength instead cannot hold an arc against
         // gravity at all — the entire usable range fell between 0.85 and 1.0 —
         // and worse, partial projections on a long chain are unstable in a band
-        // of middling strengths: an 80-segment wire crumpled into 90°-per-joint
-        // folds while the same wire held its shape at both weaker and full
+        // of middling strengths: an 80-segment strand crumpled into 90°-per-joint
+        // folds while the same strand held its shape at both weaker and full
         // strength. An exact projection cannot overshoot, so it cannot pump
         // energy in, and it is stable at every segment count and curvature
-        // tested. What it costs is compliance: a wire holds its shape rather
+        // tested. What it costs is compliance: a strand holds its shape rather
         // than rippling, and swings from its anchor as one piece.
         //
         // The constraint is *directional*: each link is pulled toward the rest
         // direction it should have relative to the link above it, carried onto
-        // the wire's current orientation by the shortest rotation. Constraining
+        // the strand's current orientation by the shortest rotation. Constraining
         // only how far a joint bends is not enough, and it was built that way
         // first — leaving each joint free to choose a side, gravity duly picks
-        // alternating ones, so the wire zigzags imperceptibly and hangs dead
+        // alternating ones, so the strand zigzags imperceptibly and hangs dead
         // plumb. Holding a shape means holding which way it bends.
         //
-        // The first link is deliberately left unconstrained, so a wire holds its
+        // The first link is deliberately left unconstrained, so a strand holds its
         // shape while still being free to swing bodily from its anchor. That
         // freedom is what the breeze acts on.
         if (bend) {
@@ -519,7 +519,7 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
 
             // Equal and opposite, the way a bending rod really pushes. Moving
             // only the child is the textbook follow-the-leader step, and it
-            // injects momentum on every pass: the lower half of a wire wound
+            // injects momentum on every pass: the lower half of a strand wound
             // itself into a 60°-per-joint coil inside a second. Splitting the
             // correction conserves it.
             const cx = (px[i] + rest * rotated[0] - px[i + 1]) * 0.5
@@ -535,7 +535,7 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
           }
         }
 
-        // Links, enforced hard: a wire does not stretch. The anchor has no
+        // Links, enforced hard: a strand does not stretch. The anchor has no
         // inverse mass, so its neighbour takes the whole correction.
         const links = end - 1 - start
         for (let n = 0; n < links; n++) {
@@ -570,7 +570,7 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
    *
    * Its own pass, after the solver has finished, rather than read
    * opportunistically inside the last one. The two constraints pull against each
-   * other, so a number taken between them describes a state the wire is never
+   * other, so a number taken between them describes a state the strand is never
    * actually in.
    */
   function residual(only: readonly number[]): number {
@@ -585,18 +585,18 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
     return worst
   }
 
-  const everyWire = Array.from({ length: wireCount }, (_, w) => w)
+  const everyStrand = Array.from({ length: strandCount }, (_, w) => w)
 
   readSpecs()
 
   /**
-   * Redraws a wire's current shape with a different number of particles.
+   * Redraws a strand's current shape with a different number of particles.
    *
    * Used when the segment count changes, which would otherwise mean laying the
-   * wire out afresh and settling it — 106ms for a scene of fifty wires, and it
-   * throws away whatever the wire was doing, which makes the quality knob
+   * strand out afresh and settling it — 106ms for a scene of fifty strands, and it
+   * throws away whatever the strand was doing, which makes the quality knob
    * unusable to drag. Walking the existing polyline by arc length instead keeps
-   * the wire exactly where it is and costs a pass over its particles.
+   * the strand exactly where it is and costs a pass over its particles.
    */
   function resample(source: Ropes, from: number, had: number, to: number, count: number): void {
     let total = 0
@@ -637,12 +637,12 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
     }
   }
 
-  /** Wires laid out fresh by this build, rather than carried from the last. */
+  /** Strands laid out fresh by this build, rather than carried from the last. */
   const fresh: number[] = []
 
-  for (let w = 0; w < wireCount; w++) {
+  for (let w = 0; w < strandCount; w++) {
     const count = offset[w + 1] - offset[w]
-    const had = previous && w < previous.wireCount ? previous.offset[w + 1] - previous.offset[w] : 0
+    const had = previous && w < previous.strandCount ? previous.offset[w + 1] - previous.offset[w] : 0
 
     if (had === 0) {
       layOut(w)
@@ -669,7 +669,7 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
   }
 
   return {
-    wireCount,
+    strandCount,
     particleCount,
     offset,
     anchorOffsets,
@@ -684,18 +684,18 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
     },
 
     step(wind) {
-      integrate(DAMPING, wind, everyWire)
-      solve(everyWire)
+      integrate(DAMPING, wind, everyStrand)
+      solve(everyStrand)
     },
 
-    settle(only = everyWire) {
+    settle(only = everyStrand) {
       if (only.length === 0) return
-      // Settle to where the canopy actually pins the wires, not to wherever a
+      // Settle to where the canopy actually pins the strands, not to wherever a
       // tremble happened to have the anchors when this was called.
       anchorOffsets.fill(0)
 
       // Runs to rest rather than for a fixed count, because how long a scene
-      // takes to fall still depends on how long and how limp its wires are.
+      // takes to fall still depends on how long and how limp its strands are.
       for (let i = 0; i < SETTLE_STEP_CAP; i++) {
         integrate(SETTLE_DAMPING, null, only)
         solve(only)
@@ -709,16 +709,16 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
         oy.set(py.subarray(from, to), from)
         oz.set(pz.subarray(from, to), from)
       }
-      moving = only.length < wireCount
+      moving = only.length < strandCount
     },
 
-    carry(wire, dx, dy, dz) {
-      for (let i = offset[wire]; i < offset[wire + 1]; i++) {
+    carry(strand, dx, dy, dz) {
+      for (let i = offset[strand]; i < offset[strand + 1]; i++) {
         px[i] += dx
         py[i] += dy
         pz[i] += dz
         // Previous positions move too, or the translation reads as a velocity
-        // and fires the wire off exactly as a teleport does.
+        // and fires the strand off exactly as a teleport does.
         ox[i] += dx
         oy[i] += dy
         oz[i] += dz
@@ -727,6 +727,6 @@ export function createRopes(specs: WireSpec[], previous?: Ropes): Ropes {
 
     maxError: () => error,
     atRest: () => !moving,
-    freshWires: fresh,
+    freshStrands: fresh,
   }
 }

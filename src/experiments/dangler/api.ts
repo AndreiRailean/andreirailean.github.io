@@ -26,14 +26,14 @@ export type ExperimentApi = {
   /** A fresh arrangement. Omit for a random seed; returns the seed used. */
   reroll: (seed?: number) => number
   /**
-   * Run the wires to rest and redraw.
+   * Run the strands to rest and redraw.
    *
    * Needed for stills more than for anything interactive: a screenshot taken
    * while the scene is still relaxing shows a shape it never actually holds, and
    * nothing about the image says so.
    */
   settle: () => void
-  /** Draw the wires, anchors and canopy the piece otherwise never shows. */
+  /** Draw the strands, anchors and canopy the piece otherwise never shows. */
   debug: (on: boolean) => void
   /** Open or close the settings panel; omit to toggle. Returns the new state. */
   panel: (open?: boolean) => boolean
@@ -61,8 +61,8 @@ export function announceApi(): void {
     ["experiment.presets()", "what the presets are called"],
     ["experiment.controls()", "every control, with its bounds and blurb"],
     ["experiment.reroll()", "a fresh arrangement (or press r)"],
-    ["experiment.settle()", "run the wires to rest before looking"],
-    ["experiment.debug(true)", "show the wires, anchors and canopy"],
+    ["experiment.settle()", "run the strands to rest before looking"],
+    ["experiment.debug(true)", "show the strands, anchors and canopy"],
     ["experiment.panel(true)", "open the settings panel"],
     ["experiment.idle(false)", "stop the chrome hiding itself"],
     ["experiment.fullscreen()", "toggle fullscreen (or press f)"],

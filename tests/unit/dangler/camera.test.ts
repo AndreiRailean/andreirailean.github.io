@@ -5,7 +5,7 @@ import { makeCamera, project } from "@/experiments/dangler/camera"
  * The camera is at the origin looking straight up, so a bulb at (x, y, z)
  * projects to (f·x/z, f·y/z). Size and screen position both come from dividing
  * by depth, which is why descending bulbs grow and splay at once — and why a
- * wire directly overhead collapses to a point.
+ * strand directly overhead collapses to a point.
  */
 
 const SIZE = 800
@@ -28,7 +28,7 @@ describe("project", () => {
     expect(low.x - CENTRE).toBeGreaterThan(high.x - CENTRE)
   })
 
-  it("collapses a wire directly overhead to the vanishing point", () => {
+  it("collapses a strand directly overhead to the vanishing point", () => {
     expect(project(camera, 0, 0, 4)!.x).toBeCloseTo(CENTRE, 9)
   })
 

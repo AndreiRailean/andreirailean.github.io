@@ -18,7 +18,7 @@ const BREEZE_STRENGTH = 3.2
  * Peak gust acceleration at `gust` 1, in world units per second².
  *
  * Deliberately well above gravity's 9.81. A gust is supposed to be an event —
- * it should visibly throw the wires and then leave them to settle, which is the
+ * it should visibly throw the strands and then leave them to settle, which is the
  * whole difference between it and the breeze.
  */
 const GUST_STRENGTH = 14
@@ -100,11 +100,11 @@ export function scheduleGusts(seed: number, clock: number, perMinute: number, ou
 /**
  * Largest anchor displacement at `tremble` 1, in world units.
  *
- * Small on purpose. The rates below sit well above a hanging wire's own swing
- * period — a 0.65m wire swings at about 0.6Hz — because near it the anchor
- * *pumps* the wire instead of shaking it: at the first rates tried, 25mm of
+ * Small on purpose. The rates below sit well above a hanging strand's own swing
+ * period — a 0.65m strand swings at about 0.6Hz — because near it the anchor
+ * *pumps* the strand instead of shaking it: at the first rates tried, 25mm of
  * anchor travel drove 0.43m of tip travel, which is swinging, not shivering.
- * Off resonance the wire follows its anchor and stops, which is the whole
+ * Off resonance the strand follows its anchor and stops, which is the whole
  * character being aimed at.
  */
 export const TREMBLE_REACH = 0.03
@@ -113,13 +113,13 @@ export const TREMBLE_REACH = 0.03
  * How far the canopy has shaken the anchor at `(x, y)` from where it is pinned.
  *
  * The object overhead is not rigid, and this is it shivering. It is a
- * *displacement* rather than a force on purpose: a force integrates, so wires
- * under one sweep steadily outward, while an anchor that trembles drags its wire
+ * *displacement* rather than a force on purpose: a force integrates, so strands
+ * under one sweep steadily outward, while an anchor that trembles drags its strand
  * about by roughly its own travel and no further. The cluster stays where it is
  * and comes alive, instead of blowing apart — which is precisely what a gust
  * cannot do however it is tuned.
  *
- * Three incommensurate rates per axis, phased by position, so no two wires
+ * Three incommensurate rates per axis, phased by position, so no two strands
  * shiver alike and the whole canopy never lines up.
  */
 export function canopyTremble(
@@ -143,7 +143,7 @@ export function canopyTremble(
     (0.6 * Math.sin(15.9 * clock + py + 2.4) +
       0.3 * Math.sin(33.3 * clock + px + 0.6) +
       0.1 * Math.sin(53.7 * clock + py * 1.4))
-  // Vertical too, which is what sends a stretch down the wire rather than
+  // Vertical too, which is what sends a stretch down the strand rather than
   // merely swinging it.
   out.z = reach * 0.7 * (0.7 * Math.sin(23.1 * clock + px + py) + 0.3 * Math.sin(39.3 * clock + px - py + 1.9))
 }
@@ -151,7 +151,7 @@ export function canopyTremble(
 export type Wind = {
   /** Call once per frame, before stepping. */
   update: (settings: Settings, clock: number) => void
-  /** Acceleration on the wire anchored at `(x, y)`, written into `out`. */
+  /** Acceleration on the strand anchored at `(x, y)`, written into `out`. */
   at: (x: number, y: number, out: { x: number; y: number; z: number }) => void
   /** Whether any air is moving at all. */
   blowing: () => boolean
@@ -205,7 +205,7 @@ export function createWind(): Wind {
       for (const burst of gusts) {
         // The front crosses the canopy rather than arriving everywhere at once,
         // so a gust reads as a wave passing through. Kept fast on purpose: the
-        // wires being thrown *together* is what makes a burst legible, and too
+        // strands being thrown *together* is what makes a burst legible, and too
         // slow a front turns one event into a ripple nobody reads as wind.
         const reach = (extent - (x * burst.dirX + y * burst.dirY)) / GUST_SPEED
         const envelope = gustEnvelope(clock - burst.start - reach)

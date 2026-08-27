@@ -41,7 +41,7 @@ export type OpenOptions = {
    */
   settings?: Record<string, number | string>
   /**
-   * Non-setting query params — the `?panel=1` / `?wires=1` escape hatches that
+   * Non-setting query params — the `?panel=1` / `?debug=1` escape hatches that
    * exist for tools which cannot evaluate JS. We can, so prefer the API; this is
    * for when the state at *load* is the thing under test.
    */
@@ -70,7 +70,7 @@ export type Experiment<Api> = {
    * with values from the test passed as `arg`.
    *
    *     await experiment.api(({ api }) => api.settle())
-   *     await experiment.api(({ api, arg }) => api.set({ wires: arg }), 8)
+   *     await experiment.api(({ api, arg }) => api.set({ strands: arg }), 8)
    */
   api: <T, Arg = undefined>(fn: (handle: { api: Api; arg: Arg }) => T | Promise<T>, arg?: Arg) => Promise<T>
   /** Write a still into `.scratch/shots/` and attach it to the report. */

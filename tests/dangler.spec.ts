@@ -6,7 +6,7 @@ import { expect, openExperiment, test } from "./support/experiment"
  *
  * Every test here corresponds to something `src/experiments/dangler/AGENTS.md`
  * records as a real bug or a stated invariant, and none of them is a pixel
- * comparison — a wrong wire and a right one both look like a scatter of dots.
+ * comparison — a wrong strand and a right one both look like a scatter of dots.
  * The one visual assertion is that there is *light on the canvas at all*, which
  * is robust and which caught a real bug (a parked loop plus a resize left the
  * piece simply gone).
@@ -18,7 +18,7 @@ import { expect, openExperiment, test } from "./support/experiment"
 
 /**
  * Settled, the largest link-length violation sits around 2e-4. Above about 1e-2
- * the wires are stretching or crumpling and any still is of a shape the piece
+ * the strands are stretching or crumpling and any still is of a shape the piece
  * never actually holds.
  */
 const SETTLED_MAX_CONSTRAINT_ERROR = 1e-2
@@ -30,7 +30,7 @@ const SETTLED_MAX_CONSTRAINT_ERROR = 1e-2
 const LIT_THRESHOLD = 90
 
 /** A scene big enough to be representative and small enough to settle fast. */
-const MODEST_SCENE = { wires: 12, segments: 18 }
+const MODEST_SCENE = { strands: 12, segments: 18 }
 
 /** `seed` is the one setting with no slider; it has explicit handling instead. */
 const SETTINGS_WITHOUT_A_CONTROL = ["seed"]
@@ -61,7 +61,7 @@ test("settles to a shape it actually holds, with light on the canvas", async ({ 
   await experiment.api(({ api }) => api.settle())
   const stats = await experiment.api(({ api }) => api.stats())
 
-  expect(stats.wires).toBe(MODEST_SCENE.wires)
+  expect(stats.strands).toBe(MODEST_SCENE.strands)
   expect(stats.maxConstraintError).toBeLessThan(SETTLED_MAX_CONSTRAINT_ERROR)
   // A 200 and a settled solver still say nothing about anything reaching the
   // canvas; `drawnBeads` is bulbs that survived the projection and the clip.
@@ -94,7 +94,7 @@ test("settings survive the round trip through the query string", async ({ page }
     const patch: Record<string, number> = {}
     for (const control of api.controls()) patch[control.key] = control.min + (control.max - control.min) * 0.37
     // Kept small for runtime only; a small count round-trips the same code.
-    api.set({ ...patch, wires: 5, segments: 12, beads: 4 })
+    api.set({ ...patch, strands: 5, segments: 12, beads: 4 })
     return { settings: api.get(), url: api.url() }
   })
 
@@ -113,12 +113,12 @@ test("reduced motion gets a still frame, not a running loop and not a blank canv
   const animated = await openDangler(page, { settings: moving })
   await expect.poll(() => animated.api(({ api }) => api.stats().running)).toBe(true)
 
-  // Pinned before the piece starts, so the wires are laid out, settled and never
+  // Pinned before the piece starts, so the strands are laid out, settled and never
   // set moving — which is what lets the loop park with no separate
   // reduced-motion path.
   //
   // Turning the preference on *mid-session* is a different thing and is not
-  // asserted here: the change listener stops the wind, but wires already
+  // asserted here: the change listener stops the wind, but strands already
   // swinging then coast until `ropes.atRest()`, which was still false after 30s
   // of measuring. The documented invariant is the one at load.
   const still = await openDangler(page, { settings: moving, reducedMotion: true })

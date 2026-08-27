@@ -16,7 +16,7 @@ describe("makeRng", () => {
   })
 
   it("decorrelates adjacent indices", () => {
-    // Wire i and wire i+1 must not draw near-identical values, or a scene reads
+    // Strand i and strand i+1 must not draw near-identical values, or a scene reads
     // as a gradient rather than a scatter.
     const at3 = makeRng(hashSeed(7, 3, 0x5ba9e))()
     const at4 = makeRng(hashSeed(7, 4, 0x5ba9e))()
@@ -44,7 +44,7 @@ describe("gaussian", () => {
   }
 
   it("is clamped to ±2.5", () => {
-    // Clamped rather than truly normal, so one unlucky draw cannot hand a wire
+    // Clamped rather than truly normal, so one unlucky draw cannot hand a strand
     // an absurd length.
     const { min, max } = distribution()
     expect(min).toBeGreaterThanOrEqual(-2.5)

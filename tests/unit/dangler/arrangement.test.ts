@@ -3,24 +3,24 @@ import { buildArrangement, flickerAt } from "@/experiments/dangler/arrangement"
 import { DEFAULT_SETTINGS, normalizeSettings } from "@/experiments/dangler/settings"
 
 /**
- * Seed → wire specs and the bulb table.
+ * Seed → strand specs and the bulb table.
  *
- * Each wire draws its shape and its colour from separately salted generators, so
- * that raising the wire count adds wires beside the ones already on screen
+ * Each strand draws its shape and its colour from separately salted generators, so
+ * that raising the strand count adds strands beside the ones already on screen
  * rather than reshuffling them — the same class of bug as Starry Night resetting
  * every layer's phase on a settings change.
  */
 
 describe("buildArrangement", () => {
-  it("leaves the specs of existing wires untouched when the count grows", () => {
-    const few = buildArrangement({ ...DEFAULT_SETTINGS, wires: 3 })
-    const many = buildArrangement({ ...DEFAULT_SETTINGS, wires: 30 })
+  it("leaves the specs of existing strands untouched when the count grows", () => {
+    const few = buildArrangement({ ...DEFAULT_SETTINGS, strands: 3 })
+    const many = buildArrangement({ ...DEFAULT_SETTINGS, strands: 30 })
     expect(few.specs).toEqual(many.specs.slice(0, few.specs.length))
   })
 
-  it("leaves the bulbs of existing wires untouched too", () => {
-    const few = buildArrangement({ ...DEFAULT_SETTINGS, wires: 3 })
-    const many = buildArrangement({ ...DEFAULT_SETTINGS, wires: 30 })
+  it("leaves the bulbs of existing strands untouched too", () => {
+    const few = buildArrangement({ ...DEFAULT_SETTINGS, strands: 3 })
+    const many = buildArrangement({ ...DEFAULT_SETTINGS, strands: 30 })
     const shared = 3 * DEFAULT_SETTINGS.beads
     for (const key of ["hue", "along", "angle"] as const) {
       expect(Array.from(few[key].subarray(0, shared))).toEqual(Array.from(many[key].subarray(0, shared)))
@@ -36,7 +36,7 @@ describe("buildArrangement", () => {
  * viewer would actually experience.
  */
 describe("flicker", () => {
-  const arrangement = buildArrangement(normalizeSettings({ wires: 4, beads: 12, flicker: 1 }))
+  const arrangement = buildArrangement(normalizeSettings({ strands: 4, beads: 12, flicker: 1 }))
   const rate = arrangement.flickerRate[0]!
   const phase = arrangement.flickerPhase[0]!
 

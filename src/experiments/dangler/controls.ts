@@ -131,7 +131,7 @@ export function createControls({ root, settings, onChange, aboutHref }: Options)
   })
 
   const rerollButton = button("reroll", "reroll")
-  rerollButton.title = "A fresh arrangement of wires and bulbs (key r). The seed travels in the address bar."
+  rerollButton.title = "A fresh arrangement of strands and bulbs (key r). The seed travels in the address bar."
   rerollButton.addEventListener("click", () => reroll())
 
   const settingsToggle = button("adjust", "toggle")
