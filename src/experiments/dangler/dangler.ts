@@ -445,9 +445,15 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
       return
     }
 
-    // Nothing moving and nothing to redraw. Park until something asks for a
-    // frame again — this is also the reduced-motion path, which is why that
-    // needs no separate one.
+    // A tick that advanced nothing is not the same as a scene with nothing left
+    // to do. `advance` only steps once the accumulator reaches FIXED_DT, so a
+    // frame shorter than 1/480s legitimately does no substep — and parking there
+    // strands an animated scene with nothing left to wake it.
+    if (isAnimated() || !ropes.atRest()) return
+
+    // Genuinely nothing moving and nothing to redraw. Park until something asks
+    // for a frame again — this is also the reduced-motion path, which is why
+    // that needs no separate one.
     cancelAnimationFrame(frame)
     frame = 0
     running = false

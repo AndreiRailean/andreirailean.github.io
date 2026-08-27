@@ -57,6 +57,17 @@ screen — a wrong strand and a right one both look like a scatter of dots.
   flips somewhere on the sphere, folding the rest shape where the strand curls past
   it. Both `restDirections` and `frame.ts` transport a frame instead. Symptom:
   crumpling only on finely-segmented, strongly-curled strands.
+- **A tick that advanced nothing is not a scene with nothing left to do.**
+  `advance` only steps once the accumulator reaches `FIXED_DT`, so a frame
+  shorter than 1/480s does no substep quite legitimately — and the loop used to
+  park there, stranding an animated scene with nothing left to wake it. It then
+  sat frozen on whatever the last frame drew, at any settings, until an input
+  woke it. Chrome's headless shell delivers its first frames microseconds apart
+  and parked the piece on load; a fast enough display would do the same thing to
+  a person. Parking now requires `!isAnimated()` and `ropes.atRest()` as well.
+  Found only because the browser suite was run against Playwright's bundled
+  browser as well as the system one — worth remembering when a check passes
+  locally and nowhere else.
 - **Anything that changes the picture without moving a particle must set
   `dirty`.** The loop parks itself when nothing moves, and setting `canvas.width`
   on a resize clears the canvas — so a parked loop left the piece simply gone
