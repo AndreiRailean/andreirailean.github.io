@@ -12,7 +12,9 @@
     "prettier:write": "prettier . --write",
     "lint": "eslint . ",
     "lint:fix": "eslint . --fix",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed"
   },
   "dependencies": {
     "@astrojs/react": "^6.0.3",
@@ -40,7 +42,9 @@
     "@eslint/eslintrc": "^3.3.3",
     "@eslint/js": "^10.0.1",
     "@iconify-json/fa6-brands": "^1.2.6",
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/typography": "^0.5.19",
+    "@types/node": "^26.4.0",
     "@types/react": "^19.2.9",
     "@types/react-dom": "^19.2.3",
     "@typescript-eslint/eslint-plugin": "^8.53.1",
