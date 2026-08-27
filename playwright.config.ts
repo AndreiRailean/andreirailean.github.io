@@ -36,6 +36,11 @@ const CHROMIUM_CANDIDATES = [
 ]
 
 function resolveChromium(): string | undefined {
+  // CI wants a known build rather than whatever the runner ships, and some
+  // runner images do have /usr/bin/chromium. Forcing the fallback makes the
+  // browser one thing we are not guessing about when a check goes red.
+  if (process.env.PW_USE_BUNDLED_CHROMIUM) return undefined
+
   const override = process.env.CHROMIUM_PATH
   if (override) {
     if (!existsSync(override)) {
@@ -48,6 +53,9 @@ function resolveChromium(): string | undefined {
 
 export default defineConfig({
   testDir: "./tests",
+  // `.spec.ts` only: `tests/unit/` is vitest's, and Playwright's default
+  // `testMatch` would otherwise collect those too.
+  testMatch: "**/*.spec.ts",
   // Traces and failure stills are scratch, never source. `.scratch/` is already
   // gitignored for exactly this.
   outputDir: ".scratch/playwright",

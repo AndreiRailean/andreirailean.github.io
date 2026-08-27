@@ -49,8 +49,11 @@ export type OpenOptions = {
   /** Pin the chrome shown or hidden. Omit to leave the idle timer alone. */
   idle?: boolean
   /**
-   * Emulate `prefers-reduced-motion: reduce`. A real code path, not a
-   * courtesy: it pins the motion settings to 0 and the loop parks itself.
+   * Emulate `prefers-reduced-motion: reduce`. A real code path, not a courtesy:
+   * it pins the motion settings to 0 and the loop parks itself.
+   *
+   * Omitting it pins `no-preference` rather than leaving the browser's default,
+   * which differs between the system Chromium and Playwright's headless shell.
    */
   reducedMotion?: boolean
 }
@@ -118,8 +121,13 @@ export async function openExperiment<Api extends BaseApi>(
   for (const [key, value] of Object.entries(options.settings ?? {})) params.set(key, String(value))
   for (const [key, value] of Object.entries(options.query ?? {})) params.set(key, value)
 
-  // Both of these have to happen before the navigation to have any effect.
-  if (options.reducedMotion) await page.emulateMedia({ reducedMotion: "reduce" })
+  // Always pinned, never inherited, and before the navigation or it has no
+  // effect. `chrome-headless-shell` — what Playwright's own download launches —
+  // reports `prefers-reduced-motion: reduce` where the system Chromium reports
+  // no preference. A piece that honours the preference then pins every motion
+  // setting to 0 and parks its loop, so a test asserting that something moves
+  // passes locally and fails in CI.
+  await page.emulateMedia({ reducedMotion: options.reducedMotion ? "reduce" : "no-preference" })
 
   const query = params.toString()
   await page.goto(`/experiments/${slug}/${query ? `?${query}` : ""}`)
