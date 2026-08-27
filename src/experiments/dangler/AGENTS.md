@@ -208,16 +208,20 @@ anything above about 1e-2 means the wires are stretching or crumpling.
   visible, a broken frame, a broken constraint and a broken projection all look
   identical; this is the difference between debugging and guessing.
 - `?panel=1` and `?idle=0` as elsewhere in the section.
-- `webcheck` cannot evaluate JS, so use a small CDP harness for the API: launch
-  chromium with `--remote-debugging-port=0`, read the port from
-  `DevToolsActivePort`, then `Runtime.evaluate` with `awaitPromise`.
+- **`tests/dangler.spec.ts` drives the API under `npm test`**, and every test in
+  it is one of the traps above. Add to it rather than reaching for `webcheck`,
+  which cannot evaluate JS. It asserts the settled constraint error rather than
+  trusting a still, so the rule above is enforced there rather than remembered.
 
 **`checks.ts` covers the physics, and you should run it after touching any of
 it.** Every assertion in it is a bug that actually happened — anchor `i` moving
 when the wire count changed, wires stretching, a stiff wire hanging as limp as a
 chain, frames flipping through an inflection. It is a plain script rather than a
-test suite, because the repo has no runner and adding one is a bigger decision
-than that file:
+test suite. `npm test` is a browser runner that could host it — it resolves the
+`@/` alias even for a file that never opens a page — but moving it there is a
+decision about this file's contract rather than a mechanical port, and it has not
+been made. See the repo root's
+`docs/adr/20260827-playwright-drives-the-experiments.md`:
 
 ```sh
 d=$(mktemp -d) && for f in src/experiments/dangler/*.ts; do

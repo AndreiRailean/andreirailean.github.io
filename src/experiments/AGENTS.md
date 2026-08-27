@@ -48,32 +48,43 @@ evaluate JS at all, give the API a query-string trigger (`?panel=1`) rather than
 leaving the state unreachable.
 
 Route external input through one validator shared with the query string, so the
-API cannot produce a state a URL could not. These APIs are the natural first
-thing to put under test when this repo gets a test runner.
+API cannot produce a state a URL could not. `npm test` drives these APIs
+directly; see **Verifying** below.
 
 Expose a `stats()`-style read of internal counts too. Without one there is no
 way to tell whether a transition converged or a population was rebuilt, and a
 screenshot cannot show it — one real regression here was invisible until the
 counts were readable.
 
-`webcheck` cannot evaluate JS, so exercising the API headlessly needs a small
-CDP harness: launch chromium with `--remote-debugging-port=0`, read the port
-from `DevToolsActivePort`, then `Runtime.evaluate` with `awaitPromise`. Add
-`Emulation.setDeviceMetricsOverride` to test at a realistic viewport. Note that
-headless runs without a GPU, so absolute frame times are pessimistic — trust the
-ratios between configurations, not the numbers.
+`webcheck` cannot evaluate JS. Reaching the API headlessly is what `npm test` is
+for: `tests/support/experiment.ts` opens a piece, waits for `window.experiment`
+and hands back a typed handle on it, so nothing needs to hand-roll a CDP harness
+any more. Note that headless runs without a GPU, so absolute frame times are
+pessimistic — trust the ratios between configurations, not the numbers.
 
 ## Verifying
 
-There is no test runner. `npm run build` covers `astro check`, `npm run lint`
-covers eslint, and neither sees anything visual.
+`npm run build` covers `astro check`, `npm run lint` covers eslint, and neither
+sees anything visual.
 
-- Use `/root/bin/webcheck` (see the machine's global notes) to load pages
-  headless, capture stills, and catch console errors.
+- **`npm test` drives the pieces in a real browser** — Playwright, pointed at the
+  machine's own Chromium. See `playwright.config.ts` and
+  `tests/support/experiment.ts`. It is there to reach `window.experiment` and to
+  assert on _numbers_, not to compare pixels: almost every bug in this section
+  was invisible in a screenshot, and an additively blended canvas with no GPU
+  would give a baseline that fails for reasons nobody can read. Stills land in
+  `.scratch/shots/` for a human to look at and nothing diffs them.
+- Use `/root/bin/webcheck` (see the machine's global notes) to sweep many pages
+  at once for console errors and stills. It cannot evaluate JS; that is the one
+  thing `npm test` adds.
 - **A 200 proves nothing about content.** Grep the response for text you expect;
   an empty collection renders a perfectly valid blank page.
-- Pure logic can be imported straight into `node`, which strips TypeScript. The
-  `@/` alias will not resolve there — copy to a temp dir and rewrite the import.
+- Pure logic can be imported straight into `node`, which strips TypeScript, but
+  the `@/` alias will not resolve there — copy to a temp dir and rewrite the
+  import. Playwright's runner _does_ resolve the alias, including for a file that
+  never touches a browser, so a check script can move into `tests/` without that
+  dance. See the repo root's
+  `docs/adr/20260827-playwright-drives-the-experiments.md`.
 
 ## Don't generalise yet
 
