@@ -67,24 +67,22 @@ pessimistic — trust the ratios between configurations, not the numbers.
 `npm run build` covers `astro check`, `npm run lint` covers eslint, and neither
 sees anything visual.
 
-- **`npm test` drives the pieces in a real browser** — Playwright, pointed at the
-  machine's own Chromium. See `playwright.config.ts` and
-  `tests/support/experiment.ts`. It is there to reach `window.experiment` and to
-  assert on _numbers_, not to compare pixels: almost every bug in this section
-  was invisible in a screenshot, and an additively blended canvas with no GPU
-  would give a baseline that fails for reasons nobody can read. Stills land in
-  `.scratch/shots/` for a human to look at and nothing diffs them.
+- **`npm test` is two runners, and `tests/AGENTS.md` is the contract.** Vitest
+  over `tests/unit/**/*.test.ts` for anything that is a function and a number;
+  Playwright over `tests/*.spec.ts` for anything needing a real page. Both assert
+  on _numbers_ rather than comparing pixels — almost every bug in this section was
+  invisible in a screenshot. Stills land in `.scratch/shots/` for a human to look
+  at and nothing diffs them.
+- **Reach for the unit runner while working.** `npx vitest rope` answers in
+  milliseconds where the browser suite needs seconds and a dev server.
 - Use `/root/bin/webcheck` (see the machine's global notes) to sweep many pages
   at once for console errors and stills. It cannot evaluate JS; that is the one
   thing `npm test` adds.
 - **A 200 proves nothing about content.** Grep the response for text you expect;
   an empty collection renders a perfectly valid blank page.
-- Pure logic can be imported straight into `node`, which strips TypeScript, but
-  the `@/` alias will not resolve there — copy to a temp dir and rewrite the
-  import. Playwright's runner _does_ resolve the alias, including for a file that
-  never touches a browser, so a check script can move into `tests/` without that
-  dance. See the repo root's
-  `docs/adr/20260827-playwright-drives-the-experiments.md`.
+- Both runners resolve the `@/` alias, so a test imports a module by the path the
+  piece itself uses. Reaching for bare `node --experimental-strip-types` on a
+  module still does not — that is what the runners are for.
 
 ## Don't generalise yet
 

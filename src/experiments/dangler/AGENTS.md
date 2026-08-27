@@ -213,24 +213,17 @@ anything above about 1e-2 means the wires are stretching or crumpling.
   which cannot evaluate JS. It asserts the settled constraint error rather than
   trusting a still, so the rule above is enforced there rather than remembered.
 
-**`checks.ts` covers the physics, and you should run it after touching any of
-it.** Every assertion in it is a bug that actually happened — anchor `i` moving
-when the wire count changed, wires stretching, a stiff wire hanging as limp as a
-chain, frames flipping through an inflection. It is a plain script rather than a
-test suite. `npm test` is a browser runner that could host it — it resolves the
-`@/` alias even for a file that never opens a page — but moving it there is a
-decision about this file's contract rather than a mechanical port, and it has not
-been made. See the repo root's
-`docs/adr/20260827-playwright-drives-the-experiments.md`:
+**`tests/unit/dangler/` covers the physics, and you should run it after touching
+any of it** — `npx vitest run` for all of it, `npx vitest rope` while editing the
+solver. One file per module, and every assertion in them is a bug that actually
+happened: anchor `i` moving when the wire count changed, wires stretching, a
+stiff wire hanging as limp as a chain, frames flipping through an inflection, a
+rate in the wrong units. Almost none of it can be seen, which is why it is
+measured.
 
-```sh
-d=$(mktemp -d) && for f in src/experiments/dangler/*.ts; do
-  sed -E 's#@/experiments/dangler/([a-z]+)"#./\1.ts"#g' "$f" > "$d/$(basename "$f")"
-done && node --experimental-strip-types "$d/checks.ts"
-```
-
-The copy-and-rewrite is because Node strips TypeScript happily but does not
-resolve the `@/` alias.
+These began as `checks.ts`, a standalone script beside the code, and the
+assertions carried over unchanged. See the repo root's
+`docs/adr/20260827-a-unit-runner-for-the-experiments.md`.
 
 Headless runs without a GPU, so trust ratios, not absolute frame rates. At 60
 wires × 60 segments × 20 bulbs the solver and the fill cost about the same:

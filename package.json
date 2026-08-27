@@ -13,7 +13,10 @@
     "lint": "eslint . ",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
-    "test": "playwright test",
+    "test": "npm run test:unit && npm run test:browser",
+    "test:unit": "vitest run",
+    "test:watch": "vitest",
+    "test:browser": "playwright test",
     "test:headed": "playwright test --headed"
   },
   "dependencies": {
@@ -57,7 +60,8 @@
     "prettier-plugin-astro": "^0.14.1",
     "prettier-plugin-tailwindcss": "^0.8.1",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.53.1"
+    "typescript-eslint": "^8.53.1",
+    "vitest": "^4.1.11"
   },
   "packageManager": "npm@11.17.0",
   "allowScripts": {
