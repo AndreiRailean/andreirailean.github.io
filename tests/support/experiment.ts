@@ -24,11 +24,15 @@ const SHOT_DIR = ".scratch/shots"
  * Not a union of the real APIs, for the same reason `window.experiment` is typed
  * `unknown` — see `src/experiments/window.d.ts`. A spec passes its own
  * experiment's `ExperimentApi` as the type argument and gets the real thing.
+ *
+ * Settings values are `unknown` rather than `number`: the first version of this
+ * said `number`, which was Dangler's shape mistaken for the section's. Starry
+ * Night has a `mode` and an `invert`, and would not fit.
  */
 export type BaseApi = {
-  get: () => Record<string, number>
-  set: (patch: Record<string, number>) => Record<string, number>
-  preset: (which: number | string) => Record<string, number>
+  get: () => Record<string, unknown>
+  set: (patch: Record<string, never>) => Record<string, unknown>
+  preset: (which: number | string) => Record<string, unknown>
   panel: (open?: boolean) => boolean
   idle: (force?: boolean | null) => void
 }

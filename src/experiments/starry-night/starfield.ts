@@ -63,6 +63,14 @@ export type StarfieldStats = {
   hazeLayers: number
   /** Rolling average, so a heavy setting shows up as a number. */
   fps: number
+  /**
+   * Whether the RAF loop is going.
+   *
+   * False under `prefers-reduced-motion`, which gets one still field and no loop
+   * — an invariant no screenshot can show, since a still field and a running one
+   * look identical.
+   */
+  running: boolean
 }
 
 export type Starfield = {
@@ -481,6 +489,7 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
       cloudLayers: cloudLayers.length,
       hazeLayers: hazeLayers.length,
       fps: Math.round(1000 / smoothedFrameMs),
+      running: frameId !== 0,
     }
   }
 
