@@ -2,12 +2,17 @@
 
 How the engineering skills should consume this repo's domain documentation when exploring the codebase.
 
-This is a **single-context** repo: one `CONTEXT.md` and one `docs/adr/` at the root.
+This is a **multi-context** repo. `CONTEXT-MAP.md` at the root names each context
+and points at its glossary and its decisions; there is no root `CONTEXT.md`.
 
 ## Before exploring, read these
 
-- **`CONTEXT.md`** at the repo root — the glossary / ubiquitous language.
-- **`docs/adr/`** — read ADRs that touch the area you're about to work in.
+- **`CONTEXT-MAP.md`** at the repo root — which contexts exist and where each
+  one's glossary and decisions live. Read the map first, then only the context
+  you are working in.
+- **That context's `CONTEXT.md`** — its glossary / ubiquitous language.
+- **`docs/adr/` at the root, and the context's own `docs/adr/`** — read the ADRs
+  that touch the area you're about to work in.
 
 If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The `/domain-modeling` skill (reached via `/grill-with-docs` and `/improve-codebase-architecture`) creates them lazily when terms or decisions actually get resolved.
 
@@ -15,14 +20,14 @@ If any of these files don't exist, **proceed silently**. Don't flag their absenc
 
 ```
 /
-├── CONTEXT.md
+├── CONTEXT-MAP.md              the contexts, and where each one's docs live
 ├── docs/adr/
-│   ├── 0001-some-decision.md
-│   └── 0002-another-decision.md
+│   └── 20260823-some-decision.md      cross-cutting: tooling, CI, conventions
 └── src/
+    └── experiments/            a context
+        ├── CONTEXT.md          its glossary
+        └── docs/adr/           its own decisions, so they travel with it
 ```
-
-If this repo ever grows into multiple bounded contexts, add a `CONTEXT-MAP.md` at the root pointing at one `CONTEXT.md` per context, with context-scoped decisions under `src/<context>/docs/adr/`.
 
 ## Where a record goes, and in what shape
 

@@ -26,3 +26,8 @@ pnpm-debug.log*
 
 # private scratch space — never committed, see docs/agents/issue-tracker.md
 .scratch/
+
+# playwright — outputDir is .scratch/playwright, these only appear if a run
+# overrides the reporter on the command line
+test-results/
+playwright-report/

@@ -1,0 +1,49 @@
+name: Test code
+
+on:
+  - pull_request
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: ".node-version"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Playwright has no install script, so its browsers arrive only from this.
+      # Chromium alone: the suite declares one project and nothing needs the
+      # others. `--with-deps` covers the system libraries the runner lacks.
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+
+      # Fast, and needs nothing but node. Runs first so a broken solver fails in
+      # seconds rather than after a dev server has started.
+      - name: Unit tests
+        run: npm run test:unit
+
+      # Starts its own Astro dev server; see tests/support/dev-server.ts.
+      # PW_USE_BUNDLED_CHROMIUM so this tests the build installed above rather
+      # than whatever the runner image happens to ship.
+      - name: Browser tests
+        run: npm run test:browser
+        env:
+          PW_USE_BUNDLED_CHROMIUM: "1"
+
+      # The stills are not compared to anything, so they are only worth keeping
+      # when something failed and a human wants to look at the scene.
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: test-artifacts
+          path: |
+            .scratch/shots/
+            .scratch/playwright/
+          retention-days: 7
+          if-no-files-found: ignore

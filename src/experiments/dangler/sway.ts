@@ -26,7 +26,7 @@ const BOB_MAX = 0.08
  * Wind acceleration at which leaning is most of the way to its limit.
  *
  * Saturating rather than proportional: a gust peaks well above this, and without
- * a limit the canopy would be laid flat by weather the wires merely swing in.
+ * a limit the canopy would be laid flat by weather the strands merely swing in.
  */
 const WIND_REFERENCE = 6
 

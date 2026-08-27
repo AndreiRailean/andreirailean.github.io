@@ -7,7 +7,7 @@
  * depth. That single fact is the piece: it is what makes the arrangement read as
  * depth rather than as things being scaled.
  *
- * The corollary is that a wire hanging dead overhead collapses to a point. The
+ * The corollary is that a strand hanging dead overhead collapses to a point. The
  * scatter of the anchors is therefore load-bearing, not decoration.
  */
 

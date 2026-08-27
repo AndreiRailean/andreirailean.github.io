@@ -2,8 +2,8 @@
  * The engine: canvas, the clock, and everything drawn on it.
  *
  * Holds the arrangement, the chains and the frames together, and decides what a
- * settings change costs. Only `seed`, `wires` and `segments` reallocate; the
- * canopy, the wire parameters, the camera and every colour are read live, so
+ * settings change costs. Only `seed`, `strands` and `segments` reallocate; the
+ * canopy, the strand parameters, the camera and every colour are read live, so
  * dragging a slider relaxes the scene into its new state rather than replacing
  * it with a fresh one.
  */
@@ -19,7 +19,7 @@ import { createSway } from "@/experiments/dangler/sway"
 import { canopyTremble, createWind } from "@/experiments/dangler/wind"
 
 export type DanglerStats = {
-  wires: number
+  strands: number
   beads: number
   particles: number
   /** Bulbs that actually reached the canvas this frame. */
@@ -40,7 +40,7 @@ export type Dangler = {
   /** Runs the scene to rest. Returns once it is still. */
   settle: () => void
   stats: () => DanglerStats
-  /** Draws the wires and anchors that are normally invisible. */
+  /** Draws the strands and anchors that are normally invisible. */
   setDebug: (on: boolean) => void
 }
 
@@ -54,20 +54,20 @@ export type Dangler = {
 const MAX_SUBSTEPS = 12
 
 /**
- * Anchor movement past which a wire is carried to its new place rather than
+ * Anchor movement past which a strand is carried to its new place rather than
  * dragged there, in world units.
  *
- * An anchor that moves teleports, and the wire below is left where it was, so
+ * An anchor that moves teleports, and the strand below is left where it was, so
  * the solver hauls it across. Small moves make a pleasant snap — nudging the
  * canopy's spread is the nicest accident in the piece and is what `gust` and
  * `tremble` came from. Large ones do not: changing the branch count moves
- * anchors metres, which throws the wires hard enough that they never settle.
+ * anchors metres, which throws the strands hard enough that they never settle.
  *
  * Re-settling was tried and is worse than the problem. It blocks: 3056ms of
- * frozen main thread on one notch of the branches slider, because a wire thrown
+ * frozen main thread on one notch of the branches slider, because a strand thrown
  * that far does not converge and the settle runs to its cap. Carrying costs
- * about a microsecond — a hanging wire's shape does not depend on where it
- * hangs from, so the wire arrives already settled and still doing whatever it
+ * about a microsecond — a hanging strand's shape does not depend on where it
+ * hangs from, so the strand arrives already settled and still doing whatever it
  * was doing.
  */
 const CARRY_ABOVE = 0.1
@@ -112,7 +112,7 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
   let dirty = true
   const wind = createWind()
   const sway = createSway()
-  /** Reused, so sampling the wind allocates nothing however many wires there are. */
+  /** Reused, so sampling the wind allocates nothing however many strands there are. */
   const air = { x: 0, y: 0, z: 0 }
 
   /**
@@ -177,16 +177,16 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
   }
 
   /**
-   * The wind at one wire, sampled once for the whole of it.
+   * The wind at one strand, sampled once for the whole of it.
    *
    * A breeze varies over metres, not over the centimetres between two
    * particles, so there is nothing to gain from sampling per particle. The lag
-   * down a wire comes from the chain itself: the force is applied hardest at the
-   * free end and the anchor holds the top, so the wire swings and its tip trails
+   * down a strand comes from the chain itself: the force is applied hardest at the
+   * free end and the anchor holds the top, so the strand swings and its tip trails
    * rather than the whole thing being shunted sideways.
    */
-  function windAt(wire: number): { x: number; y: number; z: number } {
-    const anchor = arrangement.specs[wire].anchor
+  function windAt(strand: number): { x: number; y: number; z: number } {
+    const anchor = arrangement.specs[strand].anchor
     wind.at(anchor.x, anchor.y, air)
     return air
   }
@@ -195,12 +195,12 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
    * Shakes the anchors, once per frame rather than once per substep.
    *
    * Written straight into the solver's own array so this allocates nothing at
-   * any wire count.
+   * any strand count.
    */
   function updateAnchors(elapsed: number): void {
     const offsets = ropes.anchorOffsets
 
-    // The canopy is driven by the wind at its centre, not per wire — it is one
+    // The canopy is driven by the wind at its centre, not per strand — it is one
     // object, and sampling it per anchor would be the very incoherence this is
     // here to avoid.
     wind.at(0, 0, air)
@@ -212,7 +212,7 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
       return
     }
 
-    for (let w = 0; w < ropes.wireCount; w++) {
+    for (let w = 0; w < ropes.strandCount; w++) {
       const anchor = arrangement.specs[w].anchor
       let x = 0
       let y = 0
@@ -240,9 +240,9 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
 
   /** Interpolates a bulb's world position and the direction it points. */
   function beadAt(index: number, out: Float64Array): boolean {
-    const wire = arrangement.wireOf[index]
-    const start = ropes.offset[wire]
-    const last = ropes.offset[wire + 1] - 1
+    const strand = arrangement.strandOf[index]
+    const start = ropes.offset[strand]
+    const last = ropes.offset[strand + 1] - 1
     const span = last - start
 
     const at = start + arrangement.along[index] * span
@@ -271,7 +271,7 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
     const oy = ny * cos + by * sin
     const oz = nz * cos + bz * sin
 
-    // The bulb sits against the wire rather than on its centreline. The offset is
+    // The bulb sits against the strand rather than on its centreline. The offset is
     // almost invisible; what it is really for is `out[3..5]`, the direction the
     // bulb faces.
     const stand = settings.size * 1.2
@@ -315,7 +315,7 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
       // An LED throws its light along its own axis, so a bulb turned away from
       // you is dimmer than one facing you. This is why a real string shimmers as
       // you walk under it, and with the bulbs alternating sides it is most of
-      // what stops a wire reading as a row of identical dots.
+      // what stops a strand reading as a row of identical dots.
       if (settings.facing > 0) {
         const length = Math.hypot(bead[0], bead[1], bead[2]) || 1
         const toward = -(bead[3] * bead[0] + bead[4] * bead[1] + bead[5] * bead[2]) / length
@@ -353,7 +353,7 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
   }
 
   /**
-   * The wires and anchors, which the piece never shows.
+   * The strands and anchors, which the piece never shows.
    *
    * Not a nicety. With only the bulbs visible, a broken frame, a broken
    * constraint and a broken projection all look the same — a scatter of dots in
@@ -363,7 +363,7 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
     context.lineWidth = 1
     context.strokeStyle = "rgb(90 200 255 / 55%)"
 
-    for (let w = 0; w < ropes.wireCount; w++) {
+    for (let w = 0; w < ropes.strandCount; w++) {
       context.beginPath()
       let started = false
       for (let i = ropes.offset[w]; i < ropes.offset[w + 1]; i++) {
@@ -445,9 +445,15 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
       return
     }
 
-    // Nothing moving and nothing to redraw. Park until something asks for a
-    // frame again — this is also the reduced-motion path, which is why that
-    // needs no separate one.
+    // A tick that advanced nothing is not the same as a scene with nothing left
+    // to do. `advance` only steps once the accumulator reaches FIXED_DT, so a
+    // frame shorter than 1/480s legitimately does no substep — and parking there
+    // strands an animated scene with nothing left to wake it.
+    if (isAnimated() || !ropes.atRest()) return
+
+    // Genuinely nothing moving and nothing to redraw. Park until something asks
+    // for a frame again — this is also the reduced-motion path, which is why
+    // that needs no separate one.
     cancelAnimationFrame(frame)
     frame = 0
     running = false
@@ -498,25 +504,25 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
       let laidOutFresh: readonly number[] = []
 
       if (needsRebuild(before, settings)) {
-        // A new seed redraws every wire's length, stiffness, set and twist, not
+        // A new seed redraws every strand's length, stiffness, set and twist, not
         // just where it hangs — so nothing carries over and the whole scene is
-        // laid out afresh. Carrying wires through a reroll leaves each one's
+        // laid out afresh. Carrying strands through a reroll leaves each one's
         // shape contradicting its own new constraints, which the solver then
         // resolves at 139 m/s.
         const previousRopes = before.seed === settings.seed ? ropes : undefined
         ropes = createRopes(arrangement.specs, previousRopes)
         frames = createFrames(ropes.particleCount)
-        laidOutFresh = ropes.freshWires
-        // Only the wires this build laid out fresh; settling the carried ones
+        laidOutFresh = ropes.freshStrands
+        // Only the strands this build laid out fresh; settling the carried ones
         // would zero their velocity and visibly calm a scene in a breeze.
         ropes.settle(laidOutFresh)
       } else {
         ropes.update(arrangement.specs)
       }
 
-      // Wires whose anchor has been *relocated* rather than nudged go with it.
+      // Strands whose anchor has been *relocated* rather than nudged go with it.
       // This has to run on both paths: a reroll reallocates but keeps every
-      // wire's particle count, so all of them are carried over and every anchor
+      // strand's particle count, so all of them are carried over and every anchor
       // is somewhere new — without this the whole scene is dragged across at
       // once and thrashes.
       const carried = new Set(laidOutFresh)
@@ -541,7 +547,7 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
     },
 
     stats: () => ({
-      wires: ropes.wireCount,
+      strands: ropes.strandCount,
       beads: arrangement.beadCount,
       particles: ropes.particleCount,
       drawnBeads,

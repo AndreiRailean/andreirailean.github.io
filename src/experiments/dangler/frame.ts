@@ -1,11 +1,11 @@
 /**
- * A frame carried along each wire, so beads can sit off the centreline.
+ * A frame carried along each strand, so beads can sit off the centreline.
  *
- * The beads are LEDs protruding from the sides of the wire, not points on it.
+ * The beads are LEDs protruding from the sides of the strand, not points on it.
  * Placing one needs a direction "sideways" at its position, and the obvious
  * choice — a Frenet frame from the curve's own derivatives — is wrong here: it
- * is undefined where the wire is momentarily straight and it *flips* through an
- * inflection. Either would make beads jump, and a wire with a coil in it has
+ * is undefined where the strand is momentarily straight and it *flips* through an
+ * inflection. Either would make beads jump, and a strand with a coil in it has
  * inflections by construction.
  *
  * The double-reflection method carries a frame along instead of recomputing it,
@@ -16,7 +16,7 @@
 import type { Ropes } from "@/experiments/dangler/rope"
 
 export type Frames = {
-  /** Unit tangent per particle, pointing down the wire. */
+  /** Unit tangent per particle, pointing down the strand. */
   tx: Float32Array
   ty: Float32Array
   tz: Float32Array
@@ -39,10 +39,10 @@ export function createFrames(particleCount: number): Frames {
 
 /** Recomputes every frame in place. Called once per drawn frame, not per step. */
 export function updateFrames(ropes: Ropes, frames: Frames): void {
-  const { px, py, pz, offset, wireCount } = ropes
+  const { px, py, pz, offset, strandCount } = ropes
   const { tx, ty, tz, nx, ny, nz } = frames
 
-  for (let w = 0; w < wireCount; w++) {
+  for (let w = 0; w < strandCount; w++) {
     const start = offset[w]
     const end = offset[w + 1]
 
@@ -63,10 +63,10 @@ export function updateFrames(ropes: Ropes, frames: Frames): void {
     // Carry each particle's own normal through *time*.
     //
     // A rotation-minimising frame is minimal along the curve, not along the
-    // clock. Re-propagating it from the wire's start every rendered frame is
+    // clock. Re-propagating it from the strand's start every rendered frame is
     // continuous in space and says nothing whatever about continuity in time:
-    // any change of shape accumulates down the wire, so the frame at the free
-    // end swings even when nothing is kinked. Measured on eighty wires in wind,
+    // any change of shape accumulates down the strand, so the frame at the free
+    // end swings even when nothing is kinked. Measured on eighty strands in wind,
     // sixteen of them turned their end frames more than half a revolution, the
     // worst at three and a half turns in twenty seconds — which is precisely
     // "the bulbs are spinning on their strings", since the tip bulbs are the
@@ -74,8 +74,8 @@ export function updateFrames(ropes: Ropes, frames: Frames): void {
     //
     // Projecting each stored normal back onto its own tangent is continuous per
     // particle by construction, and neighbours stay coherent because they began
-    // coherent and their tangents move together. The along-wire propagation
-    // below is then only ever needed to *start* a wire off.
+    // coherent and their tangents move together. The along-strand propagation
+    // below is then only ever needed to *start* a strand off.
     let carried = true
     for (let i = start; i < end; i++) {
       const along = nx[i] * tx[i] + ny[i] * ty[i] + nz[i] * tz[i]
@@ -85,11 +85,11 @@ export function updateFrames(ropes: Ropes, frames: Frames): void {
       const len = Math.hypot(ux, uy, uz)
 
       // Nothing stored yet, or the tangent has swung so far that the stored
-      // normal now lies along it and no longer says which way round the wire
-      // is. Seed the whole wire afresh below.
+      // normal now lies along it and no longer says which way round the strand
+      // is. Seed the whole strand afresh below.
       //
       // Repairing just this particle from its neighbour was tried and measures
-      // exactly the same, so the simpler branch wins. It only happens on wires
+      // exactly the same, so the simpler branch wins. It only happens on strands
       // that have folded, which is a rope problem rather than a frame one.
       if (len < 1e-3) {
         carried = false
@@ -117,7 +117,7 @@ export function updateFrames(ropes: Ropes, frames: Frames): void {
     ny[start] = uy
     nz[start] = uz
 
-    // Then carry it down the wire by double reflection, which stays
+    // Then carry it down the strand by double reflection, which stays
     // continuous through an inflection where a Frenet frame would flip.
     for (let i = start; i < end - 1; i++) {
       // Reflect across the plane bisecting the two points.

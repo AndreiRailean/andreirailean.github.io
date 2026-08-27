@@ -48,32 +48,41 @@ evaluate JS at all, give the API a query-string trigger (`?panel=1`) rather than
 leaving the state unreachable.
 
 Route external input through one validator shared with the query string, so the
-API cannot produce a state a URL could not. These APIs are the natural first
-thing to put under test when this repo gets a test runner.
+API cannot produce a state a URL could not. `npm test` drives these APIs
+directly; see **Verifying** below.
 
 Expose a `stats()`-style read of internal counts too. Without one there is no
 way to tell whether a transition converged or a population was rebuilt, and a
 screenshot cannot show it — one real regression here was invisible until the
 counts were readable.
 
-`webcheck` cannot evaluate JS, so exercising the API headlessly needs a small
-CDP harness: launch chromium with `--remote-debugging-port=0`, read the port
-from `DevToolsActivePort`, then `Runtime.evaluate` with `awaitPromise`. Add
-`Emulation.setDeviceMetricsOverride` to test at a realistic viewport. Note that
-headless runs without a GPU, so absolute frame times are pessimistic — trust the
-ratios between configurations, not the numbers.
+`webcheck` cannot evaluate JS. Reaching the API headlessly is what `npm test` is
+for: `tests/support/experiment.ts` opens a piece, waits for `window.experiment`
+and hands back a typed handle on it, so nothing needs to hand-roll a CDP harness
+any more. Note that headless runs without a GPU, so absolute frame times are
+pessimistic — trust the ratios between configurations, not the numbers.
 
 ## Verifying
 
-There is no test runner. `npm run build` covers `astro check`, `npm run lint`
-covers eslint, and neither sees anything visual.
+`npm run build` covers `astro check`, `npm run lint` covers eslint, and neither
+sees anything visual.
 
-- Use `/root/bin/webcheck` (see the machine's global notes) to load pages
-  headless, capture stills, and catch console errors.
+- **`npm test` is two runners, and `tests/AGENTS.md` is the contract.** Vitest
+  over `tests/unit/**/*.test.ts` for anything that is a function and a number;
+  Playwright over `tests/*.spec.ts` for anything needing a real page. Both assert
+  on _numbers_ rather than comparing pixels — almost every bug in this section was
+  invisible in a screenshot. Stills land in `.scratch/shots/` for a human to look
+  at and nothing diffs them.
+- **Reach for the unit runner while working.** `npx vitest rope` answers in
+  milliseconds where the browser suite needs seconds and a dev server.
+- Use `/root/bin/webcheck` (see the machine's global notes) to sweep many pages
+  at once for console errors and stills. It cannot evaluate JS; that is the one
+  thing `npm test` adds.
 - **A 200 proves nothing about content.** Grep the response for text you expect;
   an empty collection renders a perfectly valid blank page.
-- Pure logic can be imported straight into `node`, which strips TypeScript. The
-  `@/` alias will not resolve there — copy to a temp dir and rewrite the import.
+- Both runners resolve the `@/` alias, so a test imports a module by the path the
+  piece itself uses. Reaching for bare `node --experimental-strip-types` on a
+  module still does not — that is what the runners are for.
 
 ## Don't generalise yet
 

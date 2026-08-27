@@ -13,7 +13,7 @@
 
 export type Settings = {
   seed: number
-  wires: number
+  strands: number
   beads: number
   segments: number
   extent: number
@@ -44,7 +44,7 @@ export type Settings = {
 
 export type NumericKey = keyof Settings
 
-export type ControlGroup = "arrangement" | "canopy" | "wire" | "camera" | "light" | "motion"
+export type ControlGroup = "arrangement" | "canopy" | "strand" | "camera" | "light" | "motion"
 
 export type Control = {
   group: ControlGroup
@@ -58,7 +58,7 @@ export type Control = {
   hint: string
 }
 
-export const GROUP_ORDER: ControlGroup[] = ["arrangement", "canopy", "wire", "camera", "light", "motion"]
+export const GROUP_ORDER: ControlGroup[] = ["arrangement", "canopy", "strand", "camera", "light", "motion"]
 
 /** Widest legal seed. Kept small enough to stay readable in a shared URL. */
 export const SEED_BOUNDS = { min: 0, max: 999_999 }
@@ -75,13 +75,13 @@ const metres = (value: number) => `${value.toFixed(2)}m`
 export const CONTROLS: Control[] = [
   {
     group: "arrangement",
-    key: "wires",
-    label: "wires",
+    key: "strands",
+    label: "strands",
     min: 1,
     max: 80,
     step: 1,
     format: (v) => String(v),
-    hint: "How many strings hang from the canopy. Anchor positions are fixed by the seed and by index, so raising this adds wires beside the ones already there rather than rearranging the scene.",
+    hint: "How many strings hang from the canopy. Anchor positions are fixed by the seed and by index, so raising this adds strands beside the ones already there rather than rearranging the scene.",
   },
   {
     group: "arrangement",
@@ -91,7 +91,7 @@ export const CONTROLS: Control[] = [
     max: 48,
     step: 1,
     format: (v) => String(v),
-    hint: "Bulbs per wire, spaced evenly down its length. They alternate around the wire's axis as they descend, so a wire seen end-on still reads as a string rather than a line.",
+    hint: "Bulbs per strand, spaced evenly down its length. They alternate around the strand's axis as they descend, so a strand seen end-on still reads as a string rather than a line.",
   },
   {
     group: "arrangement",
@@ -101,7 +101,7 @@ export const CONTROLS: Control[] = [
     max: 80,
     step: 1,
     format: (v) => String(v),
-    hint: "How many links each wire is simulated with. This is the quality knob: more links give a smoother curve and a finer sway, and cost solver time on every wire at once. Lower it before lowering anything else when the frame rate drops.",
+    hint: "How many links each strand is simulated with. This is the quality knob: more links give a smoother curve and a finer sway, and cost solver time on every strand at once. Lower it before lowering anything else when the frame rate drops.",
   },
   {
     group: "canopy",
@@ -111,7 +111,7 @@ export const CONTROLS: Control[] = [
     max: 10,
     step: 0.05,
     format: metres,
-    hint: "Radius of the invisible object the wires hang from. A wire hanging directly overhead collapses to a point from below, so this is what gives each string somewhere to lean away to.",
+    hint: "Radius of the invisible object the strands hang from. A strand hanging directly overhead collapses to a point from below, so this is what gives each string somewhere to lean away to.",
   },
   {
     group: "canopy",
@@ -121,7 +121,7 @@ export const CONTROLS: Control[] = [
     max: 14,
     step: 0.1,
     format: metres,
-    hint: "How far above you the canopy sits. Together with wire length this sets the whole composition: it is the ratio of the two that decides how hard the strings fan out, not either one alone.",
+    hint: "How far above you the canopy sits. Together with strand length this sets the whole composition: it is the ratio of the two that decides how hard the strings fan out, not either one alone.",
   },
   {
     group: "canopy",
@@ -131,7 +131,7 @@ export const CONTROLS: Control[] = [
     max: 4,
     step: 0.05,
     format: metres,
-    hint: "How uneven the object above is. At 0 it is a flat ceiling and every wire starts at the same distance from you. Raise it and neighbouring anchors still stay close in height, because they are pinned to one lumpy surface rather than scattered independently.",
+    hint: "How uneven the object above is. At 0 it is a flat ceiling and every strand starts at the same distance from you. Raise it and neighbouring anchors still stay close in height, because they are pinned to one lumpy surface rather than scattered independently.",
   },
   {
     group: "canopy",
@@ -141,57 +141,57 @@ export const CONTROLS: Control[] = [
     max: 14,
     step: 1,
     format: (v) => (v < 1 ? "off" : String(v)),
-    hint: "Arms the anchors are strung along, the way lights get slung over a few branches rather than scattered evenly. Off spreads them across the whole canopy. Each arm starts away from the trunk and has its own reach, sweep and height, so a handful of them reads as several separate clumps rather than one mass — and a low count with many wires gives a few dense danglers instead of one.",
+    hint: "Arms the anchors are strung along, the way lights get slung over a few branches rather than scattered evenly. Off spreads them across the whole canopy. Each arm starts away from the trunk and has its own reach, sweep and height, so a handful of them reads as several separate clumps rather than one mass — and a low count with many strands gives a few dense danglers instead of one.",
   },
   {
-    group: "wire",
+    group: "strand",
     key: "length",
     label: "length",
     min: 0.1,
     max: 8,
     step: 0.05,
     format: metres,
-    hint: "How far a wire hangs. Long wires bring their lowest bulbs close to you, which is where the size difference along a string becomes obvious.",
+    hint: "How far a strand hangs. Long strands bring their lowest bulbs close to you, which is where the size difference along a string becomes obvious.",
   },
   {
-    group: "wire",
+    group: "strand",
     key: "stiffness",
     label: "stiffness",
     min: 0,
     max: 1,
     step: 0.01,
     format: (v) => v.toFixed(2),
-    hint: "How much of its own shape a wire holds against gravity. At 0 it is a limp chain and hangs plumb, which from directly below means its bulbs stack into a point. Raise it and the wire keeps the bend it was coiled with.",
+    hint: "How much of its own shape a strand holds against gravity. At 0 it is a limp chain and hangs plumb, which from directly below means its bulbs stack into a point. Raise it and the strand keeps the bend it was coiled with.",
   },
   {
-    group: "wire",
+    group: "strand",
     key: "set",
     label: "set",
     min: 0,
     max: 2.5,
     step: 0.01,
     format: (v) => `${((v * 180) / Math.PI).toFixed(0)}°`,
-    hint: "The permanent bend a wire remembers from being coiled, as the total turn along its length. This is the wire's imperfection, and stiffness decides how much of it survives being hung up.",
+    hint: "The permanent bend a strand remembers from being coiled, as the total turn along its length. This is the strand's imperfection, and stiffness decides how much of it survives being hung up.",
   },
   {
-    group: "wire",
+    group: "strand",
     key: "twist",
     label: "twist",
     min: -2,
     max: 2,
     step: 0.01,
     format: (v) => v.toFixed(2),
-    hint: "How far the bend's direction rotates on the way down, in turns. At 0 a wire bends in one plane; wind it up and the wire spirals and its bulbs sweep around instead of leaning one way.",
+    hint: "How far the bend's direction rotates on the way down, in turns. At 0 a strand bends in one plane; wind it up and the strand spirals and its bulbs sweep around instead of leaning one way.",
   },
   {
-    group: "wire",
+    group: "strand",
     key: "irregularity",
     label: "irregularity",
     min: 0,
     max: 1,
     step: 0.01,
     format: (v) => v.toFixed(2),
-    hint: "How much wires differ from one another in length, stiffness and set. At 0 they are identical objects hung at different heights; raise it and they read as things that have been handled.",
+    hint: "How much strands differ from one another in length, stiffness and set. At 0 they are identical objects hung at different heights; raise it and they read as things that have been handled.",
   },
   {
     group: "camera",
@@ -241,7 +241,7 @@ export const CONTROLS: Control[] = [
     max: 1,
     step: 0.01,
     format: (v) => v.toFixed(2),
-    hint: "Manufacturing imperfection: how much bulbs differ in brightness and in how pure their colour is. Deliberately not hue, which colour spread owns. It applies twice — once per wire, because a string is one batch, and again per bulb within it.",
+    hint: "Manufacturing imperfection: how much bulbs differ in brightness and in how pure their colour is. Deliberately not hue, which colour spread owns. It applies twice — once per strand, because a string is one batch, and again per bulb within it.",
   },
   {
     group: "light",
@@ -261,7 +261,7 @@ export const CONTROLS: Control[] = [
     max: 24,
     step: 0.1,
     format: (v) => `${v.toFixed(1)}x`,
-    hint: "How far the halo reaches, as a multiple of the bulb. Halos are drawn additively, so where bulbs crowd together their glow accumulates and a dense wire reads as brighter than its bulbs individually are.",
+    hint: "How far the halo reaches, as a multiple of the bulb. Halos are drawn additively, so where bulbs crowd together their glow accumulates and a dense strand reads as brighter than its bulbs individually are.",
   },
   {
     group: "light",
@@ -301,7 +301,7 @@ export const CONTROLS: Control[] = [
     max: 1,
     step: 0.01,
     format: (v) => v.toFixed(2),
-    hint: "Strength of the bursts that arrive on top of the breeze. A gust hits hard and leaves the wires to settle, which is what makes it an event rather than the wind briefly picking up — set the breeze to 0 and this alone gives long calms broken by a shove. The front crosses the canopy, so the wires are thrown very nearly together.",
+    hint: "Strength of the bursts that arrive on top of the breeze. A gust hits hard and leaves the strands to settle, which is what makes it an event rather than the wind briefly picking up — set the breeze to 0 and this alone gives long calms broken by a shove. The front crosses the canopy, so the strands are thrown very nearly together.",
   },
   {
     group: "motion",
@@ -331,7 +331,7 @@ export const CONTROLS: Control[] = [
     max: 1,
     step: 0.01,
     format: (v) => v.toFixed(2),
-    hint: "The object overhead shivering, which shakes the wires by their anchors instead of pushing on them. Because it moves where a wire hangs from rather than blowing on it, the wire is dragged about by roughly the anchor's own travel and no further — so a crowd stays crowded and gets agitated, where a gust of any strength eventually sweeps it apart. Try it with the breeze and the gust at 0.",
+    hint: "The object overhead shivering, which shakes the strands by their anchors instead of pushing on them. Because it moves where a strand hangs from rather than blowing on it, the strand is dragged about by roughly the anchor's own travel and no further — so a crowd stays crowded and gets agitated, where a gust of any strength eventually sweeps it apart. Try it with the breeze and the gust at 0.",
   },
   {
     group: "motion",
@@ -341,13 +341,13 @@ export const CONTROLS: Control[] = [
     max: 1,
     step: 0.01,
     format: (v) => v.toFixed(2),
-    hint: "Strength of the wind pushing on the wires. The gust is sampled per wire and applied hardest at the free end, so a wire swings from its anchor with its tip lagging behind — the sway travels rather than the whole string moving at once.",
+    hint: "Strength of the wind pushing on the strands. The gust is sampled per strand and applied hardest at the free end, so a strand swings from its anchor with its tip lagging behind — the sway travels rather than the whole string moving at once.",
   },
 ]
 
 export const DEFAULT_SETTINGS: Settings = {
   seed: 7,
-  wires: 3,
+  strands: 3,
   beads: 12,
   segments: 28,
   extent: 2.4,
@@ -392,10 +392,10 @@ export const DEFAULT_SETTINGS: Settings = {
 export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
   {
     label: "dreamy",
-    hint: "Six arms of long, all but limp wires in cold blue, falling past you, everything barely moving.",
+    hint: "Six arms of long, all but limp strands in cold blue, falling past you, everything barely moving.",
     settings: {
       seed: 310555,
-      wires: 52,
+      strands: 52,
       beads: 9,
       segments: 34,
       extent: 3.5,
@@ -405,7 +405,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       // Longer than the canopy is high, so the nearest bulbs fall past the
       // viewer and out of frame rather than resolving into a string.
       length: 4.45,
-      // All but limp. What little shape the wires hold comes to almost nothing,
+      // All but limp. What little shape the strands hold comes to almost nothing,
       // so they hang plumb and the arrangement is the canopy's, not theirs.
       stiffness: 0.01,
       set: 0.19,
@@ -418,7 +418,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       variance: 0.62,
       size: 0.01,
       bloom: 14,
-      // Orientation ignored: with wires this limp every bulb faces much the same
+      // Orientation ignored: with strands this limp every bulb faces much the same
       // way, and dimming by it would only thin the scene out.
       facing: 0,
       falloff: 0.22,
@@ -432,23 +432,23 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
   },
   {
     label: "together",
-    hint: "A tight low cluster, wires plumb and plunging past you, all of it moving.",
+    hint: "A tight low cluster, strands plumb and plunging past you, all of it moving.",
     settings: {
       seed: 7,
-      wires: 50,
+      strands: 50,
       beads: 4,
       segments: 20,
       extent: 0.65,
       ceiling: 1.7,
       // Relief larger than the ceiling on purpose. The anchors themselves stay
       // in front of you — measured, 0.36m at the lowest — but hanging their own
-      // length again from that puts the bottom of most wires behind the camera,
+      // length again from that puts the bottom of most strands behind the camera,
       // so roughly a fifth of the bulbs are culled at any moment and the rest
       // pass by very close.
       relief: 2,
       branches: 0,
       length: 1.7,
-      // No bend at all. Every wire hangs plumb, and the arrangement comes
+      // No bend at all. Every strand hangs plumb, and the arrangement comes
       // entirely from where the anchors are and how the breeze moves them.
       stiffness: 0,
       set: 0,
@@ -473,10 +473,10 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
   },
   {
     label: "frantic",
-    hint: "Fifty-one short wires crammed almost overhead, hot pink through green, hit hard and often.",
+    hint: "Fifty-one short strands crammed almost overhead, hot pink through green, hit hard and often.",
     settings: {
       seed: 7,
-      wires: 51,
+      strands: 51,
       beads: 4,
       segments: 20,
       extent: 0.2,
@@ -520,7 +520,7 @@ export const BOUNDS: Record<NumericKey, { min: number; max: number }> = {
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
 /** Settings that must hold whole numbers; a fractional segment count is nonsense. */
-const INTEGER_KEYS: NumericKey[] = ["seed", "wires", "beads", "segments"]
+const INTEGER_KEYS: NumericKey[] = ["seed", "strands", "beads", "segments"]
 
 /**
  * Fills gaps from `base` and forces every value into legal bounds.
@@ -575,10 +575,10 @@ export function settingsToQuery(settings: Settings): URLSearchParams {
  * Whether a change needs the chains reallocated.
  *
  * Deliberately short. Everything else — length, stiffness, set, the canopy, the
- * camera, every colour — is read live, so dragging those relaxes the wires into
+ * camera, every colour — is read live, so dragging those relaxes the strands into
  * their new shape instead of teleporting them. Rebuilding for a hue change would
  * reset the whole scene for nothing.
  */
 export function needsRebuild(before: Settings, after: Settings): boolean {
-  return before.seed !== after.seed || before.wires !== after.wires || before.segments !== after.segments
+  return before.seed !== after.seed || before.strands !== after.strands || before.segments !== after.segments
 }

@@ -30,8 +30,10 @@ Every item below was a real bug in this experiment, not a hypothetical.
   nothing without `.panel[hidden] { display: none }`. Symptom: panel always open.
 - **Do not read query numbers with bare `Number()`.** An absent param is `null`
   and `Number(null)` is `0`, which is a legal value for most settings here — this
-  silently disabled glimmers by default once. Go through `readNumber` in
-  `settings.ts`, which treats absent, blank and unparseable alike.
+  silently disabled glimmers by default once. `settingsFromQuery` skips absent
+  and blank params and requires `Number.isFinite`, so all three cases keep the
+  default; an explicit `0` still reads as `0`. Covered by
+  `tests/unit/starry-night/settings.test.ts`.
 - **Do not set `accent-color` on the sliders.** The UA derives the unfilled track
   and thumb contrast from the accent's _perceived_ luminance, which swings wildly
   with hue at fixed lightness, so the track flips to a contrasting scheme partway
@@ -76,20 +78,29 @@ Every item below was a real bug in this experiment, not a hypothetical.
 
 ## Verifying a change
 
-There is no test runner in this repo. `npm run build` covers `astro check`, and
-`npm run lint` covers eslint. Neither will catch anything visual.
+`npm run build` covers `astro check` and `npm run lint` covers eslint. Neither
+sees anything visual. `tests/AGENTS.md` explains the two runners; what matters
+here is which of this piece's failures each one reaches.
 
-For anything that affects what is on screen, use `/root/bin/webcheck` (see the
-machine's global notes) to load the page headless and capture stills — it reports
-console errors and screenshots the result. Two habits that caught real bugs here:
+- **`npx vitest run starry-night`** covers the parts with no canvas in them: the
+  envelope, the size distribution, the lifespan spread, query parsing, the
+  presets. These are the failures that are invisible _and_ slow to notice — a
+  layer with the wrong lifespan looks fine until two of them beat against each
+  other for eight minutes.
+- **`npx playwright test starry-night`** covers the page. Both the styling bug
+  and the always-open panel reported zero console errors and were only visible in
+  an image — but neither needed a pixel comparison to catch: one is a computed
+  `background-color`, the other is whether the panel is hidden. Assert the
+  property, not the picture.
+- **`experiment.stats().running`** is how the reduced-motion invariant is
+  checked. A still field and a running loop look identical in a screenshot.
+- Stills go to `.scratch/shots/` for a human to look at. Nothing compares them.
 
-- **Screenshot it.** Both the styling bug and the always-open panel reported zero
-  console errors. They were only visible in an image.
-- **Force rare events.** Glimmers default to one every two seconds, so a still
-  catches one about a fifth of the time. Pass a high `?glimmersPerSecond=` to
-  make them certain, and isolate the clouds with `?clouds=1&layerCount=2&densityScale=0.1`.
+**Force rare events rather than waiting for them.** Glimmers default to one every
+two seconds, so a still catches one about a fifth of the time. Pass a high
+`?glimmersPerSecond=` to make them certain, and isolate the clouds with
+`?clouds=1&layerCount=2&densityScale=0.1`.
 
-Pure logic — the envelope, the size distribution, query parsing — can be checked
-by importing the module in `node` directly, since Node 24 strips TypeScript. The
-`@/` alias will not resolve there; copy the file to a temp dir and rewrite the
-import, or import a module with no alias imports.
+`/root/bin/webcheck` (see the machine's global notes) is still the quickest way
+to sweep several pages for console errors and stills at once. It cannot evaluate
+JS, which is the one thing the suites add.

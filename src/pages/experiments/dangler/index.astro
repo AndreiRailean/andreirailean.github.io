@@ -303,7 +303,7 @@
       if (params.get("panel") === "1") api.panel(true)
       const idleParam = params.get("idle")
       if (idleParam !== null) api.idle(idleParam !== "0")
-      if (params.get("wires") === "1") api.debug(true)
+      if (params.get("debug") === "1") api.debug(true)
       // A still taken mid-relaxation shows a shape the piece never holds.
       if (params.get("settle") === "1") api.settle()
     </script>

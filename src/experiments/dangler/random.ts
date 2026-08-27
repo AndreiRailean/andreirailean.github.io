@@ -5,9 +5,9 @@
  * geometry settings is the whole description of a scene — which is what lets an
  * arrangement survive a URL.
  *
- * The important property is not randomness but *stability*: wire 7 must draw the
- * same numbers whether the scene holds eight wires or eighty. That is why
- * callers derive a private generator per wire from `hashSeed(seed, index)`
+ * The important property is not randomness but *stability*: strand 7 must draw the
+ * same numbers whether the scene holds eight strands or eighty. That is why
+ * callers derive a private generator per strand from `hashSeed(seed, index)`
  * rather than pulling from one shared stream, and why anchor positions come from
  * a low-discrepancy sequence indexed by `i` rather than from successive draws.
  */
@@ -25,10 +25,10 @@ function mix(value: number): number {
 /**
  * Combines a seed with any number of salts into a new seed.
  *
- * Salts are what keep independent uses of one seed from correlating: a wire's
- * shape and a wire's colour draw from `hashSeed(seed, w, SHAPE)` and
+ * Salts are what keep independent uses of one seed from correlating: a strand's
+ * shape and a strand's colour draw from `hashSeed(seed, w, SHAPE)` and
  * `hashSeed(seed, w, COLOUR)`, so widening the hue spread cannot quietly move a
- * wire.
+ * strand.
  */
 export function hashSeed(seed: number, ...salts: number[]): number {
   let h = mix(seed)
@@ -73,7 +73,7 @@ const frac = (value: number) => value - Math.floor(value)
  *
  * Chosen over successive random draws because it is indexed rather than
  * streamed: point `i` does not depend on how many points were asked for. Raising
- * the wire count therefore adds wires instead of reshuffling the ones already on
+ * the strand count therefore adds strands instead of reshuffling the ones already on
  * screen. It also spreads far more evenly than uniform random, so anchors do not
  * clump into accidental pairs.
  */
