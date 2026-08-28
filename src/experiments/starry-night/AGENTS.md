@@ -62,6 +62,11 @@ Every item below was a real bug in this experiment, not a hypothetical.
 - **Settings round-trip through the query string.** Anything added to `Settings`
   needs handling in `settingsFromQuery` and `settingsToQuery`, and a `hint` if it
   is a `Control`, or the panel and shared URLs quietly disagree.
+- **A colour added to one scheme needs a counterpart in the other.** `invert` is
+  a boolean and the two schemes are inversions, which is accepted debt rather
+  than a design: `paletteFor(invert)` is the single seam it becomes
+  `paletteFor(themeName)` at. The first colour with no opposite is what forces
+  that. See `docs/adr/0003-colour-schemes-are-inversions-for-now.md`.
 
 ## Shape of the code
 
