@@ -13,7 +13,8 @@ experiment's own folder.
 
 ```
 src/experiments/<slug>/        code, about.md, poster.ts, AGENTS.md
-src/experiments/gallery/       shared across every experiment — see below
+src/experiments/gallery/       imposed: the index, the notes, the way out
+src/experiments/kit/           offered: parts a piece builds its chrome from
 src/pages/experiments/<slug>/  index.astro (the piece), about.astro (the note)
 ```
 

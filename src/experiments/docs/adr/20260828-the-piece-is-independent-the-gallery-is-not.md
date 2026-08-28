@@ -2,7 +2,7 @@
 type: ADR
 status: accepted
 date: 2026-08-28
-summary: Independence belongs to what a piece draws, not to the chrome around it; notes and index become one themed gallery.
+summary: Three layers — the piece owns its rendering, the gallery is imposed and uniform, the kit is offered and declinable.
 supersedes: 0002-experiments-are-not-generalised
 ---
 
@@ -44,24 +44,37 @@ is what "shows what is actually common" was asking for.
 
 ## Decision
 
-Independence is scoped to the piece, not to the section.
+Three layers, distinguished by **who is spared the relearning**.
 
-**The artwork is what is on the canvas. Everything you can click is gallery.**
+- **The piece** — what it draws. Palette, motion, geometry, settings, presets. No
+  shared anything reaches inside a piece's rendering. This is the half of
+  ADR-0002 that survives intact and is not up for revisiting.
+- **The gallery** — the surfaces a visitor crosses _between_ pieces: the index,
+  the notes, the way out. **Imposed and uniform**, one implementation each
+  experiment tints. The beneficiary is the visitor, and the test is whether they
+  would be confused to find it working differently in the next room. An
+  experiment does not get to move the exit. Lives in `src/experiments/gallery/`.
+- **The kit** — shared parts for building a piece's own chrome: a panel that
+  opens above its trigger, preset management, the idle behaviour. **Offered, not
+  imposed.** A piece composes them because it is convenient, and may build
+  something else entirely if what it does needs a different control structure.
+  The beneficiary is whoever is building or testing, not the visitor. Lives in
+  `src/experiments/kit/`.
 
-- **The piece stays wholly its own.** What it draws, its palette, its motion, its
-  geometry, its settings and its presets. No shared anything reaches inside a
-  piece's rendering. This half of ADR-0002 survives intact and is not up for
-  revisiting.
-- **The gallery is one thing, themed per piece.** The index, the note pages, the
-  placard, and the way out. A single implementation that each experiment tints
-  by supplying tokens, so Starry Night's note stays blue-black and Dangler's
-  stays warm while the furniture is identical.
+The chrome is kit, not gallery. An earlier draft of this record said "everything
+you can click is gallery", which was wrong, and wrong in the direction that does
+damage: it would have made the control layout a rule rather than a convenience,
+and a piece that genuinely needed different controls would have had to argue
+with an ADR to get them.
 
-Shared gallery code lives in `src/experiments/gallery/`. A piece imports from it;
-nothing in `gallery/` imports from a piece.
+The section already runs this pattern one level down and it works. `AGENTS.md`
+requires every piece to expose `window.experiment` with a minimum surface —
+`get`, `set`, `preset`, `panel`, `idle` — and says nothing about how any of it is
+implemented. A shared contract with a free implementation. The kit is the same
+bargain with the parts supplied.
 
-Doing the notes first and the chrome second is sequencing, not scope. Both are
-gallery.
+Nothing in `gallery/` or `kit/` imports from a piece. The dependency runs one
+way, as the section's does with the site.
 
 ## Consequences
 
@@ -85,9 +98,15 @@ gallery.
   the third experiment is the reason to act now, not the reason to wait: it
   would otherwise arrive by copying a note and a chrome that are already known
   to be duplicates.
-- **Unify notes and chrome in one change.** The larger payoff, and rejected only
-  on reviewability — the chrome is what every existing browser test drives, and
-  a diff that moves the notes and the instrument at once is hard to judge.
+- **Unify notes and chrome in one change.** The larger payoff, and rejected on
+  reviewability — the chrome is what every existing browser test drives, and a
+  diff that moves the notes and the instrument at once is hard to judge. Also
+  rejected because the two are not the same kind of sharing, which only became
+  clear once they were separated.
+- **Treat the chrome as gallery**, uniform across pieces the way the notes are.
+  Rejected: it reads the convenience as a mandate. Two pieces converging on one
+  control layout is evidence that the layout is good, not that the next piece
+  owes it anything.
 - **A full section theme** — one type scale and palette structure across index,
   notes and chrome. Deferred rather than rejected. It is the thing ADR-0002 was
   most right to fear, and there is not yet evidence that the pieces want a
