@@ -15,16 +15,24 @@ them would quietly suggest the next experiment ought to have them too.
 rest of the site.
 
 **The piece** — the running graphic itself, as distinct from its note. What you
-land on.
+land on. The piece is the artwork, and the only thing an experiment owns
+entirely: its palette, its motion, its geometry, what it draws.
+
+**Gallery** — everything around the pieces that is shared: the index, the notes,
+the placard, the way out. One implementation each experiment tints, rather than
+one per experiment. The line is that the artwork is what is on the canvas and
+everything you can click is gallery; see
+`docs/adr/20260828-the-piece-is-independent-the-gallery-is-not`.
 
 **Note** — the human-facing write-up of a piece: `about.md` beside its code,
 served at `/experiments/<slug>/about/`. Its frontmatter is what the index is
 built from. A note describes what a piece is and how it came to look that way;
 it is not a changelog.
 
-**Placard** — the discreet link from a piece to its note, living in the piece's
-own chrome. Named after a gallery label: there when looked for, gone while
-watching. Never the first thing seen.
+**Placard** — a gallery label. Two of them, from the same idea: the discreet link
+from a piece to its note, living in the piece's own chrome, and the caption
+mounted on each poster on the index. Never the first thing seen — there when
+looked for, gone while watching.
 
 **Chrome** — a piece's controls. Appears on input and disappears together with
 the pointer after a few idle seconds, the way video controls do.

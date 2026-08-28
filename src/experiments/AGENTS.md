@@ -12,7 +12,8 @@ experiment's own folder.
 ## Layout
 
 ```
-src/experiments/<slug>/        code, about.md, AGENTS.md
+src/experiments/<slug>/        code, about.md, poster.ts, AGENTS.md
+src/experiments/gallery/       shared across every experiment — see below
 src/pages/experiments/<slug>/  index.astro (the piece), about.astro (the note)
 ```
 

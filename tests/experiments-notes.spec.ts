@@ -1,0 +1,80 @@
+import type { Page } from "@playwright/test"
+import { expect, test } from "./support/experiment.ts"
+
+/**
+ * The notes, which are the gallery's wall text rather than the works.
+ *
+ * `docs/adr/20260828-the-piece-is-independent-the-gallery-is-not` moved these
+ * onto one layout after the two of them drifted: each had grown its own way out,
+ * a `<nav>` on one and a link at the foot of the other, which nobody chose. The
+ * assertion that matters here is therefore not that a note renders — it is that
+ * every note is the *same* note, and that a third cannot quietly become a third
+ * shape.
+ */
+
+const NOTES = [
+  { slug: "starry-night", title: "Starry Night" },
+  { slug: "dangler", title: "Dangler" },
+]
+
+/** In this order, on every note, forever. That is the whole point of the layout. */
+const EXITS = ["open the piece", "all experiments"]
+
+/**
+ * Everything is looked for inside `main`.
+ *
+ * The suite runs against the dev server, and Astro's dev toolbar injects its own
+ * markup into every page — including five more `h1`s, which is how this was
+ * found. Scoping to the note's own element keeps the assertions about the note.
+ */
+const note = (page: Page) => page.locator("main")
+
+for (const { slug, title } of NOTES) {
+  test(`${slug}: the note is headed by its piece and leaves the same way as every other`, async ({ page }) => {
+    await page.goto(`/experiments/${slug}/about/`)
+
+    await expect(note(page).locator("h1")).toHaveText(title)
+    await expect(note(page).locator(".exits a")).toHaveText(EXITS)
+    await expect(note(page).locator(".exits a").first()).toHaveAttribute("href", `/experiments/${slug}/`)
+    await expect(note(page).locator(".exits a").nth(1)).toHaveAttribute("href", "/experiments/")
+
+    // Above the title, so leaving does not require reading a long note first.
+    const exits = await note(page).locator(".exits").boundingBox()
+    const heading = await note(page).locator("h1").boundingBox()
+    expect(exits!.y).toBeLessThan(heading!.y)
+  })
+
+  test(`${slug}: the piece itself runs behind the sheet`, async ({ page }) => {
+    await page.goto(`/experiments/${slug}/about/`)
+
+    // The backdrop is booted by a script the page passes into the layout's slot.
+    // If that plumbing broke, the page would still render perfectly — with a
+    // blank canvas behind it and nothing to say so.
+    await expect.poll(() => litPixels(page), { timeout: 15_000 }).toBeGreaterThan(0)
+  })
+}
+
+test("every note reaches the index, and the index reaches every note", async ({ page }) => {
+  for (const { slug } of NOTES) {
+    await page.goto(`/experiments/${slug}/about/`)
+    await note(page).locator(".exits a", { hasText: "all experiments" }).click()
+    await expect(page).toHaveURL(/\/experiments\/$/)
+    await expect(page.locator(`.plate a.note[href="/experiments/${slug}/about/"]`)).toHaveCount(1)
+  }
+})
+
+/** Canvas pixels brighter than any of these grounds, which are all near-black. */
+async function litPixels(page: Page): Promise<number> {
+  return page.evaluate(() => {
+    const canvas = document.querySelector("canvas")
+    if (!canvas) return 0
+    const context = canvas.getContext("2d")
+    if (!context) return 0
+    const { data } = context.getImageData(0, 0, canvas.width, canvas.height)
+    let lit = 0
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i]! + data[i + 1]! + data[i + 2]! > 90) lit++
+    }
+    return lit
+  })
+}

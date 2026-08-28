@@ -1,0 +1,251 @@
+---
+import type { CollectionEntry } from "astro:content"
+import { render } from "astro:content"
+
+/**
+ * A note: the write-up of one piece, served at `/experiments/<slug>/about/`.
+ *
+ * Shared, and per `docs/adr/20260828-the-piece-is-independent-the-gallery-is-not`
+ * that is the point. Independence belongs to what a piece *draws*. A note is
+ * wall text about the work rather than the work, and wall text is uniform on
+ * purpose — it is what lets the pieces differ from each other and still be
+ * readable as one room.
+ *
+ * What a piece still chooses: its colours, and what runs behind the sheet. What
+ * it no longer chooses: where the way out is. Both notes had one before this and
+ * they disagreed — Starry Night put a nav at the top, Dangler a link at the
+ * bottom — which nobody decided and no reader benefits from.
+ */
+
+export type NoteTheme = {
+  /** Behind everything, including the piece. */
+  bg: string
+  /** The sheet the prose sits on. Translucent; the piece shows through it. */
+  sheet: string
+  fg: string
+  /** Headings, `strong`, and anything that should sit above the body text. */
+  bright: string
+  muted: string
+  edge: string
+  accent: string
+}
+
+interface Props {
+  entry: CollectionEntry<"experiments">
+  theme: NoteTheme
+  /**
+   * How far the piece behind the sheet is turned down, 0–1.
+   *
+   * A piece's own weight decides this: a dense field needs more dimming than a
+   * sparse one to stay behind the text rather than competing with it.
+   */
+  backdrop?: number
+}
+
+const { entry, theme, backdrop = 0.5 } = Astro.props
+const { Content } = await render(entry)
+const { title, summary, slug, started, updated } = entry.data
+
+const formatDate = (date: Date) => date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
+
+const vars = Object.entries({ ...theme, backdrop: String(backdrop) })
+  .map(([name, value]) => `--${name}:${value}`)
+  .join(";")
+---
+
+<!doctype html>
+<html lang="en" style={vars}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} — about</title>
+    <meta name="description" content={summary} />
+    <style is:global>
+      html {
+        background: var(--bg);
+      }
+
+      html,
+      body {
+        margin: 0;
+        color: var(--fg);
+      }
+
+      /* The piece runs behind its own note, turned down enough to read over. */
+      #backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        display: block;
+        width: 100%;
+        height: 100%;
+        opacity: var(--backdrop);
+      }
+
+      body {
+        position: relative;
+        z-index: 1;
+        padding: clamp(2rem, 7vh, 5rem) 1.25rem 6rem;
+        font:
+          400 1rem/1.7 ui-sans-serif,
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      main {
+        max-width: 40rem;
+        margin: 0 auto;
+      }
+
+      /* Blur *and* opacity, rather than either alone: opacity by itself leaves
+         the piece showing through the text, and blur by itself is not enough
+         contrast where something bright sits under a line of type. */
+      .sheet {
+        padding: clamp(1.5rem, 4vw, 2.75rem);
+        background: var(--sheet);
+        border: 1px solid var(--edge);
+        border-radius: 0.5rem;
+        backdrop-filter: blur(16px) saturate(130%);
+      }
+
+      /*
+       * The way out, at the top, in the same monospace the index's placards and
+       * a piece's own chrome use. It is above the title because leaving should
+       * not require reading to the end of a long note first.
+       */
+      .exits {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.25rem;
+        margin: 0 0 clamp(1.75rem, 5vh, 2.75rem);
+        font:
+          400 0.75rem/1.5 ui-monospace,
+          "SF Mono",
+          Menlo,
+          monospace;
+        letter-spacing: 0.04em;
+      }
+
+      h1 {
+        margin: 0;
+        color: var(--bright);
+        font-size: clamp(1.6rem, 5vw, 2.1rem);
+        font-weight: 500;
+        letter-spacing: -0.015em;
+        text-wrap: balance;
+      }
+
+      .summary {
+        margin: 0.6rem 0 0;
+        color: var(--muted);
+        font-size: 1.05rem;
+        text-wrap: pretty;
+      }
+
+      .dates {
+        margin: 1.5rem 0 0;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--edge);
+        color: var(--muted);
+        font:
+          400 0.75rem/1.5 ui-monospace,
+          "SF Mono",
+          Menlo,
+          monospace;
+        letter-spacing: 0.04em;
+      }
+
+      h2 {
+        margin: 2.5rem 0 0.75rem;
+        color: var(--bright);
+        font-size: 1.05rem;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+      }
+
+      p {
+        margin: 0 0 1.1rem;
+      }
+
+      a {
+        color: var(--accent);
+        text-underline-offset: 0.2em;
+      }
+
+      strong {
+        color: var(--bright);
+        font-weight: 500;
+      }
+
+      code {
+        padding: 0.1em 0.35em;
+        background: rgb(255 255 255 / 7%);
+        border-radius: 0.25rem;
+        color: var(--bright);
+        font:
+          400 0.875em/1 ui-monospace,
+          "SF Mono",
+          Menlo,
+          monospace;
+      }
+
+      ul {
+        margin: 0 0 1.1rem;
+        padding-left: 1.1rem;
+      }
+
+      li {
+        margin-bottom: 0.6rem;
+      }
+
+      li::marker {
+        color: var(--muted);
+      }
+
+      hr {
+        margin: 2.5rem 0;
+        border: 0;
+        border-top: 1px solid var(--edge);
+      }
+
+      /* Someone who asked for less motion still gets the piece behind the note,
+         just further back. Removing it would take away the one thing the page is
+         about. */
+      @media (prefers-reduced-motion: reduce) {
+        #backdrop {
+          opacity: calc(var(--backdrop) * 0.7);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="backdrop"></canvas>
+
+    <main>
+      <div class="sheet">
+        <p class="exits">
+          <a href={`/experiments/${slug}/`}>open the piece</a>
+          <a href="/experiments/">all experiments</a>
+        </p>
+        <h1>{title}</h1>
+        <p class="summary">{summary}</p>
+        <p class="dates">
+          <time datetime={started.toISOString()}>{formatDate(started)}</time>
+          {
+            formatDate(updated) !== formatDate(started) && (
+              <>
+                {" · last changed "}
+                <time datetime={updated.toISOString()}>{formatDate(updated)}</time>
+              </>
+            )
+          }
+        </p>
+        <Content />
+      </div>
+    </main>
+
+    <slot />
+  </body>
+</html>
