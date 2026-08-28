@@ -1,11 +1,11 @@
 ---
 import ThemeToggle from "@/components/ThemeToggle.astro"
+
+// Fixed, so the toggle sits over the page rather than reserving a 4rem strip at
+// the bottom of it. It is a control, not a section, and letting it size a footer
+// meant every page was centred around it.
 ---
 
-<footer class="w-full">
-  <div class="container flex h-16 items-center space-x-4 sm:justify-between sm:space-x-0">
-    <div class="flex flex-1 items-center justify-end space-x-4">
-      <ThemeToggle />
-    </div>
-  </div>
+<footer class="fixed right-2 bottom-2 z-50">
+  <ThemeToggle />
 </footer>
