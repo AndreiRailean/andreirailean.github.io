@@ -13,19 +13,14 @@ const socials = [
     url: "https://github.com/AndreiRailean",
   },
   {
-    title: "@andrei_md on X/Twitter",
-    icon: "fa6-brands:x-twitter",
-    url: "https://twitter.com/andrei_md",
-  },
-  {
-    title: "Andrei Railean on Stack Overflow",
-    icon: "fa6-brands:stack-overflow",
-    url: "http://stackoverflow.com/users/68672/andrei-r",
+    title: "@andreirailean on Instagram",
+    icon: "fa6-brands:instagram",
+    url: "https://www.instagram.com/andreirailean",
   },
 ]
 ---
 
-<span class="inline-grid grid-cols-4 gap-6">
+<span class="inline-flex gap-6">
   {
     socials.map(({ icon, url, title }) => (
       <a href={url} class="social-icon group" target="_blank">
