@@ -7,6 +7,7 @@
     "start": "astro dev",
     "build": "astro check && astro build",
     "preview": "astro preview",
+    "posters": "node scripts/posters.ts",
     "astro": "astro",
     "prettier": "prettier . --check",
     "prettier:write": "prettier . --write",
