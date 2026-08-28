@@ -1,6 +1,6 @@
-import { existsSync } from "node:fs"
 import { defineConfig } from "@playwright/test"
-import { BASE_URL } from "./tests/support/dev-server"
+import { resolveChromium } from "./tests/support/chromium"
+import { BASE_URL_ENV } from "./tests/support/dev-server"
 
 /**
  * Playwright is here to *drive* the experiments, not to diff their pixels.
@@ -18,38 +18,6 @@ import { BASE_URL } from "./tests/support/dev-server"
  * `webcheck` is still the right tool for sweeping the whole site for console
  * errors; it cannot evaluate JS, which is the only reason this exists.
  */
-
-/**
- * The machine's own Chromium in preference to Playwright's download.
- *
- * One is installed everywhere this repo gets worked on, and nothing the harness
- * does needs a patched build. Falling through to `undefined` is deliberate: on a
- * machine where `npm install` ran normally, Playwright's own browser is present
- * and its "run npx playwright install" message is better than anything invented
- * here.
- */
-const CHROMIUM_CANDIDATES = [
-  "/usr/bin/chromium",
-  "/usr/bin/chromium-browser",
-  "/Applications/Chromium.app/Contents/MacOS/Chromium",
-  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-]
-
-function resolveChromium(): string | undefined {
-  // CI wants a known build rather than whatever the runner ships, and some
-  // runner images do have /usr/bin/chromium. Forcing the fallback makes the
-  // browser one thing we are not guessing about when a check goes red.
-  if (process.env.PW_USE_BUNDLED_CHROMIUM) return undefined
-
-  const override = process.env.CHROMIUM_PATH
-  if (override) {
-    if (!existsSync(override)) {
-      throw new Error(`CHROMIUM_PATH is set to ${override}, which does not exist.`)
-    }
-    return override
-  }
-  return CHROMIUM_CANDIDATES.find((candidate) => existsSync(candidate))
-}
 
 export default defineConfig({
   testDir: "./tests",
@@ -72,7 +40,10 @@ export default defineConfig({
   // cannot supervise. See tests/support/dev-server.ts.
   globalSetup: "./tests/support/dev-server.ts",
   use: {
-    baseURL: BASE_URL,
+    // Set by `globalSetup`, which is the only thing that knows the port — see
+    // tests/support/dev-server.ts. Workers re-read this config after it has run
+    // and inherit the environment, so by the time a test navigates it is here.
+    baseURL: process.env[BASE_URL_ENV],
     // Fixed, because the piece divides by depth: field of view and therefore
     // what is on screen at all follow the viewport's aspect ratio.
     viewport: { width: 1280, height: 900 },

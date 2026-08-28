@@ -248,7 +248,7 @@
     <script>
       import { createDangler } from "@/experiments/dangler/dangler"
       import { createControls } from "@/experiments/dangler/controls"
-      import { settingsFromQuery } from "@/experiments/dangler/settings"
+      import { settingsForLanding, urlForSettings } from "@/experiments/dangler/settings"
       import { announceApi, createApi } from "@/experiments/dangler/api"
       import { keepAwake } from "@/experiments/dangler/wakelock"
 
@@ -263,7 +263,15 @@
       const canvas = requireElement("lights", HTMLCanvasElement)
       const ui = requireElement("ui", HTMLDivElement)
 
-      const settings = settingsFromQuery(new URLSearchParams(window.location.search))
+      // Read once and reused below. The escape hatches are pulled from the same
+      // object rather than from `window.location.search`, because the landing
+      // rewrite at the end of this script changes what that says.
+      const params = new URLSearchParams(window.location.search)
+
+      // A URL naming no settings lands on the first preset rather than on the
+      // defaults; see `settingsForLanding`. The defaults stay exactly what they
+      // were, so every URL already shared still means what it meant.
+      const { settings, featured } = settingsForLanding(params)
 
       /** Hue reaches the chrome so the controls pick up the colour of the lights. */
       function applyTheme(next: { hue: number }) {
@@ -299,13 +307,21 @@
 
       // Escape hatches for tools that cannot evaluate JS. None is a setting, so
       // none belongs in the shareable query string.
-      const params = new URLSearchParams(window.location.search)
       if (params.get("panel") === "1") api.panel(true)
       const idleParam = params.get("idle")
       if (idleParam !== null) api.idle(idleParam !== "0")
       if (params.get("debug") === "1") api.debug(true)
       // A still taken mid-relaxation shows a shape the piece never holds.
       if (params.get("settle") === "1") api.settle()
+
+      // Last, so the escape hatches above are read from the URL as opened. The
+      // address now describes the scene on screen, which means a link copied
+      // without touching anything keeps working when the featured preset
+      // changes. Non-setting params drop out, exactly as they do on the first
+      // slider drag.
+      if (featured) {
+        window.history.replaceState(null, "", urlForSettings(settings, window.location.pathname))
+      }
     </script>
   </body>
 </html>

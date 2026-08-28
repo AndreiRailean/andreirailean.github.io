@@ -1,4 +1,5 @@
 import type { ExperimentApi } from "@/experiments/dangler/api"
+import { DEFAULT_SETTINGS, PRESETS } from "@/experiments/dangler/settings"
 import { expect, openExperiment, test } from "./support/experiment"
 
 /**
@@ -105,9 +106,10 @@ test("settings survive the round trip through the query string", async ({ page }
 })
 
 test("reduced motion gets a still frame, not a running loop and not a blank canvas", async ({ page }) => {
-  // Motion in the scene deliberately: under the default settings every motion
-  // control is already 0 and the loop parks anyway, so a still scene would pass
-  // this test whatever reduced motion did or did not do.
+  // Motion stated rather than inherited. The point is to prove the loop parks
+  // *because* of the preference, so the scene has to be one that would otherwise
+  // be running — and which scene the defaults describe is editorial, not
+  // something this test should depend on.
   const moving = { ...MODEST_SCENE, breeze: 0.4 }
 
   const animated = await openDangler(page, { settings: moving })
@@ -157,4 +159,37 @@ test("a resize does not blank the piece", async ({ page }) => {
   await expect.poll(() => litPixels(page)).toBeGreaterThan(0)
 
   await experiment.shot("resized")
+})
+
+test("a bare URL lands on the first preset, and says so in the address bar", async ({ page }) => {
+  const experiment = await openDangler(page, { idle: true })
+
+  // The scene, not just the address: the defaults are three strands and the
+  // first preset is fifty-two, so this would pass on a redirect that rewrote the
+  // URL without actually loading anything.
+  const landed = await experiment.api(({ api }) => api.get())
+  expect(landed).toEqual(PRESETS[0]!.settings)
+  expect(landed.strands).not.toBe(DEFAULT_SETTINGS.strands)
+
+  // Rewritten, so a link copied without touching a control keeps pointing at
+  // this scene rather than at whichever preset is featured later.
+  const url = new URL(page.url())
+  expect(url.searchParams.get("strands")).toBe(String(PRESETS[0]!.settings.strands))
+
+  // And the rewrite has to be one the piece can read back.
+  await page.goto(page.url())
+  await page.waitForFunction(() => Boolean(window.experiment))
+  expect(await experiment.api(({ api }) => api.get())).toEqual(landed)
+})
+
+test("the escape hatches still work on a bare URL, which the landing rewrite replaces", async ({ page }) => {
+  // `?panel=1` names no setting, so it lands on the preset *and* has to survive
+  // being read before the address is rewritten. Reading it afterwards would
+  // silently stop opening the panel.
+  const experiment = await openDangler(page, { query: { panel: "1" }, idle: false })
+
+  // Asserted on the DOM rather than through `api.panel()`, which toggles when
+  // called with no argument and would close the very thing it was asked about.
+  await expect(page.locator(".panel")).toBeVisible()
+  expect(await experiment.api(({ api }) => api.get())).toEqual(PRESETS[0]!.settings)
 })

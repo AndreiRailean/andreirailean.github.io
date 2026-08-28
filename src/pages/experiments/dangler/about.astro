@@ -1,216 +1,36 @@
 ---
-import { getCollection, render } from "astro:content"
+import { getCollection } from "astro:content"
+import Note, { type NoteTheme } from "@/experiments/gallery/Note.astro"
 
-// Each experiment renders its own about page in its own visual language rather
-// than sharing a layout, per docs/adr/0002-experiments-are-not-generalised.md.
+// The note's furniture is the gallery's; only the paint is Dangler's. See
+// docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.
 const entry = (await getCollection("experiments")).find(({ data }) => data.slug === "dangler")
 if (!entry) throw new Error("Dangler: missing about.md")
 
-const { Content } = await render(entry)
-const { title, summary, started, updated } = entry.data
-
-const formatDate = (date: Date) => date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
+const theme: NoteTheme = {
+  bg: "#05070c",
+  sheet: "rgb(5 7 12 / 78%)",
+  fg: "#d9d5cc",
+  bright: "#f6f2ea",
+  muted: "#8a8377",
+  edge: "rgb(255 255 255 / 11%)",
+  accent: "hsl(38, 58%, 66%)",
+}
 ---
 
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{title} — about</title>
-    <meta name="description" content={summary} />
-    <style is:global>
-      html {
-        --bg: #05070c;
-        --sheet: rgb(5 7 12 / 78%);
-        --fg: #d9d5cc;
-        --bright: #f6f2ea;
-        --muted: #8a8377;
-        --edge: rgb(255 255 255 / 11%);
-        --accent: hsl(38, 58%, 66%);
-        background: var(--bg);
-      }
+<Note entry={entry} theme={theme} backdrop={0.5}>
+  <script>
+    import { createDangler } from "@/experiments/dangler/dangler"
+    import { DEFAULT_SETTINGS } from "@/experiments/dangler/settings"
 
-      html,
-      body {
-        margin: 0;
-        color: var(--fg);
-      }
-
-      /* The piece runs behind its own note, dimmed enough to read over. */
-      #lights {
-        position: fixed;
-        inset: 0;
-        z-index: 0;
-        display: block;
-        width: 100%;
-        height: 100%;
-        opacity: 0.5;
-      }
-
-      body {
-        font:
-          400 1rem/1.7 ui-sans-serif,
-          system-ui,
-          -apple-system,
-          "Segoe UI",
-          sans-serif;
-        position: relative;
-        z-index: 1;
-        padding: clamp(2rem, 8vh, 5rem) 1.25rem 6rem;
-      }
-
-      main {
-        max-width: 40rem;
-        margin: 0 auto;
-      }
-
-      .sheet {
-        padding: clamp(1.5rem, 4vw, 2.75rem);
-        background: var(--sheet);
-        border: 1px solid var(--edge);
-        border-radius: 0.5rem;
-        backdrop-filter: blur(14px);
-      }
-
-      h1 {
-        margin: 0;
-        font-size: clamp(1.6rem, 5vw, 2.1rem);
-        font-weight: 500;
-        letter-spacing: -0.015em;
-        color: var(--bright);
-      }
-
-      h2 {
-        margin: 2.5rem 0 0.75rem;
-        font-size: 1.05rem;
-        font-weight: 500;
-        letter-spacing: 0.02em;
-        color: var(--bright);
-      }
-
-      .summary {
-        margin: 0.6rem 0 0;
-        color: var(--muted);
-        font-size: 1.05rem;
-      }
-
-      .meta {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1rem;
-        margin: 1.5rem 0 0;
-        padding-bottom: 1.5rem;
-        border-bottom: 1px solid var(--edge);
-        font:
-          400 0.75rem/1.5 ui-monospace,
-          "SF Mono",
-          Menlo,
-          monospace;
-        letter-spacing: 0.04em;
-        color: var(--muted);
-      }
-
-      a {
-        color: var(--accent);
-        text-underline-offset: 0.2em;
-      }
-
-      p {
-        margin: 0 0 1.1rem;
-      }
-
-      ul {
-        margin: 0 0 1.1rem;
-        padding-left: 1.1rem;
-      }
-
-      li {
-        margin-bottom: 0.7rem;
-      }
-
-      li::marker {
-        color: var(--muted);
-      }
-
-      strong {
-        color: var(--bright);
-        font-weight: 500;
-      }
-
-      code {
-        font-family: ui-monospace, "SF Mono", Menlo, monospace;
-        font-size: 0.9em;
-        color: var(--bright);
-      }
-
-      .back {
-        display: inline-block;
-        margin-top: 2.5rem;
-        font:
-          400 0.8125rem/1.5 ui-monospace,
-          "SF Mono",
-          Menlo,
-          monospace;
-        letter-spacing: 0.04em;
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        #lights {
-          opacity: 0.35;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <canvas id="lights"></canvas>
-
-    <main>
-      <div class="sheet">
-        <h1>{title}</h1>
-        <p class="summary">{summary}</p>
-        <p class="meta">
-          <span><time datetime={started.toISOString()}>{formatDate(started)}</time></span>
-          {
-            formatDate(updated) !== formatDate(started) && (
-              <span>
-                updated <time datetime={updated.toISOString()}>{formatDate(updated)}</time>
-              </span>
-            )
-          }
-          <a href="/experiments/dangler/">open the piece</a>
-        </p>
-        <Content />
-        <a class="back" href="/experiments/">← all experiments</a>
-      </div>
-    </main>
-
-    <script>
-      import { createDangler } from "@/experiments/dangler/dangler"
-      import { normalizeSettings } from "@/experiments/dangler/settings"
-
-      const canvas = document.getElementById("lights")
-      if (canvas instanceof HTMLCanvasElement) {
-        // Quieter than the piece proper: this one is scenery, not the subject.
-        // A slow breeze rather than none, since a still background behind
-        // scrolling text reads as a picture rather than as the piece running.
-        const scene = createDangler(
-          canvas,
-          normalizeSettings({
-            seed: 5,
-            strands: 7,
-            beads: 14,
-            extent: 3.2,
-            ceiling: 5,
-            length: 3.4,
-            size: 0.017,
-            bloom: 7,
-            falloff: 0.65,
-            breeze: 0.14,
-          }),
-        )
-        scene.start()
-      }
-    </script>
-  </body>
-</html>
+    const canvas = document.getElementById("backdrop")
+    if (canvas instanceof HTMLCanvasElement) {
+      // The defaults, unmodified. They are a recorded scene rather than the
+      // simplest thing the machinery can draw, precisely so that anything
+      // rendering the piece without choosing — this page — gets something worth
+      // looking at. See DEFAULT_SETTINGS.
+      const scene = createDangler(canvas, DEFAULT_SETTINGS)
+      scene.start()
+    }
+  </script>
+</Note>

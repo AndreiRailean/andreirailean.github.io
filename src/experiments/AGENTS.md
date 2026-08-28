@@ -12,7 +12,9 @@ experiment's own folder.
 ## Layout
 
 ```
-src/experiments/<slug>/        code, about.md, AGENTS.md
+src/experiments/<slug>/        code, about.md, poster.ts, AGENTS.md
+src/experiments/gallery/       imposed: the index, the notes, the way out
+src/experiments/kit/           offered: parts a piece builds its chrome from
 src/pages/experiments/<slug>/  index.astro (the piece), about.astro (the note)
 ```
 
@@ -33,6 +35,38 @@ frontmatter. `/experiments/` is generated from it.
   renders the index's empty state until you do. `npm run build` is unaffected.
 - Keep `updated` current when changing an experiment; they are evergreen, not
   dated posts.
+
+## Posters
+
+`/experiments/` shows a still of each piece above its entry. It is captured, not
+drawn, and it is committed.
+
+```
+src/experiments/<slug>/poster.ts     the recipe: which moment is worth shooting
+src/experiments/<slug>/poster.webp   the result, referenced from about.md
+```
+
+- **`npm run posters` captures them; nothing else does.** Not the build, which
+  stays browserless, and not `npm test`, which must never write tracked files.
+  Name a slug — `npm run posters -- dangler` — to leave the others alone.
+- **A recipe is per-piece knowledge and stays with the piece.** Which preset,
+  what has to happen before the shutter, how long to wait. Dangler loads a
+  seeded preset and calls `settle()` twice, because a frame caught mid-relaxation
+  shows a shape it never holds. Starry Night needs none of that — its layers are
+  seeded out of phase, so frame one is already a sky — but takes the brightest of
+  twelve tries, since its glimmers are too brief to catch on purpose.
+- **No poster is byte-reproducible, for two different reasons.** Starry Night
+  takes no seed at all, so a re-capture is a different sky. Dangler's landing
+  preset does carry one, which fixes the arrangement — but its wind is derived
+  from the clock too, so the shutter catches the same strands at a different
+  point in the same breeze. Both look unchanged to a person and both churn the
+  file. Hence the slug filter: re-capture the piece you actually changed.
+- `scripts/posters.ts` is generic and knows nothing about any piece; the shared
+  contract is the types in `src/experiments/poster.ts`. Per ADR-0002 that is all
+  it is allowed to be — a shape, not a base class.
+- `poster` is optional in the collection schema. A piece may exist before anyone
+  has decided what one frame of it looks like, and the index falls back to a
+  text-only entry.
 
 ## Console API
 
