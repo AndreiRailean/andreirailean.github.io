@@ -75,8 +75,9 @@ which ADR 0001 notes are already shared. GitHub Pages cannot issue a 301, so
 those would need meta-refresh or JS redirect stubs kept in the site repo
 indefinitely.
 
-ADR 0001 is left as written rather than edited: it belongs to the experiments
-context and is being worked on elsewhere.
+ADR 0001 has been corrected in place, carrying a dated `## Correction` section
+that records what changed and why. Leaving the wrong claim in the file would
+only have kept the question being reopened against it.
 
 ## Consequences
 
