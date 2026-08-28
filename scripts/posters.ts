@@ -21,11 +21,13 @@ import startDevServer from "../tests/support/dev-server.ts"
  *    loop is the point, the same way `updated` in the frontmatter is kept
  *    current by hand.
  *
- * Reproducibility is per-piece and not guaranteed. Dangler's poster loads a
- * preset carrying a seed and settles, so it comes out identical every run.
- * Starry Night takes no seed at all, so every run is a different sky and
- * re-capturing it churns the file for no reason. Hence the slug filter: name
- * the pieces you mean, and leave the rest alone.
+ * No capture is byte-reproducible, so re-running this churns whatever it
+ * touches. Starry Night takes no seed and comes out a different sky. Dangler's
+ * landing preset is seeded, which fixes the arrangement, but its wind is
+ * derived from the clock as well, so the strands are caught at a different
+ * point in the same breeze. Neither difference is visible to a person. Hence
+ * the slug filter: name the piece you actually changed, and leave the rest
+ * alone.
  *
  *     npm run posters                 every experiment
  *     npm run posters -- dangler      just this one

@@ -9,12 +9,20 @@ import type { PosterRecipe } from "@/experiments/poster"
  * never actually holds, and nothing about the image says so — a poster that
  * skipped it would be a picture of a scene halfway through falling.
  *
- * `dreamy` carries its own `seed`, so this is reproducible without inventing a
- * poster-only one: the same preset settles to the same arrangement every run.
+ * No preset named, deliberately. A bare URL now lands on the first preset — see
+ * `settingsForLanding` — so opening the piece and photographing it is the same
+ * act, and the poster cannot come to show a scene the landing page does not.
+ * Naming it here would be a second place to change, and the one that gets
+ * forgotten.
+ *
+ * Not byte-reproducible, despite the preset carrying a `seed`. The seed fixes
+ * the *arrangement* — where the anchors sit, how each strand is shaped — and
+ * that comes out the same every run. The sway does not: the wind is derived
+ * from the clock as well as the seed, so the shutter catches the strands at a
+ * different point in the same breeze. Two captures look alike to a person and
+ * differ to `git`, which is the whole reason for the slug filter.
  */
 const poster: PosterRecipe<ExperimentApi> = {
-  preset: "dreamy",
-
   prepare: ({ api }) => {
     // Twice, deliberately. The first pass converges the solver from the layout;
     // the second runs it again from rest, which is where the strands stop

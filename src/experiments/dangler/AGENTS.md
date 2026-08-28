@@ -155,6 +155,13 @@ screen — a wrong strand and a right one both look like a scatter of dots.
 - **Settings round-trip through the query string.** Anything added to `Settings`
   needs a `Control` (or explicit handling) or the panel and shared URLs quietly
   disagree.
+- **`DEFAULT_SETTINGS` is the vocabulary, not the scene anyone lands on.** A bare
+  URL gets `PRESETS[0]` and the address is rewritten to match; see
+  `settingsForLanding`. Do not "fix" the dull landing scene by moving the
+  defaults — they are the base `normalizeSettings` falls back to and the thing
+  `settingsToQuery` diffs against, so changing them rewrites what every URL
+  already shared means. The poster names no preset for the same reason: it
+  photographs whatever a bare URL lands on, so the two cannot drift apart.
 - **Core radii stay at or above `MIN_CORE_PX`**, trading size for alpha below it.
   Starry Night's sub-pixel lesson applies here unchanged.
 - **The wind stays pure.** Gusts are derived from the clock and the seed rather

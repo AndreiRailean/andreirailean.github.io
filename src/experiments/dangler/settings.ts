@@ -572,6 +572,56 @@ export function settingsToQuery(settings: Settings): URLSearchParams {
 }
 
 /**
+ * The address that restores exactly this scene.
+ *
+ * One definition with two callers — the chrome, which rewrites the URL on every
+ * change, and the page, which rewrites it once on landing. They disagreed about
+ * nothing yet, and now cannot.
+ */
+export function urlForSettings(settings: Settings, pathname: string): string {
+  const query = settingsToQuery(settings).toString()
+  return `${pathname}${query ? `?${query}` : ""}`
+}
+
+/**
+ * Whether a query string names any setting at all.
+ *
+ * The same rule `settingsFromQuery` applies, and it has to stay the same rule:
+ * absent, blank and unparseable are all "not a setting" there, so a URL made
+ * only of those is one the piece would read as carrying nothing.
+ */
+function namesASetting(params: URLSearchParams): boolean {
+  return (Object.keys(BOUNDS) as NumericKey[]).some((key) => {
+    const raw = params.get(key)
+    return raw !== null && raw.trim() !== "" && Number.isFinite(Number(raw))
+  })
+}
+
+/**
+ * The scene a freshly-opened URL should show.
+ *
+ * A URL naming no settings gets the first preset, not `DEFAULT_SETTINGS`. The
+ * defaults are three stiff strands hanging still — the simplest thing the
+ * machinery can draw, and a fair picture of nothing anybody would stay for.
+ * What the piece is actually *for* is the first preset.
+ *
+ * Deliberately not fixed by moving `DEFAULT_SETTINGS`. They are the base
+ * `normalizeSettings` falls back to and the thing `settingsToQuery` diffs
+ * against, so changing them would quietly change what every URL already shared
+ * means, and shorten or lengthen every future one for unrelated reasons. The
+ * defaults are the vocabulary; which scene is worth landing on is editorial.
+ *
+ * `featured` says the caller should rewrite the address. A landing visitor then
+ * has a URL describing the scene in front of them rather than one standing for
+ * "whatever is featured", which is the difference between a link that keeps
+ * working and a link that silently becomes a different piece.
+ */
+export function settingsForLanding(params: URLSearchParams): { settings: Settings; featured: boolean } {
+  if (namesASetting(params)) return { settings: settingsFromQuery(params), featured: false }
+  return { settings: normalizeSettings(PRESETS[0]!.settings), featured: true }
+}
+
+/**
  * Whether a change needs the chains reallocated.
  *
  * Deliberately short. Everything else — length, stiffness, set, the canopy, the

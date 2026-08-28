@@ -64,6 +64,11 @@ together after a couple of seconds of stillness, like video chrome. Keys `1`,
 the whole scene — the seed included — lives in the address bar, so anything
 worth keeping can be copied or shared.
 
+You arrive on the first preset rather than on the bare machinery, and the
+address bar is filled in to match on the way in. The link you landed on is
+therefore already a link to what you are looking at, and it keeps meaning that
+even after something else becomes the one you arrive on.
+
 The controls worth reaching for first: **height** and **length** together decide
 the composition, and it is the ratio of the two that matters rather than either
 alone — a short strand under a high ceiling barely fans out at all. **stiffness**

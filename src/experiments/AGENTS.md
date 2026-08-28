@@ -53,9 +53,12 @@ src/experiments/<slug>/poster.webp   the result, referenced from about.md
   shows a shape it never holds. Starry Night needs none of that — its layers are
   seeded out of phase, so frame one is already a sky — but takes the brightest of
   twelve tries, since its glimmers are too brief to catch on purpose.
-- **Only Dangler's poster is reproducible.** Its preset carries a seed. Starry
-  Night takes no seed at all, so re-running it churns the file for a different
-  sky. That is the reason for the slug filter.
+- **No poster is byte-reproducible, for two different reasons.** Starry Night
+  takes no seed at all, so a re-capture is a different sky. Dangler's landing
+  preset does carry one, which fixes the arrangement — but its wind is derived
+  from the clock too, so the shutter catches the same strands at a different
+  point in the same breeze. Both look unchanged to a person and both churn the
+  file. Hence the slug filter: re-capture the piece you actually changed.
 - `scripts/posters.ts` is generic and knows nothing about any piece; the shared
   contract is the types in `src/experiments/poster.ts`. Per ADR-0002 that is all
   it is allowed to be — a shape, not a base class.

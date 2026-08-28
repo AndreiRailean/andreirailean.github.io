@@ -3,8 +3,10 @@ import {
   DEFAULT_SETTINGS,
   PRESETS,
   normalizeSettings,
+  settingsForLanding,
   settingsFromQuery,
   settingsToQuery,
+  urlForSettings,
 } from "@/experiments/dangler/settings"
 
 /**
@@ -62,5 +64,53 @@ describe("presets", () => {
 
   it("has unique labels, since a number key selects one", () => {
     expect(new Set(PRESETS.map((preset) => preset.label)).size).toBe(PRESETS.length)
+  })
+})
+
+/**
+ * What a bare URL means.
+ *
+ * The defaults are three stiff strands hanging still, which is the simplest
+ * thing the machinery can draw and not what the piece is for. Landing shows the
+ * first preset instead — without moving `DEFAULT_SETTINGS`, since those are what
+ * every already-shared URL is written as a diff against.
+ */
+describe("landing", () => {
+  it("shows the first preset when the URL names no settings", () => {
+    const { settings, featured } = settingsForLanding(new URLSearchParams(""))
+    expect(settings).toEqual(normalizeSettings(PRESETS[0]!.settings))
+    expect(featured).toBe(true)
+  })
+
+  it("still shows the first preset when the URL carries only escape hatches", () => {
+    // `panel`, `idle`, `debug` and `settle` are not settings and never appear in
+    // a shared scene, so a URL made only of them carries no scene.
+    const { featured } = settingsForLanding(new URLSearchParams("panel=1&idle=0&settle=1"))
+    expect(featured).toBe(true)
+  })
+
+  it("leaves a URL that names even one setting alone", () => {
+    const { settings, featured } = settingsForLanding(new URLSearchParams("strands=9"))
+    expect(featured).toBe(false)
+    expect(settings.strands).toBe(9)
+    // Everything unnamed stays at the defaults, not at the first preset's values.
+    expect(settings.hue).toBe(DEFAULT_SETTINGS.hue)
+  })
+
+  it("treats blank and unparseable values as naming nothing, exactly as the parser does", () => {
+    // Both of these are skipped by `settingsFromQuery`, so a URL made of them
+    // would otherwise land on the defaults — the state this exists to avoid.
+    expect(settingsForLanding(new URLSearchParams("hue=")).featured).toBe(true)
+    expect(settingsForLanding(new URLSearchParams("hue=nonsense")).featured).toBe(true)
+  })
+
+  it("hands back an address that restores the scene it landed on", () => {
+    const { settings } = settingsForLanding(new URLSearchParams(""))
+    const url = urlForSettings(settings, "/experiments/dangler/")
+    expect(settingsFromQuery(new URLSearchParams(url.split("?")[1]))).toEqual(settings)
+  })
+
+  it("writes no query for a scene that is the defaults", () => {
+    expect(urlForSettings(DEFAULT_SETTINGS, "/experiments/dangler/")).toBe("/experiments/dangler/")
   })
 })

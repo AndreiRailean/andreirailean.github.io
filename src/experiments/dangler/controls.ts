@@ -5,7 +5,7 @@ import {
   normalizeSettings,
   PRESETS,
   SEED_BOUNDS,
-  settingsToQuery,
+  urlForSettings,
   type Control,
   type Settings,
 } from "@/experiments/dangler/settings"
@@ -247,9 +247,7 @@ export function createControls({ root, settings, onChange, aboutHref }: Options)
   }
 
   function syncUrl() {
-    const query = settingsToQuery(current).toString()
-    const url = `${window.location.pathname}${query ? `?${query}` : ""}`
-    window.history.replaceState(null, "", url)
+    window.history.replaceState(null, "", urlForSettings(current, window.location.pathname))
   }
 
   function apply(next: Settings) {
