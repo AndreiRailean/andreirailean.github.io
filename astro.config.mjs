@@ -13,7 +13,7 @@ export default defineConfig({
       }),
     ],
   },
-  site: "https://andrei.md",
+  site: "https://www.andrei.md",
   integrations: [
     react(),
     icon({
