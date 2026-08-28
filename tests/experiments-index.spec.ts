@@ -3,11 +3,13 @@ import { expect, test } from "./support/experiment.ts"
 /**
  * The index, which is the one page in this section that is not a piece.
  *
- * It is here rather than in a unit test because the thing worth checking is
- * whether the posters actually arrive: `astro:assets` rewrites every `src` into
- * a generated URL, and a broken one renders as a perfectly valid `<img>` with a
- * `naturalWidth` of zero. `src/experiments/AGENTS.md` puts it plainly — a 200
- * proves nothing about content.
+ * Two things here are worth a real browser. The posters: `astro:assets` rewrites
+ * every `src` into a generated URL, and a broken one renders as a perfectly
+ * valid `<img>` with a `naturalWidth` of zero — `src/experiments/AGENTS.md` puts
+ * it plainly, a 200 proves nothing about content. And the plate's two targets:
+ * the caption sits *over* the link that opens the piece and is only clickable
+ * through because it declines pointer events, which is a rule no markup
+ * assertion can check. Both are tested by using them.
  */
 
 const EXPECTED = [
@@ -18,35 +20,50 @@ const EXPECTED = [
 test("lists every experiment, each with a poster that actually loaded", async ({ page }) => {
   await page.goto("/experiments/")
 
-  const entries = page.locator("main li")
-  await expect(entries).toHaveCount(EXPECTED.length)
+  const plates = page.locator(".plate")
+  await expect(plates).toHaveCount(EXPECTED.length)
 
   for (const { slug, title } of EXPECTED) {
-    const entry = entries.filter({ has: page.locator(`a.name[href="/experiments/${slug}/"]`) })
-    await expect(entry).toHaveCount(1)
-    await expect(entry.locator("a.name")).toHaveText(title)
-
-    const poster = entry.locator("a.poster img")
-    await expect(poster).toHaveCount(1)
+    const plate = plates.filter({ has: page.locator(`a.open[href="/experiments/${slug}/"]`) })
+    await expect(plate).toHaveCount(1)
+    await expect(plate.locator(".title")).toHaveText(title)
 
     // Decoded, not merely present. A missing or unreadable image still has a
     // box; only `naturalWidth` tells them apart.
+    const poster = plate.locator("img")
     await expect.poll(() => poster.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0)
   }
 })
 
-test("the poster is skipped by the keyboard and the screen reader, since the title repeats it", async ({ page }) => {
+test("the caption sits over the plate's link without swallowing it", async ({ page }) => {
   await page.goto("/experiments/")
 
-  // Two anchors to the same place would otherwise be two tab stops and two
-  // announcements of the same link.
-  const posters = page.locator("a.poster")
-  await expect(posters).toHaveCount(EXPECTED.length)
-  for (const attribute of ["tabindex", "aria-hidden"]) {
-    const values = await posters.evaluateAll(
-      (links, name) => links.map((l) => l.getAttribute(name as string)),
-      attribute,
-    )
-    expect(values).toEqual(EXPECTED.map(() => (attribute === "tabindex" ? "-1" : "true")))
-  }
+  // A real pointer press at the caption's own centre, not `locator.click()`:
+  // Playwright refuses that one because it can see `a.open` "intercepting" the
+  // event, which is exactly the arrangement under test. What a person does is
+  // press at those coordinates, so that is what this does.
+  const summary = page.locator(".plate").first().locator(".summary")
+  const box = await summary.boundingBox()
+  if (!box) throw new Error("the caption has no box to click")
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+
+  await expect(page).toHaveURL(/\/experiments\/dangler\/\?/)
+})
+
+test("about is the one thing on the caption that catches its own click", async ({ page }) => {
+  await page.goto("/experiments/")
+
+  await page.locator(".plate").first().locator("a.note").click()
+  await expect(page).toHaveURL(/\/experiments\/dangler\/about\/$/)
+})
+
+test("a plate is two tab stops, not two links to the same place", async ({ page }) => {
+  await page.goto("/experiments/")
+
+  // The poster used to be a second anchor to the piece, which meant a second tab
+  // stop and a second announcement of one destination.
+  const links = page.locator(".plate").first().locator("a")
+  await expect(links).toHaveCount(2)
+  await expect(links.nth(0)).toHaveAttribute("href", "/experiments/dangler/")
+  await expect(links.nth(1)).toHaveAttribute("href", "/experiments/dangler/about/")
 })

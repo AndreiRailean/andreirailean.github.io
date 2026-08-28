@@ -1,10 +1,12 @@
 ---
+import "@fontsource-variable/archivo/wdth.css"
 import { Image } from "astro:assets"
 import { getCollection } from "astro:content"
 
 // Deliberately no site Layout: the experiments section is its own place and
 // will get its own theme eventually. Kept minimal so it imposes nothing on the
-// experiments it lists.
+// experiments it lists — the font is imported straight from the package rather
+// than through the site's stylesheet, and it is not one of the site's two.
 const experiments = (await getCollection("experiments")).sort(
   (a, b) => b.data.updated.valueOf() - a.data.updated.valueOf(),
 )
@@ -21,174 +23,389 @@ const formatDate = (date: Date) => date.toLocaleDateString("en-GB", { month: "sh
     <meta name="description" content="Programmed graphics. Each one runs full-screen and stands on its own." />
     <style is:global>
       /*
+       * A wall of plates, each with its label mounted on the work.
+       *
+       * The vocabulary is the section's own: `CONTEXT.md` defines a *placard* as
+       * the discreet gallery label a piece carries, and *chrome* as a piece's
+       * controls — a translucent slab, monospace, lowercase, that recedes when
+       * you stop touching it. The captions here are drawn in that same language,
+       * so the index and the pieces read as one place rather than as a listing
+       * page in front of them.
+       *
        * Dark only, and the one page on the site that ignores the reader's
-       * preference. Every piece here emits light on a dark ground — Dangler has
-       * no light scheme at all, since inverting a picture whose whole subject is
-       * emitted light gives nothing — so a light index would frame each poster
-       * as a black plate on paper. The gallery matches what is hanging in it.
+       * preference. Every piece emits light onto a dark ground and Dangler has no
+       * light scheme at all, so a light index would frame each poster as a black
+       * plate on paper.
        */
       :root {
         color-scheme: dark;
-        --bg: #0b0d12;
-        --fg: #e9ebf2;
-        --muted: #8b93a6;
-        --edge: rgb(255 255 255 / 14%);
+
+        /*
+         * Achromatic on purpose, with no accent of any kind. Both pieces are
+         * coloured light, and they disagree — Dangler is cold blue, Starry Night
+         * near-white. Any hue the page picked would take sides. So the only
+         * colour here comes from the work, which is the arrangement a gallery
+         * uses and for the same reason.
+         */
+        --ground: #08090c;
+        --plate: #0d0f14;
+        --ink: #f4f5f8;
+        --ink-dim: #a2a8b4;
+        --ink-faint: #6d7481;
+        --edge: rgb(255 255 255 / 11%);
+        --edge-lit: rgb(255 255 255 / 26%);
+
+        /* The placard's frosted slab, and how far it clears on hover. */
+        --glass: rgb(9 11 16 / 64%);
+        --glass-clear: rgb(9 11 16 / 42%);
+        --blur: 16px;
+        --blur-clear: 9px;
+
+        --display: "Archivo Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+        /* Verbatim from a piece's own chrome, down to the tracking. */
+        --utility: ui-monospace, "SF Mono", Menlo, monospace;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
       }
 
       html,
       body {
         margin: 0;
-        background: var(--bg);
-        color: var(--fg);
+        background: var(--ground);
+        color: var(--ink);
       }
 
       body {
-        font:
-          400 1rem/1.6 ui-sans-serif,
-          system-ui,
-          -apple-system,
-          "Segoe UI",
-          sans-serif;
-        padding: clamp(2rem, 8vh, 6rem) 1.5rem;
+        font-family: var(--display);
+        font-size: 1rem;
+        line-height: 1.5;
+        padding: clamp(2rem, 7vh, 4.5rem) clamp(1rem, 4vw, 3rem) 4rem;
       }
 
-      main {
-        max-width: 44rem;
-        margin: 0 auto;
+      /*
+       * The masthead does not span the plates. A title set to the full width of a
+       * spread reads as a page banner; held to a column it reads as the top of an
+       * article, which is the density this page is after.
+       */
+      .masthead {
+        max-width: 34rem;
+        margin: 0 0 clamp(2rem, 5vh, 3.5rem);
       }
 
       h1 {
         margin: 0;
-        font-size: 1.5rem;
-        font-weight: 500;
-        letter-spacing: -0.01em;
+        font-size: clamp(1.6rem, 1.1rem + 1.7vw, 2.4rem);
+        /* Expanded rather than merely large. Archivo carries a width axis, and
+           wide caps are how a title reads as signage over a picture. */
+        font-stretch: 118%;
+        font-weight: 620;
+        letter-spacing: -0.015em;
+        line-height: 1.05;
       }
 
       .lede {
-        margin: 0.5rem 0 3rem;
-        color: var(--muted);
+        margin: 0.65rem 0 0;
+        max-width: 33rem;
+        color: var(--ink-dim);
+        font-size: 0.95rem;
       }
 
-      ul {
+      .count {
+        display: block;
+        margin-bottom: 0.9rem;
+        color: var(--ink-faint);
+        font-family: var(--utility);
+        font-size: 0.6875rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      /*
+       * Two up wherever two fit. With the caption on the work rather than under
+       * it a plate is only as tall as the picture, which is what lets a phone
+       * show three of them instead of one.
+       */
+      .wall {
+        display: grid;
+        gap: clamp(1rem, 2.5vw, 1.75rem);
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
+        max-width: 78rem;
         margin: 0;
         padding: 0;
         list-style: none;
       }
 
-      li + li {
-        margin-top: 4rem;
-      }
-
-      /*
-       * The poster is the link, and the title is the same link again. Two
-       * anchors to one place rather than a caption inside the image: the piece's
-       * name stays selectable text under the picture instead of becoming an alt
-       * attribute nobody can copy.
-       */
-      .poster {
-        display: block;
-        margin-bottom: 1rem;
-        border-radius: 0.375rem;
+      .plate {
+        position: relative;
+        /*
+         * Queried rather than the viewport, because the plate's width is set by
+         * how many fit in a row, not by how wide the window is. A two-up plate on
+         * a laptop and a one-up plate on a phone are nearly the same size, and
+         * the label should be the same size on both.
+         */
+        container-type: inline-size;
         overflow: hidden;
-        /* Held before the image decodes, so the text below never jumps. */
+        border-radius: 0.5rem;
+        /* Held before the image decodes, so nothing below it jumps. Also the
+           piece's own shape: both are captured at the ratio they compose at. */
         aspect-ratio: 16 / 9;
-        background: #05070b;
-        /* The pieces run to the edge of the window; the hairline says where the
-           picture stops and the page begins, which pure black on near-black
-           otherwise cannot. */
+        background: var(--plate);
         outline: 1px solid var(--edge);
         outline-offset: -1px;
       }
 
-      .poster img {
+      .plate img {
         display: block;
         width: 100%;
         height: 100%;
         object-fit: cover;
-        transition: opacity 200ms ease-out;
+        transition:
+          transform 600ms cubic-bezier(0.2, 0, 0.1, 1),
+          filter 300ms ease-out;
       }
 
-      .poster:hover img,
-      .poster:focus-visible img {
-        opacity: 0.82;
+      /*
+       * One link over the whole plate, under the placard in the stacking order
+       * but reachable through it — the caption is `pointer-events: none` so a
+       * click anywhere on the picture opens the piece, and only `about` catches
+       * one for itself. A second anchor around the image would be a second tab
+       * stop and a second announcement of the same destination.
+       */
+      .open {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
       }
 
-      .name {
-        font-size: 1.15rem;
-        font-weight: 500;
-        color: inherit;
-        text-decoration: none;
+      .open span {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
       }
 
-      .name:hover {
-        text-decoration: underline;
-        text-underline-offset: 0.2em;
+      .open:focus-visible {
+        outline: 2px solid var(--ink);
+        outline-offset: -3px;
       }
 
-      .summary {
-        margin: 0.4rem 0 0.75rem;
+      /*
+       * The placard: a gallery label mounted on the work.
+       *
+       * Inset from every edge rather than run to them, so it reads as a card
+       * laid on the picture instead of a bar welded to the bottom of it — and so
+       * the piece keeps a margin of itself visible on all four sides.
+       */
+      .placard {
+        position: absolute;
+        z-index: 2;
+        right: 0.55rem;
+        bottom: 0.55rem;
+        left: 0.55rem;
+        padding: 0.5rem 0.7rem 0.45rem;
+        pointer-events: none;
+        background: var(--glass);
+        border: 1px solid var(--edge);
+        border-radius: 0.35rem;
+        backdrop-filter: blur(var(--blur)) saturate(130%);
+        transition:
+          background-color 300ms ease-out,
+          backdrop-filter 300ms ease-out,
+          border-color 300ms ease-out;
       }
 
-      .meta {
+      /* The chrome receding, which is what a piece's own controls do when you
+         stop touching them. It clears rather than hides: the label stays
+         readable and `about` stays clickable, and more of the work shows
+         through the glass. */
+      .plate:hover .placard,
+      .plate:focus-within .placard {
+        background: var(--glass-clear);
+        border-color: var(--edge-lit);
+        backdrop-filter: blur(var(--blur-clear)) saturate(130%);
+      }
+
+      .plate:hover img,
+      .plate:focus-within img {
+        transform: scale(1.015);
+        filter: brightness(1.08);
+      }
+
+      /* Title and date on one line, the way a wall label heads itself. It also
+         keeps the date out of the medium line below, where it was the first
+         thing to be truncated away on a narrow plate — and the date is worth
+         more than the third tag. */
+      .head {
         display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem;
         align-items: baseline;
-        font-size: 0.8125rem;
-        color: var(--muted);
+        justify-content: space-between;
+        gap: 0.75rem;
       }
 
-      .meta a {
-        color: inherit;
+      .dateline {
+        flex: none;
+        color: var(--ink-faint);
+        font-family: var(--utility);
+        font-size: 0.6563rem;
+        letter-spacing: 0.03em;
+      }
+
+      .title {
+        margin: 0;
+        min-width: 0;
+        font-size: 0.9375rem;
+        font-stretch: 108%;
+        font-weight: 620;
+        letter-spacing: -0.005em;
+        line-height: 1.25;
+      }
+
+      /*
+       * Clamped, because the label is a caption on a picture and must not grow
+       * into one. One line on a small plate and two on a large one: the plate is
+       * a fixed 16:9, so its width is its height, and a phone-width plate has
+       * about two hundred pixels to spend in total.
+       */
+      .summary {
+        display: -webkit-box;
+        margin: 0.1rem 0 0;
+        overflow: hidden;
+        color: var(--ink-dim);
+        font-size: 0.75rem;
+        line-height: 1.35;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 1;
+      }
+
+      @container (min-width: 30rem) {
+        .summary {
+          -webkit-line-clamp: 2;
+        }
+
+        .title {
+          font-size: 1.0625rem;
+        }
+      }
+
+      /*
+       * The line a wall label gives to medium and date — "oil on canvas, 1954".
+       * Here the medium is how the thing is made, which is what `tags` already
+       * holds and what the index never showed.
+       */
+      .medium {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 0.9rem;
+        margin: 0.4rem 0 0;
+        color: var(--ink-faint);
+        font-family: var(--utility);
+        font-size: 0.6563rem;
+        letter-spacing: 0.03em;
+      }
+
+      /* Truncates rather than wraps. A second line here would push the label up
+         over the picture, and which tag falls off the end matters less than the
+         label keeping its height. */
+      .facts {
+        overflow: hidden;
+        min-width: 0;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .medium .note {
+        flex: none;
+        pointer-events: auto;
+        color: var(--ink-dim);
+        text-decoration-color: var(--edge-lit);
+        text-underline-offset: 0.25em;
+      }
+
+      .medium .note:hover,
+      .medium .note:focus-visible {
+        color: var(--ink);
+        text-decoration-color: currentcolor;
       }
 
       .empty {
-        color: var(--muted);
+        color: var(--ink-dim);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .plate img,
+        .placard {
+          transition: none;
+        }
+
+        .plate:hover img,
+        .plate:focus-within img {
+          transform: none;
+        }
       }
     </style>
   </head>
   <body>
-    <main>
+    <header class="masthead">
       <h1>Experiments</h1>
       <p class="lede">Programmed graphics. Each one takes the whole window and stands on its own.</p>
+    </header>
 
-      {
-        experiments.length === 0 ? (
-          <p class="empty">Nothing here yet.</p>
-        ) : (
-          <ul>
-            {experiments.map(({ data }) => (
-              <li>
+    {
+      experiments.length === 0 ? (
+        <p class="empty">Nothing here yet.</p>
+      ) : (
+        <>
+          <span class="count">
+            {experiments.length} {experiments.length === 1 ? "piece" : "pieces"}
+          </span>
+          <ul class="wall">
+            {experiments.map(({ data }, index) => (
+              <li class="plate">
                 {data.poster && (
-                  /* Hidden from the accessibility tree on purpose. It repeats
-                     the link below it, and the summary already describes the
-                     picture better than any alt text of a generative field
-                     could. */
-                  <a class="poster" href={`/experiments/${data.slug}/`} tabindex="-1" aria-hidden="true">
-                    <Image src={data.poster} alt="" widths={[704, 1408]} sizes="(min-width: 47rem) 44rem, 100vw" />
-                  </a>
+                  <Image
+                    src={data.poster}
+                    alt=""
+                    widths={[560, 1120]}
+                    sizes="(min-width: 58rem) 37rem, 100vw"
+                    loading={index === 0 ? "eager" : "lazy"}
+                  />
                 )}
-                <a class="name" href={`/experiments/${data.slug}/`}>
-                  {data.title}
+                <a class="open" href={`/experiments/${data.slug}/`}>
+                  <span>Open {data.title}</span>
                 </a>
-                <p class="summary">{data.summary}</p>
-                <p class="meta">
-                  <span>
-                    <time datetime={data.started.toISOString()}>{formatDate(data.started)}</time>
-                    {formatDate(data.updated) !== formatDate(data.started) && (
-                      <>
-                        {" · updated "}
-                        <time datetime={data.updated.toISOString()}>{formatDate(data.updated)}</time>
-                      </>
-                    )}
-                  </span>
-                  <a href={`/experiments/${data.slug}/about/`}>about</a>
-                </p>
+                <div class="placard">
+                  <div class="head">
+                    <h2 class="title">{data.title}</h2>
+                    <span class="dateline">
+                      <time datetime={data.started.toISOString()}>{formatDate(data.started)}</time>
+                      {formatDate(data.updated) !== formatDate(data.started) && (
+                        <>
+                          {"–"}
+                          <time datetime={data.updated.toISOString()}>{formatDate(data.updated)}</time>
+                        </>
+                      )}
+                    </span>
+                  </div>
+                  <p class="summary">{data.summary}</p>
+                  <p class="medium">
+                    <span class="facts">{data.tags.join(" · ")}</span>
+                    <a class="note" href={`/experiments/${data.slug}/about/`}>
+                      about
+                    </a>
+                  </p>
+                </div>
               </li>
             ))}
           </ul>
-        )
-      }
-    </main>
+        </>
+      )
+    }
   </body>
 </html>
