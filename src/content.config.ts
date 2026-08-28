@@ -12,15 +12,27 @@ import { glob } from "astro/loaders"
  */
 const experiments = defineCollection({
   loader: glob({ base: "./src/experiments", pattern: "*/about.md" }),
-  schema: z.object({
-    /** Stated rather than derived from the file id, which the loader owns. */
-    slug: z.string(),
-    title: z.string(),
-    summary: z.string(),
-    started: z.date(),
-    updated: z.date(),
-    tags: z.array(z.string()).default([]),
-  }),
+  schema: ({ image }) =>
+    z.object({
+      /** Stated rather than derived from the file id, which the loader owns. */
+      slug: z.string(),
+      title: z.string(),
+      summary: z.string(),
+      started: z.date(),
+      updated: z.date(),
+      tags: z.array(z.string()).default([]),
+      /**
+       * The still shown on the index, captured by `npm run posters` and living
+       * beside the piece it is of.
+       *
+       * Optional: a piece is allowed to exist before anyone has decided what it
+       * looks like in a single frame, and the index falls back to a text-only
+       * entry. `image()` resolves it relative to this `about.md` and fails the
+       * build if the file is missing, so the only way to be wrong is to be
+       * absent — not to be broken.
+       */
+      poster: image().optional(),
+    }),
 })
 
 export const collections = { experiments }

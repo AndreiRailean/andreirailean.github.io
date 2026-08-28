@@ -4,6 +4,7 @@ title: Starry Night
 summary: Layers of dots fading in and out on their own clocks, with a few flaring, over ground that never sits quite still.
 started: 2026-08-22
 updated: 2026-08-23
+poster: ./poster.webp
 tags:
   - canvas
   - generative

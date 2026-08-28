@@ -34,6 +34,35 @@ frontmatter. `/experiments/` is generated from it.
 - Keep `updated` current when changing an experiment; they are evergreen, not
   dated posts.
 
+## Posters
+
+`/experiments/` shows a still of each piece above its entry. It is captured, not
+drawn, and it is committed.
+
+```
+src/experiments/<slug>/poster.ts     the recipe: which moment is worth shooting
+src/experiments/<slug>/poster.webp   the result, referenced from about.md
+```
+
+- **`npm run posters` captures them; nothing else does.** Not the build, which
+  stays browserless, and not `npm test`, which must never write tracked files.
+  Name a slug — `npm run posters -- dangler` — to leave the others alone.
+- **A recipe is per-piece knowledge and stays with the piece.** Which preset,
+  what has to happen before the shutter, how long to wait. Dangler loads a
+  seeded preset and calls `settle()` twice, because a frame caught mid-relaxation
+  shows a shape it never holds. Starry Night needs none of that — its layers are
+  seeded out of phase, so frame one is already a sky — but takes the brightest of
+  twelve tries, since its glimmers are too brief to catch on purpose.
+- **Only Dangler's poster is reproducible.** Its preset carries a seed. Starry
+  Night takes no seed at all, so re-running it churns the file for a different
+  sky. That is the reason for the slug filter.
+- `scripts/posters.ts` is generic and knows nothing about any piece; the shared
+  contract is the types in `src/experiments/poster.ts`. Per ADR-0002 that is all
+  it is allowed to be — a shape, not a base class.
+- `poster` is optional in the collection schema. A piece may exist before anyone
+  has decided what one frame of it looks like, and the index falls back to a
+  text-only entry.
+
 ## Console API
 
 Every experiment exposes `window.experiment` so its controls can be driven

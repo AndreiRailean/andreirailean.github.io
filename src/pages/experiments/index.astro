@@ -1,4 +1,5 @@
 ---
+import { Image } from "astro:assets"
 import { getCollection } from "astro:content"
 
 // Deliberately no site Layout: the experiments section is its own place and
@@ -19,21 +20,19 @@ const formatDate = (date: Date) => date.toLocaleDateString("en-GB", { month: "sh
     <title>Experiments</title>
     <meta name="description" content="Programmed graphics. Each one runs full-screen and stands on its own." />
     <style is:global>
+      /*
+       * Dark only, and the one page on the site that ignores the reader's
+       * preference. Every piece here emits light on a dark ground — Dangler has
+       * no light scheme at all, since inverting a picture whose whole subject is
+       * emitted light gives nothing — so a light index would frame each poster
+       * as a black plate on paper. The gallery matches what is hanging in it.
+       */
       :root {
-        color-scheme: light dark;
-        --bg: #fbfbfc;
-        --fg: #14161c;
-        --muted: #6a7080;
-        --edge: rgb(20 22 28 / 12%);
-      }
-
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --bg: #0b0d12;
-          --fg: #e9ebf2;
-          --muted: #8b93a6;
-          --edge: rgb(255 255 255 / 14%);
-        }
+        color-scheme: dark;
+        --bg: #0b0d12;
+        --fg: #e9ebf2;
+        --muted: #8b93a6;
+        --edge: rgb(255 255 255 / 14%);
       }
 
       html,
@@ -77,13 +76,41 @@ const formatDate = (date: Date) => date.toLocaleDateString("en-GB", { month: "sh
       }
 
       li + li {
-        margin-top: 0.5rem;
-        border-top: 1px solid var(--edge);
-        padding-top: 2rem;
+        margin-top: 4rem;
       }
 
-      li {
-        padding-bottom: 1.5rem;
+      /*
+       * The poster is the link, and the title is the same link again. Two
+       * anchors to one place rather than a caption inside the image: the piece's
+       * name stays selectable text under the picture instead of becoming an alt
+       * attribute nobody can copy.
+       */
+      .poster {
+        display: block;
+        margin-bottom: 1rem;
+        border-radius: 0.375rem;
+        overflow: hidden;
+        /* Held before the image decodes, so the text below never jumps. */
+        aspect-ratio: 16 / 9;
+        background: #05070b;
+        /* The pieces run to the edge of the window; the hairline says where the
+           picture stops and the page begins, which pure black on near-black
+           otherwise cannot. */
+        outline: 1px solid var(--edge);
+        outline-offset: -1px;
+      }
+
+      .poster img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: opacity 200ms ease-out;
+      }
+
+      .poster:hover img,
+      .poster:focus-visible img {
+        opacity: 0.82;
       }
 
       .name {
@@ -132,6 +159,15 @@ const formatDate = (date: Date) => date.toLocaleDateString("en-GB", { month: "sh
           <ul>
             {experiments.map(({ data }) => (
               <li>
+                {data.poster && (
+                  /* Hidden from the accessibility tree on purpose. It repeats
+                     the link below it, and the summary already describes the
+                     picture better than any alt text of a generative field
+                     could. */
+                  <a class="poster" href={`/experiments/${data.slug}/`} tabindex="-1" aria-hidden="true">
+                    <Image src={data.poster} alt="" widths={[704, 1408]} sizes="(min-width: 47rem) 44rem, 100vw" />
+                  </a>
+                )}
                 <a class="name" href={`/experiments/${data.slug}/`}>
                   {data.title}
                 </a>

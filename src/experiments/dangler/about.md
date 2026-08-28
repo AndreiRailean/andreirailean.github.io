@@ -4,6 +4,7 @@ title: Dangler
 summary: Strings of lights hanging from something unseen overhead, looked at from directly below.
 started: 2026-08-24
 updated: 2026-08-25
+poster: ./poster.webp
 tags:
   - canvas
   - generative
