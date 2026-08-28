@@ -109,6 +109,9 @@ sees anything visual.
   at and nothing diffs them.
 - **Reach for the unit runner while working.** `npx vitest rope` answers in
   milliseconds where the browser suite needs seconds and a dev server.
+- **Do not give the browser suite a fixed port, or one derived per worktree.**
+  Both fail, the first silently — see the dev-server section of
+  `tests/AGENTS.md`.
 - Use `/root/bin/webcheck` (see the machine's global notes) to sweep many pages
   at once for console errors and stills. It cannot evaluate JS; that is the one
   thing `npm test` adds.

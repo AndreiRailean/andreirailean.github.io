@@ -7,6 +7,11 @@ summary: Deriving the browser suite's dev-server port from the checkout path fix
 
 # A port per worktree, derived from the checkout path
 
+> Rederived from scratch in a separate session before this record was linked
+> anywhere. `tests/AGENTS.md` now carries the short version and points here; that
+> file is what an agent working on tests actually reads, and an ADR nobody is
+> pointed at does not stop a third attempt.
+
 ## Context
 
 `tests/support/dev-server.ts` used a fixed port, 4355, chosen to stay clear of
