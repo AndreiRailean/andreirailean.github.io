@@ -1,4 +1,7 @@
 ---
+import MetaTags from "@/components/MetaTags.astro"
+import GoogleAnalytics from "@/components/GoogleAnalytics.astro"
+
 import "@/styles/globals.css"
 import "@/styles/resume.css"
 import "@fontsource-variable/inter"
@@ -9,7 +12,6 @@ import "@fontsource-variable/rubik"
 type Props = {
   frontmatter: {
     title: string
-    pdfLink: string
     noIndex?: boolean
     description?: string
   }
@@ -31,12 +33,8 @@ const pageTitle = `${title} - ${pubDate}`
 <!doctype html>
 <html lang="en" class={FORCE_THEME}>
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width" />
-    <meta name="generator" content={Astro.generator} />
-    <meta name="description" content={description || title} />
-    {noIndex && <meta name="robots" content="noindex" />}
-    <title>{pageTitle}</title>
+    <MetaTags title={pageTitle} description={description || title} noIndex={noIndex} />
+    <GoogleAnalytics />
   </head>
   <body>
     <div class="container mx-auto flex justify-center">

@@ -3,6 +3,7 @@ interface Props {
   title?: string | undefined
   description?: string | undefined
   ogImage?: URL | undefined
+  noIndex?: boolean | undefined
 }
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site)
@@ -15,12 +16,12 @@ if (Astro.props.ogImage === undefined) {
   Astro.props.ogImage = new URL("android-chrome-512x512.png", Astro.site)
 }
 
-const { title, description, ogImage } = Astro.props
+const { title, description, ogImage, noIndex } = Astro.props
 ---
 
 <meta charset="utf-8" />
-<meta name="robots" content="index, follow" />
-<meta name="googlebot" content="index, follow" />
+<meta name="robots" content={noIndex ? "noindex" : "index, follow"} />
+<meta name="googlebot" content={noIndex ? "noindex" : "index, follow"} />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="generator" content={Astro.generator} />
 <link rel="canonical" href={canonicalURL} />

@@ -2,7 +2,6 @@
 title: Andrei Railean - Resume
 description: Resume of Andrei Railean, Software Engineer
 layout: ../layouts/ResumeLayout.astro
-imageUrl: https://avatars.githubusercontent.com/u/25991?v=4
 ---
 
 # Andrei Railean
