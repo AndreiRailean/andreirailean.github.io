@@ -23,8 +23,9 @@ notes, the way out. Shared and _imposed_ — one implementation each experiment
 tints, because a visitor should not have to relearn the exit in the next room. An
 experiment does not get to move it.
 
-**Kit** — shared parts a piece builds its own chrome from: a panel that opens
-above its trigger, preset management, idle behaviour. Shared and _offered_ — a
+**Kit** — shared parts a piece builds its own chrome from, in
+`src/experiments/kit/`: the bar, the panel, preset management, idle behaviour,
+fullscreen, clipboard. Shared and _offered_ — a
 piece composes them because it is convenient, and is free to build something else
 if what it does needs different controls. The distinction from the gallery is who
 is spared the relearning: the gallery spares the visitor, the kit spares whoever

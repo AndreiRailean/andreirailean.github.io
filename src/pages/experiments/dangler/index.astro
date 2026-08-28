@@ -247,8 +247,16 @@
 
     <script>
       import { createDangler } from "@/experiments/dangler/dangler"
-      import { createControls } from "@/experiments/dangler/controls"
-      import { settingsForLanding, urlForSettings } from "@/experiments/dangler/settings"
+      import { createControls } from "@/experiments/kit/controls"
+      import { reroll } from "@/experiments/dangler/reroll"
+      import {
+        CONTROLS,
+        GROUP_ORDER,
+        PRESETS,
+        normalizeSettings,
+        settingsForLanding,
+        urlForSettings,
+      } from "@/experiments/dangler/settings"
       import { announceApi, createApi } from "@/experiments/dangler/api"
       import { keepAwake } from "@/experiments/dangler/wakelock"
 
@@ -285,10 +293,28 @@
       const scene = createDangler(canvas, settings)
       scene.start()
 
+      // The chrome comes from the kit — offered, not imposed; see
+      // src/experiments/docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.
+      // Everything below is Dangler's own: which rows exist, how they group, the
+      // one validator every input goes through, and what a scene's address is.
       const controls = createControls({
         root: ui,
         aboutHref: "/experiments/dangler/about/",
         settings,
+        controls: CONTROLS,
+        presets: PRESETS,
+        groups: GROUP_ORDER,
+        actions: [
+          {
+            label: "reroll",
+            shortcut: "r",
+            hint: "A fresh arrangement of strands and bulbs. The seed travels in the address bar.",
+            run: (chrome) => reroll(chrome),
+          },
+        ],
+        normalize: (next) => normalizeSettings(next),
+        url: (next) => urlForSettings(next, window.location.pathname),
+        copyLabel: "copy link to this scene",
         onChange: (next) => {
           applyTheme(next)
           scene.setSettings(next)

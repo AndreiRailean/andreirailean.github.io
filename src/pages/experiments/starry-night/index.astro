@@ -75,7 +75,10 @@
         right: 1.25rem;
         bottom: 1.25rem;
         display: flex;
-        flex-direction: column;
+        /* Reversed, so the panel grows upward from the bar rather than pushing
+           it up the screen. The bar is the thing anchored to the corner; the
+           panel opens above the presets, as Dangler's does. */
+        flex-direction: column-reverse;
         align-items: flex-end;
         gap: 0.5rem;
         font:
@@ -129,12 +132,18 @@
         border-color: var(--ui-on-edge);
       }
 
+      /* Takes as much height as there is and only scrolls when it genuinely
+         cannot fit. The reserve is the chrome bar below it plus its gap and the
+         window inset. */
       .panel {
         display: flex;
         flex-direction: column;
         gap: 0.4rem;
         min-width: 20rem;
+        max-height: calc(100vh - 5.5rem);
         padding: 0.75rem 0.85rem;
+        overflow-y: auto;
+        overscroll-behavior: contain;
         background: var(--ui-panel);
         border: 1px solid var(--ui-edge);
         border-radius: 0.4rem;
@@ -296,8 +305,15 @@
 
     <script>
       import { createStarfield } from "@/experiments/starry-night/starfield"
-      import { createControls } from "@/experiments/starry-night/controls"
-      import { settingsFromQuery } from "@/experiments/starry-night/settings"
+      import { createControls } from "@/experiments/kit/controls"
+      import {
+        CONTROLS,
+        PRESETS,
+        normalizeSettings,
+        reconcile,
+        settingsFromQuery,
+        urlForSettings,
+      } from "@/experiments/starry-night/settings"
       import { announceApi, createApi } from "@/experiments/starry-night/api"
       import { keepAwake } from "@/experiments/starry-night/wakelock"
 
@@ -330,10 +346,22 @@
       const sky = createStarfield(canvas, settings)
       sky.start()
 
+      // The chrome comes from the kit — offered, not imposed; see
+      // src/experiments/docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.
+      // Everything below is Starry Night's own: which rows exist, and the one
+      // validator every input goes through. No groups — twelve rows read fine
+      // undivided, where Dangler's twenty-seven do not.
       const controls = createControls({
         root: ui,
         aboutHref: "/experiments/starry-night/about/",
         settings,
+        controls: CONTROLS,
+        presets: PRESETS,
+        // `reconcile` before the clamp, and only for the key actually moved:
+        // it is what stops a lifespan minimum being dragged past its maximum.
+        // The panel used to skip this, and that was the bug.
+        normalize: (next, changed) => normalizeSettings(changed ? reconcile(next, changed) : next),
+        url: (next) => urlForSettings(next, window.location.pathname),
         onChange: (next) => {
           applyTheme(next)
           sky.setSettings(next)

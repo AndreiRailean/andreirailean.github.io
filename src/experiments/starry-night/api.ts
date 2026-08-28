@@ -1,8 +1,15 @@
-import type { Controls } from "@/experiments/starry-night/controls"
 import type { Starfield, StarfieldStats } from "@/experiments/starry-night/starfield"
-import { setFullscreen, toggleFullscreen } from "@/experiments/starry-night/fullscreen"
+import type { Controls } from "@/experiments/kit/controls"
+import { setFullscreen, toggleFullscreen } from "@/experiments/kit/fullscreen"
 import type { WakeLock } from "@/experiments/starry-night/wakelock"
-import { CONTROLS, keysOf, normalizeSettings, PRESETS, type Settings } from "@/experiments/starry-night/settings"
+import {
+  CONTROLS,
+  isNumericControl,
+  keysOf,
+  normalizeSettings,
+  PRESETS,
+  type Settings,
+} from "@/experiments/starry-night/settings"
 
 /**
  * A console handle on the piece, at `window.experiment`.
@@ -61,7 +68,7 @@ export function announceApi(): void {
   console.log(`%cStarry Night%c is scriptable from here.\n\n${body}\n`, "font-weight:600", "font-weight:400")
 }
 
-export function createApi(controls: Controls, wakeLock: WakeLock, sky: Starfield): ExperimentApi {
+export function createApi(controls: Controls<Settings>, wakeLock: WakeLock, sky: Starfield): ExperimentApi {
   return {
     get: () => controls.getSettings(),
 
@@ -83,8 +90,11 @@ export function createApi(controls: Controls, wakeLock: WakeLock, sky: Starfield
 
     presets: () => PRESETS.map(({ label }) => label),
 
+    // Numeric rows only. The contract here is "every control with its bounds",
+    // and depth and invert have none — they are reachable through `get` and
+    // `set` like any other setting, and the panel shows them as buttons.
     controls: () =>
-      CONTROLS.map((control) => ({
+      CONTROLS.filter(isNumericControl).map((control) => ({
         keys: keysOf(control),
         label: control.label,
         min: control.min,

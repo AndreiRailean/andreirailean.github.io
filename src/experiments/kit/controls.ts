@@ -1,0 +1,492 @@
+import { copyText } from "@/experiments/kit/copy"
+import { toggleFullscreen } from "@/experiments/kit/fullscreen"
+
+/**
+ * The chrome: a bar of presets, a settings panel, and the idle behaviour that
+ * hides both.
+ *
+ * **Offered, not imposed.** Per
+ * `../docs/adr/20260828-the-piece-is-independent-the-gallery-is-not`, a piece
+ * owns its rendering and may build whatever controls it needs; this exists
+ * because an artist reaching for a panel usually wants the one they already
+ * know. The art ends at the console API — `window.experiment` — and controls sit
+ * outside that boundary, which is what makes them swappable rather than
+ * load-bearing.
+ *
+ * The kit reaches into nothing. It takes a settings object, a list of controls,
+ * a validator and a URL function, and knows nothing else about the piece. Lift
+ * `kit/` out with an experiment and the experiment still runs.
+ *
+ * Grown from Dangler's chrome, which was the larger of the two, with Starry
+ * Night's range, choice and toggle rows folded in.
+ *
+ * **It renders DOM, not appearance.** The class names below are the contract
+ * with a piece's own stylesheet: `.bar`, `.panel`, `.group`, `.row`, `.label`,
+ * `.value`, `.span`, `.modes`, `.mode`, `.preset`, `.toggle`, `.copy`, `.about`.
+ * A piece that uses a control kind it has no CSS for will render it unstyled and
+ * nothing will say so — that has happened here before.
+ */
+
+/** Idle gap before the pointer and the controls both disappear, video-player style. */
+const IDLE_MS = 2500
+
+type Shared = {
+  label: string
+  /** Shown as a tooltip on the row. */
+  hint: string
+  /** Heading to file the row under. Ignored unless `groups` is given. */
+  group?: string
+}
+
+type Numeric = Shared & { min: number; max: number; step: number }
+
+export type SliderControl<K> = Numeric & {
+  kind: "slider"
+  key: K
+  format: (value: number) => string
+}
+
+/**
+ * Two handles on one axis.
+ *
+ * A pair of separate sliders cannot express a bound pair: they had different
+ * ranges, so the same number sat at a different place on each track and moving
+ * one never showed its effect on the other.
+ */
+export type RangeControl<K> = Numeric & {
+  kind: "range"
+  keys: [K, K]
+  format: (from: number, to: number) => string
+}
+
+/** One of a fixed set, as a row of buttons. */
+export type ChoiceControl<K> = Shared & {
+  kind: "choice"
+  key: K
+  options: { value: string; label: string }[]
+}
+
+/** A boolean, as one button that says which way it currently is. */
+export type ToggleControl<K> = Shared & {
+  kind: "toggle"
+  key: K
+  /** What the button reads when the setting is off, then on. */
+  labels: [string, string]
+}
+
+export type Control<K> = SliderControl<K> | RangeControl<K> | ChoiceControl<K> | ToggleControl<K>
+
+export const keysOf = <K>(control: Control<K>): K[] => (control.kind === "range" ? control.keys : [control.key])
+
+export type Preset<S> = { label: string; hint: string; settings: S }
+
+/**
+ * An extra button in the bar — Dangler's `reroll`.
+ *
+ * Handed the controls rather than closing over them, so a piece does not have to
+ * declare a mutable binding to build one before the thing it acts on exists.
+ */
+export type Action<S> = {
+  label: string
+  hint: string
+  /** A single lowercase character. `c` and `f` are taken. */
+  shortcut?: string
+  run: (controls: Controls<S>) => void
+}
+
+export type Controls<S> = {
+  destroy: () => void
+  getSettings: () => S
+  apply: (next: S) => void
+  setPanelOpen: (open: boolean) => void
+  isPanelOpen: () => boolean
+  /** true or false pins the state; null hands control back to the idle timer. */
+  setIdle: (idle: boolean | null) => void
+}
+
+export type Options<S extends object> = {
+  root: HTMLElement
+  settings: S
+  controls: Control<string & keyof S>[]
+  presets: Preset<S>[]
+  /** Heading order. Omitted, the rows run together with no headings. */
+  groups?: readonly string[]
+  actions?: Action<S>[]
+  /**
+   * The one validator every external input passes through, so the panel cannot
+   * reach a state a URL could not.
+   *
+   * Given a complete candidate rather than a patch, and the key just moved —
+   * which is how a bound pair keeps its order when one handle is dragged past
+   * the other.
+   */
+  normalize: (next: S, changed?: string & keyof S) => S
+  /** The address that restores these settings. */
+  url: (settings: S) => string
+  onChange: (settings: S) => void
+  /** Where the written note lives. Omitted, no link is shown. */
+  aboutHref?: string
+  /** The copy button's resting label — pieces word it differently. */
+  copyLabel?: string
+}
+
+function button(label: string, className = ""): HTMLButtonElement {
+  const element = document.createElement("button")
+  element.type = "button"
+  element.textContent = label
+  if (className) element.className = className
+  return element
+}
+
+export function createControls<S extends object>(options: Options<S>): Controls<S> {
+  const { root, controls: specs, presets, groups, actions = [], normalize, url, onChange, aboutHref } = options
+  const copyLabel = options.copyLabel ?? "copy link to these settings"
+
+  let current: S = { ...options.settings }
+  let panelOpen = false
+  let pointerOverUi = false
+  let idleTimer = 0
+  let pinnedIdle: boolean | null = null
+
+  const bar = document.createElement("div")
+  bar.className = "bar"
+
+  const panel = document.createElement("div")
+  panel.className = "panel"
+  panel.hidden = true
+
+  root.append(bar, panel)
+
+  // --- idle handling -------------------------------------------------------
+
+  function setIdle(idle: boolean) {
+    document.documentElement.dataset.idle = String(idle)
+  }
+
+  /**
+   * Any activity wakes the UI. The timer is not restarted while the pointer
+   * rests on the panel — losing the cursor mid-drag would be unusable.
+   */
+  function goActive() {
+    window.clearTimeout(idleTimer)
+    if (pinnedIdle !== null) {
+      setIdle(pinnedIdle)
+      return
+    }
+    setIdle(false)
+    if (pointerOverUi) return
+    idleTimer = window.setTimeout(() => setIdle(true), IDLE_MS)
+  }
+
+  // --- the bar -------------------------------------------------------------
+
+  const presetButtons = presets.map((preset, index) => {
+    const element = button(`${index + 1} ${preset.label}`, "preset")
+    element.title = `${preset.hint} (key ${index + 1})`
+    element.addEventListener("click", () => apply(normalize({ ...preset.settings })))
+    return element
+  })
+
+  const actionButtons = actions.map((action) => {
+    const element = button(action.label, action.label)
+    element.title = action.shortcut ? `${action.hint} (key ${action.shortcut})` : action.hint
+    element.addEventListener("click", () => action.run(handle))
+    return element
+  })
+
+  const settingsToggle = button("adjust", "toggle")
+  settingsToggle.title = "Show or hide these controls (key c, Escape closes)"
+  settingsToggle.addEventListener("click", () => setPanelOpen(!panelOpen))
+
+  bar.append(...presetButtons, ...actionButtons, settingsToggle)
+
+  // The gallery placard: present when you look for it, gone while you watch.
+  if (aboutHref) {
+    const about = document.createElement("a")
+    about.className = "about"
+    about.href = aboutHref
+    about.textContent = "about"
+    about.title = "A written note on this piece and how it came to look this way"
+    bar.append(about)
+  }
+
+  // --- the panel -----------------------------------------------------------
+
+  const sliders = new Map<string, HTMLInputElement>()
+  const spans = new Map<string, HTMLElement>()
+  const valueLabels = new Map<string, HTMLElement>()
+  const choiceButtons = new Map<string, Map<string, HTMLButtonElement>>()
+  const toggleButtons = new Map<string, HTMLButtonElement>()
+
+  /**
+   * Rows are grouped under headings when a piece asks for it.
+   *
+   * Dangler's twenty-two are nearly twice Starry Night's, and an undivided list
+   * that long stops being scannable — you hunt for a control instead of reaching
+   * for it. The panel scrolls rather than the groups collapsing: collapse is
+   * state that has to be remembered, decided about on load and kept out of the
+   * shared URL, which is a lot to buy before the scrolling is a problem.
+   */
+  if (groups && groups.length > 0) {
+    for (const group of groups) {
+      const inGroup = specs.filter((control) => control.group === group)
+      if (inGroup.length === 0) continue
+
+      const heading = document.createElement("div")
+      heading.className = "group"
+      heading.textContent = group
+      panel.append(heading)
+
+      for (const control of inGroup) panel.append(makeRow(control))
+    }
+  } else {
+    for (const control of specs) panel.append(makeRow(control))
+  }
+
+  function makeSlider(control: SliderControl<string & keyof S> | RangeControl<string & keyof S>, key: string) {
+    const slider = document.createElement("input")
+    slider.type = "range"
+    slider.min = String(control.min)
+    slider.max = String(control.max)
+    slider.step = String(control.step)
+    slider.className = key
+    slider.addEventListener("input", () => {
+      apply(normalize({ ...current, [key]: Number(slider.value) }, key as string & keyof S))
+    })
+    sliders.set(key, slider)
+    return slider
+  }
+
+  function makeRow(control: Control<string & keyof S>): HTMLDivElement {
+    const row = document.createElement("div")
+    row.className = "row"
+    row.title = control.hint
+
+    const label = document.createElement("span")
+    label.className = "label"
+    label.textContent = control.label
+
+    if (control.kind === "choice" || control.kind === "toggle") {
+      const group = document.createElement("div")
+      group.className = "modes"
+
+      if (control.kind === "choice") {
+        const byValue = new Map<string, HTMLButtonElement>()
+        for (const option of control.options) {
+          const element = button(option.label, "mode")
+          element.addEventListener("click", () =>
+            apply(normalize({ ...current, [control.key]: option.value }, control.key)),
+          )
+          byValue.set(option.value, element)
+          group.append(element)
+        }
+        choiceButtons.set(control.key, byValue)
+      } else {
+        const element = button(control.labels[0], "mode")
+        element.addEventListener("click", () =>
+          apply(normalize({ ...current, [control.key]: !current[control.key] }, control.key)),
+        )
+        toggleButtons.set(control.key, element)
+        group.append(element)
+      }
+
+      row.append(label, group)
+      return row
+    }
+
+    const value = document.createElement("span")
+    value.className = "value"
+    valueLabels.set(keysOf(control).join("-"), value)
+
+    if (control.kind === "range") {
+      const span = document.createElement("div")
+      span.className = "span"
+      span.append(...control.keys.map((key) => makeSlider(control, key)))
+      spans.set(control.keys.join("-"), span)
+      row.append(label, span, value)
+    } else {
+      row.append(label, makeSlider(control, control.key), value)
+    }
+
+    return row
+  }
+
+  const copyRow = document.createElement("div")
+  copyRow.className = "row copy"
+  const copyButton = button(copyLabel, "copy")
+  copyButton.title = "Copy this page's address, which carries every setting above."
+  copyButton.addEventListener("click", async () => {
+    const copied = await copyText(window.location.href)
+    copyButton.textContent = copied ? "copied" : "copy failed"
+    window.setTimeout(() => {
+      copyButton.textContent = copyLabel
+    }, 1600)
+  })
+  copyRow.append(copyButton)
+  panel.append(copyRow)
+
+  // --- state ---------------------------------------------------------------
+
+  function render() {
+    for (const control of specs) {
+      if (control.kind === "choice") {
+        const byValue = choiceButtons.get(control.key)
+        if (byValue) {
+          for (const [value, element] of byValue) element.dataset.active = String(value === current[control.key])
+        }
+        continue
+      }
+
+      if (control.kind === "toggle") {
+        const element = toggleButtons.get(control.key)
+        if (element) {
+          const on = Boolean(current[control.key])
+          element.textContent = control.labels[on ? 1 : 0]
+          element.dataset.active = String(on)
+        }
+        continue
+      }
+
+      const position = (key: string) =>
+        ((Number(current[key as keyof S]) - control.min) / (control.max - control.min || 1)) * 100
+
+      for (const key of keysOf(control)) {
+        const slider = sliders.get(key)
+        if (!slider) continue
+        slider.value = String(current[key as keyof S])
+        // Webkit has no ::-moz-range-progress equivalent, so the filled portion
+        // is drawn as a gradient and needs the position handed to CSS.
+        slider.style.setProperty("--fill", `${position(key)}%`)
+      }
+
+      const keys = keysOf(control)
+      const span = spans.get(keys.join("-"))
+      if (span && control.kind === "range") {
+        span.style.setProperty("--from", `${position(control.keys[0])}%`)
+        span.style.setProperty("--to", `${position(control.keys[1])}%`)
+      }
+
+      const value = valueLabels.get(keys.join("-"))
+      if (value) {
+        value.textContent =
+          control.kind === "range"
+            ? control.format(Number(current[control.keys[0]]), Number(current[control.keys[1]]))
+            : control.format(Number(current[control.key]))
+      }
+    }
+
+    presetButtons.forEach((element, index) => {
+      const preset = presets[index]
+      const matches =
+        preset && (Object.keys(preset.settings) as (keyof S)[]).every((key) => preset.settings[key] === current[key])
+      element.dataset.active = String(Boolean(matches))
+    })
+  }
+
+  function syncUrl() {
+    window.history.replaceState(null, "", url(current))
+  }
+
+  function apply(next: S) {
+    current = next
+    render()
+    syncUrl()
+    onChange(current)
+    goActive()
+  }
+
+  function setPanelOpen(open: boolean) {
+    panelOpen = open
+    panel.hidden = !open
+    settingsToggle.dataset.active = String(open)
+    goActive()
+  }
+
+  // --- events --------------------------------------------------------------
+
+  const onActivity = () => goActive()
+
+  const onKeyDown = (event: KeyboardEvent) => {
+    goActive()
+
+    // Leave browser and OS chords alone. Cmd+2 would switch tab and load a
+    // preset at the same time.
+    if (event.ctrlKey || event.metaKey || event.altKey) return
+
+    if (event.key === "Escape" && panelOpen) {
+      setPanelOpen(false)
+      return
+    }
+
+    const key = event.key.toLowerCase()
+    if (key === "c") {
+      setPanelOpen(!panelOpen)
+      return
+    }
+    if (key === "f") {
+      void toggleFullscreen()
+      return
+    }
+
+    const action = actions.find((candidate) => candidate.shortcut === key)
+    if (action) {
+      action.run(handle)
+      return
+    }
+
+    const preset = presets[Number(event.key) - 1]
+    if (preset) apply(normalize({ ...preset.settings }))
+  }
+
+  const onPointerDownAway = (event: PointerEvent) => {
+    if (!panelOpen) return
+    const target = event.target
+    if (target instanceof Node && root.contains(target)) return
+    setPanelOpen(false)
+  }
+
+  const onPointerEnter = () => {
+    pointerOverUi = true
+    goActive()
+  }
+  const onPointerLeave = () => {
+    pointerOverUi = false
+    goActive()
+  }
+
+  window.addEventListener("mousemove", onActivity)
+  window.addEventListener("mousedown", onActivity)
+  window.addEventListener("wheel", onActivity, { passive: true })
+  window.addEventListener("touchstart", onActivity, { passive: true })
+  window.addEventListener("keydown", onKeyDown)
+  window.addEventListener("pointerdown", onPointerDownAway)
+  root.addEventListener("pointerenter", onPointerEnter)
+  root.addEventListener("pointerleave", onPointerLeave)
+
+  const handle: Controls<S> = {
+    getSettings: () => ({ ...current }),
+    apply,
+    setPanelOpen,
+    isPanelOpen: () => panelOpen,
+    setIdle(idle) {
+      pinnedIdle = idle
+      goActive()
+    },
+    destroy() {
+      window.clearTimeout(idleTimer)
+      window.removeEventListener("mousemove", onActivity)
+      window.removeEventListener("mousedown", onActivity)
+      window.removeEventListener("wheel", onActivity)
+      window.removeEventListener("touchstart", onActivity)
+      window.removeEventListener("keydown", onKeyDown)
+      window.removeEventListener("pointerdown", onPointerDownAway)
+      root.removeEventListener("pointerenter", onPointerEnter)
+      root.removeEventListener("pointerleave", onPointerLeave)
+    },
+  }
+
+  render()
+  goActive()
+
+  return handle
+}

@@ -1,4 +1,8 @@
-import { isMode, type Mode } from "@/experiments/starry-night/character"
+import { keysOf, type Control as KitControl, type RangeControl, type SliderControl } from "@/experiments/kit/controls"
+import { isMode, MODES, type Mode } from "@/experiments/starry-night/character"
+
+/** Re-exported so a consumer needs one import for a control and its keys. */
+export { keysOf } from "@/experiments/kit/controls"
 
 /**
  * Everything about the sky that is tunable at runtime.
@@ -34,41 +38,56 @@ export type Settings = {
 
 export type NumericKey = Exclude<keyof Settings, "mode" | "invert">
 
-type Shared = {
-  label: string
-  min: number
-  max: number
-  step: number
-  /** Shown as a tooltip on the row. */
-  hint: string
-}
-
-export type SliderControl = Shared & {
-  kind: "slider"
-  key: NumericKey
-  format: (value: number) => string
-}
+/**
+ * The rows, described in the kit's vocabulary.
+ *
+ * Four kinds are in play here where Dangler needs only one: the sky's depth is a
+ * `choice`, its scheme a `toggle`, its lifespan a bound `range`, and the rest
+ * plain sliders. The kit renders all four; what they are is this piece's
+ * business.
+ */
+export type Control = KitControl<string & keyof Settings>
 
 /**
- * Two handles on one axis. A pair of separate sliders cannot express a bound
- * pair: they had different ranges, so the same number sat at a different place
- * on each track and moving one never showed its effect on the other.
+ * Numeric rows only — the ones with bounds to report and a slider to drag.
+ *
+ * Keyed by `NumericKey` rather than by every key, which is what lets `BOUNDS`
+ * and anything else reading a control's bounds index by the key it gets back
+ * without a cast. Depth and invert are neither.
  */
-export type RangeControl = Shared & {
-  kind: "range"
-  keys: [NumericKey, NumericKey]
-  format: (from: number, to: number) => string
-}
+export type NumericControl = SliderControl<NumericKey> | RangeControl<NumericKey>
 
-export type Control = SliderControl | RangeControl
-
-export const keysOf = (control: Control): NumericKey[] => (control.kind === "range" ? control.keys : [control.key])
+export const isNumericControl = (control: Control): control is NumericControl =>
+  control.kind === "slider" || control.kind === "range"
 
 /**
  * Bounds live here rather than in the markup so the sliders and the query-string
  * parser cannot disagree about what a legal value is.
  */
+export const MODE_LABELS: Record<Mode, string> = {
+  depth: "tiers",
+  random: "random",
+  identical: "same",
+}
+
+export const DEPTH_HINT =
+  "Every layer is given a depth from far to near, and that depth sets three things: how many stars the layer holds, how large they may get, and how bright they are. This chooses how the depths are handed out. Tiers spreads them evenly from far to near. Random gives a layer a fresh depth each time it respawns, so its character keeps changing. Same puts every layer in the middle, leaving them to differ only by chance."
+
 export const CONTROLS: Control[] = [
+  {
+    kind: "choice",
+    key: "mode",
+    label: "depth",
+    hint: DEPTH_HINT,
+    options: MODES.map((mode) => ({ value: mode, label: MODE_LABELS[mode] })),
+  },
+  {
+    kind: "toggle",
+    key: "invert",
+    label: "invert",
+    hint: "Swap between light stars on a dark ground and dark stars on a light one.",
+    labels: ["dark sky", "light sky"],
+  },
   {
     kind: "slider",
     key: "layerCount",
@@ -192,15 +211,6 @@ export const CONTROLS: Control[] = [
 ]
 
 /** Button text for the depth policies. The URL keeps the underlying names. */
-export const MODE_LABELS: Record<Mode, string> = {
-  depth: "tiers",
-  random: "random",
-  identical: "same",
-}
-
-export const DEPTH_HINT =
-  "Every layer is given a depth from far to near, and that depth sets three things: how many stars the layer holds, how large they may get, and how bright they are. This chooses how the depths are handed out. Tiers spreads them evenly from far to near. Random gives a layer a fresh depth each time it respawns, so its character keeps changing. Same puts every layer in the middle, leaving them to differ only by chance."
-
 export const DEFAULT_SETTINGS: Settings = {
   mode: "depth",
   invert: false,
@@ -278,7 +288,9 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
  * validator never has to know how a control is presented.
  */
 export const BOUNDS = Object.fromEntries(
-  CONTROLS.flatMap((control) => keysOf(control).map((key) => [key, { min: control.min, max: control.max }] as const)),
+  CONTROLS.filter(isNumericControl).flatMap((control) =>
+    keysOf(control).map((key) => [key, { min: control.min, max: control.max }] as const),
+  ),
 ) as Record<NumericKey, { min: number; max: number }>
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
@@ -386,6 +398,17 @@ export function needsCloudRebuild(before: Settings, after: Settings): boolean {
 }
 
 /** Only values that differ from the defaults, so shared URLs stay readable. */
+/**
+ * The address that restores exactly these settings.
+ *
+ * One definition with two callers — the chrome, which rewrites the URL on every
+ * change, and anything else that needs to name a scene.
+ */
+export function urlForSettings(settings: Settings, pathname: string): string {
+  const query = settingsToQuery(settings).toString()
+  return `${pathname}${query ? `?${query}` : ""}`
+}
+
 export function settingsToQuery(settings: Settings): URLSearchParams {
   const params = new URLSearchParams()
   if (settings.mode !== DEFAULT_SETTINGS.mode) params.set("mode", settings.mode)

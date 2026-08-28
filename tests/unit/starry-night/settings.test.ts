@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   BOUNDS,
   CONTROLS,
+  isNumericControl,
   DEFAULT_SETTINGS,
   PRESETS,
   keysOf,
@@ -148,7 +149,9 @@ describe("controls", () => {
   })
 
   it("keeps every control's bounds the ones settings are clamped to", () => {
-    for (const control of CONTROLS) {
+    // Numeric rows only: depth is a choice and invert a toggle, and neither has
+    // bounds to keep — they are clamped by their own parsers instead.
+    for (const control of CONTROLS.filter(isNumericControl)) {
       for (const key of keysOf(control)) {
         expect(BOUNDS[key], key).toEqual({ min: control.min, max: control.max })
       }
