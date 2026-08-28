@@ -155,13 +155,22 @@ screen — a wrong strand and a right one both look like a scatter of dots.
 - **Settings round-trip through the query string.** Anything added to `Settings`
   needs a `Control` (or explicit handling) or the panel and shared URLs quietly
   disagree.
-- **`DEFAULT_SETTINGS` is the vocabulary, not the scene anyone lands on.** A bare
-  URL gets `PRESETS[0]` and the address is rewritten to match; see
-  `settingsForLanding`. Do not "fix" the dull landing scene by moving the
-  defaults — they are the base `normalizeSettings` falls back to and the thing
-  `settingsToQuery` diffs against, so changing them rewrites what every URL
-  already shared means. The poster names no preset for the same reason: it
-  photographs whatever a bare URL lands on, so the two cannot drift apart.
+- **`DEFAULT_SETTINGS` is not the scene anyone lands on.** A bare URL gets
+  `PRESETS[0]` and the address is rewritten to match; see `settingsForLanding`.
+  The poster names no preset for the same reason: it photographs whatever a bare
+  URL lands on, so the two cannot drift apart.
+- **The defaults are still a scene worth looking at, because something renders
+  them.** They are the base `normalizeSettings` falls back to and the thing
+  `settingsToQuery` diffs against — but they are also what the note's background
+  shows, which is why they are a recorded scene rather than the simplest thing
+  the machinery can draw. Replacing them invalidates the length of every URL
+  already shared; that was accepted once, knowingly.
+- **Never use `DEFAULT_SETTINGS` as a neutral baseline in a test.** It is
+  editorial and it has moved once. Two solver checks inherited it and both failed
+  quietly rather than loudly when it did — the current defaults are fully limp,
+  so `set: 0` left `stiffness` nothing to scale and "a stiff strand holds its
+  bend" became vacuous. `tests/unit/dangler/rope.test.ts` states its own `PLAIN`
+  scene; anything measuring physics should do the same.
 - **Core radii stay at or above `MIN_CORE_PX`**, trading size for alpha below it.
   Starry Night's sub-pixel lesson applies here unchanged.
 - **The wind stays pure.** Gusts are derived from the clock and the seed rather

@@ -106,9 +106,10 @@ test("settings survive the round trip through the query string", async ({ page }
 })
 
 test("reduced motion gets a still frame, not a running loop and not a blank canvas", async ({ page }) => {
-  // Motion in the scene deliberately: under the default settings every motion
-  // control is already 0 and the loop parks anyway, so a still scene would pass
-  // this test whatever reduced motion did or did not do.
+  // Motion stated rather than inherited. The point is to prove the loop parks
+  // *because* of the preference, so the scene has to be one that would otherwise
+  // be running — and which scene the defaults describe is editorial, not
+  // something this test should depend on.
   const moving = { ...MODEST_SCENE, breeze: 0.4 }
 
   const animated = await openDangler(page, { settings: moving })

@@ -70,10 +70,10 @@ describe("presets", () => {
 /**
  * What a bare URL means.
  *
- * The defaults are three stiff strands hanging still, which is the simplest
- * thing the machinery can draw and not what the piece is for. Landing shows the
- * first preset instead — without moving `DEFAULT_SETTINGS`, since those are what
- * every already-shared URL is written as a diff against.
+ * Landing shows the first preset rather than `DEFAULT_SETTINGS`. The two are
+ * separate jobs: the defaults are the base a URL is written as a diff against
+ * and the scene anything rendering the piece without choosing gets, while the
+ * landing scene is editorial and expected to change.
  */
 describe("landing", () => {
   it("shows the first preset when the URL names no settings", () => {

@@ -187,28 +187,23 @@ const formatDate = (date: Date) => date.toLocaleDateString("en-GB", { day: "nume
 
     <script>
       import { createDangler } from "@/experiments/dangler/dangler"
-      import { normalizeSettings } from "@/experiments/dangler/settings"
+      import { DEFAULT_SETTINGS } from "@/experiments/dangler/settings"
 
       const canvas = document.getElementById("lights")
       if (canvas instanceof HTMLCanvasElement) {
-        // Quieter than the piece proper: this one is scenery, not the subject.
-        // A slow breeze rather than none, since a still background behind
-        // scrolling text reads as a picture rather than as the piece running.
-        const scene = createDangler(
-          canvas,
-          normalizeSettings({
-            seed: 5,
-            strands: 7,
-            beads: 14,
-            extent: 3.2,
-            ceiling: 5,
-            length: 3.4,
-            size: 0.017,
-            bloom: 7,
-            falloff: 0.65,
-            breeze: 0.14,
-          }),
-        )
+        // The defaults, unmodified and deliberately so.
+        //
+        // This used to patch a handful of values over them to make something
+        // quieter, on the grounds that the background is scenery rather than the
+        // subject. What that actually produced was mostly the old defaults —
+        // three stiff strands hanging still — which is the least interesting
+        // thing the piece can draw, shown on the one page that explains why it is
+        // interesting.
+        //
+        // So the defaults became a scene worth looking at instead, and this
+        // stopped arguing with them. One place to change, and the page that
+        // describes the piece shows the piece.
+        const scene = createDangler(canvas, DEFAULT_SETTINGS)
         scene.start()
       }
     </script>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { buildArrangement } from "@/experiments/dangler/arrangement"
 import { FIXED_DT, createRopes } from "@/experiments/dangler/rope"
-import { DEFAULT_SETTINGS, normalizeSettings } from "@/experiments/dangler/settings"
+import { normalizeSettings } from "@/experiments/dangler/settings"
 
 /**
  * The solver: flat arrays, links, directional bending, settling.
@@ -11,6 +11,36 @@ import { DEFAULT_SETTINGS, normalizeSettings } from "@/experiments/dangler/setti
  * plausible scatter of dots. Numbers are the only way to tell, which is why
  * every assertion below corresponds to a bug that actually happened.
  */
+
+/**
+ * A plain scene to measure the solver against, stated rather than inherited.
+ *
+ * These tests are about rope physics; `DEFAULT_SETTINGS` is editorial — it is
+ * what the note's background shows, and it has been replaced once already.
+ * Inheriting it coupled the solver's checks to that choice, and both ways it can
+ * fail are quiet ones: the new defaults are fully limp, which made "a stiff
+ * strand holds its bend" vacuous rather than red (`set: 0` leaves `stiffness`
+ * nothing to scale), and eighty short strands pushed the solver's steady-state
+ * error past a threshold that was never about them.
+ *
+ * These are the old defaults, which were chosen for being unremarkable. Only the
+ * keys `buildArrangement` and `createRopes` actually read are named.
+ */
+const PLAIN = normalizeSettings({
+  seed: 7,
+  strands: 3,
+  beads: 12,
+  segments: 28,
+  extent: 2.4,
+  ceiling: 4.2,
+  relief: 0.9,
+  branches: 0,
+  length: 3,
+  stiffness: 0.55,
+  set: 1.2,
+  twist: 0.35,
+  irregularity: 0.5,
+})
 
 type Ropes = ReturnType<typeof createRopes>
 
@@ -31,7 +61,7 @@ const lengthOf = (ropes: Ropes, strand: number) => {
   return total
 }
 
-const settled = (settings = DEFAULT_SETTINGS) => {
+const settled = (settings = PLAIN) => {
   const arrangement = buildArrangement(settings)
   const ropes = createRopes(arrangement.specs)
   ropes.settle()
@@ -78,7 +108,7 @@ describe("settling", () => {
 describe("stiffness", () => {
   /** How far a settled strand's tip sits from directly below its anchor. */
   const tipOffset = (stiffness: number) => {
-    const { ropes } = settled({ ...DEFAULT_SETTINGS, stiffness, irregularity: 0 })
+    const { ropes } = settled({ ...PLAIN, stiffness, irregularity: 0 })
     const head = ropes.offset[0]!
     const tip = ropes.offset[1]! - 1
     return Math.hypot(ropes.px[tip]! - ropes.px[head]!, ropes.py[tip]! - ropes.py[head]!)
@@ -104,10 +134,10 @@ describe("stiffness", () => {
 
 describe("growing the strand count", () => {
   it("preserves the strands already there, exactly", () => {
-    const few = settled({ ...DEFAULT_SETTINGS, strands: 3 })
+    const few = settled({ ...PLAIN, strands: 3 })
     const before = Array.from(few.ropes.px.subarray(0, few.ropes.offset[3]!))
 
-    const many = buildArrangement({ ...DEFAULT_SETTINGS, strands: 10 })
+    const many = buildArrangement({ ...PLAIN, strands: 10 })
     const grown = createRopes(many.specs, few.ropes)
     expect(Array.from(grown.px.subarray(0, grown.offset[3]!))).toEqual(before)
   })
@@ -115,8 +145,8 @@ describe("growing the strand count", () => {
   it("reports only the new strands as fresh", () => {
     // Settling everything zeroes velocities, so adding one strand would visibly
     // calm every other strand in a breeze.
-    const few = settled({ ...DEFAULT_SETTINGS, strands: 3 })
-    const many = buildArrangement({ ...DEFAULT_SETTINGS, strands: 10 })
+    const few = settled({ ...PLAIN, strands: 3 })
+    const many = buildArrangement({ ...PLAIN, strands: 10 })
     expect(createRopes(many.specs, few.ropes).freshStrands).toEqual([3, 4, 5, 6, 7, 8, 9])
   })
 })

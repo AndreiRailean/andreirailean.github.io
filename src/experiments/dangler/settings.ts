@@ -345,39 +345,58 @@ export const CONTROLS: Control[] = [
   },
 ]
 
+/**
+ * The base every scene is measured against.
+ *
+ * Two jobs, and neither is "the scene you land on" — that is `PRESETS[0]`, via
+ * `settingsForLanding`. These are what `normalizeSettings` falls back to for a
+ * value it cannot read, and what `settingsToQuery` diffs against so a shared URL
+ * carries only what someone actually changed.
+ *
+ * They are also, unavoidably, the scene anything that renders the piece without
+ * choosing settings gets — the note's background is the one that matters. So
+ * these are a scene worth looking at rather than the simplest thing the
+ * machinery can draw, which is what they used to be: three stiff strands hanging
+ * still. Recorded from exploration like a preset, and replacing them changes how
+ * long every shared URL is, which is a cost worth paying once and not often.
+ */
 export const DEFAULT_SETTINGS: Settings = {
   seed: 7,
-  strands: 3,
-  beads: 12,
-  segments: 28,
-  extent: 2.4,
-  ceiling: 4.2,
-  relief: 0.9,
+  strands: 80,
+  beads: 4,
+  segments: 36,
+  // A tight, low canopy: the anchors sit inside a metre and a half of each
+  // other, barely above the viewer, so the strands crowd rather than fan.
+  extent: 1.25,
+  ceiling: 1.5,
+  relief: 0.45,
   branches: 0,
-  // Length against ceiling is the ratio that decides the whole composition: it
-  // is what sets how hard the strings fan out, and neither number means much
-  // alone. Around three-quarters of the height is where the splay reads clearly
-  // without the nearest bulbs leaving the frame.
-  length: 3,
-  stiffness: 0.55,
-  set: 1.2,
-  twist: 0.35,
-  irregularity: 0.5,
-  fieldOfView: 100,
+  // Short against the ceiling, unlike every other scene here. The strings stop
+  // well above the camera instead of falling past it, which is what keeps
+  // eighty of them legible at once.
+  length: 0.7,
+  // Fully limp, with no rest curl at all: every strand hangs plumb and the whole
+  // arrangement is the canopy's doing. `twist` and `irregularity` are then the
+  // only things keeping them from reading as one column.
+  stiffness: 0,
+  set: 0,
+  twist: -0.61,
+  irregularity: 1,
+  fieldOfView: 66,
   pitch: 0,
-  hue: 38,
-  hueSpread: 7,
-  variance: 0.3,
-  size: 0.02,
-  bloom: 8,
-  facing: 0.55,
-  falloff: 0.5,
-  flicker: 0,
-  breeze: 0,
-  gust: 0,
+  hue: 236,
+  hueSpread: 16.5,
+  variance: 0.74,
+  size: 0.01,
+  bloom: 8.4,
+  facing: 0.38,
+  falloff: 0.34,
+  flicker: 0.48,
+  breeze: 0.51,
+  gust: 0.06,
   gustRate: 6,
   tremble: 0,
-  sway: 0,
+  sway: 0.7,
 }
 
 /**
