@@ -1,6 +1,6 @@
-import type { Controls } from "@/experiments/starry-night/controls"
 import type { Starfield, StarfieldStats } from "@/experiments/starry-night/starfield"
-import { setFullscreen, toggleFullscreen } from "@/experiments/starry-night/fullscreen"
+import type { Controls } from "@/experiments/kit/controls"
+import { setFullscreen, toggleFullscreen } from "@/experiments/kit/fullscreen"
 import type { WakeLock } from "@/experiments/starry-night/wakelock"
 import { CONTROLS, keysOf, normalizeSettings, PRESETS, type Settings } from "@/experiments/starry-night/settings"
 
@@ -21,8 +21,17 @@ export type ExperimentApi = {
   preset: (which: number | string) => Settings
   /** Preset names, in keyboard order. */
   presets: () => string[]
-  /** Every control with its bounds and blurb. A range control lists both keys. */
-  controls: () => { keys: string[]; label: string; min: number; max: number; hint: string }[]
+  /**
+   * Every control the panel shows, in panel order.
+   *
+   * A discriminated union rather than a flat shape with bounds, because two of
+   * these rows have no bounds: depth is one of three named strategies and invert
+   * is a boolean. Reporting them as numbers would be a lie a sweep believes —
+   * `set({ mode: 2 })` is rejected by the validator and falls back to the
+   * default, so a test moving every control through this list would pass while
+   * touching neither. `keys` is a list because a range control drives two.
+   */
+  controls: () => ControlReport[]
   /** Open or close the settings panel; omit to toggle. Returns the new state. */
   panel: (open?: boolean) => boolean
   /** Pin idle on or off — hiding the cursor and chrome. Omit to resume auto. */
@@ -61,7 +70,12 @@ export function announceApi(): void {
   console.log(`%cStarry Night%c is scriptable from here.\n\n${body}\n`, "font-weight:600", "font-weight:400")
 }
 
-export function createApi(controls: Controls, wakeLock: WakeLock, sky: Starfield): ExperimentApi {
+export type ControlReport =
+  | { kind: "slider" | "range"; keys: string[]; label: string; hint: string; min: number; max: number }
+  | { kind: "choice"; keys: string[]; label: string; hint: string; options: string[] }
+  | { kind: "toggle"; keys: string[]; label: string; hint: string }
+
+export function createApi(controls: Controls<Settings>, wakeLock: WakeLock, sky: Starfield): ExperimentApi {
   return {
     get: () => controls.getSettings(),
 
@@ -84,13 +98,21 @@ export function createApi(controls: Controls, wakeLock: WakeLock, sky: Starfield
     presets: () => PRESETS.map(({ label }) => label),
 
     controls: () =>
-      CONTROLS.map((control) => ({
-        keys: keysOf(control),
-        label: control.label,
-        min: control.min,
-        max: control.max,
-        hint: control.hint,
-      })),
+      CONTROLS.map((control): ControlReport => {
+        const shared = { keys: keysOf(control), label: control.label, hint: control.hint }
+        // Switched on the discriminant rather than through `isNumericControl`,
+        // whose negative branch narrows to nothing useful: the numeric alias is
+        // parameterised by `NumericKey` while the union is parameterised by every
+        // key, so TypeScript cannot subtract one from the other.
+        switch (control.kind) {
+          case "choice":
+            return { kind: "choice", ...shared, options: control.options.map(({ value }) => value) }
+          case "toggle":
+            return { kind: "toggle", ...shared }
+          default:
+            return { kind: control.kind, ...shared, min: control.min, max: control.max }
+        }
+      }),
 
     panel(open) {
       const next = open ?? !controls.isPanelOpen()

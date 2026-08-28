@@ -77,13 +77,34 @@ test("settings survive the round trip through the query string", async ({ page }
   const experiment = await openSky(page)
 
   const applied = await experiment.api(({ api }) => {
-    const patch: Record<string, number> = {}
+    // Every control, moved off whatever it currently is, so the round trip has
+    // to carry it. Depth and invert are swept too: they are not numbers, and
+    // reporting them as a 1..3 range would have made this loop set values the
+    // validator rejects — passing while testing nothing.
+    const patch: Record<string, unknown> = {}
     for (const control of api.controls()) {
-      for (const key of control.keys) patch[key] = control.min + (control.max - control.min) * 0.37
+      const key = control.keys[0]!
+      if (control.kind === "slider" || control.kind === "range") {
+        for (const each of control.keys) patch[each] = control.min + (control.max - control.min) * 0.37
+      } else if (control.kind === "choice") {
+        const held = api.get()[key as keyof ReturnType<typeof api.get>]
+        patch[key] = control.options.find((option) => option !== held) ?? control.options[0]
+      } else {
+        patch[key] = !api.get()[key as keyof ReturnType<typeof api.get>]
+      }
     }
-    api.set({ ...patch, layerCount: 5 })
+
+    // Kept small for runtime only; a small count round-trips the same code.
+    api.set({ ...patch, layerCount: 5 } as Parameters<typeof api.set>[0])
     return { settings: api.get(), url: api.url() }
   })
+
+  // Proof the sweep above actually moved the two non-numeric rows. Without this
+  // the loop could quietly stop covering them — which is exactly what a 1..3
+  // range for depth would have caused, since the validator rejects `mode: 2`
+  // and falls back to the default.
+  expect(applied.url).toContain("mode=")
+  expect(applied.url).toContain("invert=")
 
   await page.goto(applied.url)
   await page.waitForFunction(() => Boolean(window.experiment))

@@ -49,6 +49,14 @@ A `rejected` record is the most valuable file in the directory: it is the only
 thing that can stop an approach being re-tried, because the code holds no trace
 of one that was abandoned. Records are append-only — supersede, never delete.
 
+**Link every new record from the `AGENTS.md` nearest the code it governs, in the
+same change that writes it.** One line, stating the rule and pointing at the
+record for the reasoning. Nobody reads `docs/adr/` before starting work; they
+read the `AGENTS.md` they land in. A record that is only in the archive does not
+stop a repeat — `20260828-a-derived-port-per-worktree.md` was written and then
+rederived from scratch in another session, because nothing in `tests/AGENTS.md`
+mentioned it. The archive holds the evidence; the `AGENTS.md` holds the rule.
+
 The records under `src/experiments/docs/adr/` predate this format and use
 sequential numbers with a `Status:` line in the body. They are not being
 migrated.

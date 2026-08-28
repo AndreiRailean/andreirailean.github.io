@@ -1,6 +1,7 @@
-import type { Controls } from "@/experiments/dangler/controls"
 import type { Dangler, DanglerStats } from "@/experiments/dangler/dangler"
-import { setFullscreen, toggleFullscreen } from "@/experiments/dangler/fullscreen"
+import { reroll } from "@/experiments/dangler/reroll"
+import type { Controls } from "@/experiments/kit/controls"
+import { setFullscreen, toggleFullscreen } from "@/experiments/kit/fullscreen"
 import { CONTROLS, normalizeSettings, PRESETS, type Settings } from "@/experiments/dangler/settings"
 import type { WakeLock } from "@/experiments/dangler/wakelock"
 
@@ -76,7 +77,7 @@ export function announceApi(): void {
   console.log(`%cDangler%c is scriptable from here.\n\n${body}\n`, "font-weight:600", "font-weight:400")
 }
 
-export function createApi(controls: Controls, wakeLock: WakeLock, scene: Dangler): ExperimentApi {
+export function createApi(controls: Controls<Settings>, wakeLock: WakeLock, scene: Dangler): ExperimentApi {
   return {
     get: () => controls.getSettings(),
 
@@ -108,7 +109,7 @@ export function createApi(controls: Controls, wakeLock: WakeLock, scene: Dangler
         hint: control.hint,
       })),
 
-    reroll: (seed) => controls.reroll(seed),
+    reroll: (seed) => reroll(controls, seed),
 
     settle: () => scene.settle(),
 

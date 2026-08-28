@@ -39,7 +39,8 @@ frontmatter. `/experiments/` is generated from it.
 ## Posters
 
 `/experiments/` shows a still of each piece above its entry. It is captured, not
-drawn, and it is committed.
+drawn, and it is committed — see
+`docs/adr/20260828-posters-are-captured-by-hand.md` for why not at build time.
 
 ```
 src/experiments/<slug>/poster.ts     the recipe: which moment is worth shooting
@@ -73,6 +74,11 @@ src/experiments/<slug>/poster.webp   the result, referenced from about.md
 Every experiment exposes `window.experiment` so its controls can be driven
 without a pointer. Minimum surface: `get()`, `set(patch)`, `preset(n)`,
 `panel(open)`, `idle(force)`. See an existing experiment for the shape.
+
+The global is declared **once for the section**, as `unknown`, in `window.d.ts`;
+each piece keeps its own typed reference rather than widening it. Do not add a
+second declaration — see
+`docs/adr/20260824-one-window-experiment-declaration.md`.
 
 **Reach for it whenever something is only verifiable through interaction.**
 Anything behind a click is invisible to a headless check otherwise — a panel that
@@ -109,6 +115,9 @@ sees anything visual.
   at and nothing diffs them.
 - **Reach for the unit runner while working.** `npx vitest rope` answers in
   milliseconds where the browser suite needs seconds and a dev server.
+- **Do not give the browser suite a fixed port, or one derived per worktree.**
+  Both fail, the first silently — see the dev-server section of
+  `tests/AGENTS.md`.
 - Use `/root/bin/webcheck` (see the machine's global notes) to sweep many pages
   at once for console errors and stills. It cannot evaluate JS; that is the one
   thing `npm test` adds.

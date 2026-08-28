@@ -1,3 +1,4 @@
+import type { SliderControl } from "@/experiments/kit/controls"
 /**
  * Everything about the scene that is tunable at runtime.
  *
@@ -46,16 +47,13 @@ export type NumericKey = keyof Settings
 
 export type ControlGroup = "arrangement" | "canopy" | "strand" | "camera" | "light" | "motion"
 
-export type Control = {
+/**
+ * Every row here is a plain slider; the kit also has range, choice and toggle
+ * kinds that this piece has no use for. `group` is narrowed from the kit's
+ * `string` to the six headings that exist, so a typo is a type error.
+ */
+export type Control = SliderControl<NumericKey> & {
   group: ControlGroup
-  key: NumericKey
-  label: string
-  min: number
-  max: number
-  step: number
-  format: (value: number) => string
-  /** Shown as a tooltip on the row. */
-  hint: string
 }
 
 export const GROUP_ORDER: ControlGroup[] = ["arrangement", "canopy", "strand", "camera", "light", "motion"]
@@ -74,6 +72,7 @@ const metres = (value: number) => `${value.toFixed(2)}m`
  */
 export const CONTROLS: Control[] = [
   {
+    kind: "slider",
     group: "arrangement",
     key: "strands",
     label: "strands",
@@ -84,6 +83,7 @@ export const CONTROLS: Control[] = [
     hint: "How many strings hang from the canopy. Anchor positions are fixed by the seed and by index, so raising this adds strands beside the ones already there rather than rearranging the scene.",
   },
   {
+    kind: "slider",
     group: "arrangement",
     key: "beads",
     label: "beads",
@@ -94,6 +94,7 @@ export const CONTROLS: Control[] = [
     hint: "Bulbs per strand, spaced evenly down its length. They alternate around the strand's axis as they descend, so a strand seen end-on still reads as a string rather than a line.",
   },
   {
+    kind: "slider",
     group: "arrangement",
     key: "segments",
     label: "segments",
@@ -104,6 +105,7 @@ export const CONTROLS: Control[] = [
     hint: "How many links each strand is simulated with. This is the quality knob: more links give a smoother curve and a finer sway, and cost solver time on every strand at once. Lower it before lowering anything else when the frame rate drops.",
   },
   {
+    kind: "slider",
     group: "canopy",
     key: "extent",
     label: "spread",
@@ -114,6 +116,7 @@ export const CONTROLS: Control[] = [
     hint: "Radius of the invisible object the strands hang from. A strand hanging directly overhead collapses to a point from below, so this is what gives each string somewhere to lean away to.",
   },
   {
+    kind: "slider",
     group: "canopy",
     key: "ceiling",
     label: "height",
@@ -124,6 +127,7 @@ export const CONTROLS: Control[] = [
     hint: "How far above you the canopy sits. Together with strand length this sets the whole composition: it is the ratio of the two that decides how hard the strings fan out, not either one alone.",
   },
   {
+    kind: "slider",
     group: "canopy",
     key: "relief",
     label: "relief",
@@ -134,6 +138,7 @@ export const CONTROLS: Control[] = [
     hint: "How uneven the object above is. At 0 it is a flat ceiling and every strand starts at the same distance from you. Raise it and neighbouring anchors still stay close in height, because they are pinned to one lumpy surface rather than scattered independently.",
   },
   {
+    kind: "slider",
     group: "canopy",
     key: "branches",
     label: "branches",
@@ -144,6 +149,7 @@ export const CONTROLS: Control[] = [
     hint: "Arms the anchors are strung along, the way lights get slung over a few branches rather than scattered evenly. Off spreads them across the whole canopy. Each arm starts away from the trunk and has its own reach, sweep and height, so a handful of them reads as several separate clumps rather than one mass — and a low count with many strands gives a few dense danglers instead of one.",
   },
   {
+    kind: "slider",
     group: "strand",
     key: "length",
     label: "length",
@@ -154,6 +160,7 @@ export const CONTROLS: Control[] = [
     hint: "How far a strand hangs. Long strands bring their lowest bulbs close to you, which is where the size difference along a string becomes obvious.",
   },
   {
+    kind: "slider",
     group: "strand",
     key: "stiffness",
     label: "stiffness",
@@ -164,6 +171,7 @@ export const CONTROLS: Control[] = [
     hint: "How much of its own shape a strand holds against gravity. At 0 it is a limp chain and hangs plumb, which from directly below means its bulbs stack into a point. Raise it and the strand keeps the bend it was coiled with.",
   },
   {
+    kind: "slider",
     group: "strand",
     key: "set",
     label: "set",
@@ -174,6 +182,7 @@ export const CONTROLS: Control[] = [
     hint: "The permanent bend a strand remembers from being coiled, as the total turn along its length. This is the strand's imperfection, and stiffness decides how much of it survives being hung up.",
   },
   {
+    kind: "slider",
     group: "strand",
     key: "twist",
     label: "twist",
@@ -184,6 +193,7 @@ export const CONTROLS: Control[] = [
     hint: "How far the bend's direction rotates on the way down, in turns. At 0 a strand bends in one plane; wind it up and the strand spirals and its bulbs sweep around instead of leaning one way.",
   },
   {
+    kind: "slider",
     group: "strand",
     key: "irregularity",
     label: "irregularity",
@@ -194,6 +204,7 @@ export const CONTROLS: Control[] = [
     hint: "How much strands differ from one another in length, stiffness and set. At 0 they are identical objects hung at different heights; raise it and they read as things that have been handled.",
   },
   {
+    kind: "slider",
     group: "camera",
     key: "fieldOfView",
     label: "lens",
@@ -204,6 +215,7 @@ export const CONTROLS: Control[] = [
     hint: "Field of view across the shorter side of the window. Wide takes in the whole canopy and pushes the vanishing point into frame, so the strings visibly splay. Narrow crops in and the perspective becomes something you infer rather than see.",
   },
   {
+    kind: "slider",
     group: "camera",
     key: "pitch",
     label: "tilt",
@@ -214,6 +226,7 @@ export const CONTROLS: Control[] = [
     hint: "How far off vertical you are looking. 0 is flat on your back, with the vanishing point dead centre. Tilt it and the point leaves the frame, so the strings stop radiating and start sweeping across it.",
   },
   {
+    kind: "slider",
     group: "light",
     key: "hue",
     label: "hue",
@@ -224,6 +237,7 @@ export const CONTROLS: Control[] = [
     hint: "The base colour every bulb is drawn from. Around 38 is warm filament; 200 is cold blue.",
   },
   {
+    kind: "slider",
     group: "light",
     key: "hueSpread",
     label: "colour spread",
@@ -234,6 +248,7 @@ export const CONTROLS: Control[] = [
     hint: "How far bulbs stray from the base hue, as a standard deviation. A few degrees is a string of nominally identical bulbs that measurably are not. Sixty is a proper festive scatter. At every setting most bulbs sit near the base with the occasional outlier, which is what real variation looks like.",
   },
   {
+    kind: "slider",
     group: "light",
     key: "variance",
     label: "variance",
@@ -244,6 +259,7 @@ export const CONTROLS: Control[] = [
     hint: "Manufacturing imperfection: how much bulbs differ in brightness and in how pure their colour is. Deliberately not hue, which colour spread owns. It applies twice — once per strand, because a string is one batch, and again per bulb within it.",
   },
   {
+    kind: "slider",
     group: "light",
     key: "size",
     label: "bulb",
@@ -254,6 +270,7 @@ export const CONTROLS: Control[] = [
     hint: "Physical size of a bulb. Taken literally: a centimetre of glass four metres up really is a pixel or two, so almost everything you see of a bead is its glow rather than the bead.",
   },
   {
+    kind: "slider",
     group: "light",
     key: "bloom",
     label: "glow",
@@ -264,6 +281,7 @@ export const CONTROLS: Control[] = [
     hint: "How far the halo reaches, as a multiple of the bulb. Halos are drawn additively, so where bulbs crowd together their glow accumulates and a dense strand reads as brighter than its bulbs individually are.",
   },
   {
+    kind: "slider",
     group: "light",
     key: "facing",
     label: "facing",
@@ -274,6 +292,7 @@ export const CONTROLS: Control[] = [
     hint: "How much a bulb dims when it points away from you. An LED throws its light along its axis, which is why a real string shimmers as you walk under it — bulbs come round to face you and go again. At 0 orientation is ignored and every bulb is equally bright.",
   },
   {
+    kind: "slider",
     group: "light",
     key: "falloff",
     label: "distance",
@@ -284,6 +303,7 @@ export const CONTROLS: Control[] = [
     hint: "How much the far bulbs dim relative to the near ones. Size already carries most of the depth; this decides whether distance also drains the light, which reads as air between you and the canopy.",
   },
   {
+    kind: "slider",
     group: "light",
     key: "flicker",
     label: "flicker",
@@ -294,6 +314,7 @@ export const CONTROLS: Control[] = [
     hint: "Each bulb wavering in brightness on its own clock, somewhere between a third of a second and three seconds a cycle, and never on a regular pulse. 0 leaves them perfectly steady, which is correct for LEDs and a little lifeless. It reads most clearly with the wind turned down, where it is the only thing moving.",
   },
   {
+    kind: "slider",
     group: "motion",
     key: "gust",
     label: "gust",
@@ -304,6 +325,7 @@ export const CONTROLS: Control[] = [
     hint: "Strength of the bursts that arrive on top of the breeze. A gust hits hard and leaves the strands to settle, which is what makes it an event rather than the wind briefly picking up — set the breeze to 0 and this alone gives long calms broken by a shove. The front crosses the canopy, so the strands are thrown very nearly together.",
   },
   {
+    kind: "slider",
     group: "motion",
     key: "gustRate",
     label: "gust rate",
@@ -314,6 +336,7 @@ export const CONTROLS: Control[] = [
     hint: "How often a gust arrives, on average. Each one is jittered within its slot and varies in strength and direction, so this is a rate rather than a metronome. Slow and strong is a different piece from fast and weak.",
   },
   {
+    kind: "slider",
     group: "motion",
     key: "sway",
     label: "sway",
@@ -324,6 +347,7 @@ export const CONTROLS: Control[] = [
     hint: "The whole canopy leaning, turning and rising under the wind, the way a tree does — and springing back past upright when a gust passes. It moves as one body, so every anchor keeps its position relative to every other; that coherence is what separates it from tremble, which moves each anchor on its own and reads as the observer being jostled rather than the scene moving. Needs breeze or gust to do anything, since a tree in still air does not move.",
   },
   {
+    kind: "slider",
     group: "motion",
     key: "tremble",
     label: "tremble",
@@ -334,6 +358,7 @@ export const CONTROLS: Control[] = [
     hint: "The object overhead shivering, which shakes the strands by their anchors instead of pushing on them. Because it moves where a strand hangs from rather than blowing on it, the strand is dragged about by roughly the anchor's own travel and no further — so a crowd stays crowded and gets agitated, where a gust of any strength eventually sweeps it apart. Try it with the breeze and the gust at 0.",
   },
   {
+    kind: "slider",
     group: "motion",
     key: "breeze",
     label: "breeze",

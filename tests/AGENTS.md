@@ -16,6 +16,38 @@ Mid-change, run one module: `npx vitest rope`, `npx vitest run settings`, or
 browser suite takes seconds and a cold dev server, and answering "did I break the
 solver" should not.
 
+## The dev server the browser suite drives
+
+**Do not give it a fixed port, and do not make it insist on one.** Both are
+tried-and-failed, and the second has now been rederived in a separate session —
+which is what this section is for.
+
+`tests/support/dev-server.ts` reads `.astro/dev.json`, Astro's own record of the
+server it is running for this checkout. That file lives inside the worktree, so
+it cannot name another branch's server, and it reports whichever port Astro
+actually settled on. A server already up — a human's included — is adopted rather
+than fought for.
+
+Two things bite anyone who changes this:
+
+- **Worktrees share a machine.** A fixed port means a run here can find _another
+  worktree's_ server answering and drive that branch for the whole run. It
+  passes, because the pages exist there too, and nothing in the output says so.
+  That happened; posters captured in the same run were stills of the wrong code.
+- **Astro allows one background dev server per project**, and reports the running
+  one rather than starting a second. So a port derived per worktree — the obvious
+  fix for the first problem — hangs for the full 120s timeout whenever any server
+  for the project is already up. Recorded, with the code that failed, in
+  `docs/adr/20260828-a-derived-port-per-worktree.md`.
+
+`BASE_URL` is therefore not a constant. The port is unknown until `globalSetup`
+has run, so it is published as an environment variable that workers read through
+`use.baseURL`. `PW_PORT` still overrides the port to _ask_ for.
+
+The suite also serves the Astro dev toolbar's module empty, since it is part of
+the dev server rather than the site and injects four extra `h1`s into every page.
+`tests/harness.spec.ts` checks that suppression still works.
+
 ## The principle
 
 **Assert on numbers. Do not compare pixels.**
