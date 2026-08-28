@@ -1,7 +1,9 @@
 ---
+import { Image } from "astro:assets"
+
 import Layout from "@/layouts/Layout.astro"
 import SocialLinks from "@/components/SocialLinks.astro"
-import { MyAvatar } from "@/components/MyAvatar"
+import avatar from "@/assets/avatar.jpg"
 ---
 
 <Layout title="Andrei Railean" description="Experienced web developer ready to help you and your team">
@@ -9,7 +11,16 @@ import { MyAvatar } from "@/components/MyAvatar"
     <div class="flex flex-col items-center justify-center px-6 pt-8 md:px-10 md:pt-10 lg:pt-16">
       <div class="flex flex-col space-y-3 md:w-[40rem] md:space-y-5">
         <div class="flex justify-center">
-          <MyAvatar client:load />
+          {/* Eager: it is the first thing on the page, and Astro's Image lazy-loads by default. */}
+          <Image
+            src={avatar}
+            alt="Andrei Railean"
+            width={128}
+            height={128}
+            densities={[1, 2]}
+            loading="eager"
+            class="size-32 shrink-0 rounded-full border-6 border-gray-300 object-cover dark:border-gray-300"
+          />
         </div>
         <h1 class="text-center">Andrei Railean</h1>
 
