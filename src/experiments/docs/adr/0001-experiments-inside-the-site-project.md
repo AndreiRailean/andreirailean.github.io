@@ -41,9 +41,9 @@ across two directories rather than sitting together.
 
 - TypeScript, bundling, HMR and `astro check` come free, and the deploy needs no
   changes at all — `withastro/action` picks the pages up.
-- One origin is preserved, which matters more than it looks: the wake lock and
-  the clipboard are both secure-context APIs, and links to `/experiments/…` are
-  already shared.
+- One origin is preserved, which matters for the links: `/experiments/…` URLs are
+  already shared, and GitHub Pages cannot 301 them anywhere else. It does not
+  matter for the wake lock or the clipboard — see the correction below.
 - "Imports nothing from the site" is currently enforced by convention alone.
   Making it a build failure is tracked separately.
 - Option C survives as the escape hatch for a single experiment that genuinely
@@ -60,5 +60,19 @@ Starry Night's toolchain, so it will not trigger this either.
 What extraction would cost, so the trade is not re-derived from scratch: the
 deploy action builds one project at the repo root, so two projects mean building
 both and merging their output by hand; and a second GitHub Pages site means a
-second origin, breaking both the shared URLs and the secure-context features
-unless a subdomain is set up.
+second origin, which breaks the already-shared `/experiments/…` URLs. Pages
+cannot issue a 301, so those would need redirect stubs kept indefinitely.
+
+## Correction — 2026-08-28
+
+Two statements above originally said that a second origin would break the
+secure-context APIs, and that a subdomain was needed to avoid it. That was
+wrong. The wake lock and the clipboard need a _secure context_, and any HTTPS
+origin is one — a second GitHub Pages site on a subdomain included. Both have
+been rewritten to name what a second origin actually costs, which is the
+already-shared `/experiments/…` links.
+
+The decision is unaffected: the reasons to stay were the shared build and those
+links, never those APIs. The error mattered because it made extraction look
+dearer than it is, and the question kept being reopened against it. See
+`docs/adr/20260828-experiments-stay-in-the-site-repo.md`.
