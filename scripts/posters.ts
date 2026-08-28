@@ -103,6 +103,14 @@ async function capture(
   })
   const page = await context.newPage()
 
+  // The dev toolbar is part of the dev server, not the site, and it renders over
+  // the bottom of every page — the first run of this script put it in both
+  // posters. Its module is served empty so it never arrives; deleting the
+  // element afterwards left a window in which a capture could still catch it.
+  await page.route("**/@id/astro/runtime/client/dev-toolbar/entrypoint.js", (route) =>
+    route.fulfill({ status: 200, contentType: "text/javascript", body: "" }),
+  )
+
   const problems: string[] = []
   page.on("pageerror", (error) => problems.push(`uncaught: ${error.message}`))
   page.on("console", (message) => {
@@ -131,13 +139,6 @@ async function capture(
       await run(page, load, recipe.preset)
     }
     if (recipe.prepare) await run(page, recipe.prepare)
-
-    // Dev-server furniture, not part of the piece, and it sits at the bottom of
-    // every page — the first run of this script put it in both posters. Removed
-    // rather than hidden, since a custom element told `display: none` is still
-    // there to reappear. Capturing against `astro preview` instead would avoid
-    // it, at the cost of a full production build on every capture.
-    await page.evaluate(() => document.querySelector("astro-dev-toolbar")?.remove())
 
     const attempts = Math.max(1, recipe.attempts ?? 1)
     let best: { png: Buffer; luminance: number } | null = null

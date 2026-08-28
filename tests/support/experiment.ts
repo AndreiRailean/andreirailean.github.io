@@ -19,6 +19,14 @@ import { test as base, expect, type JSHandle, type Page } from "@playwright/test
 const SHOT_DIR = ".scratch/shots"
 
 /**
+ * The dev toolbar's own module, which the dev server adds to every page.
+ *
+ * Served empty rather than aborted: an abort shows up as a failed request, and
+ * the `problems` fixture below would rightly fail the test for it.
+ */
+const DEV_TOOLBAR_MODULE = "**/@id/astro/runtime/client/dev-toolbar/entrypoint.js"
+
+/**
  * The minimum surface `src/experiments/AGENTS.md` requires of every piece.
  *
  * Not a union of the real APIs, for the same reason `window.experiment` is typed
@@ -90,7 +98,33 @@ export type Experiment<Api> = {
  * to provoke an error asserts on the contents and then empties the array —
  * `problems.length = 0` — to say so out loud.
  */
-export const test = base.extend<{ problems: string[] }>({
+export const test = base.extend<{ problems: string[]; noDevToolbar: void }>({
+  /**
+   * No Astro dev toolbar on any page the suite looks at.
+   *
+   * The suite runs against a dev server, and the toolbar is part of the dev
+   * server rather than part of the site — it injects a `<astro-dev-toolbar>`
+   * into every page, and with it five more `h1` elements, which is how this was
+   * found: a `page.locator("h1")` on a note resolved to Astro's audit panel as
+   * well as the note's own title.
+   *
+   * Stopping its module from arriving, rather than deleting the element
+   * afterwards, because the element is only the part that is easy to see. It
+   * also styles, measures and highlights the page. And it cannot be turned off
+   * in `astro.config.mjs` without turning it off for the human whose dev server
+   * this may well be — the suite adopts a running server rather than insisting
+   * on its own, so it has no say in how that one was configured.
+   */
+  noDevToolbar: [
+    async ({ page }, use) => {
+      await page.route(DEV_TOOLBAR_MODULE, (route) =>
+        route.fulfill({ status: 200, contentType: "text/javascript", body: "" }),
+      )
+      await use()
+    },
+    { auto: true },
+  ],
+
   problems: [
     async ({ page }, use, testInfo) => {
       const problems: string[] = []

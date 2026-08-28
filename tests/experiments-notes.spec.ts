@@ -21,11 +21,13 @@ const NOTES = [
 const EXITS = ["open the piece", "all experiments"]
 
 /**
- * Everything is looked for inside `main`.
+ * Everything is looked for inside `main`, which is the note itself.
  *
- * The suite runs against the dev server, and Astro's dev toolbar injects its own
- * markup into every page — including five more `h1`s, which is how this was
- * found. Scoping to the note's own element keeps the assertions about the note.
+ * A bare `page.locator("h1")` used to resolve to five elements here, four of
+ * them Astro's dev toolbar. The harness now keeps the toolbar off the page
+ * entirely (`tests/support/experiment.ts`), so this is no longer load-bearing —
+ * but an assertion about a note should be scoped to the note regardless of what
+ * else the document happens to contain.
  */
 const note = (page: Page) => page.locator("main")
 
