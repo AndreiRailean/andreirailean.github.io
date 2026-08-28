@@ -7,8 +7,12 @@ interface Props {
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site)
 
+// Resolved against the site root rather than the canonical URL: `new URL`
+// only treats a base as a directory when its path ends in a slash, so the
+// default image used to move with the page. The asset is square, which is
+// why the cards below ask for `summary` rather than `summary_large_image`.
 if (Astro.props.ogImage === undefined) {
-  Astro.props.ogImage = new URL("og-image.png", canonicalURL)
+  Astro.props.ogImage = new URL("android-chrome-512x512.png", Astro.site)
 }
 
 const { title, description, ogImage } = Astro.props
@@ -20,7 +24,7 @@ const { title, description, ogImage } = Astro.props
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="generator" content={Astro.generator} />
 <link rel="canonical" href={canonicalURL} />
-<link rel="shortcut icon" href={`${Astro.site}favicon.ico`} />
+<link rel="shortcut icon" href="/favicon.ico" />
 
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
@@ -37,7 +41,7 @@ const { title, description, ogImage } = Astro.props
 <meta property="og:description" content={description} />
 <meta property="og:image" content={ogImage} />
 
-<meta property="twitter:card" content="summary_large_image" />
+<meta property="twitter:card" content="summary" />
 <meta property="twitter:url" content={canonicalURL} />
 <meta property="twitter:title" content={title} />
 <meta property="twitter:description" content={description} />
