@@ -1,6 +1,11 @@
 # 0002 — Experiments are not generalised
 
-**Status:** Accepted — 2026-08-23
+**Status:** Superseded by `20260828-the-piece-is-independent-the-gallery-is-not` — 2026-08-28
+
+The half about a piece's own rendering survives; the half about notes, the index
+and the chrome does not. A second experiment showed the notes had converged on
+one structure anyway, and that the duplication was producing inconsistency
+rather than independence.
 
 ## Context
 
@@ -37,8 +42,9 @@ human note and its notes for agents together.
 
 ## Revisit when
 
-A second and a third experiment exist and show what is actually common. Two data
-points, not one.
+~~A second and a third experiment exist and show what is actually common. Two data
+points, not one.~~ Met on 2026-08-28 with two experiments; see the superseding
+record.
 
 **Vocabulary is the deliberate exception.** `../../CONTEXT.md` generalises across
 the section, because naming a shared concept binds no implementation — the cost
