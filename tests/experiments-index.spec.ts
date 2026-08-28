@@ -67,3 +67,14 @@ test("a plate is two tab stops, not two links to the same place", async ({ page 
   await expect(links.nth(0)).toHaveAttribute("href", "/experiments/dangler/")
   await expect(links.nth(1)).toHaveAttribute("href", "/experiments/dangler/about/")
 })
+
+test("the panel names the artist and counts the room from the work in it", async ({ page }) => {
+  await page.goto("/experiments/")
+
+  await expect(page.locator(".masthead .byline")).toHaveText("Andrei Railean")
+
+  // Derived, not written down. The count and the opening date come from the
+  // collection, so a third piece cannot leave the panel claiming two.
+  const plates = await page.locator(".plate").count()
+  await expect(page.locator(".masthead .run")).toHaveText(new RegExp(`^${plates} pieces · since \\w+ \\d{4}$`))
+})

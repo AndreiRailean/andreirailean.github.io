@@ -12,6 +12,9 @@ const experiments = (await getCollection("experiments")).sort(
 )
 
 const formatDate = (date: Date) => date.toLocaleDateString("en-GB", { month: "short", year: "numeric" })
+
+/** When the first piece was started, for the panel's run line. */
+const [opened] = experiments.map(({ data }) => data.started).sort((a, b) => a.valueOf() - b.valueOf())
 ---
 
 <!doctype html>
@@ -91,9 +94,34 @@ const formatDate = (date: Date) => date.toLocaleDateString("en-GB", { month: "sh
        * spread reads as a page banner; held to a column it reads as the top of an
        * article, which is the density this page is after.
        */
+      /*
+       * A wall panel, not a page banner: the artist above the title, a line
+       * about what the works have in common, and the run below a rule. Held to a
+       * column rather than spanning the plates, so it reads as the text you stand
+       * in front of on the way in.
+       */
       .masthead {
         max-width: 34rem;
-        margin: 0 0 clamp(2rem, 5vh, 3.5rem);
+        margin: 0 0 clamp(2rem, 5vh, 3.25rem);
+      }
+
+      .byline,
+      .run {
+        color: var(--ink-faint);
+        font-family: var(--utility);
+        font-size: 0.6875rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+
+      .byline {
+        margin: 0 0 0.6rem;
+      }
+
+      .run {
+        margin: 1.1rem 0 0;
+        padding-top: 0.85rem;
+        border-top: 1px solid var(--edge);
       }
 
       h1 {
@@ -105,23 +133,17 @@ const formatDate = (date: Date) => date.toLocaleDateString("en-GB", { month: "sh
         font-weight: 620;
         letter-spacing: -0.015em;
         line-height: 1.05;
+        text-wrap: balance;
       }
 
+      /* Balanced, so the last line is never a single word left on its own. The
+         copy is short enough that the browser can even the lines out, and short
+         enough that it would look wrong if it did not. */
       .lede {
         margin: 0.65rem 0 0;
-        max-width: 33rem;
         color: var(--ink-dim);
         font-size: 0.95rem;
-      }
-
-      .count {
-        display: block;
-        margin-bottom: 0.9rem;
-        color: var(--ink-faint);
-        font-family: var(--utility);
-        font-size: 0.6875rem;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
+        text-wrap: balance;
       }
 
       /*
@@ -353,58 +375,65 @@ const formatDate = (date: Date) => date.toLocaleDateString("en-GB", { month: "sh
   </head>
   <body>
     <header class="masthead">
+      <p class="byline">Andrei Railean</p>
       <h1>Experiments</h1>
-      <p class="lede">Programmed graphics. Each one takes the whole window and stands on its own.</p>
+      <p class="lede">
+        Programmed graphics, made to be left running. Nothing here repeats, and every piece hands you the controls it
+        was found with.
+      </p>
+      {
+        opened && (
+          <p class="run">
+            {experiments.length} {experiments.length === 1 ? "piece" : "pieces"} · since{" "}
+            <time datetime={opened.toISOString()}>{formatDate(opened)}</time>
+          </p>
+        )
+      }
     </header>
 
     {
       experiments.length === 0 ? (
         <p class="empty">Nothing here yet.</p>
       ) : (
-        <>
-          <span class="count">
-            {experiments.length} {experiments.length === 1 ? "piece" : "pieces"}
-          </span>
-          <ul class="wall">
-            {experiments.map(({ data }, index) => (
-              <li class="plate">
-                {data.poster && (
-                  <Image
-                    src={data.poster}
-                    alt=""
-                    widths={[560, 1120]}
-                    sizes="(min-width: 58rem) 37rem, 100vw"
-                    loading={index === 0 ? "eager" : "lazy"}
-                  />
-                )}
-                <a class="open" href={`/experiments/${data.slug}/`}>
-                  <span>Open {data.title}</span>
-                </a>
-                <div class="placard">
-                  <div class="head">
-                    <h2 class="title">{data.title}</h2>
-                    <span class="dateline">
-                      <time datetime={data.started.toISOString()}>{formatDate(data.started)}</time>
-                      {formatDate(data.updated) !== formatDate(data.started) && (
-                        <>
-                          {"–"}
-                          <time datetime={data.updated.toISOString()}>{formatDate(data.updated)}</time>
-                        </>
-                      )}
-                    </span>
-                  </div>
-                  <p class="summary">{data.summary}</p>
-                  <p class="medium">
-                    <span class="facts">{data.tags.join(" · ")}</span>
-                    <a class="note" href={`/experiments/${data.slug}/about/`}>
-                      about
-                    </a>
-                  </p>
+        <ul class="wall">
+          {experiments.map(({ data }, index) => (
+            <li class="plate">
+              {data.poster && (
+                <Image
+                  src={data.poster}
+                  alt=""
+                  widths={[560, 1120]}
+                  sizes="(min-width: 58rem) 37rem, 100vw"
+                  loading={index === 0 ? "eager" : "lazy"}
+                />
+              )}
+              <a class="open" href={`/experiments/${data.slug}/`}>
+                <span>Open {data.title}</span>
+              </a>
+              <div class="placard">
+                <div class="head">
+                  <h2 class="title">{data.title}</h2>
+                  <span class="dateline">
+                    <time datetime={data.started.toISOString()}>{formatDate(data.started)}</time>
+                    {formatDate(data.updated) !== formatDate(data.started) && (
+                      <>
+                        {"–"}
+                        <time datetime={data.updated.toISOString()}>{formatDate(data.updated)}</time>
+                      </>
+                    )}
+                  </span>
                 </div>
-              </li>
-            ))}
-          </ul>
-        </>
+                <p class="summary">{data.summary}</p>
+                <p class="medium">
+                  <span class="facts">{data.tags.join(" · ")}</span>
+                  <a class="note" href={`/experiments/${data.slug}/about/`}>
+                    about
+                  </a>
+                </p>
+              </div>
+            </li>
+          ))}
+        </ul>
       )
     }
   </body>
