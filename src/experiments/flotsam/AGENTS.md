@@ -46,7 +46,9 @@ dots.
   `current.ts` is now quantised to a whole number of cycles across the patch.
   Anything new that moves rest positions and varies over space needs the same
   treatment; anything spatially uniform (the set and drift, wave drift) is a
-  translation and is safe.
+  translation and is safe. Recorded in full, because the next piece that wraps a
+  patch will meet it, in
+  `../docs/adr/20260829-a-wrapped-patch-needs-a-periodic-field.md`.
 - **The integrator has to be at least second order, for the same property.**
   Even periodic and incompressible, forward Euler lands outside the true arc on
   a turning flow and the error compounds into an expansion away from each gyre.
@@ -96,7 +98,9 @@ dots.
   diagonal ruling across the whole frame. Every structure on this water has to
   be the waves' doing, and a lattice is structure the scatter brought with it.
   `homeFor` draws uniformly, indexed by `i`, which also gives `dispersion` its
-  canonical baseline of exactly 1.
+  canonical baseline of exactly 1. `random.ts` is duplicated between the pieces,
+  so the choice travels with the file and the reasoning does not — see
+  `../docs/adr/20260829-a-low-discrepancy-scatter-does-not-scale.md`.
 - **Sizes must follow a power law, not be log-uniform.** Log-uniform sounds right
   for a range spanning six octaves and puts a sixth of the population in the top
   one — at nine thousand pieces that is fifteen hundred fat discs, the picture
@@ -147,8 +151,10 @@ dots.
 ## Nothing here is settled
 
 **Do not treat a preset, a default or an already-shared URL as a thing to be
-preserved.** Stated plainly by the piece's author, and worth writing down because
-the opposite reads as good manners and quietly costs you the fix: several of the
+preserved.** Stated plainly by the piece's author, recorded for the whole section
+in `../docs/adr/20260829-a-piece-under-exploration-owes-its-urls-nothing.md`, and
+worth repeating here because the opposite reads as good manners and quietly costs
+you the fix: several of the
 changes above were shaped to be exact no-ops on existing scenes, and that was a
 constraint nobody had asked for. A better rendering, a better control or a better
 scene beats a link that still resolves.

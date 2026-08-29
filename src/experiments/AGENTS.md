@@ -9,6 +9,24 @@ say so explicitly if your work contradicts one rather than quietly overriding
 it. Vocabulary and decisions belonging to a single experiment stay in that
 experiment's own folder.
 
+Three of those records are rules you will otherwise rediscover the hard way:
+
+- **A piece under exploration owes its URLs nothing.** Presets, defaults and
+  already-shared links are not things to preserve while a piece is still being
+  found; shaping a change to be a no-op on existing scenes costs solution space
+  and nobody asked for it. What that does _not_ cover, and a piece's invariants,
+  are in `docs/adr/20260829-a-piece-under-exploration-owes-its-urls-nothing.md`.
+- **A field advecting things on a wrapped patch must be periodic on that patch.**
+  Incompressible is not enough — the seam gathers, and it does it so
+  convincingly that it reads as a result rather than a bug. Measured at an index
+  of dispersion of 134 against a baseline of 1, in
+  `docs/adr/20260829-a-wrapped-patch-needs-a-periodic-field.md`.
+- **A placement strategy is a choice about a scale, and does not travel with the
+  file it is written in.** Dangler's R2 sequence is right for eighty anchors and
+  comes out as a visible lattice at nine thousand specks; `random.ts` is
+  duplicated, so copying it copies the choice. See
+  `docs/adr/20260829-a-low-discrepancy-scatter-does-not-scale.md`.
+
 ## Layout
 
 ```
