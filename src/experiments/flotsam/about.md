@@ -65,6 +65,23 @@ coming round — slows by exactly the same factor, so what you are watching is t
 same sea at the same steepness, in slow motion. At 0 it holds still, which is
 how to look properly at a gathering line.
 
+Every scene here is slowed, most of them to a fifth or a third of real time, and
+it makes them read as _more_ real rather than less — which is not what you would
+expect from a control whose whole job is to make the water wrong. Two reasons,
+and both are about the viewer rather than the water. A pattern that repeats
+slowly enough stops being read as a pattern at all: at full rate the eye picks
+up the beat between the wave trains and the sea goes back to being a mechanism,
+which is exactly the fault the peaked spectrum was added to fix and which speed
+hands straight back. And it is what a sea genuinely looks like from a distance —
+from a kilometre up, wave bands crawl and very nearly stand still, because what
+falls away with height is the _apparent_ speed and not the size of anything.
+
+That second look is one the piece cannot reach any other way. Winding the span
+out would slow the crossing in just the same way, since a long swell takes a
+long time to cross a wide frame — but it shrinks the flotsam with it, and the
+whole subject goes to dust. Large pieces on slow water exists only through the
+clock.
+
 Which means the **span** control, which just decides how much water is in frame,
 is not a magnification. A frame full of centimetre ripples is frantic; the same
 settings on a frame two hundred metres across are glacial. Small water is

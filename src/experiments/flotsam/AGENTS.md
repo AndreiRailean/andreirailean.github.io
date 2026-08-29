@@ -194,7 +194,19 @@ in order to work at all, and every one of them was learned by breaking it.
 
   `run()` is deliberately _not_ scaled by it: it means seconds of sea, because a
   poster recipe asking for forty seconds wants forty seconds of water whatever
-  rate someone is viewing at.
+  rate someone is viewing at. Retuning every scene's playback therefore left the
+  poster showing the same frame it did before, which is a good sign the boundary
+  is in the right place — it was not recaptured.
+
+  **Every scene is slowed, and that is editorial rather than incidental.** A
+  pattern repeating slowly enough is not read as a pattern: at full rate the eye
+  picks up the beat between the wave trains and the sea reads as a mechanism,
+  which is the same fault `peak` was added to fix and which speed hands straight
+  back. It is also the view from altitude, where wave bands crawl because what
+  falls away with height is apparent speed and not size — and that look is not
+  otherwise reachable here, since winding `span` out slows the crossing in the
+  same way but shrinks the flotsam with it. Large pieces on slow water exists
+  only through the clock.
 
 - **The lower wavelength bound is 10cm on purpose.** Below about 2cm the water
   stops being a gravity wave and surface tension takes over — ω² = gk + σk³/ρ —
