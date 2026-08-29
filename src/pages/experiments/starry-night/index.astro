@@ -315,7 +315,7 @@
         urlForSettings,
       } from "@/experiments/starry-night/settings"
       import { announceApi, createApi } from "@/experiments/starry-night/api"
-      import { keepAwake } from "@/experiments/starry-night/wakelock"
+      import { keepAwake } from "@/experiments/kit/wakelock"
 
       function requireElement<T extends Element>(id: string, type: new () => T): T {
         const element = document.getElementById(id)

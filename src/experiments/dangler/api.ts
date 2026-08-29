@@ -3,7 +3,7 @@ import { reroll } from "@/experiments/dangler/reroll"
 import type { Controls } from "@/experiments/kit/controls"
 import { setFullscreen, toggleFullscreen } from "@/experiments/kit/fullscreen"
 import { CONTROLS, normalizeSettings, PRESETS, type Settings } from "@/experiments/dangler/settings"
-import type { WakeLock } from "@/experiments/dangler/wakelock"
+import type { WakeLock } from "@/experiments/kit/wakelock"
 
 /**
  * A console handle on the piece, at `window.experiment`.

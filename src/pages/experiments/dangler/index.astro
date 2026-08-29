@@ -258,7 +258,7 @@
         urlForSettings,
       } from "@/experiments/dangler/settings"
       import { announceApi, createApi } from "@/experiments/dangler/api"
-      import { keepAwake } from "@/experiments/dangler/wakelock"
+      import { keepAwake } from "@/experiments/kit/wakelock"
 
       function requireElement<T extends Element>(id: string, type: new () => T): T {
         const element = document.getElementById(id)

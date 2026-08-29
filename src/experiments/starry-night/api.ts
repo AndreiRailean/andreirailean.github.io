@@ -1,7 +1,7 @@
 import type { Starfield, StarfieldStats } from "@/experiments/starry-night/starfield"
 import type { Controls } from "@/experiments/kit/controls"
 import { setFullscreen, toggleFullscreen } from "@/experiments/kit/fullscreen"
-import type { WakeLock } from "@/experiments/starry-night/wakelock"
+import type { WakeLock } from "@/experiments/kit/wakelock"
 import { CONTROLS, keysOf, normalizeSettings, PRESETS, type Settings } from "@/experiments/starry-night/settings"
 
 /**
