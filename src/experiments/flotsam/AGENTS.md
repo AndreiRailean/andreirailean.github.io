@@ -129,6 +129,15 @@ dots.
   number. A test measured a 40cm wave through 30cm cells and read a real
   four-to-one compression as 1.4. Choose the wavelength against the grid, not
   against the thing under test.
+- **A bound pair's painted bar must decline pointer events.** The filled
+  interval between the two handles is a pseudo-element, so it is the row's last
+  child in paint order and covers both inputs; its left edge lands exactly on the
+  lower thumb, which then cannot be grabbed at all, while the upper thumb sits a
+  pixel outside its right edge and works. Half a working control looks like a
+  knack rather than a bug. Shipped in Starry Night for as long as it had a range
+  control and inherited here with the CSS; `tests/kit.spec.ts` now presses a real
+  mouse on both handles of every piece that has one, because no assertion about
+  layout can see it.
 - **Anything that changes the picture without the sea moving must set `dirty`.**
   The loop parks itself when nothing is moving, and setting `canvas.width` on a
   resize clears the canvas — so a parked loop leaves the piece simply gone after

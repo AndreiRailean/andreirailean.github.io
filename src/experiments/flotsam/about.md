@@ -241,6 +241,16 @@ out to be the most dangerous failure mode a piece like this has.
   the trade above unavoidable. Concentrating it on one, the way a real spectrum
   does, was fewer lines of code than the version it replaced and removed the
   most-noticed flaw in the piece.
+- **Half of every range control had never worked, in this piece or its
+  neighbour.** A bound pair is two sliders laid over one track with the selected
+  interval painted between them, and that painted bar is a pseudo-element — which
+  makes it the _last_ thing in the row, drawn on top of both sliders. Its left
+  edge falls exactly on the lower handle, so that handle could not be picked up
+  at all, while the upper one sits a pixel outside the bar's right edge and
+  worked perfectly. A row that is half draggable does not look broken; it looks
+  like there is a knack to it. It had been shipped for as long as the control had
+  existed, and nothing but a real mouse press could have found it — a test that
+  measured the layout would have passed on it, and did.
 - **A setting called `span` collided with a stylesheet.** The chrome names the
   parts of a settings row so a piece can paint them — and it also put each
   slider's own key on it as a class. This piece has a control named `span`,

@@ -443,9 +443,10 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       longest: 7,
       steepness: 0.78,
       peak: 0.9,
-      // Barely gusting. This is the one scene that wants a steady wind, because
-      // what it is showing is the lines themselves.
-      gusts: 0.22,
+      // Gusting, but the least of any scene here. This is the one that is
+      // showing the lines themselves, so the wind is allowed to breathe the
+      // spacing without ever pulling a line apart.
+      gusts: 0.42,
       heading: 138,
       spread: 10,
       drift: 0.04,
@@ -514,7 +515,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       longest: 2.4,
       steepness: 0.86,
       peak: 0.7,
-      gusts: 0.6,
+      gusts: 0.72,
       heading: 44,
       spread: 46,
       drift: 0.25,
@@ -552,7 +553,10 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       longest: 0.9,
       steepness: 0.42,
       peak: 0.6,
-      gusts: 0.35,
+      // Small water answers the wind fastest, so this is the gustiest scene
+      // here: a puddle goes from glass to shivering and back in seconds, which
+      // is a thing a pond does and an ocean cannot.
+      gusts: 0.62,
       heading: 300,
       spread: 26,
       drift: 0.005,
@@ -571,6 +575,49 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       shade: 0.62,
       gleam: 9,
       span: 4,
+    },
+  },
+  {
+    label: "migration",
+    hint: "A hard cross-current under a slack, wide-open sea, carrying a warm scatter of everything somewhere else.",
+    settings: {
+      seed: 208,
+      dots: 4960,
+      smallest: 0.005,
+      largest: 0.09,
+      hue: 38,
+      // The widest colour spread of any scene here, at the lowest variance: a
+      // lot of different things afloat, each of them lit evenly.
+      hueSpread: 55.5,
+      variance: 0.3,
+      trains: 3,
+      shortest: 0.31,
+      longest: 9.39,
+      // A tenth of the steepness the other seas run at, spread over a wide fan.
+      // Almost nothing gathers, which is the point — this is the one scene where
+      // the current is doing all of the work and the waves are only texture.
+      steepness: 0.2,
+      peak: 0.38,
+      gusts: 0.17,
+      heading: 132,
+      spread: 56,
+      // Eight tenths of a metre a second, with eddies most of the way to it and
+      // gyres barely a metre across. Everything is going somewhere and the
+      // somewhere is different a metre away.
+      drift: 0.83,
+      bearing: 171,
+      eddies: 0.71,
+      gyre: 1.2,
+      // Above 1, so the waves carry harder than the physics says. At this
+      // steepness the true drift is a rounding error, and the exaggeration is
+      // what lets the sea contribute to the travelling at all.
+      stokes: 1.48,
+      glint: 0.85,
+      azimuth: 95,
+      elevation: 52,
+      shade: 0.4,
+      gleam: 2,
+      span: 7.66,
     },
   },
 ]
