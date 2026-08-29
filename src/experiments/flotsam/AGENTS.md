@@ -276,9 +276,11 @@ in order to work at all, and every one of them was learned by breaking it.
   sub-pixel, so a low exposure loses the haze before it loses the large pieces —
   which is the opposite of what someone dimming a scene usually wants. Pair a low
   exposure with a _higher_ size mix, not a lower one.
-- **A preset with no gathering in it is not a broken preset.** `simmer` sits at
-  a dispersion of 1.02 and an orbit of a third of a pixel, and `migration` at a
-  minimum Jacobian of 0.81, and both are deliberate: one is the piece at a span
+- **A preset whose numbers look wrong is not a broken preset.** `simmer` sits at
+  a dispersion of 1.02 and an orbit of a third of a pixel; `migration` at a
+  minimum Jacobian of 0.81; `dream` at a `light` of 6.7 where every other scene
+  is under 1, because it is deliberately blown past white until the only dark
+  left is the gaps between pieces. All three are deliberate: one is the piece at a span
   where the waves are too fine to move anything and a light too low for the water
   to reflect, leaving `shade` as the only thing varying, and the other is a scene
   where the current does all the work. Do not "fix" either by winding the

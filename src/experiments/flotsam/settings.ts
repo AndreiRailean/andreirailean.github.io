@@ -741,6 +741,61 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       span: 226,
     },
   },
+  {
+    label: "dream",
+    hint: "White water with flotsam-shaped holes in it: overlapping pieces blown past white, and the only dark left is the gaps between them.",
+    settings: {
+      seed: 208,
+      dots: 1210,
+      smallest: 0.115,
+      largest: 1.23,
+      // Flat enough that large pieces are common rather than rare, which is
+      // what gets the frame covered.
+      sizeMix: 0.59,
+      hue: 124,
+      // Every hue there is, and no variance at all: each piece one flat colour,
+      // and no two neighbours the same. The colour only survives where a piece
+      // is *alone*, which is why what you see of it is the edges.
+      hueSpread: 90,
+      variance: 0,
+      trains: 3,
+      shortest: 0.31,
+      longest: 9.39,
+      steepness: 0.2,
+      peak: 0.38,
+      gusts: 0.17,
+      heading: 132,
+      spread: 56,
+      drift: 0.41,
+      bearing: 171,
+      eddies: 0.71,
+      gyre: 1.2,
+      stokes: 1.48,
+      // **This is the scene, and it is not a mistake.** Big soft pieces at
+      // double exposure, covering the frame several times over, summed
+      // additively until nearly everything clips to white — so the only dark
+      // left anywhere is the cusps *between* overlapping pieces. The piece comes
+      // out inverted: white water with flotsam-shaped holes in it, drifting and
+      // breathing on the waves like everything else.
+      //
+      // Reached by saturation rather than by a light scheme, which the palette
+      // does not have and is not getting. `light` reads about 6.7 here — nearly
+      // seven canvases' worth — where every other scene is under one. Do not
+      // "fix" that number.
+      exposure: 2,
+      glint: 0.32,
+      azimuth: 136,
+      // Straight overhead, so the flat water between the crests is what catches
+      // the light and the wave faces go dark.
+      elevation: 90,
+      shade: 0.19,
+      // No glare at all. With pieces this large and this crowded there is
+      // nothing for it to do but wash out the cusps, which are the picture.
+      gleam: 0,
+      softness: 0.42,
+      span: 7.66,
+    },
+  },
 ]
 
 /** Bounds for every numeric setting, including the ones with no slider. */

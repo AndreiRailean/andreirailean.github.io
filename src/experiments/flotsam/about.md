@@ -234,6 +234,14 @@ four thousand of them overlap into a haze that moves while the points do not.
 
 It should not work and it is the calmest thing here.
 
+The last preset goes the other way and turns the piece inside out. Large soft
+pieces at double exposure, crowded enough to cover the frame several times over,
+summed additively until nearly all of it clips to white — so the only dark left
+anywhere is the cusps _between_ overlapping pieces. White water with
+flotsam-shaped holes in it, drifting and breathing on the waves like everything
+else. There is no light scheme here and there is not going to be one; this is
+the same dark piece, over-exposed until it comes out the other side.
+
 ## Playing with it
 
 Move the mouse and a small bar appears; the pointer and the controls disappear
