@@ -168,6 +168,26 @@ the same equation, and the second is most of what breaking is. On any single
 frame it is invisible either way. You find out a sea has it by leaving the piece
 running and noticing the flotsam has quietly ended up somewhere.
 
+## Against the grain
+
+One of the presets is the piece doing none of the things it was built to do, and
+it is worth keeping for that.
+
+Pull the frame out to two hundred metres and the waves are still there, but the
+dominant one is four metres long and a quarter of a metre high — which at that
+scale is a third of a pixel of displacement. Nothing moves. Drop the light to
+twenty-five degrees and it goes below what a slack sea can reflect back at you:
+catching it needs a surface tilted thirty-two degrees and the water never
+exceeds nineteen anywhere, so not one speck glints. The glitter is off, and not
+because the glint control was turned down.
+
+What is left is **shade** alone, which reads height rather than tilt. A field of
+points that hold their positions exactly and only brighten and fade as the
+crests pass through them, each one wearing a halo thirty pixels wide so that
+four thousand of them overlap into a haze that moves while the points do not.
+
+It should not work and it is the calmest thing here.
+
 ## Playing with it
 
 Move the mouse and a small bar appears; the pointer and the controls disappear

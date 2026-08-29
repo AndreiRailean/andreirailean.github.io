@@ -620,6 +620,61 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       span: 7.66,
     },
   },
+  {
+    label: "simmer",
+    hint: "A field of violet points that hold their places and breathe, in a haze that moves around them.",
+    settings: {
+      seed: 208,
+      dots: 4060,
+      smallest: 0.018,
+      largest: 0.087,
+      hue: 272,
+      hueSpread: 10,
+      // Nearly maximum, which is what sorts the field into a few dominant points
+      // and a great many faint ones. Without it every speck is the same speck
+      // and there is nothing for the eye to hold on to.
+      variance: 0.96,
+      trains: 6,
+      shortest: 1.03,
+      longest: 18.1,
+      steepness: 0.34,
+      peak: 0.9,
+      gusts: 0.52,
+      heading: 161,
+      spread: 93,
+      drift: 0.04,
+      bearing: 256,
+      eddies: 0.82,
+      gyre: 11.2,
+      stokes: 0.67,
+      glint: 0.8,
+      azimuth: 62,
+      // **Below what the water can reflect, and that is the whole scene.**
+      // Catching the light at 25° needs a surface tilted 32.5°, and a sea this
+      // slack never exceeds 19° anywhere. So not one speck ever glints: every
+      // one of them sits at the glint floor, evenly dimmed, and the glitter is
+      // switched off by putting the light out of the water's reach rather than
+      // by turning `glint` down.
+      elevation: 25,
+      // Which leaves `shade` as the only thing varying, and it reads wave
+      // *height* rather than tilt. The specks do not flare and, at this span,
+      // they do not move either — see below. They only brighten and dim as the
+      // crests pass through them.
+      shade: 0.56,
+      // Thirty pixels of halo on cores well under one. Every speck is almost
+      // entirely glow, so four thousand of them overlap into a nebulosity while
+      // their cores stay hard points inside it.
+      gleam: 30.5,
+      // Two hundred and twenty-six metres of water. The dominant train is four
+      // metres long and a quarter of a metre high, which at this scale is a
+      // *third of a pixel* of displacement — measured, the whole population
+      // swings by under half a pixel. So the points keep their positions
+      // exactly, and the sea is visible only as the haze around them coming and
+      // going. That is the piece running against its own grain, and it was found
+      // rather than designed.
+      span: 226,
+    },
+  },
 ]
 
 /** Bounds for every numeric setting, including the ones with no slider. */

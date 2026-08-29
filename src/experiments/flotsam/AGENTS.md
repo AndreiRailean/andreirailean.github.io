@@ -178,6 +178,19 @@ dots.
   `settingsForLanding` indirection stays even though the two currently agree,
   because it is what lets the featured scene change later without invalidating a
   link.
+- **A preset with no gathering in it is not a broken preset.** `simmer` sits at
+  a dispersion of 1.02 and an orbit of a third of a pixel, and `migration` at a
+  minimum Jacobian of 0.81, and both are deliberate: one is the piece at a span
+  where the waves are too fine to move anything and a light too low for the water
+  to reflect, leaving `shade` as the only thing varying, and the other is a scene
+  where the current does all the work. Do not "fix" either by winding the
+  steepness up. The numbers in `stats()` say whether the machinery is working,
+  not whether a scene is worth looking at.
+- **`gleam` is the cost, not the count.** `simmer` draws four thousand pieces —
+  fewer than half of `windrows` — and fills nearly six million square pixels
+  against that scene's quarter million, because a thirty-pixel halo is nine
+  hundred times the area of a one-pixel one. When a scene is slow, read `fillPx`
+  before reaching for `dots`.
 - **Never use `DEFAULT_SETTINGS` as a neutral baseline in a test.** It is
   editorial. `tests/unit/flotsam/waves.test.ts` states its own `PLAIN` sea, and
   anything measuring physics should do the same — Dangler records two checks
