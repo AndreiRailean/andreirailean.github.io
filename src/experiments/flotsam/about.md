@@ -141,6 +141,25 @@ A power law is what broken-up things actually follow, gravel and ice floes
 included, and it puts nine in ten pieces in the bottom tenth of the range. A sea
 with debris in it, rather than a sea of debris.
 
+## Soft or sharp
+
+A piece is drawn at its real size, so the size range puts two different kinds of
+thing in one picture: a speck is a point of light in a glow, and a raft is an
+object with an edge. Between them is a discontinuity you can see, and the only
+way round it was to keep everything small.
+
+**softness** walks a piece's edge back until it has none — from an object you
+can see the boundary of, to a soft ball of its own colour. It takes the glare's
+hard rim down with it, because a bright ring drawn round something with no edge
+reads as an outline. At 0 large pieces are discs and you can watch two of them
+overlap; at 1 they are blobs and the whole size range reads as one family.
+
+The glare itself always stays _outside_ a piece, at every setting. That is not
+an aesthetic choice: a glare that reaches under a lit face outshines the middle
+of the piece it belongs to, so a piece comes out as a flat disc inside a
+brighter ring — and widening the gleam then makes pieces brighter instead of
+bigger, which was the whole fault this rendering was reworked to remove.
+
 ## How bright, as a thing you can ask for
 
 For a long time this piece had no way to say "dimmer". It had a count, a size

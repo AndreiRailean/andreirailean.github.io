@@ -69,7 +69,18 @@ export const MIN_CORE_PX = 0.7
 /** How much wider than the core a halo has to be before it is worth compositing. */
 const HALO_WORTH_DRAWING = 1.08
 
+const TAU = Math.PI * 2
+
+/** How much of a piece is at full strength before its edge begins, at softness 0. */
+const SOLID_FRACTION = 0.86
+
 export type Specks = {
+  /**
+   * How sharply a piece's edge falls off, 0 for a defined edge and 1 for a soft
+   * ball. Uniform across a frame, so it is set once rather than passed per
+   * piece — and it invalidates the body sprites, which bake it in.
+   */
+  setSoftness: (softness: number) => void
   draw: (x: number, y: number, core: number, halo: number, hue: number, saturation: number, alpha: number) => void
   /** Total sprite area drawn since the last reset, in css px². */
   fill: () => number
@@ -127,6 +138,7 @@ export function createSpecks(context: CanvasRenderingContext2D): Specks {
   const cores = new Map<number, HTMLCanvasElement>()
   let filled = 0
   let light = 0
+  let softness = 0
 
   function bucket(hue: number, saturation: number): number {
     const h = Math.round(((((hue % 360) + 360) % 360) / 360) * HUE_BUCKETS) % HUE_BUCKETS
@@ -138,47 +150,50 @@ export function createSpecks(context: CanvasRenderingContext2D): Specks {
   const satOf = (key: number) => (key % SATURATION_BUCKETS) / (SATURATION_BUCKETS - 1)
 
   /**
+   * The glare's alpha profile, as offsets along whatever span it is given.
+   *
+   * Softness turns its peak down rather than moving it. The glare has to stay
+   * *outside* the body — anything that lets it under a lit face makes a piece
+   * brighter when the gleam is widened, which is the fault this rendering exists
+   * to have fixed — so it cannot be blended inward. But a hard 0.7 landing on the
+   * edge of a body that has no edge left reads as an outline drawn round a soft
+   * blob, and turning it down is enough to make it a bloom again.
+   */
+  const glareProfile = (): [number, number][] => [
+    [0, 0.7 - 0.5 * softness],
+    [0.16, 0.26 - 0.17 * softness],
+    [0.42, 0.05 - 0.03 * softness],
+    [1, 0],
+  ]
+
+  /**
    * The glare, for a body that fills `step / GLARE_STEPS` of it.
    *
-   * At step 0 the piece is a point and this is the old centre-peaked glow —
+   * At step 0 the piece is a point and this is the plain centre-peaked glow —
    * steeper and shorter-tailed than Dangler's, because a glow in air is a wide
    * faint skirt where the air scatters, and a glint off water is a sharp
    * reflection whose long tail would read as fog on the surface.
    *
    * Above that the same profile is pushed outward so it begins at the body's
    * edge, and the part inside is empty: `gleam` is glare *around* a piece, and
-   * filling the middle would make the halo brighten the body as well, so that
-   * widening the glare quietly changed how bright everything was.
+   * filling the middle would make it brighten the body as well, so that widening
+   * the glare quietly changed how bright everything was.
    */
   function halo(key: number, step: number): HTMLCanvasElement {
     const id = key * GLARE_STEPS + step
     let found = halos.get(id)
     if (!found) {
       const colour = haloColour(hueOf(key), satOf(key))
-      const clear = transparent(colour)
-      const at = (alpha: number) => colour.replace(")", ` / ${alpha})`)
+      const at = (alpha: number) => (alpha === 0 ? transparent(colour) : colour.replace(")", ` / ${alpha})`))
       const inner = step / GLARE_STEPS
-      const beyond = (fraction: number) => inner + (1 - inner) * fraction
 
-      found = sprite(
-        HALO_PX,
-        inner === 0
-          ? [
-              [0, at(0.7)],
-              [0.16, at(0.26)],
-              [0.42, at(0.05)],
-              [1, clear],
-            ]
-          : [
-              [0, clear],
-              [inner * 0.995, clear],
-              [inner, at(0.7)],
-              [beyond(0.16), at(0.26)],
-              [beyond(0.42), at(0.05)],
-              [1, clear],
-            ],
-        true,
-      )
+      const stops: [number, string][] = glareProfile().map(([offset, alpha]) => [
+        inner + (1 - inner) * offset,
+        at(alpha),
+      ])
+      if (inner > 0) stops.unshift([0, at(0)], [inner * 0.995, at(0)])
+
+      found = sprite(HALO_PX, stops, true)
       halos.set(id, found)
     }
     return found
@@ -188,18 +203,16 @@ export function createSpecks(context: CanvasRenderingContext2D): Specks {
     let found = cores.get(key)
     if (!found) {
       const colour = coreColour(hueOf(key), satOf(key))
-      // Solid nearly to its edge, then a quick fade. A piece of flotsam is an
-      // object with an edge, and the old profile — half-strength by 55% of the
-      // radius and gone by 100% — was a soft ball. At a pixel across nobody could
-      // tell; at a hundred it was the other half of why large pieces read as
-      // fuzz. The fade that remains is there so an edge does not alias, and the
-      // brightening at the centre a small piece needs comes from its own glare
-      // adding on top rather than from the body being brightest in the middle.
+      // Solid nearly to its edge, then a quick fade — a piece of flotsam is an
+      // object with an edge, and a sprite built for a point of light is a ball
+      // of fog once it is a hundred pixels across. `softness` walks that edge
+      // back to the centre when a reader wants the ball instead, which is why
+      // this bakes it in and is thrown away when it changes.
       found = sprite(
         CORE_PX,
         [
           [0, colour],
-          [0.86, colour],
+          [SOLID_FRACTION * (1 - softness), colour],
           [1, transparent(colour)],
         ],
         false,
@@ -209,7 +222,75 @@ export function createSpecks(context: CanvasRenderingContext2D): Specks {
     return found
   }
 
+  /**
+   * Drawn rather than blitted, for a piece bigger than the sprite it would come
+   * from.
+   *
+   * Two things go wrong when a 64-pixel sprite is stretched over a piece several
+   * hundred across, and both were reported by eye. The gradient becomes
+   * piecewise-linear between its texels, which shows as faceting; and the dither
+   * that breaks eight-bit banding at native size — a level of noise per pixel —
+   * is magnified with everything else into coarse mottling. A gradient asked for
+   * at the size it is wanted has neither.
+   *
+   * It is also *faster* here, which was a surprise worth recording: four
+   * thousand draws at a 60px radius took 497ms as scaled `drawImage` calls
+   * against 9.8ms as native fills. That ratio is a software rasteriser's, where
+   * a scaled blit is a full CPU resample and a gradient fill is a span fill, so
+   * do not read it as a claim about real hardware. The rule it justifies is
+   * conservative either way: blit while the sprite is being used at or below its
+   * own size, draw when it would have to be stretched — which is exactly where a
+   * sprite looks wrong.
+   */
+  function paintBody(x: number, y: number, r: number, hue: number, saturation: number): void {
+    const colour = coreColour(hue, saturation)
+    const edge = r * SOLID_FRACTION * (1 - softness)
+    const gradient = context.createRadialGradient(x, y, edge, x, y, r)
+    gradient.addColorStop(0, colour)
+    gradient.addColorStop(1, transparent(colour))
+
+    context.fillStyle = gradient
+    context.beginPath()
+    context.arc(x, y, r, 0, TAU)
+    context.fill()
+  }
+
+  /**
+   * The glare, as a ring from `inner` of the radius outward.
+   *
+   * Drawn as an annulus rather than a disc, and that is load-bearing: a radial
+   * gradient holds its first stop's colour everywhere inside its inner circle,
+   * so filling the whole disc would lay the glare's brightest value across the
+   * body underneath — which is the exact fault this rendering exists to have
+   * fixed. The reversed second arc punches the hole.
+   *
+   * Takes the true fraction rather than a bucketed one. Nothing is cached here,
+   * so there is nothing to quantise for, and a piece drawn this way has its
+   * glare exactly at its edge at every size.
+   */
+  function paintGlare(x: number, y: number, outer: number, inner: number, hue: number, saturation: number): void {
+    const colour = haloColour(hue, saturation)
+    const gradient = context.createRadialGradient(x, y, outer * inner, x, y, outer)
+    for (const [offset, alpha] of glareProfile()) {
+      gradient.addColorStop(offset, alpha === 0 ? transparent(colour) : colour.replace(")", ` / ${alpha})`))
+    }
+
+    context.fillStyle = gradient
+    context.beginPath()
+    context.arc(x, y, outer, 0, TAU)
+    if (inner > 0) context.arc(x, y, outer * inner, 0, TAU, true)
+    context.fill()
+  }
+
   return {
+    setSoftness(next) {
+      const clamped = Math.min(1, Math.max(0, next))
+      if (clamped === softness) return
+      softness = clamped
+      cores.clear()
+      halos.clear()
+    },
+
     draw(x, y, coreRadius, haloRadius, hue, saturation, alpha) {
       let r = coreRadius
       let a = alpha
@@ -220,32 +301,33 @@ export function createSpecks(context: CanvasRenderingContext2D): Specks {
       }
       if (a <= 0.002) return
 
-      const key = bucket(hue, saturation)
       const outer = Math.max(r, haloRadius)
       const opacity = Math.min(1, a)
-
       context.globalAlpha = opacity
 
       // A halo no wider than the body is not a halo, and at the counts this
-      // piece runs the second `drawImage` is half the frame's draw calls — nine
-      // thousand pieces at a low gleam went from eighteen thousand composites to
-      // nine. Skipping it is the difference between fine flotsam being cheap and
-      // being the reason to turn the count down.
-      let painted = r
+      // piece runs the second draw is half the frame's calls — nine thousand
+      // pieces at a low gleam went from eighteen thousand composites to nine.
       if (outer > r * HALO_WORTH_DRAWING) {
-        const step = Math.min(GLARE_STEPS - 1, Math.round((r / outer) * GLARE_STEPS))
-        const inner = step / GLARE_STEPS
-        // Scaled so the bucket's inner edge lands *on* the body's edge, and
-        // never wider than the gleam actually asked for. Where the bucket is
-        // coarser than the truth the glare loses a little width; it never ends
-        // up in the wrong place, which is the failure that would show.
-        painted = inner > 0 ? Math.min(r / inner, outer) : outer
-        context.drawImage(halo(key, step), x - painted, y - painted, painted * 2, painted * 2)
+        // Where the glare begins: at the body's edge, always. Letting softness
+        // walk it inward was tried and is wrong — the glare's peak landing on a
+        // body that is still lit outshines the body's own middle, so a piece came
+        // out as a flat disc inside a brighter ring. Softness turns the peak
+        // down instead; see `glareProfile`.
+        const inner = r / outer
+        if (outer > HALO_PX / 2) {
+          paintGlare(x, y, outer, inner, hue, saturation)
+        } else {
+          const step = Math.min(GLARE_STEPS - 1, Math.round(inner * GLARE_STEPS))
+          context.drawImage(halo(bucket(hue, saturation), step), x - outer, y - outer, outer * 2, outer * 2)
+        }
       }
-      context.drawImage(core(key), x - r, y - r, r * 2, r * 2)
 
-      filled += Math.PI * painted * painted
-      light += opacity * Math.PI * painted * painted
+      if (r > CORE_PX / 2) paintBody(x, y, r, hue, saturation)
+      else context.drawImage(core(bucket(hue, saturation)), x - r, y - r, r * 2, r * 2)
+
+      filled += Math.PI * outer * outer
+      light += opacity * Math.PI * outer * outer
     },
 
     fill: () => filled,

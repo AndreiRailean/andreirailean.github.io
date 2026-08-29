@@ -144,6 +144,22 @@ dots.
   a window resize or a screenshot. Inherited verbatim from Dangler, where it was
   a real bug; the same loop is here and it would be the same bug.
 
+## Nothing here is settled
+
+**Do not treat a preset, a default or an already-shared URL as a thing to be
+preserved.** Stated plainly by the piece's author, and worth writing down because
+the opposite reads as good manners and quietly costs you the fix: several of the
+changes above were shaped to be exact no-ops on existing scenes, and that was a
+constraint nobody had asked for. A better rendering, a better control or a better
+scene beats a link that still resolves.
+
+What that does _not_ license: changing what a control means while leaving its
+name and range alone, or moving a scene without saying so. Rename it, retune the
+presets around it, and put the change in the commit message.
+
+The invariants below are a different thing. They are properties the piece needs
+in order to work at all, and every one of them was learned by breaking it.
+
 ## Invariants worth preserving
 
 - **Speck `i` is a pure function of `(seed, i)`.** Its home, size and colour come
@@ -204,6 +220,39 @@ dots.
   624 → 632. `tests/flotsam.spec.ts` asserts all three, and each one was
   confirmed to fail with its fix backed out.
 
+  A fourth followed from the same root and needed a control rather than a fix: a
+  body has an edge and a speck is a point of light, so a wide size range put two
+  families in one picture and the only way to keep a scene smooth was to keep
+  every piece small. `softness` walks a body's edge back to nothing, so the range
+  reads as one family at either end.
+
+- **A sprite is blitted while it is at or below its own size, and drawn when it
+  would have to be stretched.** Beyond that a 64-pixel gradient goes
+  piecewise-linear between its texels and the dither that breaks eight-bit
+  banding at native size is magnified into coarse mottling — reported as "jagged
+  low resolution halos", and it is what a stretched sprite looks like. Above the
+  threshold `paintBody` and `paintGlare` build the gradient at the size it is
+  wanted. Benchmarked here at four thousand draws of a 60px radius: 497ms as
+  scaled `drawImage` against 9.8ms as native fills. **That ratio is a software
+  rasteriser's** — headless has no GPU, a scaled blit is a full CPU resample and
+  a gradient fill is a span fill — so do not read it as a claim about real
+  hardware. The rule stands either way, because it only sends the native path
+  the draws a sprite renders badly, and those are rare by construction.
+- **A piece's glare does not bloom with its brightness, and must not start
+  again.** It did, on the reasoning that an over-bright piece has nowhere to go
+  but outward. The cost was that the glare's inner edge wandered as the waves lit
+  a piece and let it go, so the sprite bucket it fell in flipped back and forth
+  and large pieces visibly **pulsed**. Over-brightness reads through the palette
+  now — a piece sums past full in the strong channels and clips toward white —
+  which is cheaper and is what glare actually looks like.
+- **The glare stays outside the body, at every softness.** Letting it inward was
+  tried, twice, and is wrong both times: the glare's peak landing on a body that
+  is still lit _outshines that body's own middle_, so a piece comes out as a flat
+  disc inside a brighter ring. It is also what makes widening the gleam brighten
+  a piece rather than enlarge it, which is the fault the whole rendering was
+  reworked to remove. `softness` turns the glare's peak down instead of moving
+  it, which is enough to stop a hard 0.7 reading as an outline drawn round a
+  blob that has no edge left.
 - **The glare cache is six times what it was.** Hue × saturation × how much of
   the glare the body fills, so a scene with a wide colour spread and a wide size
   range can build a few hundred sprites, each dithered on creation. It is a

@@ -43,6 +43,7 @@ export type Settings = {
   elevation: number
   shade: number
   gleam: number
+  softness: number
   span: number
 }
 
@@ -364,6 +365,17 @@ export const CONTROLS: Control[] = [
     format: (v) => `${v.toFixed(1)}px`,
     hint: "The halo around a piece, as a radius on screen rather than a multiple of its size. A glint is spread by the eye and the lens, not by the thing catching it, so a speck and a raft flare by the same amount — and where flotsam crowds together the halos add up, which is what makes a gathering line glow rather than just being denser.",
   },
+  {
+    kind: "slider",
+    group: "light",
+    key: "softness",
+    label: "softness",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    format: (v) => v.toFixed(2),
+    hint: "How sharply a piece's edge falls off. At 0 it is an object with a boundary you can see, which is what lets two of them overlap visibly. At 1 it has no edge at all and is a soft ball of its own colour — a point of light, whatever size it happens to be. Between them the glare comes in from the rim toward the centre with it. This is the control to reach for when large pieces look hard against the fuzz of the small ones: raising it makes the whole size range read as one family instead of two.",
+  },
 ]
 
 /**
@@ -375,9 +387,12 @@ export const CONTROLS: Control[] = [
  * carries only what someone actually changed.
  *
  * They are also what the note's backdrop renders, so they are a recorded scene
- * rather than the simplest thing the machinery can draw. Replacing them changes
- * the length of every URL already shared, which is a cost worth paying once and
- * not often.
+ * rather than the simplest thing the machinery can draw.
+ *
+ * Replacing them changes what every URL already shared means, and that is
+ * explicitly **not** a reason to leave them alone — see the note on settling in
+ * `AGENTS.md`. Nothing here is finished, and a scene worth having beats a link
+ * that still resolves.
  */
 export const DEFAULT_SETTINGS: Settings = {
   seed: 41,
@@ -390,8 +405,8 @@ export const DEFAULT_SETTINGS: Settings = {
   // show, and the top of it wants to be rare and modest, or the large pieces
   // become the picture and the haze they float in stops registering.
   largest: 0.09,
-  // 0.5 is an exponent of 2 exactly: what the distribution was before it could
-  // be moved, so every scene and every shared URL means what it meant.
+  // An exponent of 2 exactly, which is what the distribution was before it could
+  // be moved.
   sizeMix: 0.5,
   hue: 202,
   hueSpread: 15,
@@ -430,6 +445,7 @@ export const DEFAULT_SETTINGS: Settings = {
   elevation: 52,
   shade: 0.38,
   gleam: 3,
+  softness: 0,
   // Seventeen metres across. Wide enough for three or four crests to be in frame
   // at once — which is what makes the gathering read as lines rather than as one
   // band — and tight enough that a half-metre swing is a visible swing.
@@ -491,6 +507,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       elevation: 52,
       shade: 0.42,
       gleam: 2,
+      softness: 0,
       span: 16,
     },
   },
@@ -528,6 +545,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       elevation: 62,
       shade: 0.5,
       gleam: 5,
+      softness: 0,
       span: 30,
     },
   },
@@ -564,6 +582,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       elevation: 45,
       shade: 0.3,
       gleam: 2.5,
+      softness: 0,
       span: 8,
     },
   },
@@ -610,6 +629,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       elevation: 82,
       shade: 0.62,
       gleam: 9,
+      softness: 0,
       span: 4,
     },
   },
@@ -659,6 +679,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       elevation: 52,
       shade: 0.5,
       gleam: 2,
+      softness: 0,
       span: 7.66,
     },
   },
@@ -709,6 +730,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       // entirely glow, so four thousand of them overlap into a nebulosity while
       // their cores stay hard points inside it.
       gleam: 30.5,
+      softness: 0,
       // Two hundred and twenty-six metres of water. The dominant train is four
       // metres long and a quarter of a metre high, which at this scale is a
       // *third of a pixel* of displacement — measured, the whole population

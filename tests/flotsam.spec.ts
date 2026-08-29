@@ -331,11 +331,11 @@ test("exposure changes how much light the scene makes and nothing else about it"
   // The same water: the same pieces, in the same places, gathered the same way.
   expect(dim.dots).toBe(full.dots)
   expect(dim.dispersion).toBeCloseTo(full.dispersion, 5)
-  // Within a per cent rather than exactly, and the difference is correct: the
-  // cull bound follows the halo and the halo follows the exposure, so a handful
-  // of pieces just off the edge stop reaching into frame when the glare around
-  // them shrinks.
-  expect(dim.drawnDots / full.drawnDots).toBeGreaterThan(0.98)
+  // Exactly, now that a piece's glare no longer blooms with its brightness. It
+  // used to, and the cull bound follows the glare, so a handful of pieces just
+  // off the edge stopped reaching into frame when the exposure came down — a
+  // per cent of drift that had to be allowed for here.
+  expect(dim.drawnDots).toBe(full.drawnDots)
 
   await experiment.api(({ api }) => api.set({ exposure: 0 }))
   expect((await experiment.api(({ api }) => api.stats())).light).toBe(0)
@@ -428,6 +428,35 @@ test("raising the gleam makes a large piece bigger, not brighter", async ({ page
   // exactly as it was reported.
   expect(glared.lit).toBeGreaterThan(bare.lit * 1.4)
   expect(glared.body).toBeLessThan(bare.body * 1.1)
+})
+
+/**
+ * Softness exists because a scene could not be smooth at large sizes.
+ *
+ * A body is drawn at its real size with an edge, and a speck is drawn as a point
+ * of light in a glow — so a wide size range put two different-looking families
+ * in one picture, hard discs among fuzz, and the only way to keep a scene smooth
+ * was to keep every piece small. This is the control that makes the range read
+ * as one family.
+ */
+test("softness takes a piece from an object with an edge to a soft blob", async ({ page }) => {
+  const experiment = await openFlotsam(page, { settings: { ...BIG_PIECES, gleam: 8, softness: 0 }, idle: true })
+
+  const crisp = await pixels(page)
+  // Most of a crisp piece sits at one level, which is what an edge means.
+  expect(crisp.nearBody).toBeGreaterThan(0.55)
+
+  await experiment.api(({ api }) => api.set({ softness: 1 }))
+  const soft = await pixels(page)
+
+  // A soft piece has no plateau to sit on: its brightness falls the whole way
+  // from the middle, so almost nothing is near any one level.
+  expect(soft.nearBody).toBeLessThan(crisp.nearBody / 2)
+  // Softened rather than removed. Fewer pixels are lit than were, and that is
+  // what soft means: the outer part of a blob falls below anything you would
+  // call lit, where a crisp piece is at full strength right up to its rim.
+  expect(soft.lit).toBeGreaterThan(0)
+  expect(soft.lit).toBeLessThan(crisp.lit)
 })
 
 test("every setting has a control, so the panel and a shared URL cannot disagree", async ({ page }) => {

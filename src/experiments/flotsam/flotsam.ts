@@ -124,9 +124,6 @@ const SHINE = 20
 const GLINT_FLOOR = 0.45
 const GLINT_GAIN = 2.6
 
-/** Largest halo a glinting piece may bloom to, as a multiple of `gleam`. */
-const MAX_BLOOM = 2
-
 /** Fixed step `run()` advances in. Small enough that a fast current is smooth. */
 const RUN_STEP = 1 / 60
 
@@ -347,7 +344,8 @@ export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flo
     context.globalCompositeOperation = "lighter"
 
     const [hx, hy, hz] = halfway()
-    const { glint, shade, gleam, exposure } = settings
+    const { glint, shade, gleam, exposure, softness } = settings
+    specks.setSoftness(softness)
     const reach = sea.reach || 1
     const trains = scatter.trains
     let orbitSum = 0
@@ -386,10 +384,14 @@ export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flo
 
       if (brightness <= 0) continue
 
-      // Bloom rather than clipping: additive drawing saturates at full alpha, so
-      // a piece brighter than nominal has nowhere left to go except outward,
-      // which is what glare does anyway.
-      const halo = core + gleam * Math.min(MAX_BLOOM, brightness)
+      // The glare's size does not follow a piece's brightness, and used not to.
+      // Blooming an over-bright piece outward sounds right and cost more than it
+      // was worth: it made the glare's inner edge wander as the waves lit a piece
+      // and let it go, so the sprite bucket it fell in flipped back and forth and
+      // large pieces visibly pulsed. Over-brightness now reads the way the
+      // palette intends — a piece sums past full in the strong channels and clips
+      // toward white — which is both cheaper and what real glare looks like.
+      const halo = core + gleam
       const bound = halo + 2
       if (px < -bound || py < -bound || px > width + bound || py > height + bound) continue
 
