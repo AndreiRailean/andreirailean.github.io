@@ -45,6 +45,7 @@ export type Settings = {
   gleam: number
   softness: number
   span: number
+  playback: number
 }
 
 export type NumericKey = keyof Settings
@@ -96,6 +97,17 @@ export const CONTROLS: Control[] = [
     scale: "log",
     format: metres,
     hint: "How much water is in the frame, measured across its shorter side. This is the piece's main dial and it does more than magnify: because a wave's speed is fixed by its length, a frame full of centimetre ripples is frantic and a frame full of ocean swell is slow, and the same settings give you both. Everything floating stays where it is on screen as you drag it, so this zooms rather than rearranges.",
+  },
+  {
+    kind: "slider",
+    group: "view",
+    key: "playback",
+    label: "playback",
+    min: 0,
+    max: 2,
+    step: 0.01,
+    format: (v) => (v === 0 ? "paused" : `${v.toFixed(2)}x`),
+    hint: "How fast you are watching, the way a video player means it. Not how fast the water is: a wave's speed is fixed by its length and stays fixed, and this slows the waves, the current, the gusts and the wind's veering by exactly the same factor — so every relationship between them is untouched and what you are looking at is the same sea, in slow motion. At 0 it holds still, which is the way to look properly at a gathering line. Above 1 a long swell stops being a thing you have to wait for.",
   },
   {
     kind: "slider",
@@ -450,6 +462,7 @@ export const DEFAULT_SETTINGS: Settings = {
   // at once — which is what makes the gathering read as lines rather than as one
   // band — and tight enough that a half-metre swing is a visible swing.
   span: 17,
+  playback: 1,
 }
 
 /**
@@ -509,6 +522,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       gleam: 2,
       softness: 0,
       span: 16,
+      playback: 1,
     },
   },
   {
@@ -547,6 +561,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       gleam: 5,
       softness: 0,
       span: 30,
+      playback: 1,
     },
   },
   {
@@ -584,6 +599,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       gleam: 2.5,
       softness: 0,
       span: 8,
+      playback: 1,
     },
   },
   {
@@ -631,6 +647,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       gleam: 9,
       softness: 0,
       span: 4,
+      playback: 1,
     },
   },
   {
@@ -681,6 +698,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       gleam: 2,
       softness: 0,
       span: 7.66,
+      playback: 1,
     },
   },
   {
@@ -739,6 +757,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       // going. That is the piece running against its own grain, and it was found
       // rather than designed.
       span: 226,
+      playback: 1,
     },
   },
   {
@@ -794,6 +813,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       gleam: 0,
       softness: 0.42,
       span: 7.66,
+      playback: 1,
     },
   },
 ]

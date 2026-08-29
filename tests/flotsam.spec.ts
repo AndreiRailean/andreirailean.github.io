@@ -459,6 +459,55 @@ test("softness takes a piece from an object with an edge to a soft blob", async 
   expect(soft.lit).toBeLessThan(crisp.lit)
 })
 
+/**
+ * Watching slowly, which is not the same as a slow sea.
+ *
+ * `waves.ts` refuses to have a wave-speed setting, because a wave's speed is
+ * fixed by its length and a knob that overrode it would flatten the piece's
+ * whole dynamic range into one look. This is a different thing and the
+ * difference is the assertion below: it scales the *clock*, so everything moves
+ * slower together and every relationship between the waves, the current and the
+ * wind is untouched.
+ */
+test("playback slows everything by the same factor, and pauses at nothing", async ({ page }) => {
+  const experiment = await openFlotsam(page, { settings: { ...MODEST, playback: 1 }, idle: true })
+
+  const advanced = async (over: number) => {
+    const before = await experiment.api(({ api }) => api.stats())
+    await page.waitForTimeout(over)
+    const after = await experiment.api(({ api }) => api.stats())
+    return after.clock - before.clock
+  }
+
+  const full = await advanced(600)
+  expect(full).toBeGreaterThan(0.3)
+
+  await experiment.api(({ api }) => api.set({ playback: 0.25 }))
+  const quarter = await advanced(600)
+  // A quarter of the sea in the same wall-clock time. Loose bounds: this is a
+  // real browser and a real six hundred milliseconds.
+  expect(quarter).toBeGreaterThan(full * 0.12)
+  expect(quarter).toBeLessThan(full * 0.45)
+
+  // Nothing at all, and the loop parks rather than redrawing a still frame for
+  // ever — which is the same path reduced motion takes.
+  await experiment.api(({ api }) => api.set({ playback: 0 }))
+  expect(await advanced(400)).toBe(0)
+  await expect.poll(async () => (await experiment.api(({ api }) => api.stats())).running, { timeout: 5000 }).toBe(false)
+})
+
+test("run() is seconds of sea, not seconds of watching", async ({ page }) => {
+  // A poster recipe asking for forty seconds wants forty seconds of water
+  // whatever rate someone happens to be viewing at.
+  const experiment = await openFlotsam(page, { settings: { ...MODEST, playback: 0.1 }, idle: true })
+
+  const before = await experiment.api(({ api }) => api.stats())
+  await experiment.api(({ api }) => api.run(30))
+  const after = await experiment.api(({ api }) => api.stats())
+
+  expect(after.clock - before.clock).toBeCloseTo(30, 0)
+})
+
 test("every setting has a control, so the panel and a shared URL cannot disagree", async ({ page }) => {
   const experiment = await openFlotsam(page)
 

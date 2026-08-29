@@ -182,8 +182,20 @@ in order to work at all, and every one of them was learned by breaking it.
 - **Wave speed is not a setting and must not become one.** ω = √(gk) with real
   gravity, so `span` and `wavelength` decide the tempo between them. A frame of
   ripples is genuinely frantic and a frame of ocean swell genuinely slow, and
-  that range is the piece's whole dynamic. A tempo multiplier would flatten it
-  and would be a lie about the water.
+  that range is the piece's whole dynamic. A multiplier on the sea would flatten
+  it and would be a lie about the water.
+
+  **`playback` is not that, and the difference is where it is applied.** It
+  scales the clock, in one place in `tick`, so the waves, the current, the gusts
+  and the wind's veering all slow by the same factor and every relationship
+  between them survives — the same sea, watched slowly. Keep it to that one
+  place. The moment something reaches into the sea to slow it directly, it has
+  become the setting this rule forbids.
+
+  `run()` is deliberately _not_ scaled by it: it means seconds of sea, because a
+  poster recipe asking for forty seconds wants forty seconds of water whatever
+  rate someone is viewing at.
+
 - **The lower wavelength bound is 10cm on purpose.** Below about 2cm the water
   stops being a gravity wave and surface tension takes over — ω² = gk + σk³/ρ —
   which this piece does not model. At 10cm the correction is 3%.

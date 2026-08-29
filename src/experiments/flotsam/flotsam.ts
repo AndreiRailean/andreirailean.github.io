@@ -201,6 +201,7 @@ export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flo
    */
   const isAnimated = () =>
     !stillOnly.matches &&
+    settings.playback > 0 &&
     (settings.steepness > 0 || settings.drift > 0 || settings.eddies > 0 || (settings.stokes > 0 && sea.steepness > 0))
 
   const waterMoves = () => settings.drift > 0 || settings.eddies > 0 || (settings.stokes > 0 && sea.reach > 0)
@@ -515,8 +516,16 @@ export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flo
     if (elapsed > 0) fps += (1 / elapsed - fps) * 0.1
 
     if (isAnimated()) {
-      clock += elapsed
-      advance(elapsed)
+      // The one place `playback` is applied, and it has to stay the one place.
+      // Everything time-dependent in the piece reads `clock` or is integrated
+      // through `advance`, so scaling the step here slows the waves, the
+      // current, the gusts and the wind's veering by exactly the same factor —
+      // which is what makes it a clock rather than a claim about the water. A
+      // control that reached into the sea instead would be the wave-speed
+      // setting `waves.ts` refuses to have.
+      const step = elapsed * settings.playback
+      clock += step
+      advance(step)
       draw()
       dirty = false
       return

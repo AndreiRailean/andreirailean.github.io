@@ -59,6 +59,12 @@ In deep water a long wave travels faster than a short one — the relation is
 ocean swell moves at eight metres a second. A half-metre ripple moves at under
 one.
 
+There is a **playback** control, and it is a different thing: it slows the clock
+rather than the water. Everything — the waves, the current, the gusts, the wind
+coming round — slows by exactly the same factor, so what you are watching is the
+same sea at the same steepness, in slow motion. At 0 it holds still, which is
+how to look properly at a gathering line.
+
 Which means the **span** control, which just decides how much water is in frame,
 is not a magnification. A frame full of centimetre ripples is frantic; the same
 settings on a frame two hundred metres across are glacial. Small water is
