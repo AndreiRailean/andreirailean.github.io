@@ -1,0 +1,364 @@
+---
+// A deliberately bare document: no Layout, no globals.css, no Tailwind. The
+// experiment owns the whole viewport and shares no chrome with the rest of the
+// site.
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Flotsam</title>
+    <meta
+      name="description"
+      content="Specks on dark water, seen from above, shaken by waves that never take them anywhere."
+    />
+    <style is:global>
+      /* Dark only. The subject is a few lit things on black water; inverted it
+         would be dark dots on white, which is a different piece. */
+      html {
+        --ground: #04080b;
+        --accent: hsl(202, 58%, 62%);
+        --ui-text: rgb(255 255 255 / 72%);
+        --ui-label: rgb(255 255 255 / 50%);
+        --ui-heading: rgb(255 255 255 / 34%);
+        --ui-panel: rgb(6 12 16 / 84%);
+        --ui-chip: rgb(8 14 19 / 74%);
+        --ui-edge: rgb(255 255 255 / 12%);
+        --ui-edge-hover: rgb(255 255 255 / 30%);
+        --ui-on-bg: hsl(202, 38%, 38%);
+        --ui-on-text: hsl(202, 60%, 95%);
+        --ui-on-edge: rgb(255 255 255 / 38%);
+        --track: rgb(255 255 255 / 16%);
+        --ui-fade: 0.35s;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: var(--ground);
+      }
+
+      body {
+        overflow: hidden;
+      }
+
+      /* Pointer and controls disappear together, like video chrome. */
+      html[data-idle="true"] {
+        cursor: none;
+      }
+
+      canvas {
+        position: fixed;
+        inset: 0;
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      #ui {
+        position: fixed;
+        right: 1.25rem;
+        bottom: 1.25rem;
+        display: flex;
+        /* Reversed so the panel grows *upward* out of the bar. In DOM order the
+           bar comes first; laid out downward, a panel this tall runs off the
+           bottom of the window. */
+        flex-direction: column-reverse;
+        align-items: flex-end;
+        gap: 0.5rem;
+        font:
+          400 0.75rem/1.5 ui-monospace,
+          "SF Mono",
+          Menlo,
+          monospace;
+        letter-spacing: 0.03em;
+        color: var(--ui-text);
+        transition:
+          opacity var(--ui-fade) ease-out,
+          transform var(--ui-fade) ease-out;
+      }
+
+      html[data-idle="true"] #ui {
+        opacity: 0;
+        transform: translateY(0.4rem);
+        pointer-events: none;
+      }
+
+      .bar {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 0.35rem;
+      }
+
+      #ui a.about {
+        text-decoration: none;
+      }
+
+      #ui button,
+      #ui a.about {
+        margin: 0;
+        padding: 0.3rem 0.6rem;
+        font: inherit;
+        letter-spacing: inherit;
+        color: inherit;
+        cursor: pointer;
+        background: var(--ui-chip);
+        border: 1px solid var(--ui-edge);
+        border-radius: 0.3rem;
+        backdrop-filter: blur(6px);
+      }
+
+      #ui button:hover {
+        border-color: var(--ui-edge-hover);
+      }
+
+      #ui button[data-active="true"] {
+        color: var(--ui-on-text);
+        background: var(--ui-on-bg);
+        border-color: var(--ui-on-edge);
+      }
+
+      /* Twenty-one rows under five headings, so the panel takes as much height
+         as there is and only scrolls when it genuinely cannot fit. The reserve
+         is the chrome bar below it plus its gap and the window inset. */
+      .panel {
+        display: flex;
+        flex-direction: column;
+        gap: 0.26rem;
+        min-width: 23rem;
+        max-height: calc(100vh - 5.5rem);
+        padding: 0.75rem 0.85rem;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        background: var(--ui-panel);
+        border: 1px solid var(--ui-edge);
+        border-radius: 0.4rem;
+        backdrop-filter: blur(8px);
+      }
+
+      /* An author `display` beats the UA's [hidden] rule, so state it here. */
+      .panel[hidden] {
+        display: none;
+      }
+
+      .group {
+        margin-top: 0.5rem;
+        color: var(--ui-heading);
+        font-size: 0.6875rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .group:first-child {
+        margin-top: 0;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 6.75rem 1fr 5.25rem;
+        align-items: center;
+        gap: 0.6rem;
+      }
+
+      .label {
+        color: var(--ui-label);
+      }
+
+      .value {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* Two handles on one axis, for the size and wavelength pairs. The tracks
+         are stacked rather than side by side so the pair reads as one range. */
+      .span {
+        display: grid;
+        gap: 0.05rem;
+      }
+
+      .row.copy {
+        grid-template-columns: 1fr;
+        margin-top: 0.6rem;
+      }
+
+      .row.copy button {
+        width: 100%;
+      }
+
+      /* The track is styled by hand rather than via accent-color. The UA derives
+         the unfilled track and thumb contrast from the accent's perceived
+         luminance, which varies hugely with hue at fixed lightness, so it flips
+         to a contrasting scheme partway around the wheel. */
+      input[type="range"] {
+        width: 100%;
+        height: 1rem;
+        margin: 0;
+        cursor: pointer;
+        background: transparent;
+        -webkit-appearance: none;
+        appearance: none;
+      }
+
+      input[type="range"]::-webkit-slider-runnable-track {
+        height: 0.25rem;
+        border-radius: 999px;
+        /* Two hard stops fake the filled portion, which only Firefox gives us. */
+        background: linear-gradient(to right, var(--accent) var(--fill, 0%), var(--track) var(--fill, 0%));
+      }
+
+      input[type="range"]::-webkit-slider-thumb {
+        width: 0.7rem;
+        height: 0.7rem;
+        margin-top: -0.225rem;
+        border: none;
+        border-radius: 50%;
+        background: var(--accent);
+        -webkit-appearance: none;
+        appearance: none;
+      }
+
+      input[type="range"]::-moz-range-track {
+        height: 0.25rem;
+        border-radius: 999px;
+        background: var(--track);
+      }
+
+      input[type="range"]::-moz-range-progress {
+        height: 0.25rem;
+        border-radius: 999px;
+        background: var(--accent);
+      }
+
+      input[type="range"]::-moz-range-thumb {
+        width: 0.7rem;
+        height: 0.7rem;
+        border: none;
+        border-radius: 50%;
+        background: var(--accent);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #ui {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="water"></canvas>
+    <div id="ui"></div>
+
+    <script>
+      import { createFlotsam } from "@/experiments/flotsam/flotsam"
+      import { createControls } from "@/experiments/kit/controls"
+      import { reroll } from "@/experiments/flotsam/reroll"
+      import {
+        CONTROLS,
+        GROUP_ORDER,
+        PRESETS,
+        normalizeSettings,
+        reconcile,
+        settingsForLanding,
+        urlForSettings,
+      } from "@/experiments/flotsam/settings"
+      import { announceApi, createApi } from "@/experiments/flotsam/api"
+      import { keepAwake } from "@/experiments/kit/wakelock"
+
+      function requireElement<T extends Element>(id: string, type: new () => T): T {
+        const element = document.getElementById(id)
+        if (!(element instanceof type)) {
+          throw new Error(`Flotsam: missing #${id}`)
+        }
+        return element
+      }
+
+      const canvas = requireElement("water", HTMLCanvasElement)
+      const ui = requireElement("ui", HTMLDivElement)
+
+      // Read once and reused below. The escape hatches are pulled from the same
+      // object rather than from `window.location.search`, because the landing
+      // rewrite at the end of this script changes what that says.
+      const params = new URLSearchParams(window.location.search)
+
+      const { settings, featured } = settingsForLanding(params)
+
+      /** Hue reaches the chrome so the controls take the colour of the light. */
+      function applyTheme(next: { hue: number }) {
+        document.documentElement.style.setProperty("--accent", `hsl(${next.hue}, 58%, 62%)`)
+        document.documentElement.style.setProperty("--ui-on-bg", `hsl(${next.hue}, 38%, 38%)`)
+        document.documentElement.style.setProperty("--ui-on-text", `hsl(${next.hue}, 60%, 95%)`)
+      }
+
+      applyTheme(settings)
+
+      const scene = createFlotsam(canvas, settings)
+      scene.start()
+
+      // The chrome comes from the kit — offered, not imposed; see
+      // src/experiments/docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.
+      // Everything below is Flotsam's own: which rows exist, how they group, the
+      // one validator every input goes through, and what a scene's address is.
+      const controls = createControls({
+        root: ui,
+        aboutHref: "/experiments/flotsam/about/",
+        settings,
+        controls: CONTROLS,
+        presets: PRESETS,
+        groups: GROUP_ORDER,
+        actions: [
+          {
+            label: "reroll",
+            shortcut: "r",
+            hint: "A fresh sea and a fresh scattering. The seed travels in the address bar.",
+            run: (chrome) => reroll(chrome),
+          },
+        ],
+        // `reconcile` before the clamp, and only for the key actually moved: it
+        // is what lets the upper handle of a bound pair be dragged down past the
+        // lower one instead of fighting it.
+        normalize: (next, changed) => normalizeSettings(changed ? reconcile(next, changed) : next),
+        url: (next) => urlForSettings(next, window.location.pathname),
+        copyLabel: "copy link to this water",
+        onChange: (next) => {
+          applyTheme(next)
+          scene.setSettings(next)
+        },
+      })
+
+      // Left running deliberately, so hold the display on.
+      const wakeLock = keepAwake()
+
+      // Console handle. See src/experiments/AGENTS.md. Held locally as well as
+      // on `window`, which is typed `unknown` so the experiments stay
+      // independent of one another — see src/experiments/window.d.ts.
+      const api = createApi(controls, wakeLock, scene)
+      window.experiment = api
+      announceApi()
+
+      // Escape hatches for tools that cannot evaluate JS. None is a setting, so
+      // none belongs in the shareable query string.
+      if (params.get("panel") === "1") api.panel(true)
+      const idleParam = params.get("idle")
+      if (idleParam !== null) api.idle(idleParam !== "0")
+      if (params.get("debug") === "1") api.debug(true)
+      // The gathering takes a wave period or two to establish, and wave drift
+      // takes far longer, so a still of frame one is a still of water that has
+      // not started yet.
+      const run = Number(params.get("run"))
+      if (Number.isFinite(run) && run > 0) api.run(run)
+
+      // Last, so the escape hatches above are read from the URL as opened. The
+      // address now describes the scene on screen, which means a link copied
+      // without touching anything keeps working when the featured preset
+      // changes. Non-setting params drop out, exactly as they do on the first
+      // slider drag.
+      if (featured) {
+        window.history.replaceState(null, "", urlForSettings(settings, window.location.pathname))
+      }
+    </script>
+  </body>
+</html>

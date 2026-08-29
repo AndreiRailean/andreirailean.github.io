@@ -1,0 +1,36 @@
+---
+import { getCollection } from "astro:content"
+import Note, { type NoteTheme } from "@/experiments/gallery/Note.astro"
+
+// The note's furniture is the gallery's; only the paint is Flotsam's. See
+// docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.
+const entry = (await getCollection("experiments")).find(({ data }) => data.slug === "flotsam")
+if (!entry) throw new Error("Flotsam: missing about.md")
+
+const theme: NoteTheme = {
+  bg: "#04080b",
+  sheet: "rgb(4 8 11 / 80%)",
+  fg: "#d2d8da",
+  bright: "#f0f5f6",
+  muted: "#7f8a8e",
+  edge: "rgb(255 255 255 / 11%)",
+  accent: "hsl(202, 54%, 68%)",
+}
+---
+
+<Note entry={entry} theme={theme} backdrop={0.45}>
+  <script>
+    import { createFlotsam } from "@/experiments/flotsam/flotsam"
+    import { DEFAULT_SETTINGS } from "@/experiments/flotsam/settings"
+
+    const canvas = document.getElementById("backdrop")
+    if (canvas instanceof HTMLCanvasElement) {
+      // The defaults, unmodified. They are a recorded scene rather than the
+      // simplest thing the machinery can draw, precisely so that anything
+      // rendering the piece without choosing — this page — gets water worth
+      // looking at. See DEFAULT_SETTINGS.
+      const scene = createFlotsam(canvas, DEFAULT_SETTINGS)
+      scene.start()
+    }
+  </script>
+</Note>
