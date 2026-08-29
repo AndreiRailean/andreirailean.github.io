@@ -209,6 +209,27 @@ were mistakes about how the chrome _works_, made in a file with no reason to kno
   exactly as it can decline `controls.ts`. The three tokens' worth of theming is
   the cheap path, not the only one.
 
+### When the kit cannot do what your piece needs
+
+Two ways out, and **neither of them is quietly writing your own**. Every kit
+fault so far reached a second piece by being copied, and each was invisible
+because nothing said a duplicate existed.
+
+- **Diverge on purpose, in writing.** Put `kit-opt-out: <reason>` in the file
+  that differs — the module, or the page's `<style>` block. One line, and the
+  divergence is a decision someone can find.
+- **Or say the kit is short**, by opening an issue labelled `kit`. A control kind
+  it has no row for, a behaviour it hardcodes, a token it does not expose: those
+  are gaps, and the next piece will hit them too. `scale: "log"` arrived exactly
+  this way — Flotsam's `span` runs from a puddle to open water and a linear track
+  put half the piece in the first two per cent of its length.
+
+`tests/unit/kit-adoption.test.ts` enforces the first of those and runs in the
+unit suite, so it answers in milliseconds: no piece may carry its own copy of a
+kit module, redeclare a selector `controls.css` owns, or build the kit's chrome
+without importing its stylesheet — unless it has said why. It cannot require
+adoption, because the kit is offered; it requires that not adopting be legible.
+
 The class names are the kit's namespace — `.bar`, `.panel`, `.group`, `.row`,
 `.label`, `.value`, `.span`, `.modes`, `.mode`, `.preset`, `.toggle`, `.copy`,
 `.about` — and **a setting key must not be able to land in it**. A slider carries
