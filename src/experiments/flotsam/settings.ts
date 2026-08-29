@@ -1,0 +1,1008 @@
+import { keysOf, type RangeControl, type SliderControl } from "@/experiments/kit/controls"
+
+/**
+ * Everything about the sea that is tunable at runtime.
+ *
+ * One source of truth shared by the engine, the panel and the URL, so a slider
+ * and the query-string parser cannot disagree about what a legal value is.
+ *
+ * **World units are metres and seconds, and the numbers are meant literally.**
+ * A speck really is two centimetres across; a swell really is fourteen metres
+ * long and really does travel at the four and a half metres a second that
+ * deep-water dispersion says a fourteen-metre wave travels at. Nothing here is a
+ * dimensionless "amount" dressed up with a unit — which is why there is no speed
+ * control for the waves, and why `span` changes the character of the piece
+ * rather than just its magnification.
+ */
+
+export type Settings = {
+  seed: number
+  dots: number
+  smallest: number
+  largest: number
+  sizeMix: number
+  hue: number
+  hueSpread: number
+  variance: number
+  trains: number
+  shortest: number
+  longest: number
+  steepness: number
+  peak: number
+  gusts: number
+  heading: number
+  spread: number
+  drift: number
+  bearing: number
+  eddies: number
+  gyre: number
+  stokes: number
+  exposure: number
+  glint: number
+  azimuth: number
+  elevation: number
+  shade: number
+  gleam: number
+  softness: number
+  span: number
+  playback: number
+}
+
+export type NumericKey = keyof Settings
+
+export type ControlGroup = "flotsam" | "sea" | "current" | "light" | "view"
+
+/**
+ * Sliders and bound pairs; the kit's choice and toggle kinds have no use here.
+ * `group` is narrowed from the kit's `string` to the five headings that exist,
+ * so a typo is a type error.
+ */
+export type Control = (SliderControl<NumericKey> | RangeControl<NumericKey>) & {
+  group: ControlGroup
+}
+
+export const GROUP_ORDER: ControlGroup[] = ["view", "sea", "current", "flotsam", "light"]
+
+/** Widest legal seed. Kept small enough to stay readable in a shared URL. */
+export const SEED_BOUNDS = { min: 0, max: 999_999 }
+
+const metres = (value: number) => (value >= 10 ? `${value.toFixed(0)}m` : `${value.toFixed(2)}m`)
+
+/** Below a decimetre a reader wants millimetres, and above it centimetres. */
+const small = (value: number) => (value < 0.1 ? `${(value * 1000).toFixed(0)}mm` : `${(value * 100).toFixed(0)}cm`)
+
+const degrees = (value: number) => `${Math.round(value)}°`
+
+/**
+ * The panel rows, in order.
+ *
+ * `seed` is deliberately absent: it round-trips through the URL like everything
+ * else, but a slider over a million arbitrary integers is not a control anyone
+ * can use. It gets a re-roll button instead, exactly as Dangler's does.
+ *
+ * Six of these are logarithmic, which is new to the kit and arrived with this
+ * piece. They are the ones whose range spans orders of magnitude — a span from a
+ * puddle to open water, a wavelength from a ripple to a swell — and on a linear
+ * track the whole small end of each sits inside the first two per cent.
+ */
+export const CONTROLS: Control[] = [
+  {
+    kind: "slider",
+    group: "view",
+    key: "span",
+    label: "span",
+    min: 1.5,
+    max: 320,
+    step: 0.01,
+    scale: "log",
+    format: metres,
+    hint: "How much water is in the frame, measured across its shorter side. This is the piece's main dial and it does more than magnify: because a wave's speed is fixed by its length, a frame full of centimetre ripples is frantic and a frame full of ocean swell is slow, and the same settings give you both. Everything floating stays where it is on screen as you drag it, so this zooms rather than rearranges.",
+  },
+  {
+    kind: "slider",
+    group: "view",
+    key: "playback",
+    label: "playback",
+    min: 0,
+    max: 2,
+    step: 0.01,
+    format: (v) => (v === 0 ? "paused" : `${v.toFixed(2)}x`),
+    hint: "How fast you are watching, the way a video player means it. Not how fast the water is: a wave's speed is fixed by its length and stays fixed, and this slows the waves, the current, the gusts and the wind's veering by exactly the same factor — so every relationship between them is untouched and what you are looking at is the same sea, in slow motion. At 0 it holds still, which is the way to look properly at a gathering line. Above 1 a long swell stops being a thing you have to wait for.",
+  },
+  {
+    kind: "slider",
+    group: "sea",
+    key: "trains",
+    label: "trains",
+    min: 1,
+    max: 9,
+    step: 1,
+    format: (v) => String(v),
+    hint: "How many separate wave trains the sea is made of. This is a trade rather than a quality knob: the steepness below is shared out between them, so one train gives a single hard swell that gathers the flotsam into strong lines, and nine give a rich confused sea with much fainter gathering. Changing it re-lays every direction, because the fan they are spread across is divided up afresh.",
+  },
+  {
+    kind: "range",
+    group: "sea",
+    keys: ["shortest", "longest"],
+    label: "wavelength",
+    min: 0.1,
+    max: 60,
+    step: 0.01,
+    scale: "log",
+    format: (from, to) => `${metres(from)}–${metres(to)}`,
+    hint: "The crest-to-crest range the trains are spread across, geometrically. It sets the speed of the sea as well as its shape: in deep water a long wave travels faster than a short one and there is nothing to choose about it, so a forty-metre swell moves eight metres a second and a half-metre ripple moves under one. Wavelength also decides which flotsam notices — anything much larger than a wave sits across it and barely moves.",
+  },
+  {
+    kind: "slider",
+    group: "sea",
+    key: "peak",
+    label: "peak",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    format: (v) => v.toFixed(2),
+    hint: "How much of the sea's steepness sits in its dominant train rather than being shared out evenly. This is what decides whether the water looks made or found. Low, and every component is equal: with a few trains that is a mechanically regular grid of crests, and with many it is mush. High, and one wavelength carries the sea while its neighbours a metre either side beat against it — which is where the uneven crest spacing and the occasional larger set come from in real water. Raise the train count with it; the two together are what a peak is for.",
+  },
+  {
+    kind: "slider",
+    group: "sea",
+    key: "steepness",
+    label: "steepness",
+    min: 0,
+    max: 0.92,
+    step: 0.01,
+    format: (v) => v.toFixed(2),
+    hint: "Height against length, summed over every train — the one number that says how violent the sea is. It is also what makes the flotsam gather: a steep wave carries water forward faster at its crest than in its trough, so floating things crowd toward the crests on their own. At 1 the crest would come to a point and the water would fold over itself, which is why this stops just short.",
+  },
+  {
+    kind: "slider",
+    group: "sea",
+    key: "heading",
+    label: "heading",
+    min: 0,
+    max: 360,
+    step: 1,
+    format: degrees,
+    hint: "Which way the sea is running, measured anticlockwise from the right of the screen. 0 sends the waves to the right, 90 sends them up the frame.",
+  },
+  {
+    kind: "slider",
+    group: "sea",
+    key: "spread",
+    label: "fan",
+    min: 0,
+    max: 180,
+    step: 1,
+    format: degrees,
+    hint: "How far the trains fan out either side of the heading. At 0 they all run together and the sea is a clean swell with parallel bands. Wide, and it is a crossing sea from every quarter, where the crests interfere and the gathering shows up as patches rather than lines.",
+  },
+  {
+    kind: "slider",
+    group: "sea",
+    key: "gusts",
+    label: "gusts",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    format: (v) => v.toFixed(2),
+    hint: "How much the wind varies. Wind arrives in gusts and it veers, and a sea under it does the same: the chop gets up and lies down again over half a minute, and the whole sea comes round a few degrees over a couple of minutes. Gusts move energy between the trains rather than adding any, so the steepness above keeps meaning what it says and the water cannot gust its way past breaking. At 0 the wind has blown at one strength from one quarter for ever, which is a thing no weather does.",
+  },
+  {
+    kind: "slider",
+    group: "current",
+    key: "drift",
+    label: "drift",
+    min: 0,
+    max: 2,
+    step: 0.01,
+    format: (v) => `${v.toFixed(2)}m/s`,
+    hint: "Speed of the steady current. This is the only thing in the piece that reliably takes flotsam anywhere: the waves shake it and hand it back, but a current of a few centimetres a second empties the frame and refills it from the other side.",
+  },
+  {
+    kind: "slider",
+    group: "current",
+    key: "bearing",
+    label: "set",
+    min: 0,
+    max: 360,
+    step: 1,
+    format: degrees,
+    hint: "Which way the current flows toward — its set, in the old sense — on the same anticlockwise-from-the-right dial as the wave heading. Put it across the waves and you can watch the two effects come apart: the flotsam weaves one way and travels the other.",
+  },
+  {
+    kind: "slider",
+    group: "current",
+    key: "eddies",
+    label: "eddies",
+    min: 0,
+    max: 2,
+    step: 0.01,
+    format: (v) => `${v.toFixed(2)}m/s`,
+    hint: "Peak speed of the swirling part of the current, so that different corners of the frame genuinely disagree about which way is downstream. It is built as a stream function, which makes it incompressible to machine precision — it stirs the flotsam without ever concentrating it, so every clump you can see is the waves' doing and not this.",
+  },
+  {
+    kind: "slider",
+    group: "current",
+    key: "gyre",
+    label: "gyre",
+    min: 0.4,
+    max: 400,
+    step: 0.01,
+    scale: "log",
+    format: metres,
+    hint: "Rough width of a turn in the eddying current. Much smaller than the frame and the water shears and churns; much larger and the whole frame drifts one way while slowly changing its mind. The gyres themselves wander, so the field never settles into a fixed picture.",
+  },
+  {
+    kind: "slider",
+    group: "current",
+    key: "stokes",
+    label: "wave drift",
+    min: 0,
+    max: 3,
+    step: 0.01,
+    format: (v) => (v === 1 ? "1.00 (true)" : v.toFixed(2)),
+    hint: "How much the waves themselves carry things, as a multiple of the real thing — 1 is what the physics says, and everything above it is an exaggeration you are choosing. The orbits a wave puts a float through are not quite closed: it ends each circle a little downwind of where it began, by the square of the steepness times the wave's own speed. So a gentle sea carries nothing anywhere and a near-breaking one carries flotsam at a quarter of the speed of its own crests. On any single frame this is invisible; leave it running and the flotsam has quietly gone somewhere.",
+  },
+  {
+    kind: "slider",
+    group: "flotsam",
+    key: "dots",
+    label: "pieces",
+    min: 60,
+    max: 9000,
+    step: 1,
+    scale: "log",
+    format: (v) => String(Math.round(v)),
+    hint: "How much flotsam is in the frame. In frame, not per square metre — changing the span does not change this, which is a small untruth that keeps the picture legible at both ends of a range of eighty to one. Piece number seven is the same piece whether there are a hundred or nine thousand, so raising this adds to the water rather than restirring it.",
+  },
+  {
+    kind: "range",
+    group: "flotsam",
+    keys: ["smallest", "largest"],
+    label: "size",
+    min: 0.004,
+    max: 1.5,
+    step: 0.001,
+    scale: "log",
+    format: (from, to) => `${small(from)}–${small(to)}`,
+    hint: "Radius of the smallest and largest piece afloat, drawn evenly across the octaves between them so there is a haze of small stuff with a few large pieces through it. Size is not only how big a dot looks: a piece much larger than a wave sits across the crest and the trough at once and hardly moves, so widen this and the big flotsam visibly stops noticing the chop the specks beside it are still tracing.",
+  },
+  {
+    kind: "slider",
+    group: "flotsam",
+    key: "sizeMix",
+    label: "size mix",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    format: (v) => v.toFixed(2),
+    hint: "How sizes are shared out across the range above. At 1 every size is equally likely, which fills the water with large pieces and is very bright. Turn it down and each larger size becomes rarer than the one below, so a wide range gives a fine haze with the occasional big piece in it rather than a sea of them. This is the control to reach for when a scene is too bright but narrowing the sizes makes it dull — it lets the range stay wide and thins the large end instead. Starry Night has the same control, pointed the same way.",
+  },
+  {
+    kind: "slider",
+    group: "flotsam",
+    key: "hue",
+    label: "hue",
+    min: 0,
+    max: 360,
+    step: 1,
+    format: degrees,
+    hint: "The colour of the light the flotsam is catching. Around 40 is a low warm lamp, 205 is moonlight, 150 the green of something under the surface.",
+  },
+  {
+    kind: "slider",
+    group: "flotsam",
+    key: "hueSpread",
+    label: "colour spread",
+    min: 0,
+    max: 90,
+    step: 0.5,
+    format: (v) => `${v.toFixed(1)}°`,
+    hint: "How far pieces stray from that hue, as a standard deviation. A few degrees is one light source on a lot of similar debris; sixty is a harbour at night with every colour in it. Most pieces sit near the base at any setting, with the occasional outlier, which is what real variation looks like.",
+  },
+  {
+    kind: "slider",
+    group: "flotsam",
+    key: "variance",
+    label: "variance",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    format: (v) => v.toFixed(2),
+    hint: "How much pieces differ from one another in brightness and in how pure their colour comes back. Deliberately not hue, which the colour spread owns. At 0 they are identical objects, which reads as manufactured rather than found.",
+  },
+  {
+    kind: "slider",
+    group: "light",
+    key: "exposure",
+    label: "exposure",
+    min: 0,
+    max: 2,
+    step: 0.01,
+    format: (v) => v.toFixed(2),
+    hint: "How much light is falling on the water, and the only control here that changes how bright the scene is without changing what is floating on it. Everything else that dims a scene also empties it, narrows it or flattens it. Above 1 the pieces have nowhere brighter to go, so they bloom outward instead, which is what glare does. Note the small pieces fade first, being faint already — pair a low exposure with a higher size mix to keep the haze rather than losing it.",
+  },
+  {
+    kind: "slider",
+    group: "light",
+    key: "glint",
+    label: "glint",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    format: (v) => v.toFixed(2),
+    hint: "How much a piece flares when the water under it tilts toward the light. Flotsam lies flat and turns with the surface, so this is what makes the waves themselves visible: bands of brightness sweep across the frame at the speed of the crests, over water that is never drawn.",
+  },
+  {
+    kind: "slider",
+    group: "light",
+    key: "azimuth",
+    label: "light",
+    min: 0,
+    max: 360,
+    step: 1,
+    format: degrees,
+    hint: "Which way the light is coming from, on the same dial as everything else. Set it along the waves and the glitter runs in bands with them; set it across and the bands break up.",
+  },
+  {
+    kind: "slider",
+    group: "light",
+    key: "elevation",
+    label: "elevation",
+    min: 12,
+    max: 90,
+    step: 1,
+    format: degrees,
+    hint: "How high the light sits. At 90 it is directly overhead with you and the flat water glints while the wave faces go dark. Bring it down and the glitter narrows to a path across the steepest faces, then fades out entirely once the water is no longer steep enough to reflect it at you — which is exactly what a sun does as it sets, and why a low light needs a steep sea to show anything at all.",
+  },
+  {
+    kind: "slider",
+    group: "light",
+    key: "shade",
+    label: "shade",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    format: (v) => v.toFixed(2),
+    hint: "How much a piece dims in the troughs and lifts on the crests. Where glint reads the tilt of the water, this reads its height, so the two show the same wave a quarter of a cycle apart — turning one down and the other up moves the bright bands without changing the sea at all.",
+  },
+  {
+    kind: "slider",
+    group: "light",
+    key: "gleam",
+    label: "gleam",
+    min: 0,
+    max: 40,
+    step: 0.5,
+    format: (v) => `${v.toFixed(1)}px`,
+    hint: "The halo around a piece, as a radius on screen rather than a multiple of its size. A glint is spread by the eye and the lens, not by the thing catching it, so a speck and a raft flare by the same amount — and where flotsam crowds together the halos add up, which is what makes a gathering line glow rather than just being denser.",
+  },
+  {
+    kind: "slider",
+    group: "light",
+    key: "softness",
+    label: "softness",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    format: (v) => v.toFixed(2),
+    hint: "How sharply a piece's edge falls off. At 0 it is an object with a boundary you can see, which is what lets two of them overlap visibly. At 1 it has no edge at all and is a soft ball of its own colour — a point of light, whatever size it happens to be. Between them the glare comes in from the rim toward the centre with it. This is the control to reach for when large pieces look hard against the fuzz of the small ones: raising it makes the whole size range read as one family instead of two.",
+  },
+]
+
+/**
+ * The base every scene is measured against.
+ *
+ * Two jobs, and neither is "the scene you land on" — that is `PRESETS[0]`, via
+ * `settingsForLanding`. These are what `normalizeSettings` falls back to for a
+ * value it cannot read, and what `settingsToQuery` diffs against so a shared URL
+ * carries only what someone actually changed.
+ *
+ * They are also what the note's backdrop renders, so they are a recorded scene
+ * rather than the simplest thing the machinery can draw.
+ *
+ * Replacing them changes what every URL already shared means, and that is
+ * explicitly **not** a reason to leave them alone — see the note on settling in
+ * `AGENTS.md`. Nothing here is finished, and a scene worth having beats a link
+ * that still resolves.
+ */
+export const DEFAULT_SETTINGS: Settings = {
+  seed: 41,
+  // Fine and numerous. The gathering is a *density*, so it is only legible in a
+  // population dense enough for density to be a texture — a scene of a few
+  // hundred fat discs shows the same physics and reads as confetti.
+  dots: 8500,
+  smallest: 0.005,
+  // Small on purpose. The size range wants to be wide for the wave response to
+  // show, and the top of it wants to be rare and modest, or the large pieces
+  // become the picture and the haze they float in stops registering.
+  largest: 0.09,
+  // An exponent of 2 exactly, which is what the distribution was before it could
+  // be moved.
+  sizeMix: 0.5,
+  hue: 202,
+  hueSpread: 15,
+  variance: 0.62,
+  // Eight trains with the steepness concentrated on one of them. This pairing is
+  // the whole point of `peak`: two trains sharing it equally gathered just as
+  // hard and arrived on a metronome, and eight sharing it equally gather
+  // nothing. Here the middle train draws the lines while its neighbours, a metre
+  // or two either side, keep them from being evenly spaced.
+  trains: 8,
+  shortest: 3,
+  longest: 11,
+  steepness: 0.9,
+  peak: 0.78,
+  gusts: 0.5,
+  // Diagonal, and that is not a taste decision. Crests run square to the
+  // heading, so a sea running along a screen axis lays its lines along the other
+  // one — and on a wide window that means six or seven parallel rules across the
+  // frame, which reads as ruling however irregular their spacing is. Diagonally
+  // there are three or four, they leave at the corners, and the eye stops
+  // counting them.
+  heading: 124,
+  spread: 30,
+  // Slow, and across the waves rather than along them, so the drift is legible
+  // as something separate from the swinging.
+  drift: 0.06,
+  bearing: 248,
+  eddies: 0.1,
+  gyre: 30,
+  stokes: 0.6,
+  exposure: 1,
+  // The light runs with the swell, so the glitter bands land near the gathered
+  // lines and the flotsam that has collected is also the flotsam that is lit.
+  glint: 0.8,
+  azimuth: 124,
+  elevation: 52,
+  shade: 0.38,
+  gleam: 3,
+  softness: 0,
+  // Seventeen metres across. Wide enough for three or four crests to be in frame
+  // at once — which is what makes the gathering read as lines rather than as one
+  // band — and tight enough that a half-metre swing is a visible swing.
+  span: 17,
+  // A fifth of real time, and every scene here is slowed to some degree.
+  //
+  // It reads as more real rather than less, which is the opposite of what you
+  // would guess from a control that makes the water wrong. Two reasons, and both
+  // of them are about the viewer. A pattern that repeats slowly enough is not
+  // read as a pattern — at full rate the eye picks up the beat between the wave
+  // trains and the sea becomes a mechanism again, which is the fault the peaked
+  // spectrum was added to fix and which speed brings straight back. And it is
+  // what a sea looks like from a distance: from a kilometre up, wave bands crawl
+  // and very nearly stand still, because what falls off with height is the
+  // *apparent* speed and not the size of anything.
+  //
+  // That last is a look this piece cannot otherwise reach. Winding `span` out
+  // would slow the crossing in the same way — a long swell takes a long time to
+  // cross a wide frame — but it shrinks the flotsam with it, and the whole
+  // subject goes to dust. Large pieces on slow water is only available through
+  // the clock.
+  playback: 0.2,
+}
+
+/**
+ * Recorded scenes.
+ *
+ * The section's convention is that presets are recorded from exploration rather
+ * than designed up front, so each one is written out in full rather than spread
+ * over `DEFAULT_SETTINGS`. A scene someone found by dragging sliders should stay
+ * the scene they found; inheriting the defaults would let it drift silently the
+ * next time one of those is retuned.
+ */
+export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
+  {
+    label: "offing",
+    hint: "Open water at night, a gusting sea running diagonally, a slow current crossing it.",
+    settings: { ...DEFAULT_SETTINGS },
+  },
+  {
+    label: "windrows",
+    hint: "One swell carrying almost everything, and the flotsam collected into travelling lines with the light along them.",
+    settings: {
+      seed: 208,
+      dots: 9000,
+      smallest: 0.005,
+      largest: 0.09,
+      sizeMix: 0.5,
+      hue: 38,
+      hueSpread: 8,
+      variance: 0.6,
+      // Three trains and nearly all of the steepness in one of them: as close to
+      // a single clean swell as this piece gets, with just enough beside it to
+      // stop the crests arriving on a beat. At a peak this sharp the water at a
+      // crest is compressed four to one and the flotsam draws it for you.
+      trains: 3,
+      shortest: 4,
+      longest: 7,
+      steepness: 0.78,
+      peak: 0.9,
+      // Gusting, but the least of any scene here. This is the one that is
+      // showing the lines themselves, so the wind is allowed to breathe the
+      // spacing without ever pulling a line apart.
+      gusts: 0.42,
+      heading: 138,
+      spread: 10,
+      drift: 0.04,
+      bearing: 138,
+      eddies: 0.06,
+      gyre: 18,
+      stokes: 0.5,
+      // The light runs along the swell, so the gathered line and the glitter
+      // band land on top of one another and the windrow comes out gilded.
+      exposure: 1,
+      glint: 0.85,
+      azimuth: 138,
+      elevation: 52,
+      shade: 0.42,
+      gleam: 2,
+      softness: 0,
+      span: 16,
+      playback: 0.3,
+    },
+  },
+  {
+    label: "crossing",
+    hint: "Nine trains from every quarter and none of them dominant — a confused sea that gathers in patches rather than lines.",
+    settings: {
+      seed: 77,
+      dots: 8000,
+      smallest: 0.005,
+      largest: 0.11,
+      sizeMix: 0.5,
+      hue: 196,
+      hueSpread: 18,
+      variance: 0.66,
+      // The opposite end of `peak` from windrows, and the reason it is a control
+      // rather than a constant: a flat spectrum over a wide fan is a sea with no
+      // dominant wave in it at all.
+      trains: 9,
+      shortest: 1.4,
+      longest: 14,
+      steepness: 0.9,
+      peak: 0.2,
+      gusts: 0.7,
+      heading: 200,
+      spread: 60,
+      drift: 0.06,
+      bearing: 250,
+      eddies: 0.12,
+      gyre: 40,
+      stokes: 0.6,
+      exposure: 1,
+      glint: 0.8,
+      azimuth: 40,
+      elevation: 62,
+      shade: 0.5,
+      gleam: 5,
+      softness: 0,
+      span: 30,
+      playback: 0.75,
+    },
+  },
+  {
+    label: "riptide",
+    hint: "Chop over a hard swirling current: the lines the waves gather are torn apart as fast as they form.",
+    settings: {
+      seed: 9312,
+      dots: 9000,
+      smallest: 0.004,
+      largest: 0.05,
+      sizeMix: 0.5,
+      hue: 168,
+      hueSpread: 24,
+      variance: 0.8,
+      trains: 6,
+      shortest: 0.55,
+      longest: 2.4,
+      steepness: 0.86,
+      peak: 0.7,
+      gusts: 0.72,
+      heading: 44,
+      spread: 46,
+      drift: 0.25,
+      bearing: 12,
+      // Gyres well under the width of the frame, so the water shears against
+      // itself instead of the whole picture leaning one way.
+      eddies: 0.8,
+      gyre: 2.6,
+      stokes: 1,
+      exposure: 1,
+      glint: 0.85,
+      azimuth: 250,
+      elevation: 45,
+      shade: 0.3,
+      gleam: 2.5,
+      softness: 0,
+      span: 8,
+      playback: 0.2,
+    },
+  },
+  {
+    label: "pond",
+    hint: "Four metres of water with dust on it, lit from almost overhead. Small water is quick, which is the surprise.",
+    settings: {
+      seed: 660,
+      dots: 2600,
+      smallest: 0.004,
+      largest: 0.026,
+      sizeMix: 0.5,
+      hue: 44,
+      hueSpread: 4,
+      variance: 0.42,
+      trains: 4,
+      // Nothing below 15cm. Under about 2cm the water stops being a gravity wave
+      // at all and surface tension takes over, and this piece models only the
+      // first of those; the lower bound of the control is set where that is
+      // still a three per cent correction.
+      shortest: 0.15,
+      longest: 0.9,
+      steepness: 0.42,
+      peak: 0.6,
+      // Small water answers the wind fastest, so this is the gustiest scene
+      // here: a puddle goes from glass to shivering and back in seconds, which
+      // is a thing a pond does and an ocean cannot.
+      gusts: 0.62,
+      heading: 300,
+      spread: 26,
+      drift: 0.005,
+      bearing: 300,
+      eddies: 0.01,
+      gyre: 1.6,
+      stokes: 1,
+      // Almost overhead, and a wide gleam. Between them they make this the one
+      // scene that reads as *looking through* water rather than at it: the
+      // pieces hold their size and only move and fade, the way lights on the
+      // floor of a shallow pool do, and the trough of each ripple crosses as a
+      // dark band. `shade` is carrying that band and is high here for it.
+      exposure: 1,
+      glint: 0.9,
+      azimuth: 120,
+      elevation: 82,
+      shade: 0.62,
+      gleam: 9,
+      softness: 0,
+      span: 4,
+      playback: 0.6,
+    },
+  },
+  {
+    label: "migration",
+    hint: "A hard cross-current under a slack, wide-open sea, carrying a warm scatter of everything somewhere else.",
+    settings: {
+      seed: 208,
+      dots: 3530,
+      smallest: 0.004,
+      largest: 0.06,
+      sizeMix: 0.5,
+      hue: 38,
+      // The widest colour spread of any scene here, at the lowest variance: a
+      // lot of different things afloat, each of them lit evenly.
+      hueSpread: 55.5,
+      variance: 0.3,
+      trains: 3,
+      shortest: 0.31,
+      longest: 9.39,
+      // A tenth of the steepness the other seas run at, spread over a wide fan.
+      // Almost nothing gathers, which is the point — this is the one scene where
+      // the current is doing all of the work and the waves are only texture.
+      steepness: 0.2,
+      peak: 0.38,
+      gusts: 0.17,
+      heading: 132,
+      spread: 56,
+      // Four tenths of a metre a second, with eddies nearly twice that and gyres
+      // barely a metre across. Everything is going somewhere and the somewhere
+      // is different a metre away.
+      drift: 0.41,
+      bearing: 171,
+      eddies: 0.71,
+      gyre: 1.2,
+      // Above 1, so the waves carry harder than the physics says. At this
+      // steepness the true drift is a rounding error, and the exaggeration is
+      // what lets the sea contribute to the travelling at all.
+      stokes: 1.48,
+      exposure: 1,
+      // Low. With the sea this slack there is barely a facet anywhere pointed
+      // the right way, so most of what a glint control can do here is dim
+      // everything by its floor — turning it down instead lets the pieces be
+      // lit evenly, which is what a wide colour spread wants.
+      glint: 0.31,
+      azimuth: 68,
+      elevation: 52,
+      shade: 0.5,
+      gleam: 2,
+      softness: 0,
+      span: 7.66,
+      playback: 0.2,
+    },
+  },
+  {
+    label: "simmer",
+    hint: "A field of violet points that hold their places and breathe, in a haze that moves around them.",
+    settings: {
+      seed: 208,
+      dots: 4060,
+      smallest: 0.018,
+      largest: 0.267,
+      sizeMix: 0.58,
+      hue: 257,
+      hueSpread: 10,
+      // Nearly maximum, which is what sorts the field into a few dominant points
+      // and a great many faint ones. Without it every speck is the same speck
+      // and there is nothing for the eye to hold on to.
+      variance: 0.96,
+      trains: 6,
+      shortest: 1.03,
+      longest: 18.1,
+      steepness: 0.34,
+      peak: 0.9,
+      gusts: 0.52,
+      heading: 161,
+      spread: 93,
+      drift: 0.04,
+      bearing: 256,
+      eddies: 0.82,
+      gyre: 11.2,
+      stokes: 0.67,
+      exposure: 1,
+      glint: 0.8,
+      azimuth: 62,
+      // **Below what the water can reflect, and that is the whole scene.**
+      // Catching the light at 25° needs a surface tilted 32.5°, and a sea this
+      // slack never exceeds 19° anywhere. So not one speck ever glints: every
+      // one of them sits at the glint floor, evenly dimmed, and the glitter is
+      // switched off by putting the light out of the water's reach rather than
+      // by turning `glint` down.
+      elevation: 25,
+      // Which leaves `shade` as the only thing varying, and it reads wave
+      // *height* rather than tilt. The specks do not flare and, at this span,
+      // they do not move either — see below. They only brighten and dim as the
+      // crests pass through them.
+      shade: 0.56,
+      // Thirty pixels of halo on cores well under one. Every speck is almost
+      // entirely glow, so four thousand of them overlap into a nebulosity while
+      // their cores stay hard points inside it.
+      gleam: 30.5,
+      softness: 0,
+      // Two hundred and forty-one metres of water. The dominant train is four
+      // metres long and a quarter of a metre high, which at this scale is well
+      // under a pixel of displacement — measured, the whole population swings by
+      // 0.64 of one. So the points keep their positions and the sea is visible
+      // only as the haze around them coming and going. That is the piece running
+      // against its own grain, and it was found rather than designed.
+      span: 241,
+      // Doubled, alone among the scenes here, which are all slowed. Nothing in
+      // this one *travels*: the points hold their places and only the haze
+      // around them comes and goes, so there is no pattern for speed to give
+      // away and slowing it only stops the breathing. The same reasoning as
+      // everywhere else, arriving at the opposite number.
+      playback: 2,
+    },
+  },
+  {
+    label: "dream",
+    hint: "White water with flotsam-shaped holes in it: overlapping pieces blown past white, and the only dark left is the gaps between them.",
+    settings: {
+      seed: 208,
+      dots: 1210,
+      smallest: 0.115,
+      largest: 1.23,
+      // Flat enough that large pieces are common rather than rare, which is
+      // what gets the frame covered.
+      sizeMix: 0.59,
+      hue: 124,
+      // Every hue there is, and no variance at all: each piece one flat colour,
+      // and no two neighbours the same. The colour only survives where a piece
+      // is *alone*, which is why what you see of it is the edges.
+      hueSpread: 90,
+      variance: 0,
+      trains: 3,
+      shortest: 0.31,
+      longest: 9.39,
+      steepness: 0.2,
+      peak: 0.38,
+      gusts: 0.17,
+      heading: 132,
+      spread: 56,
+      drift: 0.41,
+      bearing: 171,
+      eddies: 0.71,
+      gyre: 1.2,
+      stokes: 1.48,
+      // **This is the scene, and it is not a mistake.** Big soft pieces at
+      // double exposure, covering the frame several times over, summed
+      // additively until nearly everything clips to white — so the only dark
+      // left anywhere is the cusps *between* overlapping pieces. The piece comes
+      // out inverted: white water with flotsam-shaped holes in it, drifting and
+      // breathing on the waves like everything else.
+      //
+      // Reached by saturation rather than by a light scheme, which the palette
+      // does not have and is not getting. `light` reads about 6.7 here — nearly
+      // seven canvases' worth — where every other scene is under one. Do not
+      // "fix" that number.
+      exposure: 2,
+      glint: 0.32,
+      azimuth: 136,
+      // Straight overhead, so the flat water between the crests is what catches
+      // the light and the wave faces go dark.
+      elevation: 90,
+      shade: 0.19,
+      // No glare at all. With pieces this large and this crowded there is
+      // nothing for it to do but wash out the cusps, which are the picture.
+      gleam: 0,
+      softness: 0.42,
+      span: 7.66,
+      playback: 0.6,
+    },
+  },
+]
+
+/** Bounds for every numeric setting, including the ones with no slider. */
+export const BOUNDS: Record<NumericKey, { min: number; max: number }> = {
+  ...(Object.fromEntries(
+    CONTROLS.flatMap((control) => keysOf(control).map((key) => [key, { min: control.min, max: control.max }])),
+  ) as Record<NumericKey, { min: number; max: number }>),
+  // Last, and deliberately: seed has no slider to derive bounds from.
+  seed: SEED_BOUNDS,
+}
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
+
+/** Settings that must hold whole numbers; a fractional train count is nonsense. */
+const INTEGER_KEYS: NumericKey[] = ["seed", "dots", "trains"]
+
+/**
+ * Fills gaps from `base` and forces every value into legal bounds.
+ *
+ * Every route that accepts settings from outside — the query string, the console
+ * API — comes through here, so the API cannot reach a state a URL could not.
+ */
+export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEFAULT_SETTINGS): Settings {
+  const settings = { ...base, ...patch }
+
+  for (const key of Object.keys(BOUNDS) as NumericKey[]) {
+    const bound = BOUNDS[key]
+    const value = Number(settings[key])
+    settings[key] = Number.isFinite(value) ? clamp(value, bound.min, bound.max) : base[key]
+    if (INTEGER_KEYS.includes(key)) settings[key] = Math.round(settings[key])
+  }
+
+  // A pair arriving reversed — from a hand-written URL, or from the API — is
+  // put back in order by moving the maximum, since with no key named there is
+  // nothing to say which end the caller meant.
+  if (settings.smallest > settings.largest) settings.largest = settings.smallest
+  if (settings.shortest > settings.longest) settings.longest = settings.shortest
+
+  return settings
+}
+
+/**
+ * Keeps a bound pair in order, moving whichever end is *not* being dragged.
+ *
+ * `normalizeSettings` can only push the maximum up, which fights someone
+ * dragging the maximum down past the minimum. Here the changed key is known, so
+ * the other end gives way. Same shape as Starry Night's `reconcile`, and it is
+ * here rather than in the kit for the same reason: which pairs exist is the
+ * piece's knowledge.
+ */
+export function reconcile(next: Settings, changed: NumericKey): Settings {
+  const pairs: [NumericKey, NumericKey][] = [
+    ["smallest", "largest"],
+    ["shortest", "longest"],
+  ]
+
+  for (const [low, high] of pairs) {
+    if (changed === low && next[low] > next[high]) return { ...next, [high]: next[low] }
+    if (changed === high && next[high] < next[low]) return { ...next, [low]: next[high] }
+  }
+
+  return next
+}
+
+/**
+ * Reads settings from a query string.
+ *
+ * An absent param is `null` and `Number(null)` is 0, which is a legal value for
+ * most of these — reading them with a bare `Number()` would silently still the
+ * current, flatten the sea and put the light on the horizon. Absent, blank and
+ * unparseable are all skipped so the default survives.
+ */
+export function settingsFromQuery(params: URLSearchParams): Settings {
+  const patch: Partial<Settings> = {}
+
+  for (const key of Object.keys(BOUNDS) as NumericKey[]) {
+    const raw = params.get(key)
+    if (raw === null || raw.trim() === "") continue
+    const value = Number(raw)
+    if (Number.isFinite(value)) patch[key] = value
+  }
+
+  return normalizeSettings(patch)
+}
+
+/** Only values that differ from the defaults, so shared URLs stay readable. */
+export function settingsToQuery(settings: Settings): URLSearchParams {
+  const params = new URLSearchParams()
+  for (const key of Object.keys(BOUNDS) as NumericKey[]) {
+    if (settings[key] !== DEFAULT_SETTINGS[key]) params.set(key, String(settings[key]))
+  }
+  return params
+}
+
+/**
+ * The address that restores exactly this scene.
+ *
+ * One definition with two callers — the chrome, which rewrites the URL on every
+ * change, and the page, which rewrites it once on landing.
+ */
+export function urlForSettings(settings: Settings, pathname: string): string {
+  const query = settingsToQuery(settings).toString()
+  return `${pathname}${query ? `?${query}` : ""}`
+}
+
+/**
+ * Whether a query string names any setting at all.
+ *
+ * The same rule `settingsFromQuery` applies, and it has to stay the same rule:
+ * absent, blank and unparseable are all "not a setting" there, so a URL made
+ * only of those is one the piece would read as carrying nothing.
+ */
+function namesASetting(params: URLSearchParams): boolean {
+  return (Object.keys(BOUNDS) as NumericKey[]).some((key) => {
+    const raw = params.get(key)
+    return raw !== null && raw.trim() !== "" && Number.isFinite(Number(raw))
+  })
+}
+
+/**
+ * The scene a freshly-opened URL should show.
+ *
+ * `featured` says the caller should rewrite the address, so a landing visitor
+ * has a URL describing the scene in front of them rather than one standing for
+ * "whatever is featured". The first preset is the defaults here, unlike
+ * Dangler's — the defaults were recorded as a landing scene from the start
+ * rather than being retrofitted — but the indirection stays, because that is
+ * what lets the featured scene change later without invalidating a link.
+ */
+export function settingsForLanding(params: URLSearchParams): { settings: Settings; featured: boolean } {
+  if (namesASetting(params)) return { settings: settingsFromQuery(params), featured: false }
+  return { settings: normalizeSettings(PRESETS[0]!.settings), featured: true }
+}
+
+/**
+ * Whether a change needs the flotsam rebuilt.
+ *
+ * Deliberately short, and it deliberately does not include the sea: turning the
+ * steepness up rebuilds the waves and leaves every piece exactly where it is,
+ * because rebuilding the population would throw away the positions the current
+ * has spent a minute establishing.
+ */
+export function needsScatter(before: Settings, after: Settings): boolean {
+  return (
+    before.seed !== after.seed ||
+    before.dots !== after.dots ||
+    before.smallest !== after.smallest ||
+    before.largest !== after.largest ||
+    before.sizeMix !== after.sizeMix ||
+    before.hue !== after.hue ||
+    before.hueSpread !== after.hueSpread ||
+    before.variance !== after.variance
+  )
+}
+
+/** Whether a change needs the wave trains rebuilt. */
+export function needsSea(before: Settings, after: Settings): boolean {
+  return (
+    before.seed !== after.seed ||
+    before.trains !== after.trains ||
+    before.shortest !== after.shortest ||
+    before.longest !== after.longest ||
+    before.steepness !== after.steepness ||
+    before.peak !== after.peak ||
+    before.gusts !== after.gusts ||
+    before.heading !== after.heading ||
+    before.spread !== after.spread
+  )
+}

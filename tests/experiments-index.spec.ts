@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test"
 import { expect, test } from "./support/experiment.ts"
 
 /**
@@ -14,8 +15,25 @@ import { expect, test } from "./support/experiment.ts"
 
 const EXPECTED = [
   { slug: "dangler", title: "Dangler" },
+  { slug: "flotsam", title: "Flotsam" },
   { slug: "starry-night", title: "Starry Night" },
 ]
+
+/**
+ * The slug of whichever plate is first, read off the page rather than written
+ * down.
+ *
+ * The index sorts by `updated`, so the first plate changes whenever any piece is
+ * touched — naming it here made three tests fail on the arrival of a third
+ * experiment, for no reason connected to what they were checking. The panel test
+ * below already derives its count for the same reason.
+ */
+async function firstPlateSlug(page: Page): Promise<string> {
+  const href = await page.locator(".plate").first().locator("a.open").getAttribute("href")
+  const slug = href?.match(/^\/experiments\/([^/]+)\/$/)?.[1]
+  if (!slug) throw new Error(`the first plate does not link to a piece: ${href}`)
+  return slug
+}
 
 test("lists every experiment, each with a poster that actually loaded", async ({ page }) => {
   await page.goto("/experiments/")
@@ -42,19 +60,25 @@ test("the caption sits over the plate's link without swallowing it", async ({ pa
   // Playwright refuses that one because it can see `a.open` "intercepting" the
   // event, which is exactly the arrangement under test. What a person does is
   // press at those coordinates, so that is what this does.
+  const slug = await firstPlateSlug(page)
   const summary = page.locator(".plate").first().locator(".summary")
   const box = await summary.boundingBox()
   if (!box) throw new Error("the caption has no box to click")
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
 
-  await expect(page).toHaveURL(/\/experiments\/dangler\/\?/)
+  // The piece, not the piece with a query string on it. This used to insist on a
+  // `?`, because Dangler rewrites the address on landing to name the scene it
+  // opened on — but a piece whose defaults *are* its featured scene has nothing
+  // to rewrite and lands bare, which is correct and is not what this is about.
+  await expect(page).toHaveURL(new RegExp(`/experiments/${slug}/(\\?|$)`))
 })
 
 test("about is the one thing on the caption that catches its own click", async ({ page }) => {
   await page.goto("/experiments/")
 
+  const slug = await firstPlateSlug(page)
   await page.locator(".plate").first().locator("a.note").click()
-  await expect(page).toHaveURL(/\/experiments\/dangler\/about\/$/)
+  await expect(page).toHaveURL(new RegExp(`/experiments/${slug}/about/$`))
 })
 
 test("a plate is two tab stops, not two links to the same place", async ({ page }) => {
@@ -62,10 +86,11 @@ test("a plate is two tab stops, not two links to the same place", async ({ page 
 
   // The poster used to be a second anchor to the piece, which meant a second tab
   // stop and a second announcement of one destination.
+  const slug = await firstPlateSlug(page)
   const links = page.locator(".plate").first().locator("a")
   await expect(links).toHaveCount(2)
-  await expect(links.nth(0)).toHaveAttribute("href", "/experiments/dangler/")
-  await expect(links.nth(1)).toHaveAttribute("href", "/experiments/dangler/about/")
+  await expect(links.nth(0)).toHaveAttribute("href", `/experiments/${slug}/`)
+  await expect(links.nth(1)).toHaveAttribute("href", `/experiments/${slug}/about/`)
 })
 
 test("the panel names the artist and counts the room from the work in it", async ({ page }) => {

@@ -24,7 +24,17 @@ import { toggleFullscreen } from "@/experiments/kit/fullscreen"
  * with a piece's own stylesheet: `.bar`, `.panel`, `.group`, `.row`, `.label`,
  * `.value`, `.span`, `.modes`, `.mode`, `.preset`, `.toggle`, `.copy`, `.about`.
  * A piece that uses a control kind it has no CSS for will render it unstyled and
- * nothing will say so — that has happened here before.
+ * nothing will say so — that has happened here twice now, and
+ * `tests/kit.spec.ts` checks the range row's layout because of the second time.
+ *
+ * **Those names are the kit's, and a setting key must not be able to land in the
+ * same namespace.** An individual slider carries its key as `data-key` rather
+ * than as a class, which it used to. Flotsam has a setting called `span`, and a
+ * class of that name put the kit's own two-handled-track rules onto a plain
+ * slider: it came out lit on both sides of its knob, from a filled interval
+ * painted by a rule meant for a different element entirely. Nothing selected on
+ * the key class, so moving it costs nothing and closes the collision for every
+ * structural name at once.
  */
 
 /** Idle gap before the pointer and the controls both disappear, video-player style. */
@@ -38,7 +48,23 @@ type Shared = {
   group?: string
 }
 
-type Numeric = Shared & { min: number; max: number; step: number }
+/**
+ * How a value is laid out along its track.
+ *
+ * `"log"` requires a **positive minimum**, and is for a control whose range
+ * spans orders of magnitude. Flotsam's `span` runs from a puddle to open water,
+ * a factor of eighty; laid out linearly, everything below a room-sized frame
+ * sits in the first two per cent of the track and the whole intimate half of the
+ * piece is unreachable with a mouse. Nothing in Dangler or Starry Night needs
+ * this — their ranges all sit inside one order of magnitude — which is why the
+ * default is linear and why this arrived with the third piece rather than the
+ * first.
+ */
+export type Scale = "linear" | "log"
+
+type Track = { min: number; max: number; step: number; scale?: Scale }
+
+type Numeric = Shared & Track
 
 export type SliderControl<K> = Numeric & {
   kind: "slider"
@@ -77,6 +103,46 @@ export type ToggleControl<K> = Shared & {
 export type Control<K> = SliderControl<K> | RangeControl<K> | ChoiceControl<K> | ToggleControl<K>
 
 export const keysOf = <K>(control: Control<K>): K[] => (control.kind === "range" ? control.keys : [control.key])
+
+/**
+ * Positions a log track is divided into.
+ *
+ * A range input holds a *position* rather than a value on a log control, because
+ * the element's own `step` is uniform and a log track's is not. A thousand is
+ * finer than a pointer can resolve on any track a person will drag, so the
+ * quantisation a reader sees is `valueAtPosition`'s, not this one's.
+ */
+export const LOG_STEPS = 1000
+
+/** Where a value sits along its track, 0 at the left stop and 1 at the right. */
+export function positionOf(track: Track, value: number): number {
+  if (track.scale !== "log") {
+    const span = track.max - track.min || 1
+    return Math.min(1, Math.max(0, (value - track.min) / span))
+  }
+  const low = Math.max(track.min, Number.MIN_VALUE)
+  const clamped = Math.min(track.max, Math.max(low, value))
+  return Math.log(clamped / low) / Math.log(track.max / low)
+}
+
+/**
+ * The value a position stands for, rounded to something a person would write.
+ *
+ * `step` is a floor rather than the grid: a track from 0.15 to 40 needs
+ * hundredths at the bottom and whole numbers at the top, so the value is snapped
+ * to three significant figures unless `step` is coarser. The final `toPrecision`
+ * is not cosmetic — without it a snapped value arrives as 0.30000000000000004
+ * and goes into a shared URL that way.
+ */
+export function valueAtPosition(track: Track, position: number): number {
+  const t = Math.min(1, Math.max(0, position))
+  if (track.scale !== "log") return track.min + t * (track.max - track.min)
+
+  const low = Math.max(track.min, Number.MIN_VALUE)
+  const raw = low * (track.max / low) ** t
+  const quantum = Math.max(track.step, 10 ** (Math.floor(Math.log10(raw)) - 2))
+  return Number((Math.round(raw / quantum) * quantum).toPrecision(10))
+}
 
 export type Preset<S> = { label: string; hint: string; settings: S }
 
@@ -245,13 +311,16 @@ export function createControls<S extends object>(options: Options<S>): Controls<
 
   function makeSlider(control: SliderControl<string & keyof S> | RangeControl<string & keyof S>, key: string) {
     const slider = document.createElement("input")
+    const log = control.scale === "log"
     slider.type = "range"
-    slider.min = String(control.min)
-    slider.max = String(control.max)
-    slider.step = String(control.step)
-    slider.className = key
+    slider.min = log ? "0" : String(control.min)
+    slider.max = log ? String(LOG_STEPS) : String(control.max)
+    slider.step = log ? "1" : String(control.step)
+    // The key as data, never as a class — see the namespace note at the top.
+    slider.dataset.key = key
     slider.addEventListener("input", () => {
-      apply(normalize({ ...current, [key]: Number(slider.value) }, key as string & keyof S))
+      const value = log ? valueAtPosition(control, Number(slider.value) / LOG_STEPS) : Number(slider.value)
+      apply(normalize({ ...current, [key]: value }, key as string & keyof S))
     })
     sliders.set(key, slider)
     return slider
@@ -347,13 +416,15 @@ export function createControls<S extends object>(options: Options<S>): Controls<
         continue
       }
 
-      const position = (key: string) =>
-        ((Number(current[key as keyof S]) - control.min) / (control.max - control.min || 1)) * 100
+      const position = (key: string) => positionOf(control, Number(current[key as keyof S])) * 100
 
       for (const key of keysOf(control)) {
         const slider = sliders.get(key)
         if (!slider) continue
-        slider.value = String(current[key as keyof S])
+        slider.value =
+          control.scale === "log"
+            ? String(Math.round(positionOf(control, Number(current[key as keyof S])) * LOG_STEPS))
+            : String(current[key as keyof S])
         // Webkit has no ::-moz-range-progress equivalent, so the filled portion
         // is drawn as a gradient and needs the position handed to CSS.
         slider.style.setProperty("--fill", `${position(key)}%`)

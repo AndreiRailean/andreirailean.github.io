@@ -9,26 +9,26 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Dangler</title>
+    <title>Flotsam</title>
     <meta
       name="description"
-      content="Strings of lights hanging from something unseen overhead, looked at from below."
+      content="Specks on dark water, seen from above, shaken by waves that never take them anywhere."
     />
     <style is:global>
-      /* No light scheme and no invert. Inverting a piece whose whole subject is
-         emitted light gives dark dots on white, which is a different piece. */
+      /* Dark only. The subject is a few lit things on black water; inverted it
+         would be dark dots on white, which is a different piece. */
       html {
-        --ground: #05070c;
-        --accent: hsl(38, 62%, 62%);
+        --ground: #04080b;
+        --accent: hsl(202, 58%, 62%);
         --ui-text: rgb(255 255 255 / 72%);
         --ui-label: rgb(255 255 255 / 50%);
         --ui-heading: rgb(255 255 255 / 34%);
-        --ui-panel: rgb(8 10 18 / 84%);
-        --ui-chip: rgb(10 12 22 / 74%);
+        --ui-panel: rgb(6 12 16 / 84%);
+        --ui-chip: rgb(8 14 19 / 74%);
         --ui-edge: rgb(255 255 255 / 12%);
         --ui-edge-hover: rgb(255 255 255 / 30%);
-        --ui-on-bg: hsl(38, 40%, 40%);
-        --ui-on-text: hsl(38, 60%, 95%);
+        --ui-on-bg: hsl(202, 38%, 38%);
+        --ui-on-text: hsl(202, 60%, 95%);
         --ui-on-edge: rgb(255 255 255 / 38%);
         --track: rgb(255 255 255 / 16%);
         --ui-fade: 0.35s;
@@ -122,9 +122,9 @@
         border-color: var(--ui-on-edge);
       }
 
-      /* Two dozen rows, so the panel takes as much height as there is and only
-         scrolls when it genuinely cannot fit. The reserve is the chrome bar
-         below it plus its gap and the window inset. */
+      /* Twenty-one rows under five headings, so the panel takes as much height
+         as there is and only scrolls when it genuinely cannot fit. The reserve
+         is the chrome bar below it plus its gap and the window inset. */
       .panel {
         display: flex;
         flex-direction: column;
@@ -159,7 +159,7 @@
 
       .row {
         display: grid;
-        grid-template-columns: 6.75rem 1fr 4.25rem;
+        grid-template-columns: 6.75rem 1fr 5.25rem;
         align-items: center;
         gap: 0.6rem;
       }
@@ -171,6 +171,72 @@
       .value {
         text-align: right;
         font-variant-numeric: tabular-nums;
+      }
+
+      /* Two handles on **one** track, for the size and wavelength pairs, and
+         verbatim from Starry Night because a bound pair should not be a
+         different object in the next room. The kit renders DOM and not
+         appearance, so a piece that uses a control kind it has no CSS for gets
+         it unstyled and nothing says so — which is exactly what happened here:
+         the first version stacked the two inputs one above the other, and two
+         separate tracks cannot show a range. The filled interval is painted by
+         the row itself between `--from` and `--to`; the inputs are transparent
+         and only their thumbs take the pointer. */
+      .span {
+        position: relative;
+        height: 1rem;
+      }
+
+      /* Both are decoration and neither may take a press. They are the last
+         children of the row in paint order, so without this the filled bar sits
+         *on top of* the two inputs — and its left edge lands exactly on the
+         lower thumb, which then cannot be grabbed at all. The upper thumb sits
+         on the bar's right edge and is outside it by a pixel, which is why only
+         one of the two handles appeared broken. */
+      .span::before,
+      .span::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        height: 0.25rem;
+        border-radius: 999px;
+        transform: translateY(-50%);
+        pointer-events: none;
+      }
+
+      .span::before {
+        right: 0;
+        left: 0;
+        background: var(--track);
+      }
+
+      .span::after {
+        right: calc(100% - var(--to, 100%));
+        left: var(--from, 0%);
+        background: var(--accent);
+      }
+
+      .span input[type="range"] {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+
+      .span input[type="range"]::-webkit-slider-runnable-track {
+        background: transparent;
+      }
+
+      .span input[type="range"]::-webkit-slider-thumb {
+        pointer-events: auto;
+      }
+
+      .span input[type="range"]::-moz-range-track,
+      .span input[type="range"]::-moz-range-progress {
+        background: transparent;
+      }
+
+      .span input[type="range"]::-moz-range-thumb {
+        pointer-events: auto;
       }
 
       .row.copy {
@@ -242,33 +308,34 @@
     </style>
   </head>
   <body>
-    <canvas id="lights"></canvas>
+    <canvas id="water"></canvas>
     <div id="ui"></div>
 
     <script>
-      import { createDangler } from "@/experiments/dangler/dangler"
+      import { createFlotsam } from "@/experiments/flotsam/flotsam"
       import { createControls } from "@/experiments/kit/controls"
-      import { reroll } from "@/experiments/dangler/reroll"
+      import { reroll } from "@/experiments/flotsam/reroll"
       import {
         CONTROLS,
         GROUP_ORDER,
         PRESETS,
         normalizeSettings,
+        reconcile,
         settingsForLanding,
         urlForSettings,
-      } from "@/experiments/dangler/settings"
-      import { announceApi, createApi } from "@/experiments/dangler/api"
+      } from "@/experiments/flotsam/settings"
+      import { announceApi, createApi } from "@/experiments/flotsam/api"
       import { keepAwake } from "@/experiments/kit/wakelock"
 
       function requireElement<T extends Element>(id: string, type: new () => T): T {
         const element = document.getElementById(id)
         if (!(element instanceof type)) {
-          throw new Error(`Dangler: missing #${id}`)
+          throw new Error(`Flotsam: missing #${id}`)
         }
         return element
       }
 
-      const canvas = requireElement("lights", HTMLCanvasElement)
+      const canvas = requireElement("water", HTMLCanvasElement)
       const ui = requireElement("ui", HTMLDivElement)
 
       // Read once and reused below. The escape hatches are pulled from the same
@@ -276,30 +343,27 @@
       // rewrite at the end of this script changes what that says.
       const params = new URLSearchParams(window.location.search)
 
-      // A URL naming no settings lands on the first preset rather than on the
-      // defaults; see `settingsForLanding`. The defaults stay exactly what they
-      // were, so every URL already shared still means what it meant.
       const { settings, featured } = settingsForLanding(params)
 
-      /** Hue reaches the chrome so the controls pick up the colour of the lights. */
+      /** Hue reaches the chrome so the controls take the colour of the light. */
       function applyTheme(next: { hue: number }) {
-        document.documentElement.style.setProperty("--accent", `hsl(${next.hue}, 62%, 62%)`)
-        document.documentElement.style.setProperty("--ui-on-bg", `hsl(${next.hue}, 40%, 40%)`)
+        document.documentElement.style.setProperty("--accent", `hsl(${next.hue}, 58%, 62%)`)
+        document.documentElement.style.setProperty("--ui-on-bg", `hsl(${next.hue}, 38%, 38%)`)
         document.documentElement.style.setProperty("--ui-on-text", `hsl(${next.hue}, 60%, 95%)`)
       }
 
       applyTheme(settings)
 
-      const scene = createDangler(canvas, settings)
+      const scene = createFlotsam(canvas, settings)
       scene.start()
 
       // The chrome comes from the kit — offered, not imposed; see
       // src/experiments/docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.
-      // Everything below is Dangler's own: which rows exist, how they group, the
+      // Everything below is Flotsam's own: which rows exist, how they group, the
       // one validator every input goes through, and what a scene's address is.
       const controls = createControls({
         root: ui,
-        aboutHref: "/experiments/dangler/about/",
+        aboutHref: "/experiments/flotsam/about/",
         settings,
         controls: CONTROLS,
         presets: PRESETS,
@@ -308,13 +372,16 @@
           {
             label: "reroll",
             shortcut: "r",
-            hint: "A fresh arrangement of strands and bulbs. The seed travels in the address bar.",
+            hint: "A fresh sea and a fresh scattering. The seed travels in the address bar.",
             run: (chrome) => reroll(chrome),
           },
         ],
-        normalize: (next) => normalizeSettings(next),
+        // `reconcile` before the clamp, and only for the key actually moved: it
+        // is what lets the upper handle of a bound pair be dragged down past the
+        // lower one instead of fighting it.
+        normalize: (next, changed) => normalizeSettings(changed ? reconcile(next, changed) : next),
         url: (next) => urlForSettings(next, window.location.pathname),
-        copyLabel: "copy link to this scene",
+        copyLabel: "copy link to this water",
         onChange: (next) => {
           applyTheme(next)
           scene.setSettings(next)
@@ -337,8 +404,11 @@
       const idleParam = params.get("idle")
       if (idleParam !== null) api.idle(idleParam !== "0")
       if (params.get("debug") === "1") api.debug(true)
-      // A still taken mid-relaxation shows a shape the piece never holds.
-      if (params.get("settle") === "1") api.settle()
+      // The gathering takes a wave period or two to establish, and wave drift
+      // takes far longer, so a still of frame one is a still of water that has
+      // not started yet.
+      const run = Number(params.get("run"))
+      if (Number.isFinite(run) && run > 0) api.run(run)
 
       // Last, so the escape hatches above are read from the URL as opened. The
       // address now describes the scene on screen, which means a link copied

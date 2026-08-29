@@ -1,4 +1,22 @@
 /**
+ * Holding the screen awake while a piece is on show, as a video player does.
+ *
+ * **Offered, not imposed**, like everything else in the kit: a piece composes it
+ * because these are meant to be left running and a sleeping display defeats
+ * that, and a piece that wants something else is free to do something else.
+ *
+ * Two things shape the implementation. Screen Wake Lock is a secure-context
+ * API, so it is simply absent over plain http to anything but localhost —
+ * viewing a piece from another machine by IP silently gets no lock. And the
+ * browser drops the lock whenever the page stops being visible, so it has to be
+ * taken again on the way back rather than assumed to persist.
+ *
+ * Hoisted here from the pieces' three identical copies when the third one
+ * arrived, which is the condition ADR-0002 set and
+ * `docs/adr/20260829-the-third-copy-moves-to-the-kit` records being met.
+ */
+
+/**
  * Holds the screen awake while the piece is on show, as a video player does.
  * This is meant to be left running, and a sleeping display defeats that.
  *

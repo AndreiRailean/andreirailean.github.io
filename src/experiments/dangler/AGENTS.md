@@ -198,11 +198,14 @@ screen — a wrong strand and a right one both look like a scatter of dots.
 | `controls.ts`    | the panel, idle hiding, URL sync                                            |
 | `api.ts`         | `window.experiment`                                                         |
 
-`fullscreen.ts` and `wakelock.ts`, and `copyText` in `controls.ts`, are copied
-verbatim from Starry Night. ADR-0002 defers extracting anything shared until a
-second _and_ a third experiment exist; this is the second, so the duplication is
-the evidence for that decision rather than a shortcut around it. **Fix a bug in
-either copy and fix it in both.**
+The chrome, the fullscreen toggle, the clipboard and the wake lock all come
+from `../kit/` now. They were copied verbatim from Starry Night while this was
+the second experiment, which was the point rather than a shortcut — ADR-0002
+defers extracting anything shared until a second _and_ a third experiment want
+it. Flotsam is the third, and
+`../docs/adr/20260829-the-third-copy-moves-to-the-kit.md` records the last of
+them being hoisted. Nothing here is duplicated with another piece any more; if
+you find something that is, that is a bug rather than a policy.
 
 ## Known, not fixed
 
