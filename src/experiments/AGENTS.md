@@ -145,9 +145,63 @@ sees anything visual.
   piece itself uses. Reaching for bare `node --experimental-strip-types` on a
   module still does not — that is what the runners are for.
 
-## Don't generalise yet
+## Three layers: the piece, the gallery, the kit
 
-There is intentionally **no shared experiment layout, theme, or component**. Each
-one owns its look, and each renders its own about page. The section will get a
-theme of its own eventually, but not before a second and third experiment show
-what is actually common. Resist extracting an abstraction from a sample of one.
+Recorded in `docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.md`,
+which supersedes ADR-0002's blanket "no shared anything". What separates the two
+shared layers is **who is spared the relearning**.
+
+- **The piece owns its rendering, completely.** Palette, motion, geometry, what
+  it draws, its settings and presets. Nothing shared reaches inside that, and it
+  is not up for revisiting — it is the half of ADR-0002 that survives.
+- **`gallery/` is imposed.** The index, the notes, the way out — what a visitor
+  crosses _between_ pieces. `gallery/Note.astro` renders every note: an
+  experiment passes a `NoteTheme` and a script booting its own piece behind the
+  sheet, and chooses nothing else. It does not get to move the exit, because a
+  visitor should not have to find it twice.
+- **`kit/` is offered.** Parts a piece builds its _own_ chrome from:
+  `controls.ts`, `fullscreen.ts`, `copy.ts`, `wakelock.ts`. Compose them because
+  they are already learned; ignore them if the piece needs a different control
+  structure. The art ends at the console API, so controls sit outside that
+  boundary. Using the kit is never a reason to refuse a piece something; quietly
+  re-implementing what it already does well is the thing to avoid.
+- **Neither imports from a piece.** Lift `kit/` out with an experiment and the
+  experiment still runs.
+
+### What joins the kit, and when
+
+**A part is hoisted when a third piece wants it, not when a second does.** That
+is ADR-0002's rule, kept deliberately by its successor, and it has now been
+exercised in both directions:
+
+- `wakelock.ts` moved in when Flotsam was about to make it a third byte-identical
+  copy — `docs/adr/20260829-the-third-copy-moves-to-the-kit.md`.
+- `random.ts` did **not**, and stays duplicated on purpose. Two pieces have it and
+  Starry Night wants none of it. Copying it copies a choice about scale that does
+  not travel: Dangler's R2 sequence is right for eighty anchors and is a visible
+  lattice at nine thousand specks —
+  `docs/adr/20260829-a-low-discrepancy-scatter-does-not-scale.md`.
+
+### The kit renders DOM, not appearance
+
+The class names are the contract with each piece's stylesheet: `.bar`, `.panel`,
+`.group`, `.row`, `.label`, `.value`, `.span`, `.modes`, `.mode`, `.preset`,
+`.toggle`, `.copy`, `.about`. **Those names are the kit's**, and a setting key
+must not be able to land in the same namespace — a slider carries its key as
+`data-key`, not as a class, because Flotsam has a setting called `span` and a
+class of that name pulled the two-handled-track rules onto a plain slider.
+
+**The chrome CSS is still per-piece, and it is where every kit bug so far has
+come from.** Around 460 near-identical lines across three pages. Both slider
+faults were CSS, and each failed in a way tests of geometry could not see: the
+range row's filled bar took pointer events and made its lower handle
+un-grabbable — shipped in Starry Night from the day it had a range control, then
+inherited by Flotsam along with the copied rules — and Flotsam's own `.span`
+stacked two tracks instead of overlaying one. `tests/kit.spec.ts` presses a real
+mouse on both handles of every piece that has a bound pair, because that is the
+only thing that catches it. By the third-copy rule above, the structural half of
+this CSS is now due to move.
+
+- **A piece using a control kind it has no CSS for renders it unstyled and
+  nothing says so.** That has happened twice. Dangler still has no `.modes`
+  rules, because it has no choice or toggle row.
