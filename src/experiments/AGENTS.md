@@ -145,9 +145,72 @@ sees anything visual.
   piece itself uses. Reaching for bare `node --experimental-strip-types` on a
   module still does not — that is what the runners are for.
 
-## Don't generalise yet
+## Three layers: the piece, the gallery, the kit
 
-There is intentionally **no shared experiment layout, theme, or component**. Each
-one owns its look, and each renders its own about page. The section will get a
-theme of its own eventually, but not before a second and third experiment show
-what is actually common. Resist extracting an abstraction from a sample of one.
+Recorded in `docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.md`,
+which supersedes ADR-0002's blanket "no shared anything". What separates the two
+shared layers is **who is spared the relearning**.
+
+- **The piece owns its rendering, completely.** Palette, motion, geometry, what
+  it draws, its settings and presets. Nothing shared reaches inside that, and it
+  is not up for revisiting — it is the half of ADR-0002 that survives.
+- **`gallery/` is imposed.** The index, the notes, the way out — what a visitor
+  crosses _between_ pieces. `gallery/Note.astro` renders every note: an
+  experiment passes a `NoteTheme` and a script booting its own piece behind the
+  sheet, and chooses nothing else. It does not get to move the exit, because a
+  visitor should not have to find it twice.
+- **`kit/` is offered.** Parts a piece builds its _own_ chrome from:
+  `controls.ts`, `fullscreen.ts`, `copy.ts`, `wakelock.ts`. Compose them because
+  they are already learned; ignore them if the piece needs a different control
+  structure. The art ends at the console API, so controls sit outside that
+  boundary. Using the kit is never a reason to refuse a piece something; quietly
+  re-implementing what it already does well is the thing to avoid.
+- **Neither imports from a piece.** Lift `kit/` out with an experiment and the
+  experiment still runs.
+
+### What joins the kit, and when
+
+**A part is hoisted when a third piece wants it, not when a second does.** That
+is ADR-0002's rule, kept deliberately by its successor, and it has now been
+exercised in both directions:
+
+- `wakelock.ts` moved in when Flotsam was about to make it a third byte-identical
+  copy — `docs/adr/20260829-the-third-copy-moves-to-the-kit.md`.
+- `random.ts` did **not**, and stays duplicated on purpose. Two pieces have it and
+  Starry Night wants none of it. Copying it copies a choice about scale that does
+  not travel: Dangler's R2 sequence is right for eighty anchors and is a visible
+  lattice at nine thousand specks —
+  `docs/adr/20260829-a-low-discrepancy-scatter-does-not-scale.md`.
+
+### The kit renders the chrome, and dresses it
+
+`kit/controls.css` holds the appearance as well as `controls.ts` holding the
+behaviour. They were separate until three pieces had hand-written near-identical
+copies of those rules, and **every kit bug so far had come out of that gap** —
+a range row's filled bar taking pointer events so its lower handle could not be
+grabbed, which shipped in Starry Night the day it had a range control and reached
+Flotsam by being copied; and Flotsam's `.span` stacking two tracks where a range
+needs one overlaid. Neither was a mistake about how a piece should look. Both
+were mistakes about how the chrome _works_, made in a file with no reason to know.
+
+- **Structure is the kit's.** What stacks where, what takes a pointer, how a
+  two-handled track is assembled. A piece does not get to redecide these, for
+  the same reason it does not get to move the note's exit.
+- **Appearance is a token contract**, listed at the top of `controls.css`:
+  `--ui-text`, `--ui-label`, `--ui-heading`, `--ui-panel`, `--ui-chip`,
+  `--ui-edge`, `--ui-edge-hover`, `--ui-on-bg`/`-text`/`-edge`, `--accent`,
+  `--track`, `--ui-fade`, plus four measures the pieces legitimately disagree
+  about — `--ui-label-col`, `--ui-value-col`, `--ui-panel-min`, `--ui-row-gap`.
+  Every one has a fallback, so chrome works before a piece sets any of them.
+  Starry Night drives the whole thing a second time from its inverted scheme.
+- **Import it in the page's frontmatter**, so it is a real stylesheet in the
+  head rather than something the client script injects.
+- **Still offered.** A piece that wants different chrome declines the import,
+  exactly as it can decline `controls.ts`. The three tokens' worth of theming is
+  the cheap path, not the only one.
+
+The class names are the kit's namespace — `.bar`, `.panel`, `.group`, `.row`,
+`.label`, `.value`, `.span`, `.modes`, `.mode`, `.preset`, `.toggle`, `.copy`,
+`.about` — and **a setting key must not be able to land in it**. A slider carries
+its key as `data-key`, not as a class, because Flotsam has a setting called `span`
+and a class of that name pulled the two-handled-track rules onto a plain slider.
