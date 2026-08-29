@@ -21,7 +21,8 @@
  * whole sea back to its starting arrangement every time a colour changed.
  */
 
-import { gaussian, hashSeed, homeFor, makeRng } from "@/experiments/flotsam/random"
+import { homeFor } from "@/experiments/flotsam/random"
+import { gaussian, hashSeed, makeRng } from "@/experiments/kit/random"
 import { sizeResponse, stokesDrift, type Sea } from "@/experiments/flotsam/waves"
 
 /** Salts, so a speck's size, colour and home cannot correlate with each other. */
