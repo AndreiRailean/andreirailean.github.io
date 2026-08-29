@@ -69,19 +69,31 @@ for (const slug of PIECES) {
   })
 
   /**
-   * A bound pair is two handles on **one** track.
+   * A bound pair is two handles on **one** track, and both of them can be
+   * grabbed.
    *
-   * The kit renders DOM, not appearance: the class names are the contract with a
-   * piece's own stylesheet, and a piece that uses a control kind it has no CSS
-   * for gets it unstyled with nothing to say so. That is written down in
-   * `kit/controls.ts` and it still caught Flotsam out — its first `.span` rule
-   * stacked the two inputs one above the other, which is two ranges rather than
-   * a range, and it looked deliberate.
+   * Two separate bugs, one of which had been shipped in Starry Night since the
+   * range control existed and was inherited by the next piece to use one.
+   *
+   * The kit renders DOM, not appearance: the class names are its contract with a
+   * piece's stylesheet, and a control kind a piece has no CSS for renders
+   * unstyled with nothing to say so. Flotsam's first `.span` rule stacked the two
+   * inputs one above the other, which is two ranges rather than a range, and it
+   * looked deliberate.
+   *
+   * The second is why this test presses a real mouse rather than checking
+   * geometry. The filled bar between the handles is a pseudo-element, so it is
+   * the row's *last* child in paint order and sits on top of both inputs — and
+   * its left edge lands exactly on the lower thumb, which therefore could not be
+   * grabbed at all. The upper thumb sits on the bar's right edge, a pixel
+   * outside it, and worked fine; so the row was half broken in a way that looked
+   * like a knack rather than a bug, and no assertion about layout would ever
+   * have caught it.
    *
    * Skipped for a piece with no bound pair rather than asserted absent; Dangler
    * has none and is not wrong for it.
    */
-  test(`${slug}: a bound pair is two handles on one track, not two tracks`, async ({ page }) => {
+  test(`${slug}: both handles of a bound pair sit on one track and can be dragged`, async ({ page }) => {
     const experiment = await openExperiment<BaseApi>(page, slug, { idle: false })
     await experiment.api(({ api }) => api.panel(true))
 
@@ -91,19 +103,57 @@ for (const slug of PIECES) {
 
     for (let i = 0; i < count; i++) {
       const span = spans.nth(i)
-      await expect(span.locator("input[type=range]")).toHaveCount(2)
+      const inputs = span.locator("input[type=range]")
+      await expect(inputs).toHaveCount(2)
 
       const track = await span.boundingBox()
-      const first = await span.locator("input[type=range]").nth(0).boundingBox()
-      const second = await span.locator("input[type=range]").nth(1).boundingBox()
+      const first = await inputs.nth(0).boundingBox()
+      const second = await inputs.nth(1).boundingBox()
       if (!track || !first || !second) throw new Error(`${slug}: a range row has no box`)
 
-      // Both handles run the full width of the row and sit on the same line.
+      // One track: both handles run its full width and sit on the same line.
       expect(Math.abs(first.y - second.y)).toBeLessThan(1)
       expect(first.width).toBeCloseTo(track.width, 0)
       expect(second.width).toBeCloseTo(track.width, 0)
-      // And the row is one track's worth of height, not two stacked.
       expect(track.height).toBeLessThan(first.height * 1.5)
+
+      // And both can be taken hold of. Dragged *inward*, toward each other, so
+      // neither is asked to move off a stop it is already sitting on.
+      for (const [index, direction] of [
+        [0, 1],
+        [1, -1],
+      ] as const) {
+        const input = inputs.nth(index)
+        const key = await input.getAttribute("data-key")
+        if (!key) throw new Error(`${slug}: a range handle has no data-key`)
+
+        const box = (await input.boundingBox())!
+        const along = await input.evaluate((element) => {
+          const range = element as HTMLInputElement
+          const min = Number(range.min)
+          return (Number(range.value) - min) / (Number(range.max) - min)
+        })
+        const x = box.x + box.width * along
+        const y = box.y + box.height / 2
+
+        // The thing under the pointer must be the input itself. When it was the
+        // row — a pseudo-element, which `elementFromPoint` reports as its
+        // owner — the press went nowhere and the handle simply did not move.
+        const under = await page.evaluate(
+          ({ x, y }) => document.elementFromPoint(x, y)?.tagName.toLowerCase() ?? "nothing",
+          { x, y },
+        )
+        expect(under, `${slug}: handle ${index} of row ${i} is covered by something`).toBe("input")
+
+        const before = await experiment.api(({ api }) => api.get())
+        await page.mouse.move(x, y)
+        await page.mouse.down()
+        await page.mouse.move(x + direction * 24, y, { steps: 8 })
+        await page.mouse.up()
+        const after = await experiment.api(({ api }) => api.get())
+
+        expect(after[key], `${slug}: dragging handle ${index} of row ${i} changed nothing`).not.toBe(before[key])
+      }
     }
   })
 }

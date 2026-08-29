@@ -247,6 +247,12 @@
         height: 1rem;
       }
 
+      /* Both are decoration and neither may take a press. They are the last
+         children of the row in paint order, so without this the filled bar sits
+         *on top of* the two inputs — and its left edge lands exactly on the
+         lower thumb, which then cannot be grabbed at all. The upper thumb sits
+         on the bar's right edge and is outside it by a pixel, which is why only
+         one of the two handles appeared broken. */
       .span::before,
       .span::after {
         content: "";
@@ -255,6 +261,7 @@
         height: 0.25rem;
         border-radius: 999px;
         transform: translateY(-50%);
+        pointer-events: none;
       }
 
       .span::before {
