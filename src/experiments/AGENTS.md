@@ -44,6 +44,23 @@ src/pages/experiments/<slug>/  index.astro (the piece), about.astro (the note)
 - Pages are indexable but nothing links to them yet. A link from the front page
   is expected later.
 
+## Adding a piece
+
+Four places outside the experiment's own folder know a slug, and three of them
+fail loudly while the fourth fails by silently leaving the piece out:
+
+- `scripts/posters.ts` — `SLUGS`, or `npm run posters -- <slug>` says the
+  experiment does not exist.
+- `tests/kit.spec.ts` — `PIECES`, which runs the whole chrome suite against it.
+- `tests/experiments-index.spec.ts` — `EXPECTED`, which pins the index's
+  contents.
+- `tests/experiments-notes.spec.ts` — `NOTES`, so a third note cannot quietly
+  become a third shape.
+
+A piece also needs `src/pages/experiments/<slug>/{index,about}.astro`, and an
+`about.md` whose `poster:` line is added _after_ the first capture — the
+collection resolves it through `image()` and a missing file 500s the index.
+
 ## The `about.md` collection
 
 `src/content.config.ts` globs `src/experiments/*/about.md` and validates the

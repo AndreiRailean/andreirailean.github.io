@@ -29,7 +29,9 @@ const RUN_HZ = 30
 export type PsyxelsStats = {
   /** Pixels the packing produced, including ones currently below the threshold. */
   pixels: number
-  /** Pixels actually painted last frame. */
+  /** Pixels the threshold lets through: what the field would paint at full breath. */
+  live: number
+  /** Pixels actually painted in the last frame, which the breathing takes below the alpha floor. */
   drawn: number
   /** How many pixels at each subdivision level, coarsest first. */
   byDepth: number[]
@@ -346,11 +348,13 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
       let largest = 0
       let inter = 0
       let covered = 0
+      let live = 0
 
       for (const pixel of pixels) {
         if (pixel.size < smallest) smallest = pixel.size
         if (pixel.size > largest) largest = pixel.size
         if (levelOf(pixel.ink, settings.threshold, settings.flatten) <= 0) continue
+        live++
         const area = pixel.size * pixel.size
         covered += area
         inter += pixel.ink * area
@@ -359,6 +363,7 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
       const union = (mask?.total ?? 0) + covered - inter
       return {
         pixels: pixels.length,
+        live,
         drawn,
         byDepth: field ? field.byDepth() : [],
         smallest: Number.isFinite(smallest) ? smallest : 0,

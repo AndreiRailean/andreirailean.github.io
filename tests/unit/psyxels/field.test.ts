@@ -57,7 +57,7 @@ const FLOOD = maskOf(640, 480, () => 1, 640 * 480)
  * are then uniform — so subdivision correctly stops, and a test asking for the
  * finest level fails against a field that is doing exactly the right thing.
  */
-const EDGE = maskOf(640, 480, (x, y) => (x + y < 480 ? 1 : 0), 480 * 480 / 2)
+const EDGE = maskOf(640, 480, (x, y) => (x + y < 480 ? 1 : 0), (480 * 480) / 2)
 
 /** Deliberately not `DEFAULT_SETTINGS`, which is editorial. */
 const PLAIN: Settings = {

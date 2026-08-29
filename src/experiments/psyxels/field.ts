@@ -1,5 +1,9 @@
 import { gaussian, hashSeed, makeRng, type Rng } from "@/experiments/kit/random"
 import { GLYPH_COUNT, nextGlyph } from "@/experiments/psyxels/glyphs"
+// The arrival ease's own length. This file decides when a pixel was born and
+// `pulse.ts` decides what being newly born looks like, so the constant lives
+// with the second of those and is read here.
+import { BIRTH_S } from "@/experiments/psyxels/pulse"
 import type { Mask } from "@/experiments/psyxels/mask"
 import type { Settings } from "@/experiments/psyxels/settings"
 
@@ -33,9 +37,6 @@ import type { Settings } from "@/experiments/psyxels/settings"
 
 /** No pixel smaller than this. Below it a glyph is a smudge and the count explodes. */
 const MIN_PX = 3
-
-/** How long a newly packed pixel takes to arrive, in seconds. */
-export const BIRTH_S = 0.5
 
 /**
  * One pixel: a square of the picture, and a small mind of its own.
@@ -127,7 +128,15 @@ type Context = { mask: Mask; settings: Settings; time: number; originX: number; 
  * proportional to the subject rather than to the frame: an empty corner of the
  * picture is one lookup, not a tree.
  */
-function makeNode(context: Context, x: number, y: number, size: number, depth: number, ix: number, iy: number): Node | null {
+function makeNode(
+  context: Context,
+  x: number,
+  y: number,
+  size: number,
+  depth: number,
+  ix: number,
+  iy: number,
+): Node | null {
   const { mask, settings, time } = context
   const stats = mask.stats(x, y, size)
   if (stats.ink <= 0 && stats.dev <= 0) return null
@@ -238,7 +247,7 @@ const changeGap = (churn: number, roll: number) => (churn <= 0 ? Infinity : (60 
 
 /** The gap before a pixel next picks a frame. Divided by its own rate: some pixels are quick. */
 const flickGap = (flicker: number, roll: number, rate: number) =>
-  flicker <= 0 ? Infinity : ((0.35 + 1.6 * roll) / flicker) / rate
+  flicker <= 0 ? Infinity : (0.35 + 1.6 * roll) / flicker / rate
 
 /**
  * Packs a subject into pixels.
@@ -254,7 +263,13 @@ export function packField(mask: Mask, settings: Settings, time: number): Field {
   const context: Context = {
     mask,
     settings,
-    time,
+    // **The opening field is already here, not arriving.** Pixels born at the
+    // current instant are at the start of their arrival ease, which is an alpha
+    // of zero — so frame one is a blank canvas that fades up. Harmless while the
+    // clock is running and fatal when it is not: under `prefers-reduced-motion`
+    // the clock is frozen, and the piece was simply *gone*. Backdating the whole
+    // initial build means only a change animates, which is what the ease is for.
+    time: time - BIRTH_S,
     originX: (mask.width - columns * coarse) / 2,
     originY: (mask.height - rows * coarse) / 2,
   }

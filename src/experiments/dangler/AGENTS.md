@@ -186,7 +186,7 @@ screen — a wrong strand and a right one both look like a scatter of dots.
 | File             | Holds                                                                       |
 | ---------------- | --------------------------------------------------------------------------- |
 | `settings.ts`    | `Settings`, the `CONTROLS` spec, presets, query parsing, `needsRebuild`     |
-| `random.ts`      | the R2 sequence and the disc mapping. The generators are the kit's           |
+| `random.ts`      | the R2 sequence and the disc mapping. The generators are the kit's          |
 | `canopy.ts`      | the invisible object overhead; `anchorFor(i)`                               |
 | `arrangement.ts` | seed → strand specs and the bulb table, including per-strand colour batches |
 | `rope.ts`        | the solver: flat arrays, links, directional bending, settling               |

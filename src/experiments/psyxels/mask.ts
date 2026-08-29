@@ -165,7 +165,7 @@ function whitePoint(pixels: Uint8ClampedArray): number {
   for (let p = 0; p < pixels.length; p += 4) {
     const alpha = pixels[p + 3]! / 255
     if (alpha <= 0) continue
-    const ink = alpha * (0.2126 * pixels[p]! + 0.7152 * pixels[p + 1]! + 0.0722 * pixels[p + 2]!) / 255
+    const ink = (alpha * (0.2126 * pixels[p]! + 0.7152 * pixels[p + 1]! + 0.0722 * pixels[p + 2]!)) / 255
     if (ink <= 0.02) continue
     bins[Math.min(63, Math.floor(ink * 64))]!++
     seen++

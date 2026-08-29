@@ -29,10 +29,17 @@ import type { ExperimentApi } from "@/experiments/psyxels/api"
 const poster: PosterRecipe<ExperimentApi> = {
   prepare: ({ api }) => api.run(90),
 
-  // No dwell. `run` has already put the field where it should be, and waiting
-  // would only pick a different point in the same breathing at the cost of a
-  // slower capture.
-  dwellMs: 0,
+  /**
+   * Half a second, and not for the piece's sake — `run()` has already put the
+   * field where it should be.
+   *
+   * It is for the *chrome*. The capture pins the piece idle before the recipe
+   * runs, and the bar fades out over `--ui-fade`; `run()` then blocks the main
+   * thread for about as long as that fade, so a shutter firing the instant it
+   * returns catches the controls half gone. The first capture here had a ghost
+   * of the preset bar lying across the bottom of the letter.
+   */
+  dwellMs: 500,
 }
 
 export default poster

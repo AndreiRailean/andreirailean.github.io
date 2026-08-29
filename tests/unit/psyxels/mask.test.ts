@@ -39,7 +39,11 @@ const NOTHING: [number, number, number, number] = [0, 0, 0, 0]
 
 describe("coverage", () => {
   it("reads a solid subject as full coverage with no variation", () => {
-    const mask = buildMask(canvasOf(64, 64, () => WHITE), 64, 64)
+    const mask = buildMask(
+      canvasOf(64, 64, () => WHITE),
+      64,
+      64,
+    )
     const stats = mask.stats(8, 8, 16)
     expect(stats.ink).toBeCloseTo(1, 6)
     expect(stats.dev).toBeCloseTo(0, 6)
@@ -79,7 +83,11 @@ describe("coverage", () => {
   })
 
   it("has nothing to say about a square outside the picture", () => {
-    const mask = buildMask(canvasOf(32, 32, () => WHITE), 32, 32)
+    const mask = buildMask(
+      canvasOf(32, 32, () => WHITE),
+      32,
+      32,
+    )
     const outside = mask.stats(-40, -40, 20)
     expect(outside.ink).toBe(0)
     expect(outside.dev).toBe(0)
@@ -94,7 +102,11 @@ describe("the white point", () => {
    * third of the scale.
    */
   it("stretches a subject that never reaches white up to it", () => {
-    const dim = buildMask(canvasOf(64, 64, () => [128, 128, 128, 255]), 64, 64)
+    const dim = buildMask(
+      canvasOf(64, 64, () => [128, 128, 128, 255]),
+      64,
+      64,
+    )
     expect(dim.stats(0, 0, 64).ink).toBeCloseTo(1, 1)
   })
 

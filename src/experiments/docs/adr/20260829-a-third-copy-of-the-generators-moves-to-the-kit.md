@@ -43,7 +43,7 @@ did not, so copying the file copied the mistake.
 Hoisting a placement strategy into the kit would make that worse, not better —
 it would put the choice one import away from every future piece with no scale
 attached to it. A mixer and a generator carry no such choice: they are the same
-answer at every count. So the seam is *stability without policy* below, *policy*
+answer at every count. So the seam is _stability without policy_ below, _policy_
 above, and it is the same seam the two existing copies had already found by
 subtraction.
 
@@ -52,7 +52,7 @@ subtraction.
 - A bug in the generators is fixed once. Both pieces' `AGENTS.md` lose their
   "fix it in both copies" instruction, which is now false.
 - `kit/` holds a module with no DOM in it for the first time. That is fine and
-  was always implied — the kit is *offered parts*, not *the chrome*.
+  was always implied — the kit is _offered parts_, not _the chrome_.
 - Lifting `kit/` out with one experiment still leaves that experiment running,
   which is the property the kit is held to.
 - Nothing about being in `kit/` makes it mandatory. A piece wanting a different

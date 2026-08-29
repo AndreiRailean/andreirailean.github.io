@@ -118,7 +118,23 @@ describe("what a change costs", () => {
       expect(needsPacking(DEFAULT_SETTINGS, next), key).toBe(true)
     }
 
-    for (const key of ["hue", "spread", "wildness", "saturation", "pulse", "tempo", "wave", "flicker", "churn", "vocabulary", "weight", "inset", "threshold", "flatten", "playback"] as const) {
+    for (const key of [
+      "hue",
+      "spread",
+      "wildness",
+      "saturation",
+      "pulse",
+      "tempo",
+      "wave",
+      "flicker",
+      "churn",
+      "vocabulary",
+      "weight",
+      "inset",
+      "threshold",
+      "flatten",
+      "playback",
+    ] as const) {
       const next = normalizeSettings({ ...DEFAULT_SETTINGS, [key]: DEFAULT_SETTINGS[key] / 2 })
       expect(needsPacking(DEFAULT_SETTINGS, next), key).toBe(false)
     }
