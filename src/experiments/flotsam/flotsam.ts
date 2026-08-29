@@ -80,6 +80,18 @@ export type FlotsamStats = {
   drawnDots: number
   /** Summed sprite area drawn this frame, in css px². The real cost model. */
   fillPx: number
+  /**
+   * How much light the scene is making, as alpha-weighted sprite area over the
+   * area of the canvas.
+   *
+   * 1 is a frame's worth of fully-lit pixels, spread however it happens to be
+   * spread. **No single control owns this** — the count, both ends of the size
+   * range, the size mix, the gleam and the exposure all move it, which is
+   * exactly why it is worth reporting: judging "too bright" by eye means judging
+   * it on one monitor in one room, and every other way of dimming a scene also
+   * empties, narrows or flattens it.
+   */
+  light: number
   /** Seconds of sea simulated since the piece opened. */
   clock: number
   fps: number
@@ -335,7 +347,7 @@ export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flo
     context.globalCompositeOperation = "lighter"
 
     const [hx, hy, hz] = halfway()
-    const { glint, shade, gleam } = settings
+    const { glint, shade, gleam, exposure } = settings
     const reach = sea.reach || 1
     const trains = scatter.trains
     let orbitSum = 0
@@ -349,7 +361,10 @@ export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flo
       const py = screenY(view, y + water[OFFSET_Y]!)
 
       const core = scatter.radius[i]! / view.metresPerPx
-      let brightness = scatter.brightness[i]!
+      // Exposure first, so everything downstream — the bloom included — is
+      // scaled by it. A dimmer scene should have less glare, not the same glare
+      // around dimmer pieces.
+      let brightness = scatter.brightness[i]! * exposure
 
       // Height reads the crests; slope reads the faces. The two show the same
       // wave a quarter cycle apart, which is why both are controls.
@@ -611,6 +626,7 @@ export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flo
       transport,
       drawnDots,
       fillPx: Math.round(specks.fill()),
+      light: Math.round((specks.lit() / Math.max(1, width * height)) * 1000) / 1000,
       clock,
       fps: Math.round(fps * 10) / 10,
       running,

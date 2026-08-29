@@ -20,6 +20,7 @@ export type Settings = {
   dots: number
   smallest: number
   largest: number
+  sizeMix: number
   hue: number
   hueSpread: number
   variance: number
@@ -36,6 +37,7 @@ export type Settings = {
   eddies: number
   gyre: number
   stokes: number
+  exposure: number
   glint: number
   azimuth: number
   elevation: number
@@ -255,6 +257,17 @@ export const CONTROLS: Control[] = [
   {
     kind: "slider",
     group: "flotsam",
+    key: "sizeMix",
+    label: "size mix",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    format: (v) => v.toFixed(2),
+    hint: "How sizes are shared out across the range above. At 1 every size is equally likely, which fills the water with large pieces and is very bright. Turn it down and each larger size becomes rarer than the one below, so a wide range gives a fine haze with the occasional big piece in it rather than a sea of them. This is the control to reach for when a scene is too bright but narrowing the sizes makes it dull — it lets the range stay wide and thins the large end instead. Starry Night has the same control, pointed the same way.",
+  },
+  {
+    kind: "slider",
+    group: "flotsam",
     key: "hue",
     label: "hue",
     min: 0,
@@ -284,6 +297,17 @@ export const CONTROLS: Control[] = [
     step: 0.01,
     format: (v) => v.toFixed(2),
     hint: "How much pieces differ from one another in brightness and in how pure their colour comes back. Deliberately not hue, which the colour spread owns. At 0 they are identical objects, which reads as manufactured rather than found.",
+  },
+  {
+    kind: "slider",
+    group: "light",
+    key: "exposure",
+    label: "exposure",
+    min: 0,
+    max: 2,
+    step: 0.01,
+    format: (v) => v.toFixed(2),
+    hint: "How much light is falling on the water, and the only control here that changes how bright the scene is without changing what is floating on it. Everything else that dims a scene also empties it, narrows it or flattens it. Above 1 the pieces have nowhere brighter to go, so they bloom outward instead, which is what glare does. Note the small pieces fade first, being faint already — pair a low exposure with a higher size mix to keep the haze rather than losing it.",
   },
   {
     kind: "slider",
@@ -366,6 +390,9 @@ export const DEFAULT_SETTINGS: Settings = {
   // show, and the top of it wants to be rare and modest, or the large pieces
   // become the picture and the haze they float in stops registering.
   largest: 0.09,
+  // 0.5 is an exponent of 2 exactly: what the distribution was before it could
+  // be moved, so every scene and every shared URL means what it meant.
+  sizeMix: 0.5,
   hue: 202,
   hueSpread: 15,
   variance: 0.62,
@@ -395,6 +422,7 @@ export const DEFAULT_SETTINGS: Settings = {
   eddies: 0.1,
   gyre: 30,
   stokes: 0.6,
+  exposure: 1,
   // The light runs with the swell, so the glitter bands land near the gathered
   // lines and the flotsam that has collected is also the flotsam that is lit.
   glint: 0.8,
@@ -431,6 +459,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       dots: 9000,
       smallest: 0.005,
       largest: 0.09,
+      sizeMix: 0.5,
       hue: 38,
       hueSpread: 8,
       variance: 0.6,
@@ -456,6 +485,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       stokes: 0.5,
       // The light runs along the swell, so the gathered line and the glitter
       // band land on top of one another and the windrow comes out gilded.
+      exposure: 1,
       glint: 0.85,
       azimuth: 138,
       elevation: 52,
@@ -472,6 +502,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       dots: 8000,
       smallest: 0.005,
       largest: 0.11,
+      sizeMix: 0.5,
       hue: 196,
       hueSpread: 18,
       variance: 0.66,
@@ -491,6 +522,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       eddies: 0.12,
       gyre: 40,
       stokes: 0.6,
+      exposure: 1,
       glint: 0.8,
       azimuth: 40,
       elevation: 62,
@@ -507,6 +539,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       dots: 9000,
       smallest: 0.004,
       largest: 0.05,
+      sizeMix: 0.5,
       hue: 168,
       hueSpread: 24,
       variance: 0.8,
@@ -525,6 +558,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       eddies: 0.8,
       gyre: 2.6,
       stokes: 1,
+      exposure: 1,
       glint: 0.85,
       azimuth: 250,
       elevation: 45,
@@ -541,6 +575,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       dots: 2600,
       smallest: 0.004,
       largest: 0.026,
+      sizeMix: 0.5,
       hue: 44,
       hueSpread: 4,
       variance: 0.42,
@@ -569,6 +604,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       // pieces hold their size and only move and fade, the way lights on the
       // floor of a shallow pool do, and the trough of each ripple crosses as a
       // dark band. `shade` is carrying that band and is high here for it.
+      exposure: 1,
       glint: 0.9,
       azimuth: 120,
       elevation: 82,
@@ -582,9 +618,10 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     hint: "A hard cross-current under a slack, wide-open sea, carrying a warm scatter of everything somewhere else.",
     settings: {
       seed: 208,
-      dots: 4960,
-      smallest: 0.005,
-      largest: 0.09,
+      dots: 3530,
+      smallest: 0.004,
+      largest: 0.06,
+      sizeMix: 0.5,
       hue: 38,
       // The widest colour spread of any scene here, at the lowest variance: a
       // lot of different things afloat, each of them lit evenly.
@@ -601,10 +638,10 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       gusts: 0.17,
       heading: 132,
       spread: 56,
-      // Eight tenths of a metre a second, with eddies most of the way to it and
-      // gyres barely a metre across. Everything is going somewhere and the
-      // somewhere is different a metre away.
-      drift: 0.83,
+      // Four tenths of a metre a second, with eddies nearly twice that and gyres
+      // barely a metre across. Everything is going somewhere and the somewhere
+      // is different a metre away.
+      drift: 0.41,
       bearing: 171,
       eddies: 0.71,
       gyre: 1.2,
@@ -612,10 +649,15 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       // steepness the true drift is a rounding error, and the exaggeration is
       // what lets the sea contribute to the travelling at all.
       stokes: 1.48,
-      glint: 0.85,
-      azimuth: 95,
+      exposure: 1,
+      // Low. With the sea this slack there is barely a facet anywhere pointed
+      // the right way, so most of what a glint control can do here is dim
+      // everything by its floor — turning it down instead lets the pieces be
+      // lit evenly, which is what a wide colour spread wants.
+      glint: 0.31,
+      azimuth: 68,
       elevation: 52,
-      shade: 0.4,
+      shade: 0.5,
       gleam: 2,
       span: 7.66,
     },
@@ -628,6 +670,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       dots: 4060,
       smallest: 0.018,
       largest: 0.087,
+      sizeMix: 0.5,
       hue: 272,
       hueSpread: 10,
       // Nearly maximum, which is what sorts the field into a few dominant points
@@ -647,6 +690,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       eddies: 0.82,
       gyre: 11.2,
       stokes: 0.67,
+      exposure: 1,
       glint: 0.8,
       azimuth: 62,
       // **Below what the water can reflect, and that is the whole scene.**
@@ -823,6 +867,7 @@ export function needsScatter(before: Settings, after: Settings): boolean {
     before.dots !== after.dots ||
     before.smallest !== after.smallest ||
     before.largest !== after.largest ||
+    before.sizeMix !== after.sizeMix ||
     before.hue !== after.hue ||
     before.hueSpread !== after.hueSpread ||
     before.variance !== after.variance

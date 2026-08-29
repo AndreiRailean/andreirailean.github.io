@@ -206,6 +206,64 @@ test("a raft ignores the chop a speck beside it is tracing", async ({ page }) =>
   expect(rafts.dispersion).toBeCloseTo(UNGATHERED, 0)
 })
 
+/**
+ * Exposure exists because every other way of dimming a scene also changes what
+ * is floating on it — the count empties the water, the size range narrows it,
+ * the size mix flattens it. This is the one control that moves the light and
+ * nothing else, and `light` in the stats is what makes "too bright" a number
+ * rather than a view of one monitor in one room.
+ */
+test("exposure changes how much light the scene makes and nothing else about it", async ({ page }) => {
+  // Still water, so the only difference between the two readings is the one
+  // under test rather than a second of sea having gone by between them.
+  const experiment = await openFlotsam(page, {
+    settings: { ...MODEST, exposure: 1, steepness: 0, drift: 0, eddies: 0, stokes: 0 },
+    idle: true,
+  })
+
+  const full = await experiment.api(({ api }) => api.stats())
+  expect(full.light).toBeGreaterThan(0)
+
+  await experiment.api(({ api }) => api.set({ exposure: 0.4 }))
+  const dim = await experiment.api(({ api }) => api.stats())
+
+  expect(dim.light).toBeLessThan(full.light * 0.6)
+  // The same water: the same pieces, in the same places, gathered the same way.
+  expect(dim.dots).toBe(full.dots)
+  expect(dim.dispersion).toBeCloseTo(full.dispersion, 5)
+  // Within a per cent rather than exactly, and the difference is correct: the
+  // cull bound follows the halo and the halo follows the exposure, so a handful
+  // of pieces just off the edge stop reaching into frame when the glare around
+  // them shrinks.
+  expect(dim.drawnDots / full.drawnDots).toBeGreaterThan(0.98)
+
+  await experiment.api(({ api }) => api.set({ exposure: 0 }))
+  expect((await experiment.api(({ api }) => api.stats())).light).toBe(0)
+  expect(await litPixels(page)).toBe(0)
+})
+
+/**
+ * The other half of the same problem: keeping the size range wide while making
+ * its large end rarer. Narrowing the range instead is what a reader reaches for
+ * and it costs them the size variation they wanted in the first place.
+ */
+test("the size mix thins the large pieces without emptying the water or narrowing it", async ({ page }) => {
+  const settings = { dots: 4000, smallest: 0.004, largest: 0.4, span: 8, steepness: 0, drift: 0, eddies: 0, stokes: 0 }
+  const experiment = await openFlotsam(page, { settings: { ...settings, sizeMix: 0.9 }, idle: true })
+
+  const coarse = await experiment.api(({ api }) => api.stats())
+  await experiment.api(({ api }) => api.set({ sizeMix: 0.2 }))
+  const fine = await experiment.api(({ api }) => api.stats())
+
+  expect(fine.light).toBeLessThan(coarse.light / 2)
+  // Not by emptying it. Every piece is still there and still drawn.
+  expect(fine.dots).toBe(coarse.dots)
+  expect(fine.drawnDots).toBeGreaterThan(coarse.drawnDots * 0.95)
+  // And still lit: thinning the large end must not put the whole population
+  // under the sub-pixel floor and switch the scene off.
+  expect(await litPixels(page)).toBeGreaterThan(0)
+})
+
 test("every setting has a control, so the panel and a shared URL cannot disagree", async ({ page }) => {
   const experiment = await openFlotsam(page)
 

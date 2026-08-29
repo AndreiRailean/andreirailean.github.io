@@ -178,6 +178,24 @@ dots.
   `settingsForLanding` indirection stays even though the two currently agree,
   because it is what lets the featured scene change later without invalidating a
   link.
+- **Brightness is a control, and it was not one for too long.** Until `exposure`
+  and `sizeMix` existed, every lever on how much light a scene made also changed
+  what was afloat: the count empties the water, the size range narrows it, the
+  gleam softens it. Someone trying to dim a scene had no move that did not also
+  spoil it. `exposure` scales what a piece contributes and nothing else;
+  `sizeMix` keeps the range wide and thins its large end, which is the thing that
+  was actually wanted and could not be asked for. Reach for `light` in `stats()`
+  before either — it is alpha-weighted area over canvas area, and it is the only
+  way to compare two scenes without comparing two monitors.
+- **`exposure` scales the bloom as well as the alpha, on purpose.** A dimmer
+  scene should have less glare, not the same glare around dimmer pieces, so the
+  halo radius follows it. Two consequences worth knowing: the light falls off
+  faster than linearly with the control, and the cull bound moves with the halo,
+  so `drawnDots` shifts by a per cent or so when you change it. Both are correct.
+- **The small pieces fade first.** They are already alpha-traded down for being
+  sub-pixel, so a low exposure loses the haze before it loses the large pieces —
+  which is the opposite of what someone dimming a scene usually wants. Pair a low
+  exposure with a _higher_ size mix, not a lower one.
 - **A preset with no gathering in it is not a broken preset.** `simmer` sits at
   a dispersion of 1.02 and an orbit of a third of a pixel, and `migration` at a
   minimum Jacobian of 0.81, and both are deliberate: one is the piece at a span

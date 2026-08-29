@@ -14,6 +14,7 @@ const PLAIN: ScatterSpec = {
   dots: 400,
   smallest: 0.004,
   largest: 0.5,
+  sizeMix: 0.5,
   hue: 200,
   hueSpread: 12,
   variance: 0.5,
@@ -106,6 +107,53 @@ describe("sizes", () => {
     // twenty.
     expect(above(0.04)).toBeLessThan(0.11)
     expect(above(0.2)).toBeLessThan(0.02)
+  })
+
+  /**
+   * The exponent was a constant until someone reached for a dimmer scene and
+   * found that every lever on brightness also changed what was afloat. Keeping
+   * the range wide while making the large end rarer is the thing that was
+   * wanted, and it is exactly this.
+   */
+  it("thins the large end as the mix comes down, without narrowing the range", () => {
+    const above = (sizeMix: number, limit: number) => {
+      const scatter = createScatter({ ...PLAIN, dots: 20_000, smallest: 0.004, largest: 0.4, sizeMix })
+      return [...scatter.radius].filter((r) => r > limit).length / scatter.count
+    }
+
+    // Strictly monotone: every step down makes big pieces rarer.
+    const fractions = [1, 0.75, 0.5, 0.25, 0].map((mix) => above(mix, 0.04))
+    for (let i = 1; i < fractions.length; i++) expect(fractions[i]!).toBeLessThan(fractions[i - 1]!)
+
+    // The steepest setting is n(r) ∝ r⁻⁴, where a piece ten times the smallest
+    // is ten thousand times rarer. That is meant to be a sea of dust with the
+    // occasional object in it — but the occasional object has to still turn up,
+    // or the upper handle of the size control has quietly gone dead.
+    const steep = createScatter({ ...PLAIN, dots: 20_000, smallest: 0.004, largest: 0.4, sizeMix: 0 })
+    expect([...steep.radius].filter((r) => r > 0.04).length).toBeGreaterThan(5)
+    expect(Math.min(...steep.radius)).toBeLessThan(0.005)
+  })
+
+  it("is uniform at 1, log-uniform at 0.75 and the old power law at 0.5", () => {
+    const sample = (sizeMix: number) => [
+      ...createScatter({ ...PLAIN, dots: 40_000, smallest: 0.01, largest: 1, sizeMix }).radius,
+    ]
+
+    // Uniform in radius: half the pieces above the arithmetic midpoint.
+    const uniform = sample(1)
+    expect(uniform.filter((r) => r > 0.505).length / uniform.length).toBeCloseTo(0.5, 1)
+
+    // Log-uniform: half above the *geometric* midpoint, which is equal numbers
+    // per octave. This is the removable singularity in `drawRadius`, so it is
+    // worth checking that the branch agrees with its own neighbourhood.
+    const octaves = sample(0.75)
+    expect(octaves.filter((r) => r > 0.1).length / octaves.length).toBeCloseTo(0.5, 1)
+    const nearly = sample(0.7501)
+    expect(nearly.filter((r) => r > 0.1).length / nearly.length).toBeCloseTo(0.5, 1)
+
+    // n(r) ∝ r⁻²: P(r > x) = (1/x − 1/b)/(1/a − 1/b).
+    const power = sample(0.5)
+    expect(power.filter((r) => r > 0.1).length / power.length).toBeCloseTo((10 - 1) / (100 - 1), 2)
   })
 
   it("survives a range collapsed to a point", () => {

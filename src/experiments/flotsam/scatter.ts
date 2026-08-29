@@ -42,6 +42,12 @@ export type ScatterSpec = {
   /** Radius of the smallest and largest piece, in metres. */
   smallest: number
   largest: number
+  /**
+   * How sizes are shared out across that range, 0 to 1. At 1 every size is
+   * equally likely; turn it down and each larger size gets rarer than the one
+   * below it. See `drawRadius`.
+   */
+  sizeMix: number
   hue: number
   hueSpread: number
   variance: number
@@ -72,35 +78,61 @@ export type Scatter = {
 }
 
 /**
- * Sizes follow a **power law**, n(r) ∝ r⁻², drawn by inverting its own CDF.
+ * Steepest the size distribution may get: n(r) ∝ r⁻⁴.
+ *
+ * At four, a piece ten times the smallest is ten thousand times rarer, which is
+ * a sea of dust with a few objects in it. Past that the large end of the range
+ * stops being reached at all and the upper handle of the size control goes dead.
+ */
+const STEEPEST_GRADE = 4
+
+/**
+ * A piece's radius, from a **power law** n(r) ∝ r⁻ᵅ over the size range.
  *
  * Log-uniform was tried first, on the reasonable-sounding ground that a range
  * spanning six octaves should be even in octaves. It is not what a sea looks
- * like and not what the piece needs. Equal numbers per octave puts a sixth of
- * the population in the top octave, which at nine thousand pieces is fifteen
- * hundred fat discs; the picture comes out as white confetti and the fine haze
- * the gathering is legible in is buried under it.
+ * like: equal numbers per octave puts a sixth of the population in the top one,
+ * which at nine thousand pieces is fifteen hundred fat discs, and the fine haze
+ * the gathering is legible in is buried under it. A power law is what broken-up
+ * things actually follow — the same distribution as gravel, ice floes and every
+ * other population made by something larger coming apart.
  *
- * A power law is what broken-up things actually follow — the same distribution
- * as gravel, ice floes and every other population made by something larger
- * coming apart — and at an exponent of 2 it puts ninety-three per cent of the
- * pieces in the bottom tenth of the range with a per cent or so of large ones
- * scattered through them. That is a sea with debris in it rather than a sea of
- * debris, and it is the only draw that keeps both ends of the size control
- * meaningful at once: the range has to be wide for the size-dependent wave
- * response to be visible, and the large end has to be *rare* for the picture to
- * survive it.
+ * **The exponent was a constant and is now a control, which was a mistake worth
+ * admitting.** The comment here used to say it was "a distribution, not a knob".
+ * That was wrong for a reason nobody could have argued from the code: the piece
+ * has no exposure control either, so the *only* levers on how much light a scene
+ * makes were the count and the size range — and both of those change what is
+ * afloat as well as how bright it is. Reaching for a dimmer scene meant either
+ * emptying it, or narrowing the sizes until it was uniform and dull. What was
+ * actually wanted was to keep the range wide and make the large end *rarer*,
+ * which is precisely this exponent, and there was no way to ask for it.
  *
- * The exponent is folded into the algebra rather than being a constant — for
- * n(r) ∝ r⁻², F(r) = (1/a − 1/r)/(1/a − 1/b) inverts to one division. Changing
- * it means redoing that, on purpose: it is a distribution, not a knob.
+ * `sizeMix` is the same control Starry Night has, named and pointed the same way
+ * so that knowing one is knowing the other: at 1 every size in the range is
+ * equally likely, and turning it down makes each larger size rarer than the one
+ * below. The default of 0.5 is α = 2 exactly, which is what this was before it
+ * could be moved — so every scene and every shared URL means what it meant.
+ *
+ * Inverted in closed form. F(r) = (r¹⁻ᵅ − a¹⁻ᵅ)/(b¹⁻ᵅ − a¹⁻ᵅ) inverts to one
+ * power, except at α = 1 where the exponents vanish and the distribution is
+ * log-uniform — a real removable singularity rather than a case anyone chose,
+ * and it sits at `sizeMix` 0.75.
  */
-function drawRadius(rng: () => number, smallest: number, largest: number): number {
+function drawRadius(rng: () => number, smallest: number, largest: number, sizeMix: number): number {
   const a = Math.max(1e-4, Math.min(smallest, largest))
   const b = Math.max(a, largest)
   if (b === a) return a
+
+  const alpha = STEEPEST_GRADE * (1 - Math.min(1, Math.max(0, sizeMix)))
   const u = rng()
-  return 1 / (1 / a - u * (1 / a - 1 / b))
+
+  // Log-uniform in the limit. The band is wide enough that the general formula
+  // has not yet lost precision to 1/(1−α) at its edge, and narrow enough that
+  // nothing inside it is visibly different from the limit.
+  if (Math.abs(alpha - 1) < 1e-3) return a * (b / a) ** u
+
+  const power = 1 - alpha
+  return (a ** power + u * (b ** power - a ** power)) ** (1 / power)
 }
 
 /**
@@ -135,7 +167,12 @@ export function createScatter(spec: ScatterSpec, previous?: Scatter): Scatter {
     scatter.u[i] = i < carried ? previous!.u[i]! : homeU
     scatter.v[i] = i < carried ? previous!.v[i]! : homeV
 
-    scatter.radius[i] = drawRadius(makeRng(hashSeed(spec.seed, SALT_SIZE, i)), spec.smallest, spec.largest)
+    scatter.radius[i] = drawRadius(
+      makeRng(hashSeed(spec.seed, SALT_SIZE, i)),
+      spec.smallest,
+      spec.largest,
+      spec.sizeMix,
+    )
 
     const colour = makeRng(hashSeed(spec.seed, SALT_COLOUR, i))
     scatter.hue[i] = spec.hue + spec.hueSpread * gaussian(colour)

@@ -51,6 +51,17 @@ export type Specks = {
   draw: (x: number, y: number, core: number, halo: number, hue: number, saturation: number, alpha: number) => void
   /** Total sprite area drawn since the last reset, in css px². */
   fill: () => number
+  /**
+   * The same area weighted by the alpha it was drawn at, in css px².
+   *
+   * How much light actually reached the canvas, as against how much of it was
+   * covered — the two come apart badly, since the small pieces are drawn at a
+   * fraction of full alpha and a wide `gleam` covers a great deal of canvas very
+   * faintly. This is the number a viewer is judging when they say a scene is too
+   * bright, and until it existed there was nothing to judge it by but eyes and a
+   * monitor.
+   */
+  lit: () => number
   reset: () => void
 }
 
@@ -93,6 +104,7 @@ export function createSpecks(context: CanvasRenderingContext2D): Specks {
   const halos = new Map<number, HTMLCanvasElement>()
   const cores = new Map<number, HTMLCanvasElement>()
   let filled = 0
+  let light = 0
 
   function bucket(hue: number, saturation: number): number {
     const h = Math.round(((((hue % 360) + 360) % 360) / 360) * HUE_BUCKETS) % HUE_BUCKETS
@@ -156,8 +168,9 @@ export function createSpecks(context: CanvasRenderingContext2D): Specks {
 
       const key = bucket(hue, saturation)
       const outer = Math.max(r, haloRadius)
+      const opacity = Math.min(1, a)
 
-      context.globalAlpha = Math.min(1, a)
+      context.globalAlpha = opacity
       // A halo no wider than the core is not a halo, and at the counts this
       // piece runs the second `drawImage` is half the frame's draw calls — nine
       // thousand pieces at a low gleam went from eighteen thousand composites to
@@ -169,11 +182,14 @@ export function createSpecks(context: CanvasRenderingContext2D): Specks {
       context.drawImage(core(key), x - r, y - r, r * 2, r * 2)
 
       filled += Math.PI * outer * outer
+      light += opacity * Math.PI * outer * outer
     },
 
     fill: () => filled,
+    lit: () => light,
     reset: () => {
       filled = 0
+      light = 0
     },
   }
 }

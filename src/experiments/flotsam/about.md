@@ -141,6 +141,33 @@ A power law is what broken-up things actually follow, gravel and ice floes
 included, and it puts nine in ten pieces in the bottom tenth of the range. A sea
 with debris in it, rather than a sea of debris.
 
+## How bright, as a thing you can ask for
+
+For a long time this piece had no way to say "dimmer". It had a count, a size
+range and a halo, and every one of those changes _what is floating on the water_
+as well as how much light it makes: fewer pieces empties the frame, a narrower
+range makes it uniform and dull, a lower ceiling takes away the size variation
+that was the point. There was no move that did not spoil something.
+
+**exposure** is how much light is falling on the water, and it is the only
+control here that changes the level and nothing else. It scales the glare as
+well as the brightness, because a dimmer scene should have less of both.
+
+**size mix** is the other half, and it turns out to be the more interesting one.
+Sizes are drawn from a power law — nine in ten pieces in the bottom tenth of the
+range — and this is the steepness of it. At 1 every size is equally likely, which
+is bright and rather coarse. Turn it down and each larger size becomes rarer than
+the one below, so the range can stay as wide as you like while the large pieces
+become an occasional event rather than the subject. That is the setting that was
+impossible to reach before: a fine haze, still with big pieces in it, at a
+fraction of the light.
+
+The piece also reports how much light it is making, as alpha-weighted area over
+the area of the frame. No single control owns that number — the count, both ends
+of the size range, the mix, the halo and the exposure all move it — which is
+exactly why it is worth having. Judging "too bright" by eye is judging it on one
+monitor in one room.
+
 ## Currents, which are the only things that go anywhere
 
 There is a **drift** and a **set** — how fast the water is moving and which way,
