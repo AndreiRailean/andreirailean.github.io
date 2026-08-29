@@ -186,7 +186,7 @@ screen — a wrong strand and a right one both look like a scatter of dots.
 | File             | Holds                                                                       |
 | ---------------- | --------------------------------------------------------------------------- |
 | `settings.ts`    | `Settings`, the `CONTROLS` spec, presets, query parsing, `needsRebuild`     |
-| `random.ts`      | seeded PRNG, clamped gaussian, the R2 sequence, disc mapping                |
+| `random.ts`      | the R2 sequence and the disc mapping. The generators are the kit's           |
 | `canopy.ts`      | the invisible object overhead; `anchorFor(i)`                               |
 | `arrangement.ts` | seed → strand specs and the bulb table, including per-strand colour batches |
 | `rope.ts`        | the solver: flat arrays, links, directional bending, settling               |
@@ -198,8 +198,8 @@ screen — a wrong strand and a right one both look like a scatter of dots.
 | `controls.ts`    | the panel, idle hiding, URL sync                                            |
 | `api.ts`         | `window.experiment`                                                         |
 
-The chrome, the fullscreen toggle, the clipboard and the wake lock all come
-from `../kit/` now. They were copied verbatim from Starry Night while this was
+The chrome, its stylesheet, the fullscreen toggle, the clipboard, the wake lock
+and the seeded generators all come from `../kit/` now. They were copied verbatim from Starry Night while this was
 the second experiment, which was the point rather than a shortcut — ADR-0002
 defers extracting anything shared until a second _and_ a third experiment want
 it. Flotsam is the third, and

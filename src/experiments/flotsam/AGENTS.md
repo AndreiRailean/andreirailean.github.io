@@ -98,8 +98,9 @@ dots.
   diagonal ruling across the whole frame. Every structure on this water has to
   be the waves' doing, and a lattice is structure the scatter brought with it.
   `homeFor` draws uniformly, indexed by `i`, which also gives `dispersion` its
-  canonical baseline of exactly 1. `random.ts` is duplicated between the pieces,
-  so the choice travels with the file and the reasoning does not — see
+  canonical baseline of exactly 1. It stays in this piece's own `random.ts`
+  rather than in the kit for that reason: a placement is a choice about a scale
+  and must not be one import away from the next piece — see
   `../docs/adr/20260829-a-low-discrepancy-scatter-does-not-scale.md`.
 - **Sizes must follow a power law, not be log-uniform.** Log-uniform sounds right
   for a range spanning six octaves and puts a sixth of the population in the top
@@ -339,7 +340,7 @@ in order to work at all, and every one of them was learned by breaking it.
 | File          | Holds                                                                        |
 | ------------- | ---------------------------------------------------------------------------- |
 | `settings.ts` | `Settings`, the `CONTROLS` spec, presets, query parsing, what a change costs |
-| `random.ts`   | seeded PRNG, clamped gaussian, indexed homes                                 |
+| `random.ts`   | `homeFor`: where speck `i` starts. The generators are the kit's              |
 | `waves.ts`    | the Gerstner spectrum: displacement, height, slope, folding, wave drift      |
 | `current.ts`  | the set and drift, and the patch-periodic incompressible eddy field          |
 | `scatter.ts`  | seed → the flotsam: homes, sizes, colours, per-train response, wave drift    |
@@ -349,14 +350,14 @@ in order to work at all, and every one of them was learned by breaking it.
 | `flotsam.ts`  | the engine: canvas, the clock, integration, drawing, stats                   |
 | `api.ts`      | `window.experiment`                                                          |
 
-`random.ts` is the section's second copy of Dangler's, trimmed rather than
-copied whole — `discPoint` and `r2Point` are gone, the second of those after
-being tried and removed. Starry Night wants none of it, so this is two data
-points and not the three ADR-0002 asks for; it stays duplicated on purpose.
-**Fix a bug in either copy and fix it in both.** The chrome, fullscreen, the
-clipboard and the wake lock all come from `../kit/`; the last of those moved
-there when this piece arrived, in
-`../docs/adr/20260829-the-third-copy-moves-to-the-kit.md`.
+`random.ts` holds only `homeFor` now. The generators it is built on —
+`hashSeed`, `makeRng`, `gaussian` — moved to `../kit/random.ts` when Psyxels
+became the third piece to want them, and what stayed behind is what is this
+piece's own choice about this piece's scale:
+`../docs/adr/20260829-a-third-copy-of-the-generators-moves-to-the-kit.md`.
+Nothing here is duplicated with another piece any more; if you find something
+that is, that is a bug rather than a policy. The chrome, its stylesheet,
+fullscreen, the clipboard and the wake lock all come from `../kit/` too.
 
 `kit/controls.ts` gained logarithmic sliders for this piece. Six of these
 controls span orders of magnitude — `span` runs from a puddle to open water, a

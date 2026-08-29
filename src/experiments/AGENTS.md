@@ -23,8 +23,9 @@ Three of those records are rules you will otherwise rediscover the hard way:
   `docs/adr/20260829-a-wrapped-patch-needs-a-periodic-field.md`.
 - **A placement strategy is a choice about a scale, and does not travel with the
   file it is written in.** Dangler's R2 sequence is right for eighty anchors and
-  comes out as a visible lattice at nine thousand specks; `random.ts` is
-  duplicated, so copying it copies the choice. See
+  comes out as a visible lattice at nine thousand specks. It is why each piece
+  keeps its own `random.ts` holding only its own placement, while the generators
+  underneath them are the kit's. See
   `docs/adr/20260829-a-low-discrepancy-scatter-does-not-scale.md`.
 
 ## Layout
@@ -186,11 +187,16 @@ exercised in both directions:
 
 - `wakelock.ts` moved in when Flotsam was about to make it a third byte-identical
   copy — `docs/adr/20260829-the-third-copy-moves-to-the-kit.md`.
-- `random.ts` did **not**, and stays duplicated on purpose. Two pieces have it and
-  Starry Night wants none of it. Copying it copies a choice about scale that does
-  not travel: Dangler's R2 sequence is right for eighty anchors and is a visible
-  lattice at nine thousand specks —
-  `docs/adr/20260829-a-low-discrepancy-scatter-does-not-scale.md`.
+- The **generators** — `hashSeed`, `makeRng`, `gaussian` — waited for a third
+  piece and moved in with Psyxels, whose every pixel draws from
+  `makeRng(hashSeed(seed, depth, column, row))`:
+  `docs/adr/20260829-a-third-copy-of-the-generators-moves-to-the-kit.md`.
+- The **placement strategies** built on them did **not**, and each piece keeps
+  its own. Copying one copies a choice about scale that does not travel:
+  Dangler's R2 sequence is right for eighty anchors and is a visible lattice at
+  nine thousand specks —
+  `docs/adr/20260829-a-low-discrepancy-scatter-does-not-scale.md`. The seam is
+  stability without policy below, policy above.
 
 ### The kit renders the chrome, and dresses it
 

@@ -63,6 +63,8 @@ export function buildMask(source: HTMLCanvasElement, width: number, height: numb
   const context = source.getContext("2d", { willReadFrequently: true })
   const pixels = context ? context.getImageData(0, 0, cols, rows).data : new Uint8ClampedArray(cols * rows * 4)
 
+  const gain = 1 / whitePoint(pixels)
+
   // One row and column of zeros on the top and left, so a lookup never needs a
   // bounds test — the standard summed-area layout.
   const stride = cols + 1
@@ -84,7 +86,7 @@ export function buildMask(source: HTMLCanvasElement, width: number, height: numb
       const g = pixels[p + 1]! / 255
       const b = pixels[p + 2]! / 255
       const alpha = pixels[p + 3]! / 255
-      const ink = alpha * (0.2126 * r + 0.7152 * g + 0.0722 * b)
+      const ink = Math.min(1, alpha * (0.2126 * r + 0.7152 * g + 0.0722 * b) * gain)
 
       runInk += ink
       runSquare += ink * ink
@@ -139,6 +141,43 @@ export function buildMask(source: HTMLCanvasElement, width: number, height: numb
       }
     },
   }
+}
+
+/**
+ * The subject's own white point: the brightest tone it actually contains,
+ * ignoring the top half per cent.
+ *
+ * Without this, `threshold` means something different for every subject. A white
+ * letter runs the full range and its controls are calibrated against that; the
+ * portrait's brightest pixel is a lit forehead well short of white and its
+ * darkest useful tone is a wall not far below it, so the same settings landed
+ * the whole picture in the bottom third of the scale and it came out as a brown
+ * smear on black. Stretching to the top of what is there costs the letter
+ * nothing — its white point *is* white — and hands the photograph the range the
+ * controls expect.
+ *
+ * The half per cent matters: a single specular highlight is enough to set the
+ * point at 1 and undo the stretch entirely, and photographs have those.
+ */
+function whitePoint(pixels: Uint8ClampedArray): number {
+  const bins = new Uint32Array(64)
+  let seen = 0
+  for (let p = 0; p < pixels.length; p += 4) {
+    const alpha = pixels[p + 3]! / 255
+    if (alpha <= 0) continue
+    const ink = alpha * (0.2126 * pixels[p]! + 0.7152 * pixels[p + 1]! + 0.0722 * pixels[p + 2]!) / 255
+    if (ink <= 0.02) continue
+    bins[Math.min(63, Math.floor(ink * 64))]!++
+    seen++
+  }
+  if (seen === 0) return 1
+
+  let above = 0
+  for (let bin = 63; bin >= 0; bin--) {
+    above += bins[bin]!
+    if (above > seen * 0.005) return Math.max(0.25, (bin + 1) / 64)
+  }
+  return 1
 }
 
 /** The sampling grid for a frame: the frame itself, capped so the tables stay cheap. */
