@@ -178,6 +178,37 @@ dots.
   `settingsForLanding` indirection stays even though the two currently agree,
   because it is what lets the featured scene change later without invalidating a
   link.
+- **A piece is drawn at its real size, so every sprite has to work at a pixel
+  and at a hundred.** Three faults hid in that gap until someone opened the size
+  range up far enough to see a piece rather than a point, and all three were
+  reported by eye because nothing in the code looked wrong:
+  - The body came from a sprite built for a glint — half strength by half its
+    radius — which at a hundred pixels is a ball of fog rather than an object. It
+    is solid to 86% of its radius now, and `CORE_PX` went from 32 to 64 because
+    an eight-fold upscale is soft whatever the profile.
+  - The body was painted at 96% lightness and a quarter saturation, on the
+    reasoning that anything bright enough to read as a glint whites out. True of
+    a _point_ and false of a face you can see, so large pieces came out flat
+    white and took nothing from the hue control. The body carries its colour now
+    and the whitening is left to the additive blend, where a small piece sums its
+    body and the bright heart of its own glare past full and clips. A dim piece
+    of any size stays coloured, which is also right and cost nothing.
+  - The glare was one centre-peaked sprite scaled to the whole piece, so on a
+    large body it laid its bright heart across the middle instead of ringing the
+    edge. It is now cached in six buckets of how much of it the body fills, and
+    drawn scaled so the bucket's inner edge lands _on_ the body's edge — the
+    quantisation costs the glare a little width, never its position.
+
+  Measured, raising `gleam` from 0 to 24 on a scene of large pieces: centred, the
+  lit area grew 7% and a piece's own level went 624 → 712; at the rim, 157% and
+  624 → 632. `tests/flotsam.spec.ts` asserts all three, and each one was
+  confirmed to fail with its fix backed out.
+
+- **The glare cache is six times what it was.** Hue × saturation × how much of
+  the glare the body fills, so a scene with a wide colour spread and a wide size
+  range can build a few hundred sprites, each dithered on creation. It is a
+  one-off of tens of milliseconds spread over the first frames, and it is why
+  `GLARE_STEPS` is 6 rather than 16.
 - **Brightness is a control, and it was not one for too long.** Until `exposure`
   and `sizeMix` existed, every lever on how much light a scene made also changed
   what was afloat: the count empties the water, the size range narrows it, the

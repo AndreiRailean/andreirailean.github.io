@@ -55,6 +55,106 @@ async function litPixels(page: Parameters<typeof openExperiment>[0]): Promise<nu
   }, LIT_THRESHOLD)
 }
 
+/**
+ * What the lit pixels of the canvas look like, as numbers.
+ *
+ * A pixel readback, not a comparison against a baseline image: reading the
+ * *shape* of a distribution is a number, `tests/AGENTS.md` rules out the other
+ * thing, and there is no other way to ask whether a piece has an edge.
+ *
+ * Everything here is a percentile rather than a maximum, and that is not
+ * fussiness. Pieces overlap, overlaps add — the drawing is additive — and a few
+ * per cent of doubled-up pixels set a maximum that says nothing about what one
+ * piece looks like. The first version of these tests measured exactly that and
+ * read a solid disc as a ball of fog.
+ */
+async function pixels(
+  page: Parameters<typeof openExperiment>[0],
+): Promise<{ lit: number; body: number; nearBody: number; chroma: number; warmth: number }> {
+  return page.evaluate((cut) => {
+    const canvas = document.querySelector("canvas")
+    if (!canvas) throw new Error("no canvas on the page")
+    const context = canvas.getContext("2d")
+    if (!context) throw new Error("no 2d context")
+    const { data } = context.getImageData(0, 0, canvas.width, canvas.height)
+
+    // 256 bins of mean channel value. Percentiles come off the histogram, so
+    // nothing has to be sorted.
+    const bins = new Int32Array(256)
+    let lit = 0
+    for (let i = 0; i < data.length; i += 4) {
+      const sum = data[i]! + data[i + 1]! + data[i + 2]!
+      if (sum <= cut) continue
+      lit++
+      bins[Math.min(255, Math.round(sum / 3))]!++
+    }
+    if (lit === 0) return { lit: 0, body: 0, nearBody: 0, chroma: 0, warmth: 0 }
+
+    // The 95th centile stands for one piece's own brightness: most of a solid
+    // disc sits at it, and it is above the rim and below the overlaps.
+    let seen = 0
+    let body = 0
+    for (let b = 0; b < 256; b++) {
+      seen += bins[b]!
+      if (seen >= lit * 0.95) {
+        body = b * 3
+        break
+      }
+    }
+
+    let nearBody = 0
+    const chromas: number[] = []
+    const warmths: number[] = []
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i]!
+      const g = data[i + 1]!
+      const b = data[i + 2]!
+      const sum = r + g + b
+      if (sum <= cut) continue
+      if (Math.abs(sum - body) <= body * 0.15) nearBody++
+      if (sum >= body * 0.6) {
+        const high = Math.max(r, g, b)
+        chromas.push(high === 0 ? 0 : (high - Math.min(r, g, b)) / high)
+        warmths.push(r - b)
+      }
+    }
+
+    const middle = (list: number[]) => {
+      if (list.length === 0) return 0
+      list.sort((x, y) => x - y)
+      return list[Math.floor(list.length / 2)]!
+    }
+
+    return {
+      lit,
+      body,
+      nearBody: nearBody / lit,
+      chroma: middle(chromas),
+      warmth: middle(warmths),
+    }
+  }, LIT_THRESHOLD)
+}
+
+/**
+ * Big enough to see the shape of, sparse enough that most pieces stand alone,
+ * and still water so nothing moves between two readings.
+ */
+const BIG_PIECES = {
+  dots: 60,
+  smallest: 0.05,
+  largest: 0.05,
+  span: 4,
+  steepness: 0,
+  drift: 0,
+  eddies: 0,
+  stokes: 0,
+  glint: 0,
+  shade: 0,
+  variance: 0,
+  hueSpread: 0,
+  hue: 38,
+}
+
 test("draws flotsam on unfolded water", async ({ page }) => {
   const experiment = await openFlotsam(page, { settings: MODEST, idle: true })
 
@@ -262,6 +362,72 @@ test("the size mix thins the large pieces without emptying the water or narrowin
   // And still lit: thinning the large end must not put the whole population
   // under the sub-pixel floor and switch the scene off.
   expect(await litPixels(page)).toBeGreaterThan(0)
+})
+
+/**
+ * Three faults in one, all of them invisible until the size range was opened up
+ * far enough to see a piece rather than a point, and all reported by someone
+ * looking at the thing.
+ *
+ * A piece was drawn from a sprite built for a glint: a soft ball whose
+ * brightness halved by half its radius, painted at 96% lightness and a quarter
+ * saturation so it came out flat white however the hue was set, with a glare
+ * whose bright heart sat in the *middle* of the piece rather than around it. At
+ * a pixel across none of that is noticeable. At a hundred, a large piece was a
+ * fuzzy white ball with a bright pinprick in it, and the colour controls did
+ * nothing to it at all.
+ */
+test("a large piece is a body with an edge, not a ball of fog", async ({ page }) => {
+  const experiment = await openFlotsam(page, { settings: { ...BIG_PIECES, gleam: 0 }, idle: true })
+
+  const seen = await pixels(page)
+  expect(seen.lit).toBeGreaterThan(0)
+
+  // Most of a piece sits at very nearly one brightness, with the fall to nothing
+  // happening in a thin rim. The soft ball this replaced was half strength by
+  // half its radius, so barely a third of it was ever near its own level.
+  expect(seen.nearBody).toBeGreaterThan(0.55)
+
+  await experiment.shot("large-pieces")
+})
+
+test("a large piece shows the hue it was given", async ({ page }) => {
+  const experiment = await openFlotsam(page, { settings: { ...BIG_PIECES, gleam: 0, hue: 38 }, idle: true })
+
+  // Flat white is a chroma of 0. A body painted at 96% lightness, as this was,
+  // has nowhere to put a colour and measured near nothing whatever the hue.
+  const warm = await pixels(page)
+  expect(warm.chroma).toBeGreaterThan(0.2)
+  // And it is *this* hue: red over blue at 38, blue over red at 220.
+  expect(warm.warmth).toBeGreaterThan(20)
+
+  await experiment.api(({ api }) => api.set({ hue: 220 }))
+  const cold = await pixels(page)
+  expect(cold.chroma).toBeGreaterThan(0.2)
+  expect(cold.warmth).toBeLessThan(-20)
+})
+
+test("raising the gleam makes a large piece bigger, not brighter", async ({ page }) => {
+  const experiment = await openFlotsam(page, { settings: { ...BIG_PIECES, gleam: 0 }, idle: true })
+
+  const bare = await pixels(page)
+  await experiment.api(({ api }) => api.set({ gleam: 24 }))
+  const glared = await pixels(page)
+
+  // Both halves matter, and the sprite centred on the piece rather than started
+  // at its edge fails both. Measured on this scene, with the glare raised from
+  // nothing to twenty-four pixels:
+  //
+  //                     lit pixels      a piece's own level
+  //   centred (wrong)   +7%             624 → 712
+  //   at the rim        +157%           624 → 632
+  //
+  // Which is the fault in one line: the glare was landing *on* the pieces
+  // instead of around them, so it barely lit any more of the canvas and made
+  // every large piece brighter in the middle — a pinprick inside a ball of fog,
+  // exactly as it was reported.
+  expect(glared.lit).toBeGreaterThan(bare.lit * 1.4)
+  expect(glared.body).toBeLessThan(bare.body * 1.1)
 })
 
 test("every setting has a control, so the panel and a shared URL cannot disagree", async ({ page }) => {

@@ -288,6 +288,25 @@ out to be the most dangerous failure mode a piece like this has.
   the trade above unavoidable. Concentrating it on one, the way a real spectrum
   does, was fewer lines of code than the version it replaced and removed the
   most-noticed flaw in the piece.
+- **A piece is drawn at its real size, and nothing had ever been drawn large.**
+  The size range only became wide enough to see a piece rather than a point once
+  the size mix existed to make large ones rare — and three faults surfaced at
+  once. The body came from a sprite built for a glint, half strength by half its
+  radius, which at a hundred pixels across is a ball of fog rather than an
+  object. It was painted at 96% lightness so that it came out flat white however
+  the hue was set, on the reasoning that anything bright enough to read as a
+  glint whites out — true of a _point_, and false of a face you can see. And the
+  glare, one soft blob scaled to the whole piece, put its bright heart in the
+  _middle_ of a large piece rather than around its edge. Every one of those is
+  invisible at a pixel across, which is the only size anything had been.
+
+  The fixes are all the same fix, really: stop assuming a piece is a point. The
+  body is solid nearly to its edge and carries its own colour; the whitening is
+  left to the additive blend, where a small piece sums its body and its own glare
+  past full and clips to white on its own. The glare starts at the body's edge.
+  Raising the glare now makes a large piece bigger rather than brighter, which
+  measured as a 157% growth in lit area against 7% before.
+
 - **Half of every range control had never worked, in this piece or its
   neighbour.** A bound pair is two sliders laid over one track with the selected
   interval painted between them, and that painted bar is a pseudo-element — which

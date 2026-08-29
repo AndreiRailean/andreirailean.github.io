@@ -27,7 +27,29 @@ import { coreColour, haloColour } from "@/experiments/flotsam/palette"
 const HUE_BUCKETS = 24
 const SATURATION_BUCKETS = 3
 const HALO_PX = 64
-const CORE_PX = 32
+
+/**
+ * Bigger than the glare's sprite, and bigger than it used to be.
+ *
+ * A body is drawn at its real size, so at a wide size range it can be a hundred
+ * pixels across — and a 32-pixel sprite blown up eight times is soft everywhere,
+ * which was half of why large pieces read as fuzz rather than as objects.
+ */
+const CORE_PX = 64
+
+/**
+ * How many buckets the glare is cached at, by how much of it the body fills.
+ *
+ * The glare has to sit *around* a piece, and one centre-peaked sprite cannot do
+ * that at every size: scaled over a large body it puts its bright heart in the
+ * middle of the piece, which is exactly the "tiny solid dot inside a fuzzy ball"
+ * a large piece used to be. So the sprite's falloff starts at the body's edge,
+ * and where that edge falls is what these buckets are of. Six is enough because
+ * the draw below scales the sprite so the bucket's edge lands *on* the body
+ * rather than near it — the quantisation costs the glare a little width, never
+ * its position.
+ */
+const GLARE_STEPS = 6
 
 /**
  * Smallest a core may be drawn, in css px.
@@ -115,24 +137,49 @@ export function createSpecks(context: CanvasRenderingContext2D): Specks {
   const hueOf = (key: number) => (Math.floor(key / SATURATION_BUCKETS) / HUE_BUCKETS) * 360
   const satOf = (key: number) => (key % SATURATION_BUCKETS) / (SATURATION_BUCKETS - 1)
 
-  function halo(key: number): HTMLCanvasElement {
-    let found = halos.get(key)
+  /**
+   * The glare, for a body that fills `step / GLARE_STEPS` of it.
+   *
+   * At step 0 the piece is a point and this is the old centre-peaked glow —
+   * steeper and shorter-tailed than Dangler's, because a glow in air is a wide
+   * faint skirt where the air scatters, and a glint off water is a sharp
+   * reflection whose long tail would read as fog on the surface.
+   *
+   * Above that the same profile is pushed outward so it begins at the body's
+   * edge, and the part inside is empty: `gleam` is glare *around* a piece, and
+   * filling the middle would make the halo brighten the body as well, so that
+   * widening the glare quietly changed how bright everything was.
+   */
+  function halo(key: number, step: number): HTMLCanvasElement {
+    const id = key * GLARE_STEPS + step
+    let found = halos.get(id)
     if (!found) {
       const colour = haloColour(hueOf(key), satOf(key))
-      // Steeper and shorter-tailed than Dangler's. A glow in air is a wide faint
-      // skirt because the air itself scatters; a glint off water is a sharp
-      // reflection, and the same long tail here reads as fog on the surface.
+      const clear = transparent(colour)
+      const at = (alpha: number) => colour.replace(")", ` / ${alpha})`)
+      const inner = step / GLARE_STEPS
+      const beyond = (fraction: number) => inner + (1 - inner) * fraction
+
       found = sprite(
         HALO_PX,
-        [
-          [0, colour.replace(")", " / 0.7)")],
-          [0.16, colour.replace(")", " / 0.26)")],
-          [0.42, colour.replace(")", " / 0.05)")],
-          [1, transparent(colour)],
-        ],
+        inner === 0
+          ? [
+              [0, at(0.7)],
+              [0.16, at(0.26)],
+              [0.42, at(0.05)],
+              [1, clear],
+            ]
+          : [
+              [0, clear],
+              [inner * 0.995, clear],
+              [inner, at(0.7)],
+              [beyond(0.16), at(0.26)],
+              [beyond(0.42), at(0.05)],
+              [1, clear],
+            ],
         true,
       )
-      halos.set(key, found)
+      halos.set(id, found)
     }
     return found
   }
@@ -141,11 +188,18 @@ export function createSpecks(context: CanvasRenderingContext2D): Specks {
     let found = cores.get(key)
     if (!found) {
       const colour = coreColour(hueOf(key), satOf(key))
+      // Solid nearly to its edge, then a quick fade. A piece of flotsam is an
+      // object with an edge, and the old profile — half-strength by 55% of the
+      // radius and gone by 100% — was a soft ball. At a pixel across nobody could
+      // tell; at a hundred it was the other half of why large pieces read as
+      // fuzz. The fade that remains is there so an edge does not alias, and the
+      // brightening at the centre a small piece needs comes from its own glare
+      // adding on top rather than from the body being brightest in the middle.
       found = sprite(
         CORE_PX,
         [
           [0, colour],
-          [0.55, colour.replace(")", " / 0.9)")],
+          [0.86, colour],
           [1, transparent(colour)],
         ],
         false,
@@ -171,18 +225,27 @@ export function createSpecks(context: CanvasRenderingContext2D): Specks {
       const opacity = Math.min(1, a)
 
       context.globalAlpha = opacity
-      // A halo no wider than the core is not a halo, and at the counts this
+
+      // A halo no wider than the body is not a halo, and at the counts this
       // piece runs the second `drawImage` is half the frame's draw calls — nine
       // thousand pieces at a low gleam went from eighteen thousand composites to
       // nine. Skipping it is the difference between fine flotsam being cheap and
       // being the reason to turn the count down.
+      let painted = r
       if (outer > r * HALO_WORTH_DRAWING) {
-        context.drawImage(halo(key), x - outer, y - outer, outer * 2, outer * 2)
+        const step = Math.min(GLARE_STEPS - 1, Math.round((r / outer) * GLARE_STEPS))
+        const inner = step / GLARE_STEPS
+        // Scaled so the bucket's inner edge lands *on* the body's edge, and
+        // never wider than the gleam actually asked for. Where the bucket is
+        // coarser than the truth the glare loses a little width; it never ends
+        // up in the wrong place, which is the failure that would show.
+        painted = inner > 0 ? Math.min(r / inner, outer) : outer
+        context.drawImage(halo(key, step), x - painted, y - painted, painted * 2, painted * 2)
       }
       context.drawImage(core(key), x - r, y - r, r * 2, r * 2)
 
-      filled += Math.PI * outer * outer
-      light += opacity * Math.PI * outer * outer
+      filled += Math.PI * painted * painted
+      light += opacity * Math.PI * painted * painted
     },
 
     fill: () => filled,

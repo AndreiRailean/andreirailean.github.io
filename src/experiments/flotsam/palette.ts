@@ -21,16 +21,27 @@ export const GROUND = "#04080b"
 export const VIGNETTE = 0.5
 
 /**
- * A speck is two colours, and *less* saturated than one of Dangler's bulbs.
+ * A speck is two colours: the piece itself, and the glare around it.
  *
- * A bulb emits its own colour and is as saturated as it likes. A speck reflects
- * whatever is lighting the sea, so its colour is the light's colour weakened by
- * a wet surface, and pushing the saturation up turns floating debris into a
- * scatter of gems. The core still whites out, because anything bright enough to
- * read as a glint saturates the eye before its hue registers, and only the halo
- * around it carries colour — which is the same reason Dangler's beads are built
- * this way and one of the few places two pieces here agree about anything.
+ * **The body carries the hue, and whiteness is left to the arithmetic.** The
+ * first version painted it at 96% lightness and a quarter of the saturation, on
+ * the reasoning that anything bright enough to read as a glint saturates the eye
+ * before its hue registers. That is true of a *point* of light and false of a
+ * piece you can see the shape of — and since a piece's drawn size is its real
+ * size, turning the size range up produced hundred-pixel discs of flat white
+ * that took no colour from the hue control at all. Reported by someone looking
+ * at the piece, which is the only way it was ever going to be found: at the
+ * sizes the piece shipped with, every body was a pixel or two across and there
+ * was nothing to see the colour of.
+ *
+ * So the body is properly coloured now, and the whitening happens where it
+ * belongs — in the additive blend. A small piece is its body *plus* the bright
+ * heart of its own glare, and the two sum past full in the strong channels and
+ * clip toward white, exactly as a real over-bright highlight does. A large piece
+ * has that glare out at its rim instead, so its face keeps its colour. And a dim
+ * piece of any size stays coloured, because nothing clips. None of that needed a
+ * rule; it falls out of drawing light additively.
  */
-export const coreColour = (hue: number, saturation: number) => `hsl(${hue} ${Math.min(100, 26 * saturation)}% 95%)`
+export const coreColour = (hue: number, saturation: number) => `hsl(${hue} ${Math.min(100, 66 * saturation)}% 76%)`
 
 export const haloColour = (hue: number, saturation: number) => `hsl(${hue} ${Math.min(100, 64 * saturation)}% 58%)`
