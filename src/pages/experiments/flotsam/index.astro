@@ -173,11 +173,63 @@
         font-variant-numeric: tabular-nums;
       }
 
-      /* Two handles on one axis, for the size and wavelength pairs. The tracks
-         are stacked rather than side by side so the pair reads as one range. */
+      /* Two handles on **one** track, for the size and wavelength pairs, and
+         verbatim from Starry Night because a bound pair should not be a
+         different object in the next room. The kit renders DOM and not
+         appearance, so a piece that uses a control kind it has no CSS for gets
+         it unstyled and nothing says so — which is exactly what happened here:
+         the first version stacked the two inputs one above the other, and two
+         separate tracks cannot show a range. The filled interval is painted by
+         the row itself between `--from` and `--to`; the inputs are transparent
+         and only their thumbs take the pointer. */
       .span {
-        display: grid;
-        gap: 0.05rem;
+        position: relative;
+        height: 1rem;
+      }
+
+      .span::before,
+      .span::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        height: 0.25rem;
+        border-radius: 999px;
+        transform: translateY(-50%);
+      }
+
+      .span::before {
+        right: 0;
+        left: 0;
+        background: var(--track);
+      }
+
+      .span::after {
+        right: calc(100% - var(--to, 100%));
+        left: var(--from, 0%);
+        background: var(--accent);
+      }
+
+      .span input[type="range"] {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+
+      .span input[type="range"]::-webkit-slider-runnable-track {
+        background: transparent;
+      }
+
+      .span input[type="range"]::-webkit-slider-thumb {
+        pointer-events: auto;
+      }
+
+      .span input[type="range"]::-moz-range-track,
+      .span input[type="range"]::-moz-range-progress {
+        background: transparent;
+      }
+
+      .span input[type="range"]::-moz-range-thumb {
+        pointer-events: auto;
       }
 
       .row.copy {

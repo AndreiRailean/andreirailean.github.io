@@ -24,7 +24,17 @@ import { toggleFullscreen } from "@/experiments/kit/fullscreen"
  * with a piece's own stylesheet: `.bar`, `.panel`, `.group`, `.row`, `.label`,
  * `.value`, `.span`, `.modes`, `.mode`, `.preset`, `.toggle`, `.copy`, `.about`.
  * A piece that uses a control kind it has no CSS for will render it unstyled and
- * nothing will say so — that has happened here before.
+ * nothing will say so — that has happened here twice now, and
+ * `tests/kit.spec.ts` checks the range row's layout because of the second time.
+ *
+ * **Those names are the kit's, and a setting key must not be able to land in the
+ * same namespace.** An individual slider carries its key as `data-key` rather
+ * than as a class, which it used to. Flotsam has a setting called `span`, and a
+ * class of that name put the kit's own two-handled-track rules onto a plain
+ * slider: it came out lit on both sides of its knob, from a filled interval
+ * painted by a rule meant for a different element entirely. Nothing selected on
+ * the key class, so moving it costs nothing and closes the collision for every
+ * structural name at once.
  */
 
 /** Idle gap before the pointer and the controls both disappear, video-player style. */
@@ -306,7 +316,8 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     slider.min = log ? "0" : String(control.min)
     slider.max = log ? String(LOG_STEPS) : String(control.max)
     slider.step = log ? "1" : String(control.step)
-    slider.className = key
+    // The key as data, never as a class — see the namespace note at the top.
+    slider.dataset.key = key
     slider.addEventListener("input", () => {
       const value = log ? valueAtPosition(control, Number(slider.value) / LOG_STEPS) : Number(slider.value)
       apply(normalize({ ...current, [key]: value }, key as string & keyof S))

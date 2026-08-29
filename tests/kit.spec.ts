@@ -67,4 +67,43 @@ for (const slug of PIECES) {
       expect(await rows.nth(i).getAttribute("title")).toBeTruthy()
     }
   })
+
+  /**
+   * A bound pair is two handles on **one** track.
+   *
+   * The kit renders DOM, not appearance: the class names are the contract with a
+   * piece's own stylesheet, and a piece that uses a control kind it has no CSS
+   * for gets it unstyled with nothing to say so. That is written down in
+   * `kit/controls.ts` and it still caught Flotsam out — its first `.span` rule
+   * stacked the two inputs one above the other, which is two ranges rather than
+   * a range, and it looked deliberate.
+   *
+   * Skipped for a piece with no bound pair rather than asserted absent; Dangler
+   * has none and is not wrong for it.
+   */
+  test(`${slug}: a bound pair is two handles on one track, not two tracks`, async ({ page }) => {
+    const experiment = await openExperiment<BaseApi>(page, slug, { idle: false })
+    await experiment.api(({ api }) => api.panel(true))
+
+    const spans = page.locator(".panel .span")
+    const count = await spans.count()
+    test.skip(count === 0, `${slug} has no range control`)
+
+    for (let i = 0; i < count; i++) {
+      const span = spans.nth(i)
+      await expect(span.locator("input[type=range]")).toHaveCount(2)
+
+      const track = await span.boundingBox()
+      const first = await span.locator("input[type=range]").nth(0).boundingBox()
+      const second = await span.locator("input[type=range]").nth(1).boundingBox()
+      if (!track || !first || !second) throw new Error(`${slug}: a range row has no box`)
+
+      // Both handles run the full width of the row and sit on the same line.
+      expect(Math.abs(first.y - second.y)).toBeLessThan(1)
+      expect(first.width).toBeCloseTo(track.width, 0)
+      expect(second.width).toBeCloseTo(track.width, 0)
+      // And the row is one track's worth of height, not two stacked.
+      expect(track.height).toBeLessThan(first.height * 1.5)
+    }
+  })
 }
