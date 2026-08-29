@@ -27,6 +27,8 @@ export type Settings = {
   shortest: number
   longest: number
   steepness: number
+  peak: number
+  gusts: number
   heading: number
   spread: number
   drift: number
@@ -118,6 +120,17 @@ export const CONTROLS: Control[] = [
   {
     kind: "slider",
     group: "sea",
+    key: "peak",
+    label: "peak",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    format: (v) => v.toFixed(2),
+    hint: "How much of the sea's steepness sits in its dominant train rather than being shared out evenly. This is what decides whether the water looks made or found. Low, and every component is equal: with a few trains that is a mechanically regular grid of crests, and with many it is mush. High, and one wavelength carries the sea while its neighbours a metre either side beat against it — which is where the uneven crest spacing and the occasional larger set come from in real water. Raise the train count with it; the two together are what a peak is for.",
+  },
+  {
+    kind: "slider",
+    group: "sea",
     key: "steepness",
     label: "steepness",
     min: 0,
@@ -147,6 +160,17 @@ export const CONTROLS: Control[] = [
     step: 1,
     format: degrees,
     hint: "How far the trains fan out either side of the heading. At 0 they all run together and the sea is a clean swell with parallel bands. Wide, and it is a crossing sea from every quarter, where the crests interfere and the gathering shows up as patches rather than lines.",
+  },
+  {
+    kind: "slider",
+    group: "sea",
+    key: "gusts",
+    label: "gusts",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    format: (v) => v.toFixed(2),
+    hint: "How much the wind varies. Wind arrives in gusts and it veers, and a sea under it does the same: the chop gets up and lies down again over half a minute, and the whole sea comes round a few degrees over a couple of minutes. Gusts move energy between the trains rather than adding any, so the steepness above keeps meaning what it says and the water cannot gust its way past breaking. At 0 the wind has blown at one strength from one quarter for ever, which is a thing no weather does.",
   },
   {
     kind: "slider",
@@ -345,18 +369,25 @@ export const DEFAULT_SETTINGS: Settings = {
   hue: 202,
   hueSpread: 15,
   variance: 0.62,
-  // Two trains rather than four. The steepness is shared between them, so a low
-  // count is what makes each one strong enough to gather anything — and a narrow
-  // fan keeps the gathering as lines rather than as patches.
-  trains: 2,
-  shortest: 3.5,
-  longest: 8,
-  steepness: 0.88,
-  heading: 172,
-  // A narrow fan. Two trains eight degrees apart still interfere — the lines
-  // wander and break rather than ruling the frame — but they gather along very
-  // nearly the same crests, which is what keeps the lines lines.
-  spread: 8,
+  // Eight trains with the steepness concentrated on one of them. This pairing is
+  // the whole point of `peak`: two trains sharing it equally gathered just as
+  // hard and arrived on a metronome, and eight sharing it equally gather
+  // nothing. Here the middle train draws the lines while its neighbours, a metre
+  // or two either side, keep them from being evenly spaced.
+  trains: 8,
+  shortest: 3,
+  longest: 11,
+  steepness: 0.9,
+  peak: 0.78,
+  gusts: 0.5,
+  // Diagonal, and that is not a taste decision. Crests run square to the
+  // heading, so a sea running along a screen axis lays its lines along the other
+  // one — and on a wide window that means six or seven parallel rules across the
+  // frame, which reads as ruling however irregular their spacing is. Diagonally
+  // there are three or four, they leave at the corners, and the eye stops
+  // counting them.
+  heading: 124,
+  spread: 30,
   // Slow, and across the waves rather than along them, so the drift is legible
   // as something separate from the swinging.
   drift: 0.06,
@@ -367,14 +398,14 @@ export const DEFAULT_SETTINGS: Settings = {
   // The light runs with the swell, so the glitter bands land near the gathered
   // lines and the flotsam that has collected is also the flotsam that is lit.
   glint: 0.8,
-  azimuth: 172,
+  azimuth: 124,
   elevation: 52,
   shade: 0.38,
   gleam: 3,
-  // Fourteen metres across. Wide enough for three or four crests to be in frame
+  // Seventeen metres across. Wide enough for three or four crests to be in frame
   // at once — which is what makes the gathering read as lines rather than as one
   // band — and tight enough that a half-metre swing is a visible swing.
-  span: 14,
+  span: 17,
 }
 
 /**
@@ -389,12 +420,12 @@ export const DEFAULT_SETTINGS: Settings = {
 export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
   {
     label: "offing",
-    hint: "Open water at night, a swell running, a slow current crossing it.",
+    hint: "Open water at night, a gusting sea running diagonally, a slow current crossing it.",
     settings: { ...DEFAULT_SETTINGS },
   },
   {
     label: "windrows",
-    hint: "One swell, nothing else, and the flotsam collected into travelling lines with the light along them.",
+    hint: "One swell carrying almost everything, and the flotsam collected into travelling lines with the light along them.",
     settings: {
       seed: 208,
       dots: 9000,
@@ -403,33 +434,38 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 38,
       hueSpread: 8,
       variance: 0.6,
-      // One train, so the whole steepness budget goes into it. This is the
-      // setting the piece is really about: at 0.75 the water at a crest is
-      // compressed four to one, and the flotsam draws the crest for you.
-      trains: 1,
-      shortest: 5,
-      longest: 5,
-      steepness: 0.75,
-      heading: 95,
-      spread: 0,
+      // Three trains and nearly all of the steepness in one of them: as close to
+      // a single clean swell as this piece gets, with just enough beside it to
+      // stop the crests arriving on a beat. At a peak this sharp the water at a
+      // crest is compressed four to one and the flotsam draws it for you.
+      trains: 3,
+      shortest: 4,
+      longest: 7,
+      steepness: 0.78,
+      peak: 0.9,
+      // Barely gusting. This is the one scene that wants a steady wind, because
+      // what it is showing is the lines themselves.
+      gusts: 0.22,
+      heading: 138,
+      spread: 10,
       drift: 0.04,
-      bearing: 95,
+      bearing: 138,
       eddies: 0.06,
       gyre: 18,
       stokes: 0.5,
       // The light runs along the swell, so the gathered line and the glitter
       // band land on top of one another and the windrow comes out gilded.
       glint: 0.85,
-      azimuth: 95,
+      azimuth: 138,
       elevation: 52,
-      shade: 0.4,
+      shade: 0.42,
       gleam: 2,
       span: 16,
     },
   },
   {
     label: "crossing",
-    hint: "Three trains from three quarters, interfering — a confused sea that gathers in patches rather than lines.",
+    hint: "Nine trains from every quarter and none of them dominant — a confused sea that gathers in patches rather than lines.",
     settings: {
       seed: 77,
       dots: 8000,
@@ -438,12 +474,17 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 196,
       hueSpread: 18,
       variance: 0.66,
-      trains: 3,
+      // The opposite end of `peak` from windrows, and the reason it is a control
+      // rather than a constant: a flat spectrum over a wide fan is a sea with no
+      // dominant wave in it at all.
+      trains: 9,
       shortest: 1.4,
       longest: 14,
       steepness: 0.9,
+      peak: 0.2,
+      gusts: 0.7,
       heading: 200,
-      spread: 30,
+      spread: 60,
       drift: 0.06,
       bearing: 250,
       eddies: 0.12,
@@ -468,16 +509,14 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 168,
       hueSpread: 24,
       variance: 0.8,
-      // Two trains rather than the six this started with. Six spread over a
-      // hundred and twenty degrees gathered almost nothing — dispersion 1.3 —
-      // and the scene had no structure for the eddies to tear up. The point of
-      // this one is the two effects fighting, so both have to be strong.
-      trains: 2,
+      trains: 6,
       shortest: 0.55,
       longest: 2.4,
       steepness: 0.86,
-      heading: 74,
-      spread: 40,
+      peak: 0.7,
+      gusts: 0.6,
+      heading: 44,
+      spread: 46,
       drift: 0.25,
       bearing: 12,
       // Gyres well under the width of the frame, so the water shears against
@@ -495,7 +534,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
   },
   {
     label: "pond",
-    hint: "Four metres of water with dust on it. Small water is quick, which is the surprise.",
+    hint: "Four metres of water with dust on it, lit from almost overhead. Small water is quick, which is the surprise.",
     settings: {
       seed: 660,
       dots: 2600,
@@ -504,7 +543,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 44,
       hueSpread: 4,
       variance: 0.42,
-      trains: 3,
+      trains: 4,
       // Nothing below 15cm. Under about 2cm the water stops being a gravity wave
       // at all and surface tension takes over, and this piece models only the
       // first of those; the lower bound of the control is set where that is
@@ -512,19 +551,24 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       shortest: 0.15,
       longest: 0.9,
       steepness: 0.42,
+      peak: 0.6,
+      gusts: 0.35,
       heading: 300,
-      spread: 24,
+      spread: 26,
       drift: 0.005,
       bearing: 300,
       eddies: 0.01,
       gyre: 1.6,
       stokes: 1,
+      // Almost overhead, and a wide gleam. Between them they make this the one
+      // scene that reads as *looking through* water rather than at it: the
+      // pieces hold their size and only move and fade, the way lights on the
+      // floor of a shallow pool do, and the trough of each ripple crosses as a
+      // dark band. `shade` is carrying that band and is high here for it.
       glint: 0.9,
-      // Almost overhead, so the flat water between the ripples is what catches
-      // the light and each crest passes as a dark line rather than a bright one.
       azimuth: 120,
       elevation: 82,
-      shade: 0.2,
+      shade: 0.62,
       gleam: 9,
       span: 4,
     },
@@ -691,6 +735,8 @@ export function needsSea(before: Settings, after: Settings): boolean {
     before.shortest !== after.shortest ||
     before.longest !== after.longest ||
     before.steepness !== after.steepness ||
+    before.peak !== after.peak ||
+    before.gusts !== after.gusts ||
     before.heading !== after.heading ||
     before.spread !== after.spread
   )

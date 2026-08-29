@@ -67,6 +67,47 @@ shivers where an ocean heaves, and it is the same equation doing both. A tempo
 slider would have flattened all of that into one look, and would have been a lie
 about the water.
 
+## A sea has one wave in it, mostly
+
+The first version shared the sea's steepness equally between its wave trains,
+which sounds fair and is wrong. How hard a train gathers flotsam depends on _its
+own_ steepness, so an even split forces a choice: two trains gather hard and
+arrive on a metronome, and nine are pleasantly irregular and gather nothing.
+There is no setting that is both, and the crest spacing gives it away
+immediately — evenly spaced lines read as a mechanism no matter how pretty they
+are.
+
+Real water is not like that. Almost all of a sea's energy sits near one
+wavelength, with a skirt of weaker components either side, and the irregularity
+everybody recognises — the uneven spacing, the occasional larger set — is those
+neighbours beating against the dominant one. **peak** is how sharp that
+concentration is, and with it the train count stops being a trade: eight trains
+with the energy piled on the middle one gives lines that are strong _and_ never
+evenly spaced.
+
+It quietly fixes the directions too. A train's share of the energy and its place
+in the fan both come from where it sits in the spectrum, so the dominant train
+runs along the heading and the weak ones spread out either side of it. That is
+the shape a real directional spectrum has, and it arrived for free.
+
+## Wind does not blow at one strength from one quarter
+
+**gusts** is the weather. The chop gets up and lies down again over half a
+minute, and the whole sea comes round a few degrees over a couple of minutes, so
+the crest spacing you were looking at is not the crest spacing a minute later.
+
+A gust moves energy between the trains rather than adding any. The total
+steepness stays exactly what the slider says, which keeps the control honest and
+means the sea cannot gust its way past breaking — what changes is the
+_distribution_, so the short waves come up over the swell and fall back again,
+and the apparent period wanders with them.
+
+One consequence, and it is why the presets all run diagonally: crests are square
+to the heading, so a sea travelling along a screen axis lays its lines along the
+other one. On a wide window that is six or seven parallel rules across the
+picture, which reads as ruling however irregular their spacing is. Diagonally
+there are three or four and they leave at the corners.
+
 ## What the light is doing
 
 Flotsam lies flat and turns with the surface under it, which makes every speck a
@@ -195,6 +236,19 @@ out to be the most dangerous failure mode a piece like this has.
   reaches just before it breaks. Writing the same quantity in the units the piece
   actually controls — steepness squared times phase speed — turned a wrong
   sentence into the most interesting true one in the file.
+- **The sea was too regular, and the fix was to stop being fair.** Sharing the
+  steepness equally between components is the obvious thing to do and it makes
+  the trade above unavoidable. Concentrating it on one, the way a real spectrum
+  does, was fewer lines of code than the version it replaced and removed the
+  most-noticed flaw in the piece.
+- **A setting called `span` collided with a stylesheet.** The chrome names the
+  parts of a settings row so a piece can paint them — and it also put each
+  slider's own key on it as a class. This piece has a control named `span`,
+  which is the name of the two-handled row a bound pair renders as, so the
+  plain span slider quietly picked up the rules for a range and came out lit on
+  both sides of its knob. The key is a data attribute now, which closes the same
+  hole for every other name at once. Nothing had ever selected on that class,
+  which is exactly why nobody had noticed it was a shared namespace.
 - **A test read a real four-to-one compression as almost nothing.** The gathering
   is measured by counting pieces in a grid of cells, and the wave under test was
   shorter than a cell. The instrument has a resolution, and a number from it

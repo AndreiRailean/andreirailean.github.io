@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   createSea,
   G,
+  gustSea,
   HEIGHT,
   jacobian,
   OFFSET_X,
@@ -33,6 +34,10 @@ const PLAIN: SeaSpec = {
   shortest: 1,
   longest: 16,
   steepness: 0.6,
+  // Flat and steady, so a property under test is not being measured
+  // through a spectrum peak or a gust envelope. Both get their own tests.
+  peak: 0,
+  gusts: 0,
   heading: 0,
   spread: 40,
 }
@@ -164,13 +169,158 @@ describe("gathering", () => {
     }
   })
 
-  it("shares the steepness out equally, so the trains gather equally hard", () => {
-    const sea = createSea({ ...PLAIN, trains: 4, steepness: 0.8 })
-    for (const train of sea.trains) expect(train.amplitude * train.k).toBeCloseTo(0.2, 9)
-    // Amplitude still falls with wavenumber, so the swell moves things metres
-    // and the ripples millimetres. That ordering comes from the physics rather
-    // than from a weighting anyone chose.
+  it("always sums to the steepness asked for, however the spectrum is shaped", () => {
+    // The invariant the fold limit rests on. Whatever `peak` does to the shape,
+    // the total is what the control says, so the sea cannot shape its way past
+    // breaking.
+    for (const peak of [0, 0.3, 0.7, 1]) {
+      const sea = createSea({ ...PLAIN, trains: 6, steepness: 0.8, peak })
+      const sum = sea.trains.reduce((total, train) => total + train.amplitude * train.k, 0)
+      expect(sum, `peak ${peak}`).toBeCloseTo(0.8, 9)
+    }
+  })
+
+  /**
+   * The change that fixed the sea looking mechanical. Sharing the steepness
+   * equally forces a trade — few trains gather hard and arrive on a metronome,
+   * many trains are irregular and gather nothing — and a peaked spectrum is
+   * what a real sea has instead.
+   */
+  it("concentrates the steepness on one train as the peak sharpens", () => {
+    const share = (peak: number) => {
+      const sea = createSea({ ...PLAIN, trains: 7, steepness: 0.8, peak })
+      const biggest = Math.max(...sea.trains.map((train) => train.amplitude * train.k))
+      return biggest / 0.8
+    }
+
+    // Flat: seven trains, so each holds about a seventh.
+    expect(share(0)).toBeLessThan(0.2)
+    // Sharp: one train holds nearly all of it, which is a clean single swell.
+    expect(share(1)).toBeGreaterThan(0.9)
+    expect(share(0.6)).toBeGreaterThan(share(0.2))
+  })
+
+  it("puts the peak at the middle train, which is also the middle of the fan", () => {
+    // Not a coincidence worth undoing: the same index drives a train's share and
+    // its place in the fan, so the dominant train runs along `heading` and the
+    // weak ones spread either side of it — the shape a directional spectrum has.
+    const sea = createSea({ ...PLAIN, trains: 5, peak: 0.85, heading: 40, spread: 50 })
+    const steepest = sea.trains.reduce((best, train) =>
+      train.amplitude * train.k > best.amplitude * best.k ? train : best,
+    )
+
+    expect(sea.trains.indexOf(steepest)).toBe(2)
+    // Within its own stratum of the heading — the seeded jitter is up to a fan
+    // width over the train count, and is what stops a spectrum looking ruled.
+    const angle = (Math.atan2(steepest.dy, steepest.dx) * 180) / Math.PI
+    expect(Math.abs(angle - 40)).toBeLessThan(50 / 5)
+  })
+
+  it("still lets amplitude fall with wavenumber, so the swell moves things further", () => {
+    const sea = createSea({ ...PLAIN, trains: 4, steepness: 0.8, peak: 0 })
     expect(sea.trains[0]!.amplitude).toBeLessThan(sea.trains[3]!.amplitude)
+  })
+})
+
+describe("gusts", () => {
+  const gusty = () => createSea({ ...PLAIN, trains: 6, steepness: 0.8, peak: 0.6, gusts: 0.8 })
+
+  it("leaves a steady sea untouched at every moment", () => {
+    const sea = createSea({ ...PLAIN, trains: 5, peak: 0.5, gusts: 0 })
+    const before = sea.trains.map((train) => ({ ...train }))
+
+    gustSea(sea, 0, 137.2)
+    for (let j = 0; j < sea.trains.length; j++) {
+      expect(sea.trains[j]!.amplitude).toBe(before[j]!.amplitude)
+      expect(sea.trains[j]!.dx).toBe(before[j]!.dx)
+      expect(sea.trains[j]!.dy).toBe(before[j]!.dy)
+    }
+  })
+
+  it("moves energy between the trains and never adds any", () => {
+    const sea = gusty()
+
+    let moved = 0
+    for (const time of [0, 7, 19, 43, 88, 160]) {
+      gustSea(sea, 0.8, time)
+      // The total is exactly what the steepness control says, at every moment.
+      // This is what stops a gust taking the sea past the folding limit.
+      const sum = sea.trains.reduce((total, train) => total + train.amplitude * train.k, 0)
+      expect(sum, `t=${time}`).toBeCloseTo(0.8, 9)
+
+      moved = Math.max(moved, Math.abs(sea.trains[0]!.amplitude / sea.trains[0]!.baseAmplitude - 1))
+    }
+    // And it really did move: a train's share swings by tens of per cent, which
+    // is what changes the apparent period.
+    expect(moved).toBeGreaterThan(0.2)
+  })
+
+  it("veers the whole sea and lets each train wander about it", () => {
+    const sea = gusty()
+    const angles = (time: number) => {
+      gustSea(sea, 0.8, time)
+      return sea.trains.map((train) => (Math.atan2(train.dy, train.dx) * 180) / Math.PI)
+    }
+
+    const now = angles(0)
+    const later = angles(95)
+    const mean = (list: number[]) => list.reduce((a, b) => a + b, 0) / list.length
+
+    // The wind has come round: every train shares a veer.
+    expect(Math.abs(mean(later) - mean(now))).toBeGreaterThan(1)
+    // And they have not moved as one rigid fan; the spread breathes too.
+    const shifts = later.map((angle, j) => angle - now[j]!)
+    expect(Math.max(...shifts) - Math.min(...shifts)).toBeGreaterThan(1)
+  })
+
+  it("never folds the water at any moment of any gust", () => {
+    const sea = createSea({ ...PLAIN, trains: 5, steepness: 5, peak: 0.8, gusts: 1, spread: 0 })
+    for (let time = 0; time < 300; time += 1.7) {
+      gustSea(sea, 1, time)
+      for (let i = 0; i < 60; i++) {
+        expect(jacobian(sea, i * 0.9 - 27, i * 0.3, time)).toBeGreaterThan(0)
+      }
+    }
+  })
+
+  it("reports a reach that bounds the displacement at every moment of the wind", () => {
+    // The wrap margin comes from `reach` and cannot change between frames, so it
+    // has to hold for the gustiest moment rather than for the present one.
+    const sea = gusty()
+    const out = new Float64Array(SAMPLE_SIZE)
+
+    let furthest = 0
+    for (let i = 0; i < 4000; i++) {
+      const time = i * 0.11
+      gustSea(sea, 0.8, time)
+      sample(sea, i * 0.37 - 700, i * 0.13 - 260, time, null, 0, out)
+      furthest = Math.max(furthest, Math.hypot(out[OFFSET_X]!, out[OFFSET_Y]!))
+    }
+    expect(furthest).toBeLessThanOrEqual(sea.reach)
+    // And not wildly loose, or the patch is inflated and the flotsam on screen
+    // is thinned for nothing.
+    expect(furthest).toBeGreaterThan(sea.reach * 0.3)
+  })
+
+  it("computes wave drift from the steady wind, not from the gust of the moment", () => {
+    // One train, so the claim is exact: the drift's *size* comes from the
+    // average wind, while its direction follows the wind of the moment.
+    const sea = createSea({ ...PLAIN, trains: 1, shortest: 9, longest: 9, steepness: 0.6, gusts: 0.9, spread: 0 })
+    const out = { x: 0, y: 0 }
+
+    stokesDrift(sea, null, 0, out)
+    const calm = Math.hypot(out.x, out.y)
+    const wasPointing = Math.atan2(out.y, out.x)
+
+    gustSea(sea, 0.9, 61)
+    stokesDrift(sea, null, 0, out)
+
+    // Unchanged in size. Drift is a residue of many orbits, so it reads the
+    // average wind — and doing it live would mean redoing every speck's drift
+    // vector on every frame, which is the one thing this vector exists to avoid.
+    expect(Math.hypot(out.x, out.y)).toBeCloseTo(calm, 9)
+    // And turned, because the wind has veered and drift goes downwind.
+    expect(Math.atan2(out.y, out.x)).not.toBeCloseTo(wasPointing, 4)
   })
 })
 

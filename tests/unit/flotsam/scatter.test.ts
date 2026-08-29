@@ -19,7 +19,17 @@ const PLAIN: ScatterSpec = {
   variance: 0.5,
 }
 
-const SEA: SeaSpec = { seed: 5, trains: 3, shortest: 0.5, longest: 20, steepness: 0.7, heading: 0, spread: 30 }
+const SEA: SeaSpec = {
+  seed: 5,
+  trains: 3,
+  shortest: 0.5,
+  longest: 20,
+  steepness: 0.7,
+  peak: 0,
+  gusts: 0,
+  heading: 0,
+  spread: 30,
+}
 
 describe("stability", () => {
   it("keeps a speck's size, colour and home when the count is raised", () => {

@@ -54,6 +54,41 @@ dots.
   Small next to the 134 above, and worth the one extra evaluation of three
   cosines, because a piece whose whole subject is _what gathers flotsam_ cannot
   afford an integrator that gathers it.
+- **Sharing the steepness equally between the trains forces a trade the piece
+  cannot afford, and it shipped that way once.** The gathering a train produces
+  goes with its _own_ steepness, so a flat spectrum split N ways gives either
+  hard clean lines from two trains — arriving on a metronome, which is exactly
+  what a viewer notices first — or a nicely irregular sea from nine that gathers
+  nothing. There is no setting that is both. `peak` narrows a Gaussian over the
+  train indices instead, which is the shape a real spectrum has: the dominant
+  train draws the lines and its neighbours, a wavelength or two either side, beat
+  against it and make the crest spacing uneven. Do not flatten it back for
+  tidiness; the flat case is still reachable at `peak` 0 and it is the confused
+  sea, not the default.
+- **A sea running along a screen axis rules the frame.** Crests are square to
+  the heading, so a sea travelling horizontally lays vertical lines, and on a
+  wide window that is six or seven parallel rules across the picture — which
+  reads as a mechanism whatever the spacing between them is doing. Diagonally
+  there are three or four and they leave at the corners. Every preset's
+  `heading` is off both axes on purpose, and a change that lands one back on one
+  will look like the spectrum has broken when nothing has.
+- **The wrap margin comes from a bound, not from the present wind.** `sea.reach`
+  is Σ Aₙ at the gust state that _maximises_ it, found by vertex enumeration in
+  `worstReach`, because the margin cannot change from frame to frame — the
+  specks' homes are fractions of the patch, so a patch that resized itself as
+  the wind shifted would drag every speck across the frame at once. Bounding it
+  crudely instead inflates the patch and thins the flotsam on screen for nothing;
+  the exact bound costs nine iterations at build time.
+- **Gusts move energy between the trains and must never add any.** Σ Aₙkₙ is
+  renormalised to the steepness setting on every call to `gustSea`, which is what
+  keeps the control meaning what it says and stops a gust taking the sea past the
+  folding limit. Anything that lets the total breathe needs the fold check
+  reconsidered from scratch.
+- **Wave drift reads the steady wind, not the gust of the moment.** Drift is a
+  residue of many orbits, so `stokesDrift` uses `baseAmplitude` — and doing it
+  live would mean recomputing every speck's drift vector on every frame, which is
+  the one thing that vector exists to avoid. Its _direction_ does follow the
+  wind, because the trains turn.
 - **A low-discrepancy scatter is visible as a lattice at these counts.** Homes
   came from an R2 sequence at first, copying Dangler's anchors, and for Dangler's
   reason — eighty uniform draws clump into accidental pairs. At nine thousand
@@ -113,6 +148,12 @@ dots.
   periodic on the patch — exist so that every clump on screen is attributable to
   the waves. This is the one property that makes the piece legible, and it is the
   first thing to check when a change makes the flotsam do something surprising.
+- **`gusts` at 0 must reproduce a steady sea exactly.** `gustSea` skips the
+  trigonometry entirely there, which is what keeps the closed-form return
+  property in `waves.test.ts` exactly true rather than nearly true. A gusting sea
+  still transports nothing — the displacement is still a pure function of rest
+  position and time — but a float no longer retraces the same circle, which is
+  more honest and is why the return test pins `gusts: 0`.
 - **Wave speed is not a setting and must not become one.** ω = √(gk) with real
   gravity, so `span` and `wavelength` decide the tempo between them. A frame of
   ripples is genuinely frantic and a frame of ocean swell genuinely slow, and

@@ -33,6 +33,7 @@ import {
   heading,
   jacobian,
   sample,
+  gustSea,
   HEIGHT,
   OFFSET_X,
   OFFSET_Y,
@@ -322,6 +323,10 @@ export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flo
     context.globalCompositeOperation = "source-over"
     context.globalAlpha = 1
     context.drawImage(background, 0, 0, width, height)
+
+    // The wind, once a frame rather than once a speck. Everything below — the
+    // displacement, the slope, the fold check — reads the sea as this leaves it.
+    gustSea(sea, settings.gusts, clock)
 
     specks.reset()
     cells.fill(0)
