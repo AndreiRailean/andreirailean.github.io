@@ -1,0 +1,320 @@
+/*
+ * The chrome's appearance, shipped with the chrome that renders it.
+ *
+ * `controls.ts` builds the bar and the panel; this dresses them. They were
+ * separate until three pieces had hand-written near-identical copies of these
+ * rules, and *every* kit bug so far had come out of that gap:
+ *
+ * - The filled bar of a range row took pointer events, so its lower handle
+ *   could not be grabbed at all. It shipped in Starry Night the day it gained a
+ *   range control and reached Flotsam by being copied along with the rules.
+ * - Flotsam's `.span` stacked two tracks instead of overlaying one, which is
+ *   two sliders rather than a range.
+ *
+ * Neither was visible to a test of geometry, and neither was a mistake about
+ * what the piece should look like. They were mistakes about how the chrome
+ * *works*, made in a file that had no reason to know.
+ *
+ * ## Opinionated, and yours to override
+ *
+ * Structure is the kit's and is not negotiable: what stacks where, what takes a
+ * pointer, how a two-handled track is assembled. Appearance is a handful of
+ * custom properties, listed below, and a piece sets them in its own stylesheet.
+ * Every one has a fallback, so a piece that sets none still gets working chrome
+ * — and a piece that wants something else entirely still just declines to import
+ * this, the same way it can decline `controls.ts`.
+ *
+ * Scoped under `#ui`, which `createControls` is given as its root, so nothing
+ * here can reach the piece's own canvas or page.
+ *
+ * | Property           | What it colours                                   |
+ * | ------------------ | ------------------------------------------------- |
+ * | `--ui-text`        | chrome text                                        |
+ * | `--ui-label`       | a row's name                                       |
+ * | `--ui-heading`     | a group heading                                    |
+ * | `--ui-panel`       | the panel's ground                                 |
+ * | `--ui-chip`        | a button's ground                                  |
+ * | `--ui-edge`        | every border                                       |
+ * | `--ui-edge-hover`  | a button's border under the pointer                |
+ * | `--ui-on-bg/text/edge` | a button that is active                        |
+ * | `--accent`         | the filled part of a track, and the thumb          |
+ * | `--track`          | the unfilled part                                  |
+ * | `--ui-fade`        | how long the chrome takes to go                    |
+ *
+ * And four measures, because the pieces legitimately disagree about them: a
+ * panel of fifteen rows and one of twenty-seven want different widths.
+ *
+ * | `--ui-label-col` | `--ui-value-col` | `--ui-panel-min` | `--ui-row-gap` |
+ */
+
+#ui {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  display: flex;
+  /* Reversed so the panel grows *upward* out of the bar. In DOM order the bar
+     comes first; laid out downward, a tall panel runs off the bottom of the
+     window. Starry Night had this the other way round for as long as it had a
+     panel, which nobody had decided. */
+  flex-direction: column-reverse;
+  align-items: flex-end;
+  gap: 0.5rem;
+  font:
+    400 0.75rem/1.5 ui-monospace,
+    "SF Mono",
+    Menlo,
+    monospace;
+  letter-spacing: 0.03em;
+  color: var(--ui-text, rgb(255 255 255 / 72%));
+  transition:
+    opacity var(--ui-fade, 0.35s) ease-out,
+    transform var(--ui-fade, 0.35s) ease-out;
+}
+
+/* The pointer and the controls go together, the way video chrome does. The
+   cursor rule is on the document because there is nothing else to hang it on. */
+html[data-idle="true"] {
+  cursor: none;
+}
+
+html[data-idle="true"] #ui {
+  opacity: 0;
+  transform: translateY(0.4rem);
+  pointer-events: none;
+}
+
+#ui .bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.35rem;
+}
+
+#ui button,
+#ui a.about {
+  margin: 0;
+  padding: 0.3rem 0.6rem;
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  cursor: pointer;
+  background: var(--ui-chip, rgb(10 12 22 / 74%));
+  border: 1px solid var(--ui-edge, rgb(255 255 255 / 12%));
+  border-radius: 0.3rem;
+  backdrop-filter: blur(6px);
+}
+
+#ui a.about {
+  text-decoration: none;
+}
+
+#ui button:hover {
+  border-color: var(--ui-edge-hover, rgb(255 255 255 / 30%));
+}
+
+#ui button[data-active="true"] {
+  color: var(--ui-on-text, hsl(38, 60%, 95%));
+  background: var(--ui-on-bg, hsl(38, 40%, 40%));
+  border-color: var(--ui-on-edge, rgb(255 255 255 / 38%));
+}
+
+/* Takes as much height as there is and scrolls only when it genuinely cannot
+   fit. The reserve is the bar below it, its gap, and the window inset. */
+#ui .panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-row-gap, 0.3rem);
+  min-width: var(--ui-panel-min, 22rem);
+  max-height: calc(100vh - 5.5rem);
+  padding: 0.75rem 0.85rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--ui-panel, rgb(8 10 18 / 84%));
+  border: 1px solid var(--ui-edge, rgb(255 255 255 / 12%));
+  border-radius: 0.4rem;
+  backdrop-filter: blur(8px);
+}
+
+/* An author `display` beats the UA's `[hidden]` rule, so state it. Without this
+   the panel will not close, which is a bug this section has already had. */
+#ui .panel[hidden] {
+  display: none;
+}
+
+#ui .group {
+  margin-top: 0.5rem;
+  color: var(--ui-heading, rgb(255 255 255 / 34%));
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+#ui .group:first-child {
+  margin-top: 0;
+}
+
+#ui .row {
+  display: grid;
+  grid-template-columns: var(--ui-label-col, 6rem) 1fr var(--ui-value-col, 4.75rem);
+  align-items: center;
+  gap: 0.6rem;
+}
+
+#ui .label {
+  color: var(--ui-label, rgb(255 255 255 / 50%));
+}
+
+#ui .value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A choice or a toggle takes the track's column and the value's, having no
+   value to print. */
+#ui .modes {
+  display: flex;
+  grid-column: 2 / span 2;
+  gap: 0.3rem;
+}
+
+#ui .row.copy {
+  grid-template-columns: 1fr;
+  margin-top: 0.6rem;
+}
+
+#ui .row.copy button {
+  width: 100%;
+}
+
+/* --- a plain slider ------------------------------------------------------ */
+
+/* Styled by hand rather than with `accent-color`. The UA derives the unfilled
+   track and the thumb contrast from the accent's perceived luminance, which
+   varies hugely with hue at fixed lightness, so it flips to a contrasting
+   scheme partway around the wheel. The track has to stay muted at every hue. */
+#ui input[type="range"] {
+  width: 100%;
+  height: 1rem;
+  margin: 0;
+  cursor: pointer;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+#ui input[type="range"]::-webkit-slider-runnable-track {
+  height: 0.25rem;
+  border-radius: 999px;
+  /* Two hard stops fake the filled portion, which only Firefox gives us. */
+  background: linear-gradient(
+    to right,
+    var(--accent, #9ab) var(--fill, 0%),
+    var(--track, rgb(255 255 255 / 16%)) var(--fill, 0%)
+  );
+}
+
+#ui input[type="range"]::-webkit-slider-thumb {
+  width: 0.7rem;
+  height: 0.7rem;
+  margin-top: -0.225rem;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent, #9ab);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+#ui input[type="range"]::-moz-range-track {
+  height: 0.25rem;
+  border-radius: 999px;
+  background: var(--track, rgb(255 255 255 / 16%));
+}
+
+#ui input[type="range"]::-moz-range-progress {
+  height: 0.25rem;
+  border-radius: 999px;
+  background: var(--accent, #9ab);
+}
+
+#ui input[type="range"]::-moz-range-thumb {
+  width: 0.7rem;
+  height: 0.7rem;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent, #9ab);
+}
+
+/* --- a bound pair, as two handles on one track --------------------------- */
+
+/*
+ * Two inputs overlaid on a single painted track. Two separate tracks cannot
+ * show a range: the same number sits at a different place on each, and moving
+ * one never shows its effect on the other.
+ */
+#ui .span {
+  position: relative;
+  height: 1rem;
+}
+
+/*
+ * Both bars are decoration and **neither may take a press**.
+ *
+ * They are the row's last children in paint order, so without this the filled
+ * bar sits on top of both inputs — and its left edge lands exactly on the lower
+ * thumb, which then cannot be grabbed at all. The upper thumb is a pixel outside
+ * the bar's right edge and works, which is why only half the control appeared
+ * broken, and why it survived that way for months.
+ */
+#ui .span::before,
+#ui .span::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  height: 0.25rem;
+  border-radius: 999px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+#ui .span::before {
+  right: 0;
+  left: 0;
+  background: var(--track, rgb(255 255 255 / 16%));
+}
+
+#ui .span::after {
+  right: calc(100% - var(--to, 100%));
+  left: var(--from, 0%);
+  background: var(--accent, #9ab);
+}
+
+/* Transparent, and only the thumbs take the pointer, so whichever is grabbed is
+   the one that moves and the track beneath stays a single continuous line. */
+#ui .span input[type="range"] {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+#ui .span input[type="range"]::-webkit-slider-runnable-track {
+  background: transparent;
+}
+
+#ui .span input[type="range"]::-webkit-slider-thumb {
+  pointer-events: auto;
+}
+
+#ui .span input[type="range"]::-moz-range-track,
+#ui .span input[type="range"]::-moz-range-progress {
+  background: transparent;
+}
+
+#ui .span input[type="range"]::-moz-range-thumb {
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #ui {
+    transition: none;
+  }
+}

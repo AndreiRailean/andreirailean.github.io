@@ -1,4 +1,6 @@
 ---
+import "@/experiments/kit/controls.css"
+
 // A deliberately bare document: no Layout, no globals.css, no Tailwind. The
 // experiment owns the whole viewport and shares no chrome with the rest of the
 // site.
@@ -32,6 +34,14 @@
         --ui-on-edge: rgb(255 255 255 / 38%);
         --track: rgb(255 255 255 / 16%);
         --ui-fade: 0.35s;
+
+        /* The kit's own measures, which the pieces legitimately disagree
+           about: a panel of fifteen rows and one of twenty-seven do not
+           want the same widths. */
+        --ui-label-col: 6.75rem;
+        --ui-value-col: 4.25rem;
+        --ui-panel-min: 23rem;
+        --ui-row-gap: 0.26rem;
       }
 
       html,
@@ -45,199 +55,12 @@
         overflow: hidden;
       }
 
-      /* Pointer and controls disappear together, like video chrome. */
-      html[data-idle="true"] {
-        cursor: none;
-      }
-
       canvas {
         position: fixed;
         inset: 0;
         display: block;
         width: 100%;
         height: 100%;
-      }
-
-      #ui {
-        position: fixed;
-        right: 1.25rem;
-        bottom: 1.25rem;
-        display: flex;
-        /* Reversed so the panel grows *upward* out of the bar. In DOM order the
-           bar comes first; laid out downward, a panel this tall runs off the
-           bottom of the window. */
-        flex-direction: column-reverse;
-        align-items: flex-end;
-        gap: 0.5rem;
-        font:
-          400 0.75rem/1.5 ui-monospace,
-          "SF Mono",
-          Menlo,
-          monospace;
-        letter-spacing: 0.03em;
-        color: var(--ui-text);
-        transition:
-          opacity var(--ui-fade) ease-out,
-          transform var(--ui-fade) ease-out;
-      }
-
-      html[data-idle="true"] #ui {
-        opacity: 0;
-        transform: translateY(0.4rem);
-        pointer-events: none;
-      }
-
-      .bar {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: flex-end;
-        gap: 0.35rem;
-      }
-
-      #ui a.about {
-        text-decoration: none;
-      }
-
-      #ui button,
-      #ui a.about {
-        margin: 0;
-        padding: 0.3rem 0.6rem;
-        font: inherit;
-        letter-spacing: inherit;
-        color: inherit;
-        cursor: pointer;
-        background: var(--ui-chip);
-        border: 1px solid var(--ui-edge);
-        border-radius: 0.3rem;
-        backdrop-filter: blur(6px);
-      }
-
-      #ui button:hover {
-        border-color: var(--ui-edge-hover);
-      }
-
-      #ui button[data-active="true"] {
-        color: var(--ui-on-text);
-        background: var(--ui-on-bg);
-        border-color: var(--ui-on-edge);
-      }
-
-      /* Two dozen rows, so the panel takes as much height as there is and only
-         scrolls when it genuinely cannot fit. The reserve is the chrome bar
-         below it plus its gap and the window inset. */
-      .panel {
-        display: flex;
-        flex-direction: column;
-        gap: 0.26rem;
-        min-width: 23rem;
-        max-height: calc(100vh - 5.5rem);
-        padding: 0.75rem 0.85rem;
-        overflow-y: auto;
-        overscroll-behavior: contain;
-        background: var(--ui-panel);
-        border: 1px solid var(--ui-edge);
-        border-radius: 0.4rem;
-        backdrop-filter: blur(8px);
-      }
-
-      /* An author `display` beats the UA's [hidden] rule, so state it here. */
-      .panel[hidden] {
-        display: none;
-      }
-
-      .group {
-        margin-top: 0.5rem;
-        color: var(--ui-heading);
-        font-size: 0.6875rem;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-      }
-
-      .group:first-child {
-        margin-top: 0;
-      }
-
-      .row {
-        display: grid;
-        grid-template-columns: 6.75rem 1fr 4.25rem;
-        align-items: center;
-        gap: 0.6rem;
-      }
-
-      .label {
-        color: var(--ui-label);
-      }
-
-      .value {
-        text-align: right;
-        font-variant-numeric: tabular-nums;
-      }
-
-      .row.copy {
-        grid-template-columns: 1fr;
-        margin-top: 0.6rem;
-      }
-
-      .row.copy button {
-        width: 100%;
-      }
-
-      /* The track is styled by hand rather than via accent-color. The UA derives
-         the unfilled track and thumb contrast from the accent's perceived
-         luminance, which varies hugely with hue at fixed lightness, so it flips
-         to a contrasting scheme partway around the wheel. */
-      input[type="range"] {
-        width: 100%;
-        height: 1rem;
-        margin: 0;
-        cursor: pointer;
-        background: transparent;
-        -webkit-appearance: none;
-        appearance: none;
-      }
-
-      input[type="range"]::-webkit-slider-runnable-track {
-        height: 0.25rem;
-        border-radius: 999px;
-        /* Two hard stops fake the filled portion, which only Firefox gives us. */
-        background: linear-gradient(to right, var(--accent) var(--fill, 0%), var(--track) var(--fill, 0%));
-      }
-
-      input[type="range"]::-webkit-slider-thumb {
-        width: 0.7rem;
-        height: 0.7rem;
-        margin-top: -0.225rem;
-        border: none;
-        border-radius: 50%;
-        background: var(--accent);
-        -webkit-appearance: none;
-        appearance: none;
-      }
-
-      input[type="range"]::-moz-range-track {
-        height: 0.25rem;
-        border-radius: 999px;
-        background: var(--track);
-      }
-
-      input[type="range"]::-moz-range-progress {
-        height: 0.25rem;
-        border-radius: 999px;
-        background: var(--accent);
-      }
-
-      input[type="range"]::-moz-range-thumb {
-        width: 0.7rem;
-        height: 0.7rem;
-        border: none;
-        border-radius: 50%;
-        background: var(--accent);
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        #ui {
-          transition: none;
-        }
       }
     </style>
   </head>

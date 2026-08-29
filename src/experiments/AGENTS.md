@@ -182,26 +182,35 @@ exercised in both directions:
   lattice at nine thousand specks —
   `docs/adr/20260829-a-low-discrepancy-scatter-does-not-scale.md`.
 
-### The kit renders DOM, not appearance
+### The kit renders the chrome, and dresses it
 
-The class names are the contract with each piece's stylesheet: `.bar`, `.panel`,
-`.group`, `.row`, `.label`, `.value`, `.span`, `.modes`, `.mode`, `.preset`,
-`.toggle`, `.copy`, `.about`. **Those names are the kit's**, and a setting key
-must not be able to land in the same namespace — a slider carries its key as
-`data-key`, not as a class, because Flotsam has a setting called `span` and a
-class of that name pulled the two-handled-track rules onto a plain slider.
+`kit/controls.css` holds the appearance as well as `controls.ts` holding the
+behaviour. They were separate until three pieces had hand-written near-identical
+copies of those rules, and **every kit bug so far had come out of that gap** —
+a range row's filled bar taking pointer events so its lower handle could not be
+grabbed, which shipped in Starry Night the day it had a range control and reached
+Flotsam by being copied; and Flotsam's `.span` stacking two tracks where a range
+needs one overlaid. Neither was a mistake about how a piece should look. Both
+were mistakes about how the chrome _works_, made in a file with no reason to know.
 
-**The chrome CSS is still per-piece, and it is where every kit bug so far has
-come from.** Around 460 near-identical lines across three pages. Both slider
-faults were CSS, and each failed in a way tests of geometry could not see: the
-range row's filled bar took pointer events and made its lower handle
-un-grabbable — shipped in Starry Night from the day it had a range control, then
-inherited by Flotsam along with the copied rules — and Flotsam's own `.span`
-stacked two tracks instead of overlaying one. `tests/kit.spec.ts` presses a real
-mouse on both handles of every piece that has a bound pair, because that is the
-only thing that catches it. By the third-copy rule above, the structural half of
-this CSS is now due to move.
+- **Structure is the kit's.** What stacks where, what takes a pointer, how a
+  two-handled track is assembled. A piece does not get to redecide these, for
+  the same reason it does not get to move the note's exit.
+- **Appearance is a token contract**, listed at the top of `controls.css`:
+  `--ui-text`, `--ui-label`, `--ui-heading`, `--ui-panel`, `--ui-chip`,
+  `--ui-edge`, `--ui-edge-hover`, `--ui-on-bg`/`-text`/`-edge`, `--accent`,
+  `--track`, `--ui-fade`, plus four measures the pieces legitimately disagree
+  about — `--ui-label-col`, `--ui-value-col`, `--ui-panel-min`, `--ui-row-gap`.
+  Every one has a fallback, so chrome works before a piece sets any of them.
+  Starry Night drives the whole thing a second time from its inverted scheme.
+- **Import it in the page's frontmatter**, so it is a real stylesheet in the
+  head rather than something the client script injects.
+- **Still offered.** A piece that wants different chrome declines the import,
+  exactly as it can decline `controls.ts`. The three tokens' worth of theming is
+  the cheap path, not the only one.
 
-- **A piece using a control kind it has no CSS for renders it unstyled and
-  nothing says so.** That has happened twice. Dangler still has no `.modes`
-  rules, because it has no choice or toggle row.
+The class names are the kit's namespace — `.bar`, `.panel`, `.group`, `.row`,
+`.label`, `.value`, `.span`, `.modes`, `.mode`, `.preset`, `.toggle`, `.copy`,
+`.about` — and **a setting key must not be able to land in it**. A slider carries
+its key as `data-key`, not as a class, because Flotsam has a setting called `span`
+and a class of that name pulled the two-handled-track rules onto a plain slider.
