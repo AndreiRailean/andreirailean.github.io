@@ -539,6 +539,11 @@ test("the settings panel opens with a row for every control", async ({ page }) =
   expect(await page.locator(".panel .group").count()).toBe(4)
 })
 
-test("the defaults are the first preset, which is what the note renders", async () => {
-  expect(PRESETS[0]!.settings).toEqual(DEFAULT_SETTINGS)
+test("the defaults are a baseline rather than a scene, and no preset leans on them", async () => {
+  // Position one is only position one. Every preset states every setting, so
+  // changing which is first moves nothing but which one a bare address lands on.
+  for (const { label, settings } of PRESETS) {
+    expect(Object.keys(settings).sort(), label).toEqual(Object.keys(DEFAULT_SETTINGS).sort())
+  }
+  expect(PRESETS[0]!.settings).not.toEqual(DEFAULT_SETTINGS)
 })

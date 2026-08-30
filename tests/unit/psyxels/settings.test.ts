@@ -116,6 +116,34 @@ describe("the query string", () => {
   })
 })
 
+describe("the presets", () => {
+  /**
+   * **No preset inherits from another, or from the defaults.**
+   *
+   * They were spread over `DEFAULT_SETTINGS` at first, which reads as tidy and
+   * is a trap: the day the featured scene changed, every preset that had not
+   * named a setting silently took the new one's value for it, and half of them
+   * ended up watched at a quarter speed. A scene someone found by dragging
+   * sliders should stay the scene they found.
+   */
+  it("each state every setting, so none can drift when another is retuned", () => {
+    const keys = Object.keys(DEFAULT_SETTINGS)
+    for (const { label, settings } of PRESETS) {
+      expect(Object.keys(settings).sort(), label).toEqual([...keys].sort())
+    }
+  })
+
+  it("does not privilege the first: it is what a bare address lands on and nothing else", () => {
+    const landing = settingsForLanding(new URLSearchParams(""))
+    expect(landing.featured).toBe(true)
+    expect(landing.settings).toEqual(normalizeSettings(PRESETS[0]!.settings))
+    // And the address it rewrites to carries that scene in full rather than
+    // standing for "whatever is first".
+    const query = settingsToQuery(PRESETS[0]!.settings)
+    expect([...query.keys()].length).toBeGreaterThan(10)
+  })
+})
+
 describe("what a change costs", () => {
   /**
    * The piece's whole shape is in these two functions: everything absent from
@@ -124,7 +152,7 @@ describe("what a change costs", () => {
    */
   it("repacks for the packing controls and for nothing else", () => {
     for (const key of ["seed", "subject", "face", "fill", "coarse", "levels", "detail", "variety", "fuzz"] as const) {
-      const value = key === "subject" ? "&" : key === "face" ? "grotesque" : Number(DEFAULT_SETTINGS[key]) / 2
+      const value = key === "subject" ? "&" : key === "face" ? "script" : Number(DEFAULT_SETTINGS[key]) / 2
       const next = normalizeSettings({ [key]: value })
       expect(needsPacking(DEFAULT_SETTINGS, next), key).toBe(true)
     }

@@ -21,14 +21,16 @@ const theme: NoteTheme = {
 <Note entry={entry} theme={theme} backdrop={0.4}>
   <script>
     import { createPsyxels } from "@/experiments/psyxels/psyxels"
-    import { DEFAULT_SETTINGS } from "@/experiments/psyxels/settings"
+    import { PRESETS } from "@/experiments/psyxels/settings"
 
     const canvas = document.getElementById("backdrop")
     if (canvas instanceof HTMLCanvasElement) {
-      // No portrait handed over: the defaults are the letter, and the note's
-      // backdrop has no way to reach the other subject. A page that wanted one
-      // would pass an image the way the piece's own page does.
-      const scene = createPsyxels(canvas, DEFAULT_SETTINGS)
+      // The featured scene, which is what the piece itself opens on — not the
+      // defaults, which are the piece's *zero* rather than anything anyone
+      // chose. No portrait is handed over, so a page whose featured scene became
+      // the photographic one would need to pass an image the way the piece's own
+      // page does.
+      const scene = createPsyxels(canvas, PRESETS[0]!.settings)
       scene.start()
     }
   </script>

@@ -291,9 +291,17 @@ flatten` at first, which looks right on a letter — ink is 1 almost everywhere 
   relationship between them survives. `run()` is deliberately not scaled by it:
   it means seconds of field, because a poster recipe asking for ninety seconds
   wants ninety seconds whatever rate someone is viewing at.
-- **`DEFAULT_SETTINGS` is the first preset, and both are a recorded scene.** They
-  are the base `normalizeSettings` falls back to, what `settingsToQuery` diffs
-  against, and what the note's backdrop renders.
+- **`DEFAULT_SETTINGS` is a baseline, not a scene, and no preset inherits from
+  it.** Presets were spread over it and the featured scene _was_ it, so the day
+  the featured scene changed every preset that had not named a setting silently
+  took the new one's value — half of them ended up watched at a quarter speed
+  wearing a light trail meant for something else. Each preset states every
+  setting now, and `settings.test.ts` asserts it. Position one is only position
+  one: what a bare address lands on, rewritten to that scene's full query.
+  The defaults are the piece's _zero_ — a plain letter with every effect at rest
+  — and they are what `normalizeSettings` fills gaps from and what
+  `settingsToQuery` measures a link against. The note's backdrop renders
+  `PRESETS[0]`, because a backdrop should show a scene someone chose.
 - **Anything that changes the picture without the clock moving must set
   `dirty`.** The loop parks itself when the clock is frozen, and setting
   `canvas.width` on a resize clears the canvas — so a parked loop leaves the piece
