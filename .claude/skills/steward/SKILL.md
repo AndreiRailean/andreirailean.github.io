@@ -65,9 +65,16 @@ Ordered by what costs other sessions most:
 3. **Checks that would have caught it**, so the next instance fails on its own.
 4. **Open issues labelled `kit`.**
 
-Land your own infrastructure work once CI is green. Leave visual work to Andrei's
+Land your own infrastructure work once CI is green — that is a standing
+authorisation, so do not stop to ask for each step. Leave visual work to Andrei's
 review. Never push to `main`; after a merge, fast-forward `main` in its own
 worktree or it silently drifts.
+
+**If none of the four has anything in it, say so and stop.** A steward with an
+empty queue has finished, not started. Do not go looking for something to share:
+the section hoists on the _third_ copy, and a steward hunting for work is exactly
+how a premature abstraction gets written — which is the failure this role exists
+to prevent, not to cause.
 
 ## Rules that bite
 
