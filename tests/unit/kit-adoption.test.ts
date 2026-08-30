@@ -51,11 +51,27 @@ function definitions(source: string): string[] {
   return [...source.matchAll(DEFINES)].map((match) => match[1]!)
 }
 
+/**
+ * Everything shared, which is two places rather than one.
+ *
+ * `kit/` is the control surface and only that. Shared code which is not the
+ * control surface sits at the section level beside `poster.ts` and
+ * `window.d.ts` — see the "What the kit is not" section of
+ * `docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.md`. Both are
+ * things a piece must not quietly reimplement, so both are read here.
+ */
+const shared = [
+  ...readdirSync(`${EXPERIMENTS}/kit`)
+    .filter((name) => name.endsWith(".ts"))
+    .map((name) => [`kit/${name}`, `${EXPERIMENTS}/kit/${name}`] as const),
+  ...readdirSync(EXPERIMENTS)
+    .filter((name) => name.endsWith(".ts"))
+    .map((name) => [name, `${EXPERIMENTS}/${name}`] as const),
+]
+
 const kitSymbols = new Map<string, string>()
-for (const file of readdirSync(`${EXPERIMENTS}/kit`).filter((name) => name.endsWith(".ts"))) {
-  for (const symbol of definitions(readFileSync(`${EXPERIMENTS}/kit/${file}`, "utf8"))) {
-    kitSymbols.set(symbol, `kit/${file}`)
-  }
+for (const [label, path] of shared) {
+  for (const symbol of definitions(readFileSync(path, "utf8"))) kitSymbols.set(symbol, label)
 }
 
 /**

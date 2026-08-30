@@ -159,12 +159,22 @@ shared layers is **who is spared the relearning**.
   experiment passes a `NoteTheme` and a script booting its own piece behind the
   sheet, and chooses nothing else. It does not get to move the exit, because a
   visitor should not have to find it twice.
-- **`kit/` is offered.** Parts a piece builds its _own_ chrome from:
-  `controls.ts`, `fullscreen.ts`, `copy.ts`, `wakelock.ts`. Compose them because
-  they are already learned; ignore them if the piece needs a different control
-  structure. The art ends at the console API, so controls sit outside that
-  boundary. Using the kit is never a reason to refuse a piece something; quietly
-  re-implementing what it already does well is the thing to avoid.
+- **`kit/` is offered, and it is the control surface only.** The panel, the bar,
+  their stylesheet, and what those need to work — `copy.ts`, `fullscreen.ts`,
+  `wakelock.ts`. Compose them because they are already learned; ignore them if
+  the piece needs a different control structure. The art ends at the console API,
+  so controls sit outside that boundary. Using the kit is never a reason to
+  refuse a piece something; quietly re-implementing what it already does well is
+  the thing to avoid.
+- **Shared code that is not the control surface sits at the section level**,
+  beside `poster.ts` and `window.d.ts`, which already mean exactly that. `kit/`
+  is not a cupboard for anything two pieces happen to share: the test is whether
+  a piece could take it _without_ taking the chrome. The generators could;
+  `copy.ts` could not. There is no `lib/` folder because one module does not earn
+  one — the second will. See the "What the kit is not" section of
+  `docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.md`, which also
+  records why not `src/lib/` (that is the _site's_, and importing it would invert
+  the boundary) and why not `packages/`.
 - **Neither imports from a piece.** Lift `kit/` out with an experiment and the
   experiment still runs.
 

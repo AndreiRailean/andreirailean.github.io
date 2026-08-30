@@ -54,12 +54,46 @@ Three layers, distinguished by **who is spared the relearning**.
   experiment tints. The beneficiary is the visitor, and the test is whether they
   would be confused to find it working differently in the next room. An
   experiment does not get to move the exit. Lives in `src/experiments/gallery/`.
-- **The kit** — shared parts for building a piece's own chrome: a panel that
-  opens above its trigger, preset management, the idle behaviour. **Offered, not
-  imposed.** A piece composes them because it is convenient, and may build
-  something else entirely if what it does needs a different control structure.
-  The beneficiary is whoever is building or testing, not the visitor. Lives in
-  `src/experiments/kit/`.
+- **The kit** — the control surface, and only that: a panel that opens above its
+  trigger, preset management, the idle behaviour, and what those need to work
+  (`copy.ts`, `fullscreen.ts`, `wakelock.ts`). **Offered, not imposed.** A piece
+  composes them because it is convenient, and may build something else entirely
+  if what it does needs a different control structure. The beneficiary is whoever
+  is building or testing, not the visitor. Lives in `src/experiments/kit/`.
+
+### What the kit is not
+
+**`kit/` is the control surface, not a cupboard for anything two pieces share.**
+
+That bound had to be found rather than stated. When the generators — `hashSeed`,
+`makeRng`, `gaussian` — met the third-copy rule, the first answer given was that
+they belonged in the kit because the kit is _offered_ and so are they. That
+reasoning is faulty, and it took the author pointing at it to see how: **offered
+versus imposed is what separates the kit from the gallery.** It says nothing
+about what belongs _inside_ the kit, and using it that way is an axis borrowed
+from one question to settle a different one.
+
+The test that does discriminate is **whether a piece can take one without the
+other**. `controls.ts` imports `copy` and `fullscreen`; `controls.css` dresses
+`controls.ts`; `wakelock` is the same browser surface. They travel together — a
+piece takes the chrome or it does not. The generators travel alone: a piece could
+seed itself from the kit and draw its own panel, or the reverse. Independently
+selectable means separately housed.
+
+A corroborating signal, noticed only afterwards: everything in `kit/` needs a
+browser, and the generators are pure. Their test runs in the node suite. That is
+not a coincidence, it is the same seam seen from the other side.
+
+**Shared-among-experiments code that is not the control surface sits at the
+section level**, beside `poster.ts` and `window.d.ts`, which already mean exactly
+that. Not `src/lib/`: `CONTEXT-MAP.md` assigns that to the _site_, so putting
+experiment code there would invert the one rule the boundary has and make the
+eslint rule proposed in #47 unimplementable. Not `packages/` either — that is
+ADR-0001's option C, whose trigger is an experiment needing its own dependency or
+build, and three functions are not that.
+
+**No `lib/` folder yet.** One module does not earn one; the second does, on the
+same discipline as everything else here.
 
 The chrome is kit, not gallery. An earlier draft of this record said "everything
 you can click is gallery", which was wrong, and wrong in the direction that does
