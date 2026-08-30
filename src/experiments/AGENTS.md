@@ -79,10 +79,18 @@ should stay the scene they found. Recorded, with what it cost, in
 fills gaps from and what `settingsToQuery` measures a link against, so it should
 move only when the meaning of a control moves.
 
-**Position one is only position one.** A bare address lands on the first preset
-and the page rewrites the URL to that scene's full query, so a visitor leaves
-with a link to _that scene_ rather than to whatever is featured next month.
-Nothing else follows from being first.
+**Position one is the primary, and a great deal follows from being first.** A
+bare address lands on it and the page rewrites the URL to that scene's full
+query, so a visitor leaves with a link to _that scene_ rather than to whatever is
+featured next month. Three other surfaces read it too: the poster captured for
+the index — three of the four recipes name no preset precisely because a bare URL
+lands here — and both the backdrop a note runs behind its sheet and the hue its
+furniture is tinted from. Promoting a preset to first therefore moves all of
+them together, which is the point of the arrangement. See `CONTEXT.md` on
+_primary_, and `tests/unit/experiments-presets.test.ts` for the mechanical half.
+
+What does _not_ follow is inheritance: being first makes a preset the piece's
+public face and still gives it nothing to inherit from, exactly as above.
 
 ## Adding a piece
 
