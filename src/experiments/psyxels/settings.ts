@@ -45,6 +45,7 @@ export type Settings = {
   weight: number
   vocabulary: number
   morph: number
+  ease: number
   churn: number
   flicker: number
   pulse: number
@@ -295,6 +296,18 @@ export const CONTROLS: Control[] = [
   {
     kind: "slider",
     group: "life",
+    key: "ease",
+    label: "ease",
+    min: 0.2,
+    max: 6,
+    step: 0.01,
+    scale: "log",
+    format: (value) => `${value.toFixed(2)}x`,
+    hint: "How long every transition takes, without changing how often anything happens. A psyx arriving, a psyx going, a frame turning into the next one: all of them were a fixed length in the piece's own seconds, so the only way to lengthen one was to slow the whole clock — which slows the *events* too, and a faster flicker at a slower playback is not the same picture. Wound up, a busy field moves like treacle; wound down, it snaps.",
+  },
+  {
+    kind: "slider",
+    group: "life",
     key: "churn",
     label: "churn",
     min: 0,
@@ -470,6 +483,7 @@ export const DEFAULT_SETTINGS: Settings = {
   weight: 0.06,
   vocabulary: 3,
   morph: 0.83,
+  ease: 1,
   churn: 58.5,
   flicker: 10,
   pulse: 1,
@@ -510,6 +524,40 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       spread: 180,
       wildness: 0.61,
       saturation: 1,
+    },
+  },
+  {
+    label: "ampersand",
+    hint: "A script ampersand, held still and lit from within: no frame changes at all, only breathing.",
+    settings: {
+      ...DEFAULT_SETTINGS,
+      subject: "&",
+      face: "script",
+      fill: 0.79,
+      coarse: 0.027,
+      levels: 2,
+      detail: 0.49,
+      variety: 0.45,
+      threshold: 0.71,
+      fuzz: 0.6,
+      flatten: 0.63,
+      inset: -0.12,
+      wander: 0.6,
+      weight: 0.145,
+      vocabulary: 6,
+      flicker: 0,
+      morph: 0.5,
+      churn: 59,
+      pulse: 0.45,
+      tempo: 0.45,
+      wave: 0.83,
+      hue: 355,
+      spread: 180,
+      glow: 0.24,
+      afterglow: 0.12,
+      edge: 0.74,
+      saturation: 0.35,
+      playback: 1,
     },
   },
   {
@@ -568,6 +616,10 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       churn: 5,
       vocabulary: 3,
       inset: 0.16,
+      // Its own speed. The landing scene is watched at a quarter, and every
+      // preset that inherited that was both too slow and wearing a trail meant
+      // for a scene four times slower.
+      playback: 1,
     },
   },
   {
@@ -602,6 +654,10 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       wander: 0.12,
       edge: 0.3,
       edgeHue: 58,
+      // Its own speed. The landing scene is watched at a quarter, and every
+      // preset that inherited that was both too slow and wearing a trail meant
+      // for a scene four times slower.
+      playback: 1,
     },
   },
   {
@@ -629,6 +685,10 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       spread: 96,
       wildness: 0.85,
       saturation: 0.8,
+      // Its own speed. The landing scene is watched at a quarter, and every
+      // preset that inherited that was both too slow and wearing a trail meant
+      // for a scene four times slower.
+      playback: 1,
     },
   },
   {
@@ -654,6 +714,10 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       spread: 130,
       wildness: 0.9,
       saturation: 0.9,
+      // Its own speed. The landing scene is watched at a quarter, and every
+      // preset that inherited that was both too slow and wearing a trail meant
+      // for a scene four times slower.
+      playback: 1,
     },
   },
 ]

@@ -27,6 +27,15 @@ const smooth = (t: number) => t * t * t * (t * (t * 6 - 15) + 10)
 export const MORPH_MAX = 0.55
 
 /**
+ * How far `ease` can stretch or compress a transition.
+ *
+ * Wide, because the piece's clocks are wide: `flicker` spans two orders of
+ * magnitude and `churn` nearly as much, and a transition is only ever a *share*
+ * of the interval it starts in.
+ */
+export const EASE_RANGE = { min: 0.2, max: 6 }
+
+/**
  * How far a psyx is through its change of frame, eased at both ends.
  *
  * **A share of the current hold rather than a fixed duration**, because the
@@ -37,7 +46,7 @@ export const MORPH_MAX = 0.55
  * the hard cut the piece had before.
  */
 export function morphOf(psyx: Psyx, settings: Settings, time: number): number {
-  const span = Math.min(MORPH_MAX, settings.morph * psyx.gap)
+  const span = Math.min(MORPH_MAX * settings.ease, settings.morph * psyx.gap)
   if (!(span > 0)) return 1
   return smooth(Math.min(1, Math.max(0, (time - psyx.flicked) / span)))
 }
@@ -118,8 +127,20 @@ export const BIRTH_S = 0.5
  */
 const GRAVITY = 0.32
 
-/** How long a psyx of this size takes to arrive or to go. */
-export const spanOf = (share: number) => BIRTH_S * (GRAVITY + (1 - GRAVITY) * (1 - Math.min(1, share)))
+/**
+ * How long a psyx of this size takes to arrive or to go.
+ *
+ * **`ease` is here because the piece had only one way to slow anything down.**
+ * Every transition — a psyx arriving, a psyx going, a frame changing — was a
+ * fixed length in the piece's own seconds, so the only way to lengthen one was
+ * `playback`, and that slows the *events* along with them: fewer changes as well
+ * as longer ones. Raising the flicker to compensate is not the same picture,
+ * which is the piece's author's report and is exactly right. This scales the
+ * transitions and leaves the rates alone, so a field can be as busy as it likes
+ * and still move like treacle.
+ */
+export const spanOf = (share: number, ease: number) =>
+  BIRTH_S * ease * (GRAVITY + (1 - GRAVITY) * (1 - Math.min(1, share)))
 
 /**
  * A psyx arriving, eased.

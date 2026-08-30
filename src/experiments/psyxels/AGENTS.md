@@ -234,6 +234,22 @@ flatten` at first, which looks right on a letter — ink is 1 almost everywhere 
   so a fast-forward that draws only its final one leaves the buffer holding a
   single frame — a poster with no glow on a scene that has plenty.
 
+- **A memory of a picture that no longer exists is a stain, not an afterglow.**
+  The glow buffer fades on the piece's clock, so loading a preset that is watched
+  slowly left the previous scene's light over the new one for seconds — bright,
+  long, and belonging to nothing on screen. `forget()` empties it on anything
+  that replaces the picture wholesale: a repack, a new subject, a resize. A psyx
+  coming and going does _not_ clear it, because that is what the buffer is for.
+- **`playback` was the only way to slow anything down, and that is not the same
+  control.** Every transition — a psyx arriving, one going, a frame turning into
+  the next — was a fixed length in the piece's own seconds, so lengthening one
+  meant slowing the clock, which slows the _events_ with it. Raising the flicker
+  to compensate gives a different picture, which is what the piece's author
+  reported. `ease` scales the transitions and leaves every rate alone. Two things
+  follow it: `MORPH_MAX` is multiplied by it, or a long hold still cannot carry a
+  long transition; and `MOURNING` is too, or a stretched departure is forgotten
+  halfway through and a psyx vanishes mid-fade.
+
 ## Invariants worth preserving
 
 - **A psyx is a pure function of `(seed, depth, column, row)`.** Its frame, its

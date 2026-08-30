@@ -193,20 +193,46 @@ describe("morphOf", () => {
  */
 describe("spanOf", () => {
   it("takes the coarsest psyx in and out in a third of the time the finest needs", () => {
-    expect(spanOf(1)).toBeLessThan(spanOf(0) * 0.4)
-    expect(spanOf(0)).toBe(BIRTH_S)
+    expect(spanOf(1, 1)).toBeLessThan(spanOf(0, 1) * 0.4)
+    expect(spanOf(0, 1)).toBe(BIRTH_S)
   })
 
   it("falls all the way along, and never to nothing", () => {
     let last = Infinity
     for (let share = 0; share <= 1.0001; share += 0.1) {
-      const span = spanOf(share)
+      const span = spanOf(share, 1)
       expect(span).toBeLessThanOrEqual(last)
       expect(span).toBeGreaterThan(0)
       last = span
     }
     // A share past the coarsest square — a psyx overlapping into its neighbour's
     // — must not run the ease backwards.
-    expect(spanOf(4)).toBe(spanOf(1))
+    expect(spanOf(4, 1)).toBe(spanOf(1, 1))
+  })
+})
+
+/**
+ * `ease` is the piece's second way to slow something down, and the only one that
+ * does not also slow how *often* things happen.
+ */
+describe("ease", () => {
+  const held = (over: Partial<Psyx> = {}) => psyx({ from: 0, glyph: 1, flicked: 0, ...over })
+
+  it("stretches and compresses every transition without touching a rate", () => {
+    expect(spanOf(0.5, 2)).toBeCloseTo(spanOf(0.5, 1) * 2, 10)
+    expect(spanOf(0.5, 0.5)).toBeCloseTo(spanOf(0.5, 1) * 0.5, 10)
+    // The gravity of a large psyx survives it: still quicker than fine grain at
+    // any setting.
+    expect(spanOf(1, 3)).toBeLessThan(spanOf(0, 3))
+  })
+
+  it("lifts the cap on a change of frame, which is what made playback the only lever", () => {
+    const waiting = held({ gap: 30 })
+    const scene = settings({ morph: 1 })
+    // Unstretched, a transition can never run past the cap however long the hold.
+    expect(morphOf(waiting, { ...scene, ease: 1 }, MORPH_MAX * 0.99)).toBeLessThan(1)
+    expect(morphOf(waiting, { ...scene, ease: 1 }, MORPH_MAX + 0.01)).toBe(1)
+    // Stretched, it runs on.
+    expect(morphOf(waiting, { ...scene, ease: 4 }, MORPH_MAX + 0.01)).toBeLessThan(1)
   })
 })

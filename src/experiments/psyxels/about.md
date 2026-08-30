@@ -112,6 +112,14 @@ and saying so in the geometry makes that transition a _rotation_: the mark winds
 round without either arm ever losing length. A minus becoming a cross is the same
 movement seen from further off, one stroke turning while another grows across it.
 
+How long any of it takes is **ease**, which is the piece's other clock. Every
+transition — a psyx arriving, one going, a frame turning into the next — is a
+fixed length in the piece's own seconds, so for a while the only way to lengthen
+one was `playback`, and that slows the _events_ along with them: fewer changes as
+well as longer ones. Raising the flicker to compensate is not the same picture.
+Ease scales the transitions and leaves every rate exactly where it is, so a field
+can be as busy as it likes and still move like treacle.
+
 The transition is a share of the hold it starts rather than a fixed duration.
 The flicker control spans two orders of magnitude, and a quarter-second ease is
 languid at one change every two seconds and never finishes at five a second —
@@ -197,6 +205,11 @@ behind for a moment. A phosphor rather than a filter. It fades on the piece's
 own clock, so watching a scene slowly _lengthens_ the trail — which is the right
 way round, since the reason to slow a scene down is to see what a psyx leaves
 behind.
+
+The buffer is emptied when the picture is _replaced_ — a new subject, a repack,
+a resize — because a memory of something that is no longer there is a stain
+rather than a trail. A psyx coming and going does not empty it, which is the
+whole point of having one.
 
 One consequence worth knowing: the canvas no longer paints its own ground. It is
 cleared to nothing and the page's black shows through, because a ground colour

@@ -132,6 +132,7 @@ test("winding the life controls anywhere leaves the packing exactly as it was", 
       flicker: 9,
       vocabulary: 9,
       morph: 1,
+      ease: 4,
       weight: 0.3,
       inset: 0.4,
       wander: 0.6,
@@ -350,6 +351,37 @@ test("the glow spills light, and the afterglow leaves it behind", async ({ page 
   // None of it is a psyx: the glow adds light, never population.
   expect(lit.stats.psyxels).toBeGreaterThan(0)
   expect(trailing.stats.byDepth.length).toBe(dark.stats.byDepth.length)
+})
+
+/**
+ * **A memory of a picture that no longer exists is a stain, not an afterglow.**
+ *
+ * The buffer fades on the piece's clock, so loading a preset that is watched
+ * slowly left the previous scene's light sitting over the new one for seconds —
+ * bright, long, and belonging to nothing on screen. Reported by the piece's
+ * author as "afterglow stays for a long time and is totally unrelated to the
+ * active preset".
+ */
+test("a repacked field does not keep the light of the one before it", async ({ page }) => {
+  const experiment = await openPsyxels(page, { idle: true })
+
+  // A long trail on a still field, given time to reach its resting value.
+  await experiment.api(({ api }) => {
+    api.set({ glow: 1, afterglow: 0.95, churn: 0, flicker: 0, playback: 1 })
+    api.run(6)
+  })
+  const before = (await light(page)).lit
+  expect(before).toBeGreaterThan(1000)
+
+  // A much smaller subject, and a single frame — far less than the trail's own
+  // length, so anything still lit is light the old field left behind.
+  await experiment.api(({ api }) => {
+    api.set({ fill: 0.25 })
+    api.run(0.05)
+  })
+  const after = (await light(page)).lit
+
+  expect(after).toBeLessThan(before * 0.5)
 })
 
 test("churn repacks squares over time, and holds still at zero", async ({ page }) => {

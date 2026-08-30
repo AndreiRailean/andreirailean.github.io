@@ -644,7 +644,10 @@ export function packField(mask: Mask, settings: Settings, time: number): Field {
     update(time, settings) {
       for (const root of roots) visit(root, time, settings)
       // Kept in one pass rather than spliced: a ghost list is tens of entries.
-      if (departed.length > 0) departed = departed.filter((ghost) => time - ghost.died < MOURNING)
+      // The bound follows `ease`, or a stretched departure is forgotten halfway
+      // through and a psyx vanishes mid-fade.
+      const mourning = MOURNING * Math.max(1, settings.ease)
+      if (departed.length > 0) departed = departed.filter((ghost) => time - ghost.died < mourning)
     },
 
     ghosts: () => departed,

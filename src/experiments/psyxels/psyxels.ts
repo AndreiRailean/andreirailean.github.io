@@ -206,12 +206,35 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
     stageCtx.setTransform(cols / width, 0, 0, cols / width, 0, 0)
     paintSubject(stageCtx, width, height, settings.subject, settings.face, settings.fill, avatar)
     mask = buildMask(stage, width, height)
+    forget()
   }
 
   function rebuildField(): void {
     if (!mask) return
     field = packField(mask, settings, clock)
+    forget()
     dirty = true
+  }
+
+  /**
+   * Empties the glow buffer.
+   *
+   * **A memory of a picture that no longer exists is not an afterglow, it is a
+   * stain.** The buffer fades on the piece's clock, so loading a preset that is
+   * watched slowly left the previous scene's light sitting over the new one for
+   * seconds — long, bright and belonging to nothing on screen. Anything that
+   * replaces the picture wholesale clears it: a repack, a new subject, a resize.
+   * A psyx coming and going does not, because that is exactly what the buffer is
+   * for.
+   */
+  function forget(): void {
+    if (!haloCtx) return
+    haloCtx.setTransform(1, 0, 0, 1, 0, 0)
+    haloCtx.globalCompositeOperation = "copy"
+    haloCtx.globalAlpha = 1
+    haloCtx.clearRect(0, 0, halo.width, halo.height)
+    haloCtx.globalCompositeOperation = "source-over"
+    haloAt = clock
   }
 
   function resize(): void {
@@ -265,7 +288,7 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
     // How large this one is against the coarsest square, which decides both how
     // quickly it arrives and how much bloom it is given.
     const share = Math.min(1, psyx.size / coarsePx)
-    const life = spanOf(share)
+    const life = spanOf(share, settings.ease)
     // A ghost runs the same ease backwards over the same span, so a departure
     // takes exactly as long as the arrival replacing it.
     const arrival = leaving > 0 ? 1 - arrivalOf(time, leaving, life) : arrivalOf(time, psyx.born, life)
