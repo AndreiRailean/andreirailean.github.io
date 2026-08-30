@@ -46,9 +46,16 @@ rule a test enforces is one no future steward has to remember.
 
 ## What the role actually does
 
-- **Announce yourself.** Peers are told to route shared-code questions to the
-  steward by name, so a handover is silent until you say so. Tell every live
-  experiment session that stewardship has moved, with your own session name.
+- **Announce yourself, to everyone.** Peers are told to route shared-code
+  questions to the steward by name, so a handover is silent until you say so.
+  Tell **every live session** that stewardship has moved, with your own session
+  name — not only the ones building experiments. Starting a second steward does
+  not stand the first one down, and the announcement is the only thing that
+  reaches them; a steward is not an experiment session, so the narrower reading
+  excluded the one peer who most needed to hear it. Do not try to detect which
+  peer is the steward — a session name says nothing about the role, and
+  `img-preview-1f` held it. If someone replies claiming it, whichever of you is
+  mid-PR finishes and the other waits. Silence is not a competing claim.
 - **Answer kit gaps.** A piece needing something the kit lacks is a gap the next
   piece will hit too. Change the shared thing; do not let the piece work around
   it. `scale: "log"` arrived exactly this way.
