@@ -30,8 +30,49 @@ const PAGES = "src/pages/experiments"
 /** Not pieces: shared code, and the section's own docs. */
 const NOT_A_PIECE = new Set(["docs", "gallery", "kit"])
 
-/** A module a piece must not carry its own copy of. */
-const KIT_MODULES = ["controls.ts", "fullscreen.ts", "copy.ts", "wakelock.ts"]
+/**
+ * What the kit defines, by symbol rather than by filename.
+ *
+ * Filenames were the first rule and were wrong twice over. They missed a copy
+ * saved under another name — `controls.ts` to `chrome.ts` and the check was
+ * happy — and they were about to produce a false positive the other way:
+ * `kit/random.ts` exports `hashSeed`, `makeRng` and `gaussian`, while
+ * `dangler/random.ts` and `flotsam/random.ts` keep placement strategies that
+ * share the filename and none of the contents. A placement is a choice about a
+ * scale and deliberately did not travel.
+ *
+ * What actually matters is whether a piece has *reimplemented* something the kit
+ * already has, and that is a question about definitions.
+ */
+const DEFINES = /^export\s+(?:async\s+)?(?:function|const|class)\s+([A-Za-z0-9_$]+)/gm
+
+/** Only what a file defines itself. A re-export is not a copy. */
+function definitions(source: string): string[] {
+  return [...source.matchAll(DEFINES)].map((match) => match[1]!)
+}
+
+/**
+ * Everything shared, which is two places rather than one.
+ *
+ * `kit/` is the control surface and only that. Shared code which is not the
+ * control surface sits at the section level beside `poster.ts` and
+ * `window.d.ts` — see the "What the kit is not" section of
+ * `docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.md`. Both are
+ * things a piece must not quietly reimplement, so both are read here.
+ */
+const shared = [
+  ...readdirSync(`${EXPERIMENTS}/kit`)
+    .filter((name) => name.endsWith(".ts"))
+    .map((name) => [`kit/${name}`, `${EXPERIMENTS}/kit/${name}`] as const),
+  ...readdirSync(EXPERIMENTS)
+    .filter((name) => name.endsWith(".ts"))
+    .map((name) => [name, `${EXPERIMENTS}/${name}`] as const),
+]
+
+const kitSymbols = new Map<string, string>()
+for (const [label, path] of shared) {
+  for (const symbol of definitions(readFileSync(path, "utf8"))) kitSymbols.set(symbol, label)
+}
 
 /**
  * Selectors `kit/controls.css` owns. A piece redeclaring one is either fighting
@@ -87,14 +128,21 @@ describe.each(slugs)("%s", (slug) => {
     expect(page, `${PAGES}/${slug}/index.astro`).not.toBeNull()
   })
 
-  it.each(KIT_MODULES)("keeps no copy of kit/%s", (module) => {
-    const own = read(`${EXPERIMENTS}/${slug}/${module}`)
-    if (own === null) return
+  it("defines nothing the kit already defines", () => {
+    const clashes: string[] = []
+    for (const file of readdirSync(`${EXPERIMENTS}/${slug}`).filter((name) => name.endsWith(".ts"))) {
+      const source = readFileSync(`${EXPERIMENTS}/${slug}/${file}`, "utf8")
+      if (source.includes(OPT_OUT)) continue
+      for (const symbol of definitions(source)) {
+        const where = kitSymbols.get(symbol)
+        if (where) clashes.push(`${slug}/${file} defines \`${symbol}\`, which ${where} already does`)
+      }
+    }
     expect(
-      own.includes(OPT_OUT),
-      `${slug}/${module} duplicates a kit module. Import it from @/experiments/kit/, ` +
-        `or say why not with a "${OPT_OUT} <reason>" comment.`,
-    ).toBe(true)
+      clashes,
+      `${clashes.join("; ")}. Import it from @/experiments/kit/, or say why not with a ` +
+        `"${OPT_OUT} <reason>" comment in that file.`,
+    ).toEqual([])
   })
 
   it("imports the kit stylesheet if it renders the kit's chrome", () => {
