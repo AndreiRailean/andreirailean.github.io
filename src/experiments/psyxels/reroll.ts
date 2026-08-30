@@ -4,7 +4,7 @@ import { normalizeSettings, SEED_BOUNDS, type Settings } from "@/experiments/psy
 /**
  * A fresh packing of the same picture.
  *
- * The seed decides every split that was not forced by detail, and every pixel's
+ * The seed decides every split that was not forced by detail, and every psyx's
  * frame, rate, phase and colour — so a re-roll is a genuinely different field
  * over an identical subject. The letter does not move; everything it is made of
  * does.

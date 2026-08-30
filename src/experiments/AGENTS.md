@@ -206,7 +206,7 @@ exercised in both directions:
 - `wakelock.ts` moved in when Flotsam was about to make it a third byte-identical
   copy — `docs/adr/20260829-the-third-copy-moves-to-the-kit.md`.
 - The **generators** — `hashSeed`, `makeRng`, `gaussian` — waited for a third
-  piece and were hoisted with Psyxels, whose every psyxel draws from
+  piece and were hoisted with Psyxels, whose every psyx draws from
   `makeRng(hashSeed(seed, depth, column, row))`. They went to the **section
   level** rather than into `kit/`: the kit is the control surface, whose parts
   travel together, and the generators travel alone and need no browser. See

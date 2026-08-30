@@ -70,7 +70,7 @@ const STACKS: Record<Face, string> = {
 /**
  * Fits a glyph to a box by measuring it rather than trusting the font size.
  *
- * A capital A at `120px` is nothing like 120 pixels tall, and the gap differs by
+ * A capital A at `120px` is nothing like 120 psyxels tall, and the gap differs by
  * face — so a fixed size would make the subject's height depend on which font
  * the machine happened to have. Measured, then scaled by the ratio, it does not.
  */

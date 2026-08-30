@@ -1,8 +1,8 @@
-import type { Psyxel } from "@/experiments/psyxels/field"
+import type { Psyx } from "@/experiments/psyxels/field"
 import type { Settings } from "@/experiments/psyxels/settings"
 
 /**
- * What colour a psyxel is, and how much of that is its own idea.
+ * What colour a psyx is, and how much of that is its own idea.
  *
  * The piece has a subject with colours of its own — a white letter, a face — and
  * a field of psyxels with opinions. `wildness` is the whole argument between
@@ -11,7 +11,7 @@ import type { Settings } from "@/experiments/psyxels/settings"
  * Everything between is a picture being talked over, which is where the piece
  * spends most of its time.
  *
- * A psyxel's own hue is drawn fresh every time it changes frame, so colour and
+ * A psyx's own hue is drawn fresh every time it changes frame, so colour and
  * frame change together — see `field.ts`. What lives here is only the arithmetic
  * for turning that draw into something to paint with.
  */
@@ -24,13 +24,13 @@ const HUE_STEPS = 180
 
 export type Palette = {
   /**
-   * The CSS colour a psyxel paints with, for one of its two frames.
+   * The CSS colour a psyx paints with, for one of its two frames.
    *
-   * `own` is the hue offset that frame was drawn with — a psyxel keeps the one
+   * `own` is the hue offset that frame was drawn with — a psyx keeps the one
    * it is leaving as well as the one it is arriving at, so a change of frame
    * cross-fades colour along with the mark rather than cutting to it.
    */
-  colour: (psyxel: Psyxel, settings: Settings, own: number) => string
+  colour: (psyx: Psyx, settings: Settings, own: number) => string
   /** How many distinct colours have been built. Cheap insight into what a scene costs. */
   size: () => number
 }
@@ -48,16 +48,16 @@ function hueToChannel(p: number, q: number, t: number): number {
 /**
  * The whole hue wheel at one saturation, plus a cache of the strings it makes.
  *
- * Two costs are being avoided, and both are per psyxel per frame. Converting a
+ * Two costs are being avoided, and both are per psyx per frame. Converting a
  * hue is the smaller: thousands of psyxels share a few hundred hues between them,
  * so the wheel is built once and read by index. Building the CSS string is the
- * larger — it is an allocation per psyxel per frame, and a scene of eight
+ * larger — it is an allocation per psyx per frame, and a scene of eight
  * thousand psyxels makes half a million a second. Quantising to six bits a
  * channel gives the cache something to hit: a scene at full wildness draws from
  * the wheel alone and settles on a few hundred strings, and even the portrait,
  * whose colours come off a photograph, reuses everything within a shade.
  *
- * Lightness is fixed and brightness is carried by alpha instead: a psyxel dimming
+ * Lightness is fixed and brightness is carried by alpha instead: a psyx dimming
  * by lightness slides toward the ground colour, which on this ground means
  * sliding toward blue, and the whole field goes cold as it breathes out.
  */
@@ -78,23 +78,23 @@ export function createPalette(saturation: number, lightness = 0.56): Palette {
   const strings = new Map<number, string>()
 
   return {
-    colour(psyxel, settings, own) {
+    colour(psyx, settings, own) {
       /**
        * **An edge gets a colour of its own.**
        *
        * The packing already knows where the contours are — unevenness is what
-       * makes a square subdivide — so the same number can say *this psyxel is on
+       * makes a square subdivide — so the same number can say *this psyx is on
        * the boundary* and shift it away from the field's hue. It is the accent
        * the piece was missing: a letter's edge picks itself out in a
        * complementary colour while its interior stays in the base, and the
-       * outline reads without a single psyxel changing size.
+       * outline reads without a single psyx changing size.
        *
        * Deliberately not brightness. Lighting the edges is what an outline
-       * filter does, and it fights the coverage — a psyxel half inside the
+       * filter does, and it fights the coverage — a psyx half inside the
        * subject is *dim*, and brightening it because it is also on the boundary
        * says the opposite of what the tone map just said.
        */
-      const degrees = settings.hue + own * settings.spread + psyxel.edge * settings.edge * settings.edgeHue
+      const degrees = settings.hue + own * settings.spread + psyx.edge * settings.edge * settings.edgeHue
       let bucket = Math.round((degrees / 360) * HUE_STEPS) % HUE_STEPS
       if (bucket < 0) bucket += HUE_STEPS
 
@@ -104,17 +104,17 @@ export function createPalette(saturation: number, lightness = 0.56): Palette {
       // Unnormalised it is carried twice — a shadowed cheek came out both dim
       // and muddy, and the portrait read as a brown smear where a dim,
       // saturated skin tone was wanted.
-      const peak = Math.max(psyxel.r, psyxel.g, psyxel.b, 1e-3)
-      // An edge is also more its own psyxel and less the subject's: at full
-      // strength a boundary psyxel takes the field's colour outright, which is
+      const peak = Math.max(psyx.r, psyx.g, psyx.b, 1e-3)
+      // An edge is also more its own psyx and less the subject's: at full
+      // strength a boundary psyx takes the field's colour outright, which is
       // what makes the accent survive a photograph whose own colours are
       // everywhere.
-      const wild = Math.min(1, settings.wildness + psyxel.edge * settings.edge)
+      const wild = Math.min(1, settings.wildness + psyx.edge * settings.edge)
       const keep = (1 - wild) / peak
 
-      const red = Math.min(63, ((keep * psyxel.r + wild * r[bucket]!) * 63) | 0)
-      const green = Math.min(63, ((keep * psyxel.g + wild * g[bucket]!) * 63) | 0)
-      const blue = Math.min(63, ((keep * psyxel.b + wild * b[bucket]!) * 63) | 0)
+      const red = Math.min(63, ((keep * psyx.r + wild * r[bucket]!) * 63) | 0)
+      const green = Math.min(63, ((keep * psyx.g + wild * g[bucket]!) * 63) | 0)
+      const blue = Math.min(63, ((keep * psyx.b + wild * b[bucket]!) * 63) | 0)
 
       const key = (red << 12) | (green << 6) | blue
       const known = strings.get(key)

@@ -1,8 +1,8 @@
 /**
- * What one pixel can be showing: a small, finite set of frames, and the rule for
+ * What one psyx can be showing: a small, finite set of frames, and the rule for
  * which frame comes next.
  *
- * A pixel here is not a colour, it is a *mini-animation* — it holds one frame
+ * A psyx here is not a colour, it is a *mini-animation* — it holds one frame
  * for a while, then picks another. So the set has to be small enough that a
  * viewer recognises a repeat and reads the field as a vocabulary rather than as
  * noise, and related enough that consecutive frames look like the same object
@@ -12,19 +12,19 @@
  * picture. Every glyph is a subset of {horizontal stroke, vertical stroke,
  * diagonal pair, ring, fill}, and the distance between two glyphs is how many
  * features differ. A plus is one feature from a minus and one from a circled
- * plus, so a pixel wandering by nearest neighbours grows a stroke, then a ring,
+ * plus, so a psyx wandering by nearest neighbours grows a stroke, then a ring,
  * then loses the stroke — which reads as one thing changing its mind.
  *
  * Describing a frame by its features pays a second time, and it is the reason
  * this is not a set of pictures. **A change of frame is a change of features,
  * so it can be played rather than cut.** A stroke grows out of the middle, a
- * ring opens from the centre, a disc closes — and the pixel reads as one mark
+ * ring opens from the centre, a disc closes — and the psyx reads as one mark
  * rearranging itself instead of one mark being swapped for another. Cross-fading
  * two drawings would give the same information and none of that, at twice the
  * draw calls.
  *
  * They are drawn rather than typeset, in units of their own cell, because a
- * pixel here is anywhere between three and two hundred pixels across and a font
+ * psyx here is anywhere between three and two hundred psyxels across and a font
  * would have to be loaded, measured and hinted at every one of those sizes.
  */
 
@@ -73,13 +73,13 @@ function distance(a: Feature, b: Feature): number {
 }
 
 /**
- * How strongly a pixel prefers a frame near the one it is showing.
+ * How strongly a psyx prefers a frame near the one it is showing.
  *
  * Each extra feature of difference is this much less likely. At 0.35 a
  * one-feature step is three times a two-feature step and nine times a three —
- * enough that the field reads as pixels *changing* rather than as pixels being
+ * enough that the field reads as psyxels *changing* rather than as psyxels being
  * replaced, and not so much that the far half of the vocabulary never appears.
- * A pixel never repeats its current frame: a change that changes nothing is a
+ * A psyx never repeats its current frame: a change that changes nothing is a
  * pause, and pauses are what the hold time is for.
  */
 const KINSHIP = 0.35
@@ -92,8 +92,8 @@ const WEIGHTS: number[][] = GLYPHS.map((from, i) =>
 /**
  * The frame after this one, drawn from the first `count` of the vocabulary.
  *
- * `roll` is a number in [0, 1) from the pixel's own generator, so the choice is
- * reproducible from the seed and the pixel's identity.
+ * `roll` is a number in [0, 1) from the psyx's own generator, so the choice is
+ * reproducible from the seed and the psyx's identity.
  */
 export function nextGlyph(current: number, count: number, roll: number): number {
   const limit = Math.max(1, Math.min(GLYPH_COUNT, Math.round(count)))
@@ -136,7 +136,7 @@ export function armsOf(glyph: number): { along: boolean; across: boolean; spin: 
  * Paints a mark, centred, inside a box of half-width `extent`.
  *
  * Everything is a fraction of `extent`, so the same call draws a legible mark at
- * three pixels and at two hundred.
+ * three psyxels and at two hundred.
  *
  * **The diagonals are not a third pair of strokes; they are the first two
  * turned.** A cross is a plus rotated by an eighth turn, and saying so in the
@@ -148,8 +148,8 @@ export function armsOf(glyph: number): { along: boolean; across: boolean; spin: 
  * movement rather than a stroke that jumps shorter the instant a ring appears
  * around it.
  *
- * One path, one stroke, whatever is in transition: at several thousand pixels a
- * frame the cost here is canvas state changes rather than pixels touched, and a
+ * One path, one stroke, whatever is in transition: at several thousand psyxels a
+ * frame the cost here is canvas state changes rather than psyxels touched, and a
  * transition drawn as two overlaid frames would double them. The disc is the one
  * exception — it is a fill — and only the frames that have one reach it.
  */

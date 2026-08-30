@@ -67,7 +67,7 @@ export function announceApi(): void {
     ["experiment.idle(false)", "stop the chrome hiding itself"],
     ["experiment.fullscreen()", "toggle fullscreen (or press f)"],
     ["experiment.awake()", "is the display being held awake"],
-    ["experiment.stats()", "pixels, sizes, how well the subject survives, fps"],
+    ["experiment.stats()", "psyxels, sizes, how well the subject survives, fps"],
     ["experiment.url()", "a link that restores this exact scene"],
   ]
   const width = Math.max(...lines.map(([call]) => call.length))

@@ -1,9 +1,9 @@
 # Psyxels — notes for agents
 
-**A psyxel** is the unit: one square of the picture, the mark drawn for it, and
+**A psyx** is the unit: one square of the picture, the mark drawn for it, and
 the small mind that picks that mark. _Pixel_ means a screen pixel here and
 nothing else — the two differ by two orders of magnitude and the code measures in
-both, so the distinction is load-bearing rather than cute. `Psyxel` is the type
+both, so the distinction is load-bearing rather than cute. `Psyx` is the type
 in `field.ts`; a _square_ is the region, a _mark_ is what is drawn in it, a
 _frame_ is one entry of the vocabulary.
 
@@ -13,20 +13,20 @@ things about _this_ piece that will get broken by accident.
 
 ## The one thing to understand first
 
-**There are two halves and only one of them may move a psyxel.**
+**There are two halves and only one of them may move a psyx.**
 
 - **The packing** — `mask.ts` and `field.ts` — is a still question asked of a
-  still picture. It decides where each psyxel is and how big. It runs when the
+  still picture. It decides where each psyx is and how big. It runs when the
   subject, the frame, or one of the seven settings in `needsPacking` changes, and
   at no other time.
 - **The life** — `glyphs.ts`, `pulse.ts`, `palette.ts` — is read live, every
   frame, from settings that are never copied into the field. It decides what a
-  psyxel is showing, what colour it is and how bright. It can move nothing.
+  psyx is showing, what colour it is and how bright. It can move nothing.
 
 That separation is the piece. A scene can be wound from sober to hallucinating
 with the letter underneath standing exactly still, and
 `tests/psyxels.spec.ts` asserts it by driving every life control to an extreme
-and comparing the psyxel count and the depth histogram before and after.
+and comparing the psyx count and the depth histogram before and after.
 
 If you find yourself repacking on a colour change, stop: you have just made a
 piece that reshuffles itself under the reader's hand every time they touch a
@@ -34,7 +34,7 @@ slider.
 
 ## The packing is a subdivision, not a bin-pack
 
-A square is one psyxel or four, recursively. Two consequences worth stating
+A square is one psyx or four, recursively. Two consequences worth stating
 because both look like luck rather than design:
 
 - **The cover is exact by construction.** No gaps, no overlaps, no arithmetic to
@@ -42,7 +42,7 @@ because both look like luck rather than design:
   slivers nothing fits, and every fix for that is a fix you would have to
   maintain.
 - **A size change is local.** One square splits or four merge, and nothing
-  outside that square is touched. Repacking "everything around" a resized psyxel
+  outside that square is touched. Repacking "everything around" a resized psyx
   would be the whole field on every churn event.
 
 **Two separate things decide a split and they are not interchangeable.** Detail
@@ -53,15 +53,15 @@ one up does not cover for the other being off.
 
 ## Traps that have already been hit
 
-- **A field packed at the current instant is invisible.** Every psyxel eases in
-  from nothing over `BIRTH_S`, so a psyxel born at `t` has an alpha of zero at
+- **A field packed at the current instant is invisible.** Every psyx eases in
+  from nothing over `BIRTH_S`, so a psyx born at `t` has an alpha of zero at
   `t`. Harmless while the clock runs and fatal when it does not: under
   `prefers-reduced-motion` the clock is frozen and the piece was simply **gone** —
   a blank canvas, no error, nothing to see in a stack trace. `packField`
   backdates the whole initial build by `BIRTH_S` so that only a _change_
   animates. The browser suite pins this by asserting there is light on the canvas
   under reduced motion.
-- **Brightness must be carried once.** A psyxel's alpha comes from coverage; its
+- **Brightness must be carried once.** A psyx's alpha comes from coverage; its
   colour comes from the subject with the _brightness normalised out_ of it. The
   first version multiplied an unnormalised subject colour by that alpha, so a
   shadowed cheek was dim twice over and the portrait came out as a brown smear on
@@ -96,8 +96,8 @@ flatten` at first, which looks right on a letter — ink is 1 almost everywhere 
 - **A fixed transition duration cannot work here.** `flicker` spans two orders of
   magnitude: a quarter-second ease is languid at one change every two seconds and
   never completes at five a second, which leaves the field permanently between
-  frames. `morphOf` takes a share of the hold the psyxel is currently in — which
-  is why a psyxel stores the `gap` it entered — capped at `MORPH_MAX` so a psyxel
+  frames. `morphOf` takes a share of the hold the psyx is currently in — which
+  is why a psyx stores the `gap` it entered — capped at `MORPH_MAX` so a psyx
   changing twice a minute does not spend twenty seconds mid-morph.
 - **A vocabulary that shrinks leaves psyxels showing frames that no longer
   exist.** It is read live, so nothing rebuilds when it moves; `visit` treats
@@ -135,7 +135,7 @@ flatten` at first, which looks right on a letter — ink is 1 almost everywhere 
   statement about which sizes exist rather than about how mixed they are.
 - **A soft boundary costs psyxels, and half the control cost too many.** Letting
   an edge square decline to subdivide is the only way a _coarse_ mark ends up
-  outside the subject, and a square that declines is one psyxel where there would
+  outside the subject, and a square that declines is one psyx where there would
   have been four. At `fuzz × 0.5` the landing scene lost a third of its psyxels
   and the letter went patchy; at `× 0.3` it loses a tenth. The rest of the
   softness is `levelOf`'s, which only ever adds psyxels.
@@ -158,9 +158,22 @@ flatten` at first, which looks right on a letter — ink is 1 almost everywhere 
   name a face. Do not "fix" it by bundling a font without deciding that the
   determinism is worth the weight.
 
+- **A large psyx sits in a hole, and the hole is read as part of the mark.** Ink
+  is a fixed share of a square, so the same drawing is tone at seven screen
+  pixels and a thin sign in a void at a hundred — reported as "a huge black hole
+  behind them", and it is the piece's instance of
+  `../docs/adr/20260830-large-units-demand-attention.md`. `bloom` redraws the
+  mark far wider and dim behind itself, weighted by size against the coarsest
+  square so the grain is untouched; `inset` goes negative so marks overlap. The
+  bloom follows the _outgoing_ frame for the first half of a transition and the
+  incoming one after, rather than being drawn twice.
+- **`fill` is bounding area, not ink.** It sums the marks' boxes, so it cannot
+  see `bloom` at all. Count lit canvas pixels for that — and draw a frame first
+  with `api.run()`, because `set()` only marks the scene dirty.
+
 ## Invariants worth preserving
 
-- **A psyxel is a pure function of `(seed, depth, column, row)`.** Its frame, its
+- **A psyx is a pure function of `(seed, depth, column, row)`.** Its frame, its
   rate, its phase, its colour and its whims all come from a generator salted with
   where it sits, never from a running index. Break this and raising the
   subdivision restirs the whole picture instead of adding to it — the same class
@@ -170,7 +183,7 @@ flatten` at first, which looks right on a letter — ink is 1 almost everywhere 
   is asked, so a scene with `variety: 0` cannot be made to boil. The obvious
   implementation — reshuffle on a timer — takes that away and there is then no
   way to hold the packing still while the psyxels live.
-- **A psyxel is ended by the first of its ancestors to change its mind**, which
+- **A psyx is ended by the first of its ancestors to change its mind**, which
   is why each level down is asked less often than the one above it. With every
   square asking at the same rate, the coarse marks outlasted the grain around
   them more than twofold — 3.6s against 1.6s on a flat subject — and they are the
@@ -178,12 +191,12 @@ flatten` at first, which looks right on a letter — ink is 1 almost everywhere 
   while everything else moved. `DEPTH_PATIENCE` carries the measurements. Two
   things hang off it: `DEPTH_SPREAD` gives back what the slowing takes, or the
   whole field drops from a thousand changes a minute to thirty; and `spare` keeps
-  a merged subtree, so a coarse psyxel coming and going does not restir the grain
+  a merged subtree, so a coarse psyx coming and going does not restir the grain
   under it.
 - **Colour is redrawn with the frame, never on a clock of its own**, and it
   slides across the same transition. One event rather than two overlapping
   animations, and it is what makes `flicker: 0` genuinely held — frame, colour
-  and all. The slide is on the psyxel's signed offset from the field's hue, not
+  and all. The slide is on the psyx's signed offset from the field's hue, not
   around the wheel, so it never takes the long way round the spectrum.
 - **The diagonals are the upright strokes turned, not a third pair.** `armsOf`
   is the whole model: `along` and `across` are the two stroke pairs and `spin` is
@@ -224,9 +237,9 @@ its name and range alone.
 | `subject.ts`  | the only place that knows what the picture is: a letter, or the portrait     |
 | `mask.ts`     | the subject as coverage: summed-area tables, variance, the white point       |
 | `glyphs.ts`   | the vocabulary, the walk between frames, the blend between them, the drawing |
-| `field.ts`    | the quadtree: splitting, merging, churn, and a psyxel's own life             |
-| `pulse.ts`    | how bright a psyxel is, whether it is there at all, and its transition       |
-| `palette.ts`  | the argument between the subject's colour, the psyxel's, and the edge's      |
+| `field.ts`    | the quadtree: splitting, merging, churn, and a psyx's own life               |
+| `pulse.ts`    | how bright a psyx is, whether it is there at all, and its transition         |
+| `palette.ts`  | the argument between the subject's colour, the psyx's, and the edge's        |
 | `psyxels.ts`  | the engine: canvas, the clock, drawing, stats                                |
 | `api.ts`      | `window.experiment`                                                          |
 | `avatar.jpg`  | the second subject, copied rather than imported — see below                  |
@@ -271,7 +284,7 @@ checked without a browser.
 
 Headless runs without a GPU, so trust ratios rather than absolute rates. The cost
 is dominated by the number of psyxels and almost not at all by their size: about
-1.4µs a psyxel — plus a second draw call for each one mid-transition — so the
+1.4µs a psyx — plus a second draw call for each one mid-transition — so the
 landing scene's 1,300 draw in 2.5ms and `swarm`'s 7,700 in 9ms. When a scene is
 slow, read `psyxels` before anything else; `coarse` and `levels` are what move
 it.

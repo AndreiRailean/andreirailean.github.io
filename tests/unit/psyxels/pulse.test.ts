@@ -1,17 +1,17 @@
 import { describe, expect, it } from "vitest"
-import type { Psyxel } from "@/experiments/psyxels/field"
+import type { Psyx } from "@/experiments/psyxels/field"
 import { arrivalOf, BIRTH_S, breathOf, levelOf, MORPH_MAX, morphOf } from "@/experiments/psyxels/pulse"
 import { DEFAULT_SETTINGS, type Settings } from "@/experiments/psyxels/settings"
 
 /**
- * The three factors that decide how bright a psyxel is.
+ * The three factors that decide how bright a psyx is.
  *
  * They are separate so that each can be reasoned about, and the reasoning is
  * what these pin: a threshold that fades instead of cutting loses the letter's
  * edge, and a curve that does not flatten loses the letter's interior.
  */
 
-const psyxel = (over: Partial<Psyxel> = {}): Psyxel => ({
+const psyx = (over: Partial<Psyx> = {}): Psyx => ({
   x: 0,
   y: 0,
   size: 20,
@@ -82,12 +82,12 @@ describe("levelOf", () => {
 
 describe("breathOf", () => {
   it("is exactly one when the pulse is off, so nothing is spent to hold still", () => {
-    for (let t = 0; t < 4; t += 0.37) expect(breathOf(psyxel(), settings({ pulse: 0 }), t, 0.3)).toBe(1)
+    for (let t = 0; t < 4; t += 0.37) expect(breathOf(psyx(), settings({ pulse: 0 }), t, 0.3)).toBe(1)
   })
 
   it("swings between full and the depth asked for, and never past either", () => {
     const scene = settings({ pulse: 0.6, tempo: 1, wave: 0 })
-    const one = psyxel({ swing: 1 })
+    const one = psyx({ swing: 1 })
     let low = 1
     let high = 0
     for (let t = 0; t < 4; t += 1 / 60) {
@@ -107,8 +107,8 @@ describe("breathOf", () => {
    */
   it("brings psyxels at one place into step whatever their own rates were", () => {
     const scene = settings({ pulse: 1, tempo: 0.5, wave: 1 })
-    const quick = psyxel({ rate: 2.1, phase: 0.8 })
-    const slow = psyxel({ rate: 0.4, phase: 0.15 })
+    const quick = psyx({ rate: 2.1, phase: 0.8 })
+    const slow = psyx({ rate: 0.4, phase: 0.15 })
     for (const t of [0, 3, 11, 40]) {
       expect(breathOf(quick, scene, t, 0.25)).toBeCloseTo(breathOf(slow, scene, t, 0.25), 10)
     }
@@ -116,8 +116,8 @@ describe("breathOf", () => {
 
   it("leaves them alone at the other end of the same control", () => {
     const scene = settings({ pulse: 1, tempo: 0.5, wave: 0 })
-    const quick = psyxel({ rate: 2.1, phase: 0.8 })
-    const slow = psyxel({ rate: 0.4, phase: 0.15 })
+    const quick = psyx({ rate: 2.1, phase: 0.8 })
+    const slow = psyx({ rate: 0.4, phase: 0.15 })
     expect(breathOf(quick, scene, 3, 0.25)).not.toBeCloseTo(breathOf(slow, scene, 3, 0.25), 2)
   })
 })
@@ -138,7 +138,7 @@ describe("arrivalOf", () => {
 })
 
 describe("morphOf", () => {
-  const changed = (over: Partial<Psyxel> = {}) => psyxel({ from: 0, glyph: 1, flicked: 10, gap: 1, ...over })
+  const changed = (over: Partial<Psyx> = {}) => psyx({ from: 0, glyph: 1, flicked: 10, gap: 1, ...over })
 
   it("runs from the instant of the change to the end of its span, eased at both ends", () => {
     const scene = settings({ morph: 0.4 })
@@ -176,9 +176,9 @@ describe("morphOf", () => {
     }
   })
 
-  it("never takes longer than the cap, however slow the psyxel is", () => {
-    // A psyxel changing twice a minute would otherwise spend twenty seconds
-    // mid-morph, which is not a slow change of frame — it is a psyxel that never
+  it("never takes longer than the cap, however slow the psyx is", () => {
+    // A psyx changing twice a minute would otherwise spend twenty seconds
+    // mid-morph, which is not a slow change of frame — it is a psyx that never
     // shows one.
     expect(morphOf(changed({ gap: 30 }), settings({ morph: 1 }), 10 + MORPH_MAX)).toBe(1)
   })

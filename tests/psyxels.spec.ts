@@ -20,7 +20,7 @@ import { expect, openExperiment, test } from "./support/experiment"
  * it.
  */
 
-/** The ground is `#05050a`, whose channels sum to 19. Anything well above it is a psyxel. */
+/** The ground is `#05050a`, whose channels sum to 19. Anything well above it is a psyx. */
 const LIT_THRESHOLD = 90
 
 /**
@@ -68,9 +68,12 @@ test("the field is on the canvas, and it is a subject rather than a wash", async
   // A letter takes a fraction of the frame; anything past a third of it is the
   // piece having painted the ground.
   expect(lit / total).toBeLessThan(0.33)
-  // An A is symmetric, so light either side of the middle within a few per cent
-  // — which is a cheap way of asking whether the subject is being read at all.
-  expect(Math.abs(left - right) / (left + right)).toBeLessThan(0.12)
+  // An A is symmetric, so light either side of the middle within a quarter —
+  // a cheap way of asking whether the subject is being read at all. Loose,
+  // because the balance is *noisy* by construction: a handful of coarse psyxels
+  // carry a large share of the lit area, and where they fall, how far they have
+  // wandered and how far each has bloomed are all the seed's business.
+  expect(Math.abs(left - right) / (left + right)).toBeLessThan(0.25)
 
   await experiment.shot("letter")
 })
@@ -101,7 +104,7 @@ test("psyxels come in a range of sizes, and the levels control is what decides i
 /**
  * The piece's thesis, as a test.
  *
- * Everything in the moving half is read live and none of it may move a psyxel.
+ * Everything in the moving half is read live and none of it may move a psyx.
  * Without this the obvious implementation — rebuild on any change — passes every
  * other test here and is a different piece to use: every drag of the colour
  * slider reshuffles the field under your hand.
@@ -226,13 +229,56 @@ test("the edge accent is colour and only colour", async ({ page }) => {
     return api.stats()
   })
 
-  // Not one psyxel moved, and none appeared or went.
+  // Not one psyx moved, and none appeared or went.
   expect(accented.psyxels).toBe(plain.psyxels)
   expect(accented.byDepth).toEqual(plain.byDepth)
   expect(accented.live).toBe(plain.live)
   // But the scene needs more colours than it did, because the psyxels on the
   // contours are no longer drawn from the same span of the wheel as the rest.
   expect(accented.colours).toBeGreaterThan(plain.colours)
+})
+
+/**
+ * The two answers to a large psyx sitting in a hole.
+ *
+ * A mark's ink is a fixed share of its own square, so the same drawing reads as
+ * tone at seven screen pixels and as a thin sign surrounded by ground at a
+ * hundred — and the eye reads that ground as part of the mark. Both controls put
+ * ink where the hole was, and neither may move a psyx.
+ */
+test("bloom and overlap fill the ground around a large psyx without repacking", async ({ page }) => {
+  const experiment = await openPsyxels(page, { idle: true })
+
+  /**
+   * `api.run()` before every reading, and that is not belt and braces.
+   * `set()` marks the scene dirty and waits for an animation frame, so a canvas
+   * read in the round trip after it gets the *previous* frame — the fault behind
+   * issue #65 on another piece, which hid for weeks because a still scene's
+   * stale frame is byte-identical. `run()` draws synchronously.
+   */
+  const paint = async (patch: Record<string, number>) => {
+    await experiment.api(({ api, arg }) => {
+      api.set(arg)
+      api.run(2)
+    }, patch)
+    return { lit: (await light(page)).lit, stats: await experiment.api(({ api }) => api.stats()) }
+  }
+
+  const bare = await paint({ bloom: 0, inset: 0.2, churn: 0 })
+  const bloomed = await paint({ bloom: 1 })
+  const overlapped = await paint({ bloom: 0, inset: -0.4 })
+
+  // Read off the canvas rather than from `fill`, which is the marks' *bounding*
+  // area and cannot see ink: the bloom does not change a mark's extent, only how
+  // much of it is drawn on.
+  expect(bloomed.lit).toBeGreaterThan(bare.lit * 1.15)
+  expect(overlapped.lit).toBeGreaterThan(bare.lit * 1.15)
+
+  // And neither is a packing change: same psyxels, same sizes, in the same places.
+  expect(bloomed.stats.psyxels).toBe(bare.stats.psyxels)
+  expect(bloomed.stats.byDepth).toEqual(bare.stats.byDepth)
+  expect(overlapped.stats.psyxels).toBe(bare.stats.psyxels)
+  expect(overlapped.stats.byDepth).toEqual(bare.stats.byDepth)
 })
 
 test("churn repacks squares over time, and holds still at zero", async ({ page }) => {

@@ -120,7 +120,7 @@ describe("what a change costs", () => {
   /**
    * The piece's whole shape is in these two functions: everything absent from
    * them is read live, and can therefore be wound anywhere at all without a
-   * psyxel moving.
+   * psyx moving.
    */
   it("repacks for the packing controls and for nothing else", () => {
     for (const key of ["seed", "subject", "face", "fill", "coarse", "levels", "detail", "variety", "fuzz"] as const) {

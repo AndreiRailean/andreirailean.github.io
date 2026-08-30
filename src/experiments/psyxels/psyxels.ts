@@ -1,4 +1,4 @@
-import { packField, type Field, type Psyxel } from "@/experiments/psyxels/field"
+import { packField, type Field, type Psyx } from "@/experiments/psyxels/field"
 import { paintGlyph } from "@/experiments/psyxels/glyphs"
 import { buildMask, maskSize, type Mask } from "@/experiments/psyxels/mask"
 import { createPalette, GROUND, type Palette } from "@/experiments/psyxels/palette"
@@ -11,10 +11,10 @@ import { paintSubject } from "@/experiments/psyxels/subject"
  *
  * The still question — what is under each square — is answered once, by
  * `mask.ts`, and consulted by `field.ts` whenever a square is packed. The moving
- * question — what each pixel is doing now — is answered every frame and can move
+ * question — what each psyx is doing now — is answered every frame and can move
  * nothing. That separation is the piece: colour, breathing, frames and rates can
  * all be wound anywhere at all and the subject underneath does not shift by a
- * pixel, because nothing on that side of the line is allowed to.
+ * psyx, because nothing on that side of the line is allowed to.
  *
  * Everything here is in CSS pixels. The canvas is scaled by the device ratio
  * once, in `resize`, and no other code in the piece knows about it.
@@ -29,12 +29,21 @@ const RUN_HZ = 30
 /** Below this a mark costs a draw call and shows nothing. */
 const ALPHA_FLOOR = 0.012
 
+/**
+ * How much wider than its own stroke a psyx's bloom is, at full.
+ *
+ * Ten, because that is what it takes. A large plus at a light weight puts ink on
+ * a tenth of its square and the rest is ground; a bloom that only doubles the
+ * stroke leaves the hole it was drawn to fill.
+ */
+const BLOOM_WIDTH = 9
+
 export type PsyxelsStats = {
   /** Psyxels the packing produced, including ones the threshold or their own luck leaves out. */
   psyxels: number
   /** Psyxels the threshold and their own luck let through: what the field would paint at full breath. */
   live: number
-  /** Marks actually painted in the last frame. A psyxel mid-change paints two. */
+  /** Marks actually painted in the last frame. A psyx mid-change paints two. */
   drawn: number
   /** How many psyxels at each subdivision level, coarsest first. */
   byDepth: number[]
@@ -42,13 +51,13 @@ export type PsyxelsStats = {
    * Mean age in seconds at each subdivision level, coarsest first.
    *
    * The piece's one number for *are the big marks outstaying the small ones*. A
-   * psyxel is ended by the first of its ancestors to change its mind, so a deep
+   * psyx is ended by the first of its ancestors to change its mind, so a deep
    * one has more clocks that can end it — and with every square asking at the
    * same rate the coarse marks sat five times longer than the grain around them,
    * which is exactly backwards when they are the marks the eye goes to.
    */
   ageByDepth: number[]
-  /** The smallest and largest psyxel on screen, in CSS pixels. */
+  /** The smallest and largest psyx on screen, in CSS pixels. */
   smallest: number
   largest: number
   /**
@@ -56,16 +65,21 @@ export type PsyxelsStats = {
    * coverage the subject was rasterised at.
    *
    * The piece's one number for *is this still recognisable*. 1 would be a
-   * perfect stencil; the packing never reaches it, because a pixel is a square
+   * perfect stencil; the packing never reaches it, because a psyx is a square
    * and a letter is not. Below about 0.6 the subject is being described rather
    * than drawn, and it is usually the threshold or the levels that did it.
    */
   match: number
-  /** Painted area over frame area. What the piece costs to look at. */
+  /**
+   * The marks' *bounding* area over the frame's, which is what the piece costs
+   * to draw rather than how much ink is on screen. It cannot see `bloom`, which
+   * changes only how much of a mark's box is drawn on; count lit canvas pixels
+   * for that.
+   */
   fill: number
   /** Squares that have changed size since the field was packed. */
   changes: number
-  /** Frame changes the pixels have made since the field was packed. */
+  /** Frame changes the psyxels have made since the field was packed. */
   flicks: number
   /** How long the last frame took to paint, in milliseconds, smoothed. */
   drawMs: number
@@ -185,43 +199,46 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
   }
 
   /**
-   * One pixel, drawn.
+   * One psyx, drawn.
    *
    * Three multiplied factors decide its alpha and nothing decides its position:
    * where it is was settled when it was packed. See `pulse.ts` for what each
    * factor answers.
    */
-  function paintPsyxel(psyxel: Psyxel, time: number, span: number): number {
-    const level = levelOf(psyxel.ink, psyxel.luck, settings.threshold, settings.fuzz, settings.flatten)
+  function paintPsyxel(psyx: Psyx, time: number, span: number, coarsePx: number): number {
+    const level = levelOf(psyx.ink, psyx.luck, settings.threshold, settings.fuzz, settings.flatten)
     if (level <= 0) return 0
 
-    const arrival = arrivalOf(time, psyxel.born)
-    const spatial = (psyxel.x + psyxel.y * 0.62) / span
-    const alpha = level * breathOf(psyxel, settings, time, spatial) * arrival
+    const arrival = arrivalOf(time, psyx.born)
+    const spatial = (psyx.x + psyx.y * 0.62) / span
+    const alpha = level * breathOf(psyx, settings, time, spatial) * arrival
     if (alpha < ALPHA_FLOOR) return 0
 
     // The arrival scales the mark as well as fading it: four marks appearing at
     // full size inside the square that was there a frame ago reads as a flash
     // rather than as a split.
-    const room = (psyxel.size / 2) * (1 - settings.inset)
+    // Negative spacing is an overlap: the mark spills past its own square into
+    // its neighbours', which is the only thing that dissolves the lattice the
+    // subdivision leaves behind.
+    const room = (psyx.size / 2) * (1 - settings.inset)
     const extent = room * (0.6 + 0.4 * arrival)
-    const weight = Math.max(0.7, psyxel.size * settings.weight)
+    const weight = Math.max(0.7, psyx.size * settings.weight)
 
     /**
      * **A mark may sit off the centre of its own square, and overlap its
      * neighbours.**
      *
      * The packing is a subdivision, so the squares are a lattice — and a coarse
-     * psyxel can only ever appear in one of a handful of places, which the eye
+     * psyx can only ever appear in one of a handful of places, which the eye
      * learns within a few seconds. Letting the *mark* wander inside its square
      * breaks that without touching the cover: every square still answers for its
      * own patch of the picture, and what is drawn for it is simply not centred.
      * Far enough and marks cross into each other, which is the piece's only
      * overlap and reads as depth rather than as error.
      */
-    const wander = settings.wander * psyxel.size * 0.5
-    const cx = psyxel.x + psyxel.size / 2 + psyxel.offsetX * wander
-    const cy = psyxel.y + psyxel.size / 2 + psyxel.offsetY * wander
+    const wander = settings.wander * psyx.size * 0.5
+    const cx = psyx.x + psyx.size / 2 + psyx.offsetX * wander
+    const cy = psyx.y + psyx.size / 2 + psyx.offsetY * wander
 
     /**
      * A change of frame is a cross-fade of two whole marks.
@@ -229,27 +246,52 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
      * Interpolating the features was tried first and is wrong at size: a large
      * plus spends its transition as a pair of stubs, and a ring has no legible
      * fraction of itself at all. Here the outgoing mark shrinks a little as it
-     * fades and the incoming one grows into place, so a psyxel is always showing
+     * fades and the incoming one grows into place, so a psyx is always showing
      * marks the vocabulary contains — briefly two of them.
      */
-    const morph = morphOf(psyxel, settings, time)
+    const morph = morphOf(psyx, settings, time)
+
+    /**
+     * **A large mark sits in a hole, and the hole is the problem.**
+     *
+     * A mark's ink is a fixed share of its own square — stroke width follows
+     * size — so the same drawing reads as *tone* at seven screen pixels and as a
+     * thin sign surrounded by ground at a hundred. The eye reads that ground as
+     * part of the mark, which is why a large psyx demands attention out of all
+     * proportion to the patch of picture it stands for.
+     *
+     * The bloom is the same mark again, far wider and dim, laid down first. It
+     * fills the hole in the shape of what is in it rather than as a patch, and
+     * it is weighted by how large this psyx is against the coarsest — the fine
+     * grain already reads as tone and is left alone.
+     */
+    const size = Math.min(1, psyx.size / coarsePx)
+    const bloom = settings.bloom * size * size
+    if (bloom > 0.02) {
+      const level = alpha * bloom * 0.3
+      if (level >= ALPHA_FLOOR) {
+        setColour(palette.colour(psyx, settings, morph < 0.5 ? psyx.hueFrom : psyx.hue))
+        ctx.globalAlpha = level
+        paintGlyph(ctx, morph < 0.5 ? psyx.from : psyx.glyph, cx, cy, extent, weight * (1 + BLOOM_WIDTH * bloom))
+      }
+    }
 
     if (morph < 1) {
       const leaving = alpha * (1 - morph)
       if (leaving >= ALPHA_FLOOR) {
         const scale = 1 - 0.22 * morph
-        setColour(palette.colour(psyxel, settings, psyxel.hueFrom))
+        setColour(palette.colour(psyx, settings, psyx.hueFrom))
         ctx.globalAlpha = leaving
-        paintGlyph(ctx, psyxel.from, cx, cy, extent * scale, weight * scale)
+        paintGlyph(ctx, psyx.from, cx, cy, extent * scale, weight * scale)
       }
     }
 
     const arriving = alpha * morph
     if (arriving >= ALPHA_FLOOR) {
       const scale = 0.78 + 0.22 * morph
-      setColour(palette.colour(psyxel, settings, psyxel.hue))
+      setColour(palette.colour(psyx, settings, psyx.hue))
       ctx.globalAlpha = arriving
-      paintGlyph(ctx, psyxel.glyph, cx, cy, extent * scale, weight * scale)
+      paintGlyph(ctx, psyx.glyph, cx, cy, extent * scale, weight * scale)
     }
 
     return extent * extent * 4
@@ -270,8 +312,12 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
     ctx.lineCap = "round"
     ctx.lineJoin = "round"
 
-    for (const psyxel of psyxels) {
-      const covered = paintPsyxel(psyxel, time, span)
+    // What the coarsest square is in screen pixels, which the bloom weighs
+    // against. `field.ts` owns the same expression.
+    const coarsePx = Math.max(6, settings.coarse * Math.min(width, height))
+
+    for (const psyx of psyxels) {
+      const covered = paintPsyxel(psyx, time, span, coarsePx)
       if (covered > 0) {
         painted++
         area += covered
@@ -289,12 +335,12 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
   }
 
   /** The squares themselves, which the piece otherwise never shows. */
-  function paintDebug(psyxels: Psyxel[]): void {
+  function paintDebug(psyxels: Psyx[]): void {
     ctx.globalAlpha = 0.4
     ctx.lineWidth = 0.5
     ctx.strokeStyle = "#39d0ff"
     ctx.beginPath()
-    for (const psyxel of psyxels) ctx.rect(psyxel.x, psyxel.y, psyxel.size, psyxel.size)
+    for (const psyx of psyxels) ctx.rect(psyx.x, psyx.y, psyx.size, psyx.size)
     ctx.stroke()
   }
 
@@ -338,7 +384,7 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
 
   // The portrait usually is not decoded yet when the piece is created, and an
   // undecoded image rasterises to nothing at all — a blank subject, a field with
-  // no pixels in it, and no error anywhere. Rebuilding on load is the whole fix,
+  // no psyxels in it, and no error anywhere. Rebuilding on load is the whole fix,
   // and it costs nothing on the scenes that never look at it.
   const onAvatarLoad = () => {
     if (settings.subject !== "avatar") return
@@ -382,7 +428,7 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
      * Steps the field forward without waiting for it.
      *
      * Stepped rather than jumped, because every clock in the piece is a
-     * *deadline* — a pixel changes frame when enough time has passed since its
+     * *deadline* — a psyx changes frame when enough time has passed since its
      * last change — and a single jump of forty seconds fires each of them once
      * rather than forty times. A poster of a field that has repacked once is a
      * poster of frame one.
@@ -408,16 +454,16 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
       const ages: number[] = []
       const counts: number[] = []
 
-      for (const psyxel of psyxels) {
-        ages[psyxel.depth] = (ages[psyxel.depth] ?? 0) + (clock - psyxel.born)
-        counts[psyxel.depth] = (counts[psyxel.depth] ?? 0) + 1
-        if (psyxel.size < smallest) smallest = psyxel.size
-        if (psyxel.size > largest) largest = psyxel.size
-        if (levelOf(psyxel.ink, psyxel.luck, settings.threshold, settings.fuzz, settings.flatten) <= 0) continue
+      for (const psyx of psyxels) {
+        ages[psyx.depth] = (ages[psyx.depth] ?? 0) + (clock - psyx.born)
+        counts[psyx.depth] = (counts[psyx.depth] ?? 0) + 1
+        if (psyx.size < smallest) smallest = psyx.size
+        if (psyx.size > largest) largest = psyx.size
+        if (levelOf(psyx.ink, psyx.luck, settings.threshold, settings.fuzz, settings.flatten) <= 0) continue
         live++
-        const area = psyxel.size * psyxel.size
+        const area = psyx.size * psyx.size
         covered += area
-        inter += psyxel.ink * area
+        inter += psyx.ink * area
       }
 
       const union = (mask?.total ?? 0) + covered - inter

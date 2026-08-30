@@ -10,7 +10,7 @@
  * the picture is.
  *
  * Both come from summed-area tables, which answer any axis-aligned rectangle in
- * four lookups regardless of its size. A hundred-pixel cell and a three-pixel
+ * four lookups regardless of its size. A hundred-psyx cell and a three-psyx
  * cell cost the same, which is the whole reason the piece can pack squares of
  * wildly different sizes without the large ones being expensive.
  *
@@ -61,9 +61,9 @@ export function buildMask(source: HTMLCanvasElement, width: number, height: numb
   const scale = cols / width
 
   const context = source.getContext("2d", { willReadFrequently: true })
-  const pixels = context ? context.getImageData(0, 0, cols, rows).data : new Uint8ClampedArray(cols * rows * 4)
+  const psyxels = context ? context.getImageData(0, 0, cols, rows).data : new Uint8ClampedArray(cols * rows * 4)
 
-  const gain = 1 / whitePoint(pixels)
+  const gain = 1 / whitePoint(psyxels)
 
   // One row and column of zeros on the top and left, so a lookup never needs a
   // bounds test — the standard summed-area layout.
@@ -82,10 +82,10 @@ export function buildMask(source: HTMLCanvasElement, width: number, height: numb
     let runB = 0
     for (let x = 0; x < cols; x++) {
       const p = (y * cols + x) * 4
-      const r = pixels[p]! / 255
-      const g = pixels[p + 1]! / 255
-      const b = pixels[p + 2]! / 255
-      const alpha = pixels[p + 3]! / 255
+      const r = psyxels[p]! / 255
+      const g = psyxels[p + 1]! / 255
+      const b = psyxels[p + 2]! / 255
+      const alpha = psyxels[p + 3]! / 255
       const ink = Math.min(1, alpha * (0.2126 * r + 0.7152 * g + 0.0722 * b) * gain)
 
       runInk += ink
@@ -149,7 +149,7 @@ export function buildMask(source: HTMLCanvasElement, width: number, height: numb
  *
  * Without this, `threshold` means something different for every subject. A white
  * letter runs the full range and its controls are calibrated against that; the
- * portrait's brightest pixel is a lit forehead well short of white and its
+ * portrait's brightest psyx is a lit forehead well short of white and its
  * darkest useful tone is a wall not far below it, so the same settings landed
  * the whole picture in the bottom third of the scale and it came out as a brown
  * smear on black. Stretching to the top of what is there costs the letter
@@ -159,13 +159,13 @@ export function buildMask(source: HTMLCanvasElement, width: number, height: numb
  * The half per cent matters: a single specular highlight is enough to set the
  * point at 1 and undo the stretch entirely, and photographs have those.
  */
-function whitePoint(pixels: Uint8ClampedArray): number {
+function whitePoint(psyxels: Uint8ClampedArray): number {
   const bins = new Uint32Array(64)
   let seen = 0
-  for (let p = 0; p < pixels.length; p += 4) {
-    const alpha = pixels[p + 3]! / 255
+  for (let p = 0; p < psyxels.length; p += 4) {
+    const alpha = psyxels[p + 3]! / 255
     if (alpha <= 0) continue
-    const ink = (alpha * (0.2126 * pixels[p]! + 0.7152 * pixels[p + 1]! + 0.0722 * pixels[p + 2]!)) / 255
+    const ink = (alpha * (0.2126 * psyxels[p]! + 0.7152 * psyxels[p + 1]! + 0.0722 * psyxels[p + 2]!)) / 255
     if (ink <= 0.02) continue
     bins[Math.min(63, Math.floor(ink * 64))]!++
     seen++

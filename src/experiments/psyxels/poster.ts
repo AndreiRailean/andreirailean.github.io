@@ -4,14 +4,14 @@ import type { ExperimentApi } from "@/experiments/psyxels/api"
 /**
  * What Psyxels looks like when someone should want to click it.
  *
- * Frame one is a field that has never repacked: every pixel is the size the
- * seed first gave it, every pixel is at the same age, and the arrival ease has
+ * Frame one is a field that has never repacked: every psyx is the size the
+ * seed first gave it, every psyx is at the same age, and the arrival ease has
  * them all at the same brightness. That is a picture of the packing, which is
  * half the piece, and it is missing the half that moves.
  *
  * Ninety seconds is a dozen or so size changes per square at the landing scene's
  * churn — long enough that the field on the poster is one the seed alone would
- * never have produced, and that the pixels are spread across their own cycles
+ * never have produced, and that the psyxels are spread across their own cycles
  * rather than sharing one.
  *
  * No preset named, deliberately, and for the reason Dangler's and Flotsam's
@@ -20,7 +20,7 @@ import type { ExperimentApi } from "@/experiments/psyxels/api"
  * the landing page does not.
  *
  * Not byte-reproducible even though the field is: `run()` steps a fixed number
- * of times from a fixed seed and puts every pixel in the same place, but the
+ * of times from a fixed seed and puts every psyx in the same place, but the
  * frame is caught at whatever point the breathing has reached, and the breath is
  * read off the same clock. Two captures differ by a shade rather than by a
  * picture, and both churn the file — which is what the slug filter on

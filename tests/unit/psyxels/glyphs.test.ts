@@ -5,10 +5,10 @@ import { armsOf, GLYPH_COUNT, GLYPHS, nextGlyph } from "@/experiments/psyxels/gl
 /**
  * The vocabulary and the walk through it.
  *
- * What makes a psyxel read as one thing changing rather than a slot being
+ * What makes a psyx read as one thing changing rather than a slot being
  * refilled is that consecutive frames are *related*. That is a property of the
  * transition weights and nothing else, so it is checked here rather than left to
- * a screenshot, where a psyxel showing a good sequence and a psyxel showing white
+ * a screenshot, where a psyx showing a good sequence and a psyx showing white
  * noise look the same at eight psyxels across.
  */
 
@@ -71,7 +71,7 @@ describe("nextGlyph", () => {
     }
   })
 
-  it("brings a psyxel back inside a vocabulary that has shrunk under it", () => {
+  it("brings a psyx back inside a vocabulary that has shrunk under it", () => {
     for (let i = 0; i < 50; i++) expect(nextGlyph(8, 3, i / 50)).toBeLessThan(3)
   })
 })
