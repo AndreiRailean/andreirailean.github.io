@@ -306,6 +306,20 @@ because nothing said a duplicate existed.
   this way — Flotsam's `span` runs from a puddle to open water and a linear track
   put half the piece in the first two per cent of its length.
 
+**File it; do not go looking for whoever is stewarding.** One session is
+sometimes asked to tend this shared code, and you do not need to know whether
+that is true today, who it is, or whether there are two of them. An issue
+labelled `kit` reaches the role rather than a session: stewards come and go and
+the queue does not. A message reaches whoever happened to be live when you sent
+it, which on at least one day was two sessions and on most days is none. If a
+steward messages you first, answer — it will be carrying something that is not in
+the repo yet, like a check that is currently red.
+
+**You are never blocked waiting for any of this.** The kit is offered, so a gap
+in it is never a reason to stop: write the `kit-opt-out` line, build the thing
+your piece needs, and file the issue on your way past. Nothing about the shared
+code outranks getting the piece made — the section exists for the pieces.
+
 `tests/unit/kit-adoption.test.ts` enforces the first of those and runs in the
 unit suite, so it answers in milliseconds: no piece may carry its own copy of a
 kit module, redeclare a selector `controls.css` owns, or build the kit's chrome

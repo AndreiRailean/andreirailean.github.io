@@ -37,9 +37,20 @@ thing that does not derive.
 
 ## 3. Announce yourself, which is how you claim the role
 
-**This is the step that is easy to skip and breaks the channel.** Peers are told
-to route shared-code questions to the steward _by name_, so until you say so they
-are still addressing a session that has moved on.
+**What this step is for changed once the peer contract moved into the repo.** It
+used to be the only place a peer learned its obligations, which made skipping it
+fatal and made the whole contract re-transmitted by mouth on every handover —
+`exp-psyxels-a6` was told twice in one day by two different stewards. Those
+obligations now live in `src/experiments/AGENTS.md`, which a session building a
+piece reads anyway, and peers are told to file an issue rather than find you. So
+announcing no longer carries the contract.
+
+What it still carries is the part that is **not** in the repo: what is red right
+now, a trap in flight, a check you have just found vacuous — and the claim itself,
+which is a message to any other steward rather than to peers. Keep doing it, and
+stop treating it as load-bearing for peers. A session that starts after you
+announce never hears you and must be fine anyway; if it is not, the missing thing
+belongs in `AGENTS.md`, not in a better broadcast.
 
 `SendMessage` **every live session**, not only the ones building experiments:
 stewardship has moved to you, with your own session name; the scope is all of
@@ -122,6 +133,13 @@ to prevent, not to cause.
 
 ## Rules that bite
 
+- **A peer exchange needs a stop condition, and you have to set it.** Once a
+  finding is established, hand it over once and stop. An exchange about a stale
+  accent ran six round trips past its own conclusion because each reply was
+  individually worth sending, and Andrei paid for the same reasoning narrated
+  from two sessions at once. Signs you are past the point: you are agreeing,
+  conceding, or refining a rationale for a decision already made. The steward
+  owns the section, so a finding transfers in one message.
 - **Break a new check deliberately and watch it fail** before trusting it. Two
   checks went vacuous without going red in one session.
 - **Scripted string replacement fails silently.** A `python … s.replace()` that
