@@ -110,6 +110,31 @@ const read = (path: string) => {
   }
 }
 
+/**
+ * The settings a preset block names, read as text rather than by importing.
+ *
+ * Importing a piece's `settings.ts` would work and is worse: it runs the module,
+ * it ties this file to every piece's export shape, and it cannot tell a preset
+ * that *states* a value from one that inherits it — which is the whole question.
+ * The keys are what is on the page.
+ */
+function presetBlocks(source: string): { label: string; body: string }[] {
+  const found: { label: string; body: string }[] = []
+  // Anchored on the settings block and reading *backwards* for the nearest
+  // label. Anchoring on the label instead pairs a control's label with a later
+  // preset's settings, because a piece's `CONTROLS` array comes first and the
+  // labels there look identical.
+  const pattern = /settings:\s*\{([\s\S]*?)\n {4}\},/g
+  for (const match of source.matchAll(pattern)) {
+    const before = source.slice(Math.max(0, match.index - 300), match.index)
+    const labels = [...before.matchAll(/label:\s*"([^"]+)"/g)]
+    found.push({ label: labels.at(-1)?.[1] ?? "?", body: match[1]! })
+  }
+  return found
+}
+
+const KEY = /^\s*(\w+):/gm
+
 /** The page's own stylesheet, which is the only place these selectors matter. */
 function styleBlock(page: string): string {
   const open = page.indexOf("<style")
@@ -171,5 +196,56 @@ describe.each(slugs)("%s", (slug) => {
         `Set the tokens listed at the top of that file instead, or say why not with a ` +
         `"${OPT_OUT} <reason>" comment in the style block.`,
     ).toBe(false)
+  })
+})
+
+/**
+ * **A preset states every setting, and inherits from nothing.**
+ *
+ * Recorded in `src/experiments/docs/adr/20260830-a-preset-inherits-from-nothing.md`,
+ * and here because it is the kind of rule that is kept by accident until the day
+ * it is not. Writing a preset as `{ ...DEFAULT_SETTINGS, hue: 318 }` reads as
+ * tidy and quietly hands every scene's unnamed settings to whatever the defaults
+ * become. Psyxels lost four of its six scenes to a quarter-speed playback that
+ * way, in a change that touched none of them; Flotsam had already stated the
+ * rule in its own `settings.ts` and Psyxels did not find it there.
+ *
+ * A piece whose presets genuinely are not full settings bundles says so with an
+ * opt-out, as everywhere else in this file. Silence is what is ruled out.
+ */
+describe.each(slugs)("%s presets", (slug) => {
+  const source = read(`${EXPERIMENTS}/${slug}/settings.ts`)
+
+  it("states every setting in every preset, rather than inheriting them", () => {
+    if (source === null || source.includes(OPT_OUT)) return
+
+    const presets = presetBlocks(source)
+    if (presets.length === 0) return
+
+    // The longest block is taken as the full set: a piece may legitimately gain
+    // a setting between one preset being recorded and the next, and the answer
+    // to that is to add it everywhere rather than to fail on the first.
+    const keysOf = (body: string) => [...body.matchAll(KEY)].map((match) => match[1]!)
+    const widest = presets.reduce((best, preset) =>
+      keysOf(preset.body).length > keysOf(best.body).length ? preset : best,
+    )
+    const expected = new Set(keysOf(widest.body))
+    expect(expected.size).toBeGreaterThan(3)
+
+    for (const preset of presets) {
+      const named = new Set(keysOf(preset.body))
+      const missing = [...expected].filter((key) => !named.has(key))
+      expect(
+        missing,
+        `${slug}'s "${preset.label}" preset does not state ${missing.join(", ")}, so it takes ` +
+          `whatever another scene decides. Write every setting out, or say why not with a ` +
+          `"${OPT_OUT} <reason>" comment in settings.ts.`,
+      ).toEqual([])
+      expect(
+        preset.body.includes("...") ? preset.label : "",
+        `${slug}'s "${preset.label}" preset spreads another object into itself, so it inherits. ` +
+          `Write every setting out, or say why not with a "${OPT_OUT} <reason>" comment.`,
+      ).toBe("")
+    }
   })
 })

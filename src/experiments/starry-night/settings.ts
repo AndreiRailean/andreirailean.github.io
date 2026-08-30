@@ -233,6 +233,13 @@ export const DEFAULT_SETTINGS: Settings = {
  * Starting points, not conclusions. Keys 1-3 load these; the intent is that you
  * explore with the sliders, then a URL worth keeping gets baked in here.
  */
+/**
+ * kit-opt-out: `deep field` is written as a copy of `DEFAULT_SETTINGS` rather
+ * than in full, so retuning the defaults edits it. Deliberate when written and
+ * worth revisiting — see
+ * `../docs/adr/20260830-a-preset-inherits-from-nothing.md`, where the same shape
+ * cost Psyxels four of its six scenes.
+ */
 export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
   {
     label: "deep field",

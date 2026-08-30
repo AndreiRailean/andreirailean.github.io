@@ -50,10 +50,11 @@ src/pages/experiments/<slug>/  index.astro (the piece), about.astro (the note)
 **A preset states every setting, and inherits from nothing.** Not from another
 preset, and not from `DEFAULT_SETTINGS`. Spreading over the defaults reads as
 tidy and is a trap: the day the featured scene changes, every preset that did
-not name a setting silently takes the new one's value for it. Psyxels lost half
-its scenes to a quarter-speed playback that way, and Flotsam's `settings.ts`
-already stated the rule — a scene someone found by dragging sliders should stay
-the scene they found.
+not name a setting silently takes the new one's value for it. Psyxels lost four
+of its six scenes to a quarter-speed playback that way, and Flotsam's
+`settings.ts` already stated the rule — a scene someone found by dragging sliders
+should stay the scene they found. Recorded, with what it cost, in
+`docs/adr/20260830-a-preset-inherits-from-nothing.md`.
 
 **`DEFAULT_SETTINGS` is a baseline, not a scene.** It is what `normalizeSettings`
 fills gaps from and what `settingsToQuery` measures a link against, so it should
