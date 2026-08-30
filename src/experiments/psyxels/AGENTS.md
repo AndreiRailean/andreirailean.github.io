@@ -139,11 +139,17 @@ flatten` at first, which looks right on a letter — ink is 1 almost everywhere 
   have been four. At `fuzz × 0.5` the landing scene lost a third of its psyxels
   and the letter went patchy; at `× 0.3` it loses a tenth. The rest of the
   softness is `levelOf`'s, which only ever adds psyxels.
-- **A reading taken straight after a change describes the settings before it.**
-  `drawn` and `colours` are both filled in while drawing, so a test that sets and
-  reads in one call gets the previous frame. `live` exists for exactly this — it
-  is computed in `stats()` — and anything else needs `api.run(0.2)` first to
-  force a frame.
+- **Half of `stats()` is computed on the spot and half is left over from the last
+  frame drawn**, and a reading taken straight after a change describes the
+  settings before it. Computed in `stats()`, so always current: `psyxels`,
+  `live`, `byDepth`, `ageByDepth`, `smallest`, `largest`, `match`, `changes`,
+  `flicks`, `clock`. Filled in while drawing, so one frame behind: `drawn`,
+  `fill`, `colours`, `drawMs`, `fps`. `live` exists because `drawn` was the only
+  measure of what the threshold lets through and it cost two rounds to notice;
+  it removes the window rather than waiting it out, which is the better shape
+  where it applies. For the rest, `api.run(0.2)` forces a frame — the general
+  rule is in `tests/AGENTS.md` under _Reading a canvas after changing a
+  setting_.
 
 - **The coarsest square is a share of the frame, not a number of screen
   pixels.** In screen pixels the piece was a different picture in every window,
