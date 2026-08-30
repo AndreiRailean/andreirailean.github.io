@@ -1,4 +1,5 @@
 ---
+import { getImage } from "astro:assets"
 import "@/experiments/kit/controls.css"
 import avatar from "@/experiments/psyxels/avatar.jpg"
 
@@ -11,6 +12,17 @@ import avatar from "@/experiments/psyxels/avatar.jpg"
 // hashed asset URL. The file itself lives in the experiment's own folder rather
 // than in `src/assets/`: an experiment imports nothing from the site, and a
 // picture is no more exempt from that than a stylesheet would be.
+//
+// It goes through `getImage` rather than being read off the import's `.src`,
+// because `.src` names a file the build does not promise to write. Astro emits
+// an original only for imports nothing has asked it to process, and it keys
+// that decision on the image's *contents*: this portrait is byte-identical to
+// `src/assets/avatar.jpg`, the homepage runs that one through `<Image>`, and
+// the two collapse into one asset. The homepage's request won, the original was
+// never written, and this page went on pointing at it — a 404 in production and
+// nowhere else, since `astro dev` serves every import off disk regardless.
+// Asking the image service for the file is what makes the build owe us one.
+const portrait = await getImage({ src: avatar, format: "jpeg" })
 ---
 
 <!doctype html>
@@ -72,7 +84,7 @@ import avatar from "@/experiments/psyxels/avatar.jpg"
     </style>
   </head>
   <body>
-    <canvas id="stage" data-avatar={avatar.src}></canvas>
+    <canvas id="stage" data-avatar={portrait.src}></canvas>
     <div id="ui"></div>
 
     <script>
