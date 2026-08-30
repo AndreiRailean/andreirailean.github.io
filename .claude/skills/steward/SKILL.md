@@ -71,6 +71,14 @@ stands down. **Silence is not a competing claim** — nobody answering means you
 hold it, so proceed. Two stewards is a misconfiguration rather than a scaling
 mode, and the point of this step is to make it loud, not to support it.
 
+**Silence is weak evidence from a busy session, and this is a known limit rather
+than an oversight.** A peer mid-task may not process an inbound message for a
+long time, so proceeding on silence can still leave two live stewards — more
+slowly than before, which is the whole of the improvement. `ListAgents` reports
+busy/idle: silence from an _idle_ session is decent evidence it is not claiming,
+and silence from a _busy_ one is nearly none. Where it matters, `SendMessage`
+with `notify_when_idle` and let it answer before you take anything irreversible.
+
 ## 4. Check what is mechanical still works
 
 `npm run test:unit` covers `tests/unit/kit-adoption.test.ts`, which is the part
