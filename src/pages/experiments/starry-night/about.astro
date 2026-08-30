@@ -21,18 +21,25 @@ const theme: NoteTheme = {
 <Note entry={entry} theme={theme} backdrop={0.55}>
   <script>
     import { createStarfield } from "@/experiments/starry-night/starfield"
-    import { normalizeSettings } from "@/experiments/starry-night/settings"
+    import { normalizeSettings, PRESETS } from "@/experiments/starry-night/settings"
 
     const canvas = document.getElementById("backdrop")
     if (canvas instanceof HTMLCanvasElement) {
-      // Calmer than the piece proper: this one is scenery, not the subject.
+      // Calmer than the piece proper: this one is scenery, not the subject. The
+      // only thing held to the primary is the hue — everything else here is a
+      // deliberate turning-down, and taking the whole preset would undo it.
+      //
+      // It was written as a literal 247, which is what `deep field` happens to
+      // be today. Promoting another preset to first would move the poster and
+      // the landing scene and leave this sky behind, which is the gap the other
+      // notes had. Reading it costs nothing and closes that.
       const sky = createStarfield(
         canvas,
         normalizeSettings({
           densityScale: 0.7,
           nearRadius: 2.2,
           clouds: 0.12,
-          hue: 247,
+          hue: PRESETS[0]!.settings.hue,
           glimmersPerSecond: 0.25,
           minLifetimeMs: 9000,
           maxLifetimeMs: 30000,

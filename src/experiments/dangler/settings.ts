@@ -378,12 +378,18 @@ export const CONTROLS: Control[] = [
  * value it cannot read, and what `settingsToQuery` diffs against so a shared URL
  * carries only what someone actually changed.
  *
- * They are also, unavoidably, the scene anything that renders the piece without
- * choosing settings gets — the note's background is the one that matters. So
- * these are a scene worth looking at rather than the simplest thing the
- * machinery can draw, which is what they used to be: three stiff strands hanging
- * still. Recorded from exploration like a preset, and replacing them changes how
- * long every shared URL is, which is a cost worth paying once and not often.
+ * **Nothing presentational reads them.** The note's backdrop, the index poster
+ * and a bare visit to the piece all take the primary — `PRESETS[0]` — and this
+ * comment used to say the opposite, which is how the note came to wear a hue
+ * from a scene the piece had stopped running. These moved from 38 to 236 on
+ * 2026-08-28 and the note's accent, written to match the old value, did not.
+ * See CONTEXT.md on *primary*.
+ *
+ * So they no longer need to be a scene worth looking at, and their remaining
+ * role is diminishing: with no way to record a preset from the UI, this is
+ * where the machinery starts before a human has chosen anything. Replacing them
+ * changes how long every shared URL is, which is a cost worth paying once and
+ * not often.
  */
 export const DEFAULT_SETTINGS: Settings = {
   seed: 7,

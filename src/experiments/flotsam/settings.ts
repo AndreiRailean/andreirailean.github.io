@@ -398,8 +398,12 @@ export const CONTROLS: Control[] = [
  * value it cannot read, and what `settingsToQuery` diffs against so a shared URL
  * carries only what someone actually changed.
  *
- * They are also what the note's backdrop renders, so they are a recorded scene
- * rather than the simplest thing the machinery can draw.
+ * **Nothing presentational reads them.** The note's backdrop, the index poster
+ * and a bare visit to the piece all take the primary — `PRESETS[0]` — and this
+ * comment used to claim the note's backdrop came from here. It did, and the two
+ * agreed only because `offing` and these defaults are both hue 202; Dangler had
+ * the same arrangement until its defaults moved and its note did not follow.
+ * See CONTEXT.md on *primary*.
  *
  * Replacing them changes what every URL already shared means, and that is
  * explicitly **not** a reason to leave them alone — see the note on settling in

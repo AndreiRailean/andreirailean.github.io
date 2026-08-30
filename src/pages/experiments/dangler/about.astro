@@ -1,11 +1,19 @@
 ---
 import { getCollection } from "astro:content"
 import Note, { type NoteTheme } from "@/experiments/gallery/Note.astro"
+import { PRESETS } from "@/experiments/dangler/settings"
 
 // The note's furniture is the gallery's; only the paint is Dangler's. See
 // docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.
 const entry = (await getCollection("experiments")).find(({ data }) => data.slug === "dangler")
 if (!entry) throw new Error("Dangler: missing about.md")
+
+// Taken from the primary rather than written down, so the furniture cannot
+// drift away from the scene behind it. It did: this read `hsl(38, …)`, which
+// matched the defaults until they moved on 2026-08-28 and then did not, and the
+// note wore amber over a blue piece for two days. Saturation and lightness stay
+// Dangler's own — the hue is what has to agree. See CONTEXT.md on *primary*.
+const primary = PRESETS[0]!.settings
 
 const theme: NoteTheme = {
   bg: "#05070c",
@@ -14,22 +22,23 @@ const theme: NoteTheme = {
   bright: "#f6f2ea",
   muted: "#8a8377",
   edge: "rgb(255 255 255 / 11%)",
-  accent: "hsl(38, 58%, 66%)",
+  accent: `hsl(${primary.hue}, 58%, 66%)`,
 }
 ---
 
 <Note entry={entry} theme={theme} backdrop={0.5}>
   <script>
     import { createDangler } from "@/experiments/dangler/dangler"
-    import { DEFAULT_SETTINGS } from "@/experiments/dangler/settings"
+    import { PRESETS } from "@/experiments/dangler/settings"
 
     const canvas = document.getElementById("backdrop")
     if (canvas instanceof HTMLCanvasElement) {
-      // The defaults, unmodified. They are a recorded scene rather than the
-      // simplest thing the machinery can draw, precisely so that anything
-      // rendering the piece without choosing — this page — gets something worth
-      // looking at. See DEFAULT_SETTINGS.
-      const scene = createDangler(canvas, DEFAULT_SETTINGS)
+      // The primary — the first preset, `dreamy`. The same scene the index
+      // poster is captured from and the same one a bare visit to the piece
+      // lands on, so a reader arriving here has already seen it. Not
+      // DEFAULT_SETTINGS, which is only where the machinery starts before
+      // anyone has chosen anything. See CONTEXT.md on *primary*.
+      const scene = createDangler(canvas, PRESETS[0]!.settings)
       scene.start()
     }
   </script>
