@@ -53,6 +53,16 @@ src/pages/experiments/<slug>/  index.astro (the piece), about.astro (the note)
   suite.
 - Pages are indexable but nothing links to them yet. A link from the front page
   is expected later.
+- **A picture the piece loads itself goes through `getImage`, never `.src`.**
+  Reading `.src` off an image import names the original file, and the build only
+  writes an original when nothing has asked the image service to process _that
+  image_ — a question Astro answers by contents, not by path. Psyxels' portrait
+  is byte-identical to `src/assets/avatar.jpg`, the homepage runs that one
+  through `<Image>`, the two collapsed into one asset and the original was never
+  written. The URL still went into the HTML, so the only symptom was a 404 in
+  production: `astro dev` serves every import off disk, and `astro build`
+  reports nothing. `await getImage({ src: portrait, format: "jpeg" })` asks for a
+  file and therefore gets one.
 
 ## Presets
 
