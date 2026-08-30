@@ -73,10 +73,15 @@ replaced by randomised controls, with only playback speed pinned.
 **Nothing presentational may read `DEFAULT_SETTINGS`.** A note, a poster or a
 placard taking its scene or its tint from there is reading the arbitrary value
 instead of the chosen one, and it looks correct for exactly as long as the two
-coincide. Dangler's coincided until 2026-08-28, and its note has worn a hue from
-a scene the piece no longer runs ever since. `tests/unit/experiments-presets.test.ts`
-holds the half of this that is mechanical: a primary exists, and every preset
-carries the hue those surfaces tint themselves from.
+coincide. Dangler's coincided until 2026-08-28, and its note wore a hue from a
+scene the piece no longer ran for two days afterwards.
+
+`tests/unit/experiments-presets.test.ts` holds the mechanical half: a primary
+exists, every preset carries the hue those surfaces tint themselves from, and a
+note **computes** its accent from the primary rather than writing the number
+down. The last of those has no opinion about the colour — offsetting from the
+primary passes, typing a literal does not — because a literal is the mechanism
+every instance of this fault used, in all four pieces.
 
 **Idle** — the state a piece enters after a few seconds without input, in which
 the pointer and the chrome both disappear. Suppressed while the pointer rests on

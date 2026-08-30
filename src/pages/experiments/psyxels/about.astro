@@ -1,11 +1,20 @@
 ---
 import { getCollection } from "astro:content"
 import Note, { type NoteTheme } from "@/experiments/gallery/Note.astro"
+import { PRESETS } from "@/experiments/psyxels/settings"
 
 // The note's furniture is the gallery's; only the paint is Psyxels'. See
 // docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.
 const entry = (await getCollection("experiments")).find(({ data }) => data.slug === "psyxels")
 if (!entry) throw new Error("Psyxels: missing about.md")
+
+// Taken from the primary rather than written down. This read `hsl(286, …)`,
+// which is `DEFAULT_SETTINGS.hue` — while the backdrop below correctly runs the
+// primary, `acid`, at 260. So the furniture was 26° off the field it sits on,
+// the same fault Dangler had at 198°, from the same cause: an accent copied
+// from the defaults, which nothing presentational should read. Saturation and
+// lightness stay Psyxels' own. See CONTEXT.md on *primary*.
+const primary = PRESETS[0]!.settings
 
 const theme: NoteTheme = {
   bg: "#05050a",
@@ -14,7 +23,7 @@ const theme: NoteTheme = {
   bright: "#f4f1f8",
   muted: "#867f92",
   edge: "rgb(255 255 255 / 12%)",
-  accent: "hsl(286, 62%, 74%)",
+  accent: `hsl(${primary.hue}, 62%, 74%)`,
 }
 ---
 

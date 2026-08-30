@@ -26,13 +26,21 @@ import { describe, expect, it } from "vitest"
  * keeps holding as pieces are added, because the alternative is deriving a hue
  * from some other control and nobody has had to decide what that would mean yet.
  *
- * Deliberately *not* asserted here: that a piece's note accent matches any of
- * this. Starry-night's furniture is pitched 22° cooler than its sky on purpose,
- * and a check that called a considered palette choice a defect would be a bad
- * check. What a piece looks like stays the piece's.
+ * Deliberately *not* asserted here: what colour a piece's note furniture is.
+ * That stays the piece's.
+ *
+ * An earlier version of this comment said starry-night's accent was pitched 22°
+ * cooler than its sky on purpose, and used it as the reason no accent rule could
+ * be stated. That was wrong, and wrong in the way this whole area keeps being
+ * wrong: starry-night is the first experiment and never caught up, so when the
+ * notes were put on one layout its hardcoded values moved across as they stood.
+ * No colour decision was made, which is why the history shows the value entering
+ * in one batch with no drift window and still shows it stale. Every note now
+ * derives its accent hue from the primary, so there is no exception left.
  */
 
 const EXPERIMENTS = "src/experiments"
+const PAGES = "src/pages/experiments"
 
 /** Not pieces: shared code, and the section's own docs. */
 const NOT_A_PIECE = new Set(["docs", "gallery", "kit"])
@@ -58,6 +66,14 @@ async function settingsModule(slug: string) {
   }
 }
 
+const read = (path: string) => {
+  try {
+    return readFileSync(path, "utf8")
+  } catch {
+    return null
+  }
+}
+
 it("finds the experiments, so an empty run cannot pass for a clean one", () => {
   expect(slugs.length).toBeGreaterThan(0)
 })
@@ -78,6 +94,32 @@ describe.each(slugs)("%s", (slug) => {
       PRESETS!.length,
       `${slug} has no presets, so there is nothing for the index poster or the note to render.`,
     ).toBeGreaterThan(0)
+  })
+
+  /**
+   * The note's accent must be *computed* from the primary, not written down.
+   *
+   * This has no opinion about what colour a note's furniture is — a piece
+   * wanting to sit off its primary writes `primary.hue + 22` and passes. What
+   * it forbids is the mechanism every instance of this fault used: a hue typed
+   * as a literal, correct on the day, silently wrong the moment the primary
+   * moves. All four pieces had it. Dangler's went 198° out when its defaults
+   * moved and nobody saw for two days; psyxels shipped 26° out the same week;
+   * starry-night's was carried across a layout refactor without anyone choosing
+   * it; flotsam's was right only because its numbers had not moved yet.
+   */
+  it("computes the note's accent from the primary rather than hardcoding it", () => {
+    const page = read(`${PAGES}/${slug}/about.astro`)
+    if (page === null || page.includes(OPT_OUT)) return
+
+    const accent = /accent:\s*(.+),/.exec(page)?.[1] ?? ""
+    expect(
+      /\$\{[^}]*hue[^}]*\}/.test(accent),
+      `${slug}'s note writes its accent as ${accent || "(not found)"}. Derive it from the ` +
+        `primary — import PRESETS and use \`hsl(\${PRESETS[0]!.settings.hue}, …)\` — so it ` +
+        `cannot fall behind the scene it sits on. Offsetting is fine; typing a number is not. ` +
+        `Or say why not with a "${OPT_OUT} <reason>" comment.`,
+    ).toBe(true)
   })
 
   it("gives every preset a usable hue", async () => {

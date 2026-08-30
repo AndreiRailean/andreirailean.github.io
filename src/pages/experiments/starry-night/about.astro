@@ -1,11 +1,21 @@
 ---
 import { getCollection } from "astro:content"
 import Note, { type NoteTheme } from "@/experiments/gallery/Note.astro"
+import { PRESETS } from "@/experiments/starry-night/settings"
 
 // The note's furniture is the gallery's; only the paint is Starry Night's. See
 // docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.
 const entry = (await getCollection("experiments")).find(({ data }) => data.slug === "starry-night")
 if (!entry) throw new Error("Starry Night: missing about.md")
+
+// Taken from the primary rather than written down. This read `hsl(225, …)`,
+// which looked like a chosen offset and was not: Starry Night is the first
+// experiment and never caught up. When the notes were put on one layout its
+// hardcoded values were moved across as they stood, so 225 entered alongside
+// everything else without anyone making a colour decision about it — which is
+// why the history shows no drift window and still shows staleness.
+// Saturation and lightness stay Starry Night's own. See CONTEXT.md on *primary*.
+const primary = PRESETS[0]!.settings
 
 const theme: NoteTheme = {
   bg: "#05070f",
@@ -14,25 +24,32 @@ const theme: NoteTheme = {
   bright: "#f2f5fb",
   muted: "#79839c",
   edge: "rgb(255 255 255 / 12%)",
-  accent: "hsl(225, 40%, 68%)",
+  accent: `hsl(${primary.hue}, 40%, 68%)`,
 }
 ---
 
 <Note entry={entry} theme={theme} backdrop={0.55}>
   <script>
     import { createStarfield } from "@/experiments/starry-night/starfield"
-    import { normalizeSettings } from "@/experiments/starry-night/settings"
+    import { normalizeSettings, PRESETS } from "@/experiments/starry-night/settings"
 
     const canvas = document.getElementById("backdrop")
     if (canvas instanceof HTMLCanvasElement) {
-      // Calmer than the piece proper: this one is scenery, not the subject.
+      // Calmer than the piece proper: this one is scenery, not the subject. The
+      // only thing held to the primary is the hue — everything else here is a
+      // deliberate turning-down, and taking the whole preset would undo it.
+      //
+      // It was written as a literal 247, which is what `deep field` happens to
+      // be today. Promoting another preset to first would move the poster and
+      // the landing scene and leave this sky behind, which is the gap the other
+      // notes had. Reading it costs nothing and closes that.
       const sky = createStarfield(
         canvas,
         normalizeSettings({
           densityScale: 0.7,
           nearRadius: 2.2,
           clouds: 0.12,
-          hue: 247,
+          hue: PRESETS[0]!.settings.hue,
           glimmersPerSecond: 0.25,
           minLifetimeMs: 9000,
           maxLifetimeMs: 30000,

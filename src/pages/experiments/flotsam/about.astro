@@ -1,11 +1,19 @@
 ---
 import { getCollection } from "astro:content"
 import Note, { type NoteTheme } from "@/experiments/gallery/Note.astro"
+import { PRESETS } from "@/experiments/flotsam/settings"
 
 // The note's furniture is the gallery's; only the paint is Flotsam's. See
 // docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.
 const entry = (await getCollection("experiments")).find(({ data }) => data.slug === "flotsam")
 if (!entry) throw new Error("Flotsam: missing about.md")
+
+// Taken from the primary rather than written down. This one reads the same
+// either way today — `offing` and the defaults are both hue 202 — which is
+// exactly why it was worth changing: agreement that nothing holds is the state
+// Dangler was in until its defaults moved. Saturation and lightness stay
+// Flotsam's own. See CONTEXT.md on *primary*.
+const primary = PRESETS[0]!.settings
 
 const theme: NoteTheme = {
   bg: "#04080b",
@@ -14,22 +22,23 @@ const theme: NoteTheme = {
   bright: "#f0f5f6",
   muted: "#7f8a8e",
   edge: "rgb(255 255 255 / 11%)",
-  accent: "hsl(202, 54%, 68%)",
+  accent: `hsl(${primary.hue}, 54%, 68%)`,
 }
 ---
 
 <Note entry={entry} theme={theme} backdrop={0.45}>
   <script>
     import { createFlotsam } from "@/experiments/flotsam/flotsam"
-    import { DEFAULT_SETTINGS } from "@/experiments/flotsam/settings"
+    import { PRESETS } from "@/experiments/flotsam/settings"
 
     const canvas = document.getElementById("backdrop")
     if (canvas instanceof HTMLCanvasElement) {
-      // The defaults, unmodified. They are a recorded scene rather than the
-      // simplest thing the machinery can draw, precisely so that anything
-      // rendering the piece without choosing — this page — gets water worth
-      // looking at. See DEFAULT_SETTINGS.
-      const scene = createFlotsam(canvas, DEFAULT_SETTINGS)
+      // The primary — the first preset, `offing`. The same water the index
+      // poster is captured from and the same a bare visit to the piece lands
+      // on, so a reader arriving here has already seen it. Not
+      // DEFAULT_SETTINGS, which is only where the machinery starts before
+      // anyone has chosen anything. See CONTEXT.md on *primary*.
+      const scene = createFlotsam(canvas, PRESETS[0]!.settings)
       scene.start()
     }
   </script>
