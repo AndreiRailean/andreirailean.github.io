@@ -45,6 +45,25 @@ src/pages/experiments/<slug>/  index.astro (the piece), about.astro (the note)
 - Pages are indexable but nothing links to them yet. A link from the front page
   is expected later.
 
+## Presets
+
+**A preset states every setting, and inherits from nothing.** Not from another
+preset, and not from `DEFAULT_SETTINGS`. Spreading over the defaults reads as
+tidy and is a trap: the day the featured scene changes, every preset that did
+not name a setting silently takes the new one's value for it. Psyxels lost half
+its scenes to a quarter-speed playback that way, and Flotsam's `settings.ts`
+already stated the rule — a scene someone found by dragging sliders should stay
+the scene they found.
+
+**`DEFAULT_SETTINGS` is a baseline, not a scene.** It is what `normalizeSettings`
+fills gaps from and what `settingsToQuery` measures a link against, so it should
+move only when the meaning of a control moves.
+
+**Position one is only position one.** A bare address lands on the first preset
+and the page rewrites the URL to that scene's full query, so a visitor leaves
+with a link to _that scene_ rather than to whatever is featured next month.
+Nothing else follows from being first.
+
 ## Adding a piece
 
 Four places outside the experiment's own folder know a slug, and three of them
