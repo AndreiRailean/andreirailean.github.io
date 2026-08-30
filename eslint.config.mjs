@@ -38,7 +38,11 @@ export default tseslint.config(
   tseslint.configs.recommended,
   eslintPluginAstro.configs.recommended,
   {
-    files: ["**/*.ts"],
+    // `.mts` so `eslint .` reaches `scripts/`, whose one-off tools are written
+    // as modules Node can run unambiguously. Flat config lints an extension
+    // only if some `files` pattern names it, so leaving it out here would not
+    // relax the rules on those files — it would skip them in silence.
+    files: ["**/*.ts", "**/*.mts"],
 
     rules: {
       "@typescript-eslint/no-unused-vars": [
