@@ -65,6 +65,34 @@ rendered without a GPU would fail for reasons nobody can read, and we would lear
 to ignore it. The one visual assertion worth making is coarse and robust: that
 there are canvas pixels brighter than the ground at all.
 
+## Reading a canvas after changing a setting
+
+**`set()` does not draw.** Every piece here marks the scene dirty and asks for
+one animation frame, so the canvas holds the _previous_ frame until that frame
+runs. A `getImageData` in the round trip straight after a `set()` is inside that
+window, and how wide the window is depends on when the browser next produces a
+frame — which differs between one CI runner and another. **Wait for a frame
+before reading**; `painted()` in `tests/flotsam.spec.ts` is the one-liner.
+
+The reason this is a section rule and not a line in one spec is how well it
+hides. It cost two sessions and three disproved hypotheses as issue #65:
+
+- **A static scene makes a race look like a rasteriser.** The scenes worth taking
+  a pixel reading on are usually the still ones — flotsam's set `steepness`,
+  `drift`, `eddies` and `stokes` to 0 — so nothing moves, the clock stays at 0
+  and the loop parks. A stale frame is then byte-identical every run. The failure
+  came back with _the same numbers on two different commits_, which is what a race
+  is not supposed to do, so a race was ruled out and the search went to
+  compositing. Identical numbers are exactly what this race predicts.
+- **The signature is the giveaway.** The changed reading came back equal to the
+  unchanged one _to the pixel_. A different rendering path gives a different
+  number; only an unrepainted canvas gives back precisely the old one.
+- **Demonstrate the fix on the failure.** A frame wait was written, and reverted,
+  the session before it landed — it closed a real window but could not be shown
+  to close _this_ one, and a plausible non-fix stops anyone looking. Delaying
+  every animation frame by 400ms reproduces it on demand, which is what turned
+  the guess into a fix.
+
 ## Writing a check for a new experiment
 
 1. **Unit first.** Anything expressible as a function of numbers goes in

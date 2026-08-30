@@ -39,8 +39,34 @@ function openFlotsam(page: Parameters<typeof openExperiment>[0], options?: Param
   return openExperiment<ExperimentApi>(page, "flotsam", options)
 }
 
+/**
+ * Wait until the piece has painted, before reading its canvas.
+ *
+ * `set()` does not draw. It marks the scene dirty and asks for a single
+ * animation frame — `wake()` in `flotsam.ts` — so the canvas still holds the
+ * *previous* frame until that frame runs. A read in the round trip straight
+ * after a `set()` is therefore a read of the old scene, and how wide that window
+ * is depends on when the browser next produces a frame, which is exactly the
+ * kind of thing that differs between one CI runner and another.
+ *
+ * This is issue #65, and what disguised it for two sessions is worth keeping:
+ * the scenes these readings are taken on set `steepness`, `drift`, `eddies` and
+ * `stokes` to 0, so nothing moves, the clock stays at 0 and the loop parks. A
+ * stale frame is then **byte-identical every run** — the failure came back with
+ * the same numbers on two different commits, which is what a race is not
+ * supposed to do, so a race was ruled out. The determinism is the static scene,
+ * not the render path.
+ *
+ * One frame is enough, and not by luck: `wake()` registers its callback before
+ * this one, and callbacks run in registration order within a frame.
+ */
+async function painted(page: Parameters<typeof openExperiment>[0]): Promise<void> {
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())))
+}
+
 /** How many canvas pixels are brighter than the water. */
 async function litPixels(page: Parameters<typeof openExperiment>[0]): Promise<number> {
+  await painted(page)
   return page.evaluate((threshold) => {
     const canvas = document.querySelector("canvas")
     if (!canvas) throw new Error("no canvas on the page")
@@ -71,6 +97,7 @@ async function litPixels(page: Parameters<typeof openExperiment>[0]): Promise<nu
 async function pixels(
   page: Parameters<typeof openExperiment>[0],
 ): Promise<{ lit: number; body: number; nearBody: number; chroma: number; warmth: number }> {
+  await painted(page)
   return page.evaluate((cut) => {
     const canvas = document.querySelector("canvas")
     if (!canvas) throw new Error("no canvas on the page")
