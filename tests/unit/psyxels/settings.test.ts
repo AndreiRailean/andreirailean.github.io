@@ -124,7 +124,7 @@ describe("what a change costs", () => {
    */
   it("repacks for the packing controls and for nothing else", () => {
     for (const key of ["seed", "subject", "face", "fill", "coarse", "levels", "detail", "variety", "fuzz"] as const) {
-      const value = key === "subject" ? "&" : key === "face" ? "roman" : Number(DEFAULT_SETTINGS[key]) / 2
+      const value = key === "subject" ? "&" : key === "face" ? "grotesque" : Number(DEFAULT_SETTINGS[key]) / 2
       const next = normalizeSettings({ [key]: value })
       expect(needsPacking(DEFAULT_SETTINGS, next), key).toBe(true)
     }

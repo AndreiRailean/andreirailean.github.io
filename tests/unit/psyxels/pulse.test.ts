@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { Psyx } from "@/experiments/psyxels/field"
-import { arrivalOf, BIRTH_S, breathOf, levelOf, MORPH_MAX, morphOf } from "@/experiments/psyxels/pulse"
+import { arrivalOf, BIRTH_S, breathOf, levelOf, MORPH_MAX, morphOf, spanOf } from "@/experiments/psyxels/pulse"
 import { DEFAULT_SETTINGS, type Settings } from "@/experiments/psyxels/settings"
 
 /**
@@ -181,5 +181,32 @@ describe("morphOf", () => {
     // mid-morph, which is not a slow change of frame — it is a psyx that never
     // shows one.
     expect(morphOf(changed({ gap: 30 }), settings({ morph: 1 }), 10 + MORPH_MAX)).toBe(1)
+  })
+})
+
+/**
+ * A large psyx has more gravity: it arrives and leaves faster than fine grain.
+ *
+ * Eased over the same span as a speck, a coarse mark spends its whole arrival as
+ * a translucent ghost of itself and its whole departure as a hole — and being
+ * large, both read as an event rather than as grain moving.
+ */
+describe("spanOf", () => {
+  it("takes the coarsest psyx in and out in a third of the time the finest needs", () => {
+    expect(spanOf(1)).toBeLessThan(spanOf(0) * 0.4)
+    expect(spanOf(0)).toBe(BIRTH_S)
+  })
+
+  it("falls all the way along, and never to nothing", () => {
+    let last = Infinity
+    for (let share = 0; share <= 1.0001; share += 0.1) {
+      const span = spanOf(share)
+      expect(span).toBeLessThanOrEqual(last)
+      expect(span).toBeGreaterThan(0)
+      last = span
+    }
+    // A share past the coarsest square — a psyx overlapping into its neighbour's
+    // — must not run the ease backwards.
+    expect(spanOf(4)).toBe(spanOf(1))
   })
 })

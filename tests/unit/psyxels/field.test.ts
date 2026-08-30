@@ -419,3 +419,73 @@ describe("where a psyx sits", () => {
     }
   })
 })
+
+describe("what a psyx leaves behind", () => {
+  it("keeps a departing psyx long enough for its replacement to arrive", () => {
+    const settings = { ...PLAIN, churn: 60, variety: 0.64, detail: 0 }
+    const field = packField(FLOOD, settings, 0)
+    expect(field.ghosts()).toHaveLength(0)
+
+    let seen = 0
+    for (let t = 0; t < 20; t += 1 / 30) {
+      field.update(t, settings)
+      seen = Math.max(seen, field.ghosts().length)
+      // Nothing lingers: every ghost on the list is a recent one.
+      for (const ghost of field.ghosts()) expect(t - ghost.died).toBeLessThan(1.5)
+    }
+    expect(seen).toBeGreaterThan(0)
+  })
+
+  it("gives a ghost the mark and the place the psyx had, so it fades where it stood", () => {
+    const settings = { ...PLAIN, churn: 60, variety: 0.64, detail: 0 }
+    const field = packField(FLOOD, settings, 0)
+    const before = new Map(field.psyxels().map((psyx) => [`${psyx.x},${psyx.y},${psyx.size}`, psyx.glyph]))
+
+    for (let t = 0; t < 5; t += 1 / 30) field.update(t, settings)
+
+    const ghosts = field.ghosts()
+    expect(ghosts.length).toBeGreaterThan(0)
+    for (const ghost of ghosts) {
+      const was = before.get(`${ghost.x},${ghost.y},${ghost.size}`)
+      if (was === undefined) continue
+      expect(ghost.size).toBeGreaterThan(0)
+      expect(ghost.died).toBeGreaterThan(0)
+    }
+  })
+})
+
+/**
+ * **No psyx may hold a square indefinitely by winning a fair toss.**
+ *
+ * The odds of dividing are the same on every turn, so a life is memoryless and
+ * has a long tail — a coarse psyx sat in one square for twenty seconds against a
+ * mean of two, which is what the piece's author saw and what the mean hid. The
+ * deadline cuts the tail without moving the mean, which is the whole point:
+ * leaning the odds instead halved every coarse psyx's life.
+ */
+describe("the longest a psyx can stay", () => {
+  it("bounds the tail while leaving the average where it was", () => {
+    const settings = { ...PLAIN, levels: 1, churn: 60, variety: 0.64, detail: 0 }
+    const field = packField(FLOOD, settings, 0)
+
+    const seen = new Map<string, number>()
+    const lives: number[] = []
+    for (let t = 0; t < 600; t += 1 / 20) {
+      field.update(t, settings)
+      const now = new Map<string, number>()
+      for (const psyx of field.psyxels()) {
+        if (psyx.depth !== 0) continue
+        now.set(`${psyx.x},${psyx.y},${psyx.born}`, psyx.born)
+      }
+      for (const [key, born] of seen) if (!now.has(key)) lives.push(t - born)
+      seen.clear()
+      for (const [key, born] of now) seen.set(key, born)
+    }
+
+    expect(lives.length).toBeGreaterThan(50)
+    const mean = lives.reduce((sum, life) => sum + life, 0) / lives.length
+    // Four turns of a one-second-ish clock, and nothing beyond it. Unbounded,
+    // the longest of a few hundred runs to five times the mean and beyond.
+    expect(Math.max(...lives) / mean).toBeLessThan(4)
+  })
+})

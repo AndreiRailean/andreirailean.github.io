@@ -171,6 +171,33 @@ flatten` at first, which looks right on a letter — ink is 1 almost everywhere 
   see `bloom` at all. Count lit canvas pixels for that — and draw a frame first
   with `api.run()`, because `set()` only marks the scene dirty.
 
+- **A psyx that vanishes leaves a hole until its replacement has arrived.** The
+  arrival is eased and the departure was instantaneous, so a coarse psyx
+  dividing showed bare ground where it had been — and the slower the piece is
+  watched the worse it is, because the ease follows the clock and the eye does
+  not. `field.ghosts()` keeps the departing mark, and the renderer runs the same
+  ease backwards over the same span. Ghosts are plain data with no generator and
+  no children; they are drawn under everything and forgotten after `MOURNING`.
+- **A large psyx arrives and leaves faster than fine grain.** `spanOf` scales the
+  ease by size, because a coarse mark eased over a speck's span spends its whole
+  arrival as a translucent ghost of itself and reads as an event. Asked for in as
+  many words: _larger units should have higher gravity_.
+- **A memoryless life has a long tail, and the mean hides it.** With the same
+  odds of dividing on every turn, a coarse psyx that keeps winning sits in one
+  square for twenty seconds against a mean of two — reported by eye against
+  numbers that looked healthy. `PATIENCE_LIMIT` is a _deadline_, not a lean:
+  leaning the odds by how long a psyx had waited halved every coarse life, which
+  is a different change from the one that was wanted. The test asserts the ratio
+  of the longest life to the mean.
+- **`solid` is the complete answer to the hole, and it is a different piece.** A
+  filled tile with the sign knocked out of it in the ground's colour: nothing is
+  empty, and the tile is opaque, so a large psyx covers the grain it overlaps —
+  which is what was asked for. It costs: at 0.6 every psyx draws a tile, a
+  knockout _and_ a mark. The first version ran at 49ms a frame; splitting
+  `setColour` into `setStroke`/`setFill`, using `rect` below six pixels and
+  skipping the knockout below three took it to 13.6ms, and 8.6ms at 1 where the
+  drawn mark is skipped entirely.
+
 ## Invariants worth preserving
 
 - **A psyx is a pure function of `(seed, depth, column, row)`.** Its frame, its

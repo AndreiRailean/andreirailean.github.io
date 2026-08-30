@@ -146,11 +146,23 @@ patch of picture it stands for. Round marks in square boxes make it worse: the
 corners are never reached, and a mark that has wandered off its centre leaves the
 hole behind it exactly where it was.
 
-Two controls put ink back. **bloom** lays down the same mark again, far wider and
-dim, behind itself — filling the hole in the shape of what is in it rather than
-as a patch, and weighted by size, so the fine grain is left alone. **spacing**
-goes negative: marks spill past their own squares into their neighbours', which
-is the only thing that dissolves the lattice the subdivision leaves behind.
+Three controls put ink back. **bloom** lays down the same mark again, far wider
+and dim, behind itself — filling the hole in the shape of what is in it rather
+than as a patch, and weighted by size, so the fine grain is left alone.
+**spacing** goes negative: marks spill past their own squares into their
+neighbours', which is the only thing that dissolves the lattice the subdivision
+leaves behind. And **solid** is the complete answer: the square is filled with
+the psyx's own colour and the mark is cut out of it, so nothing is empty at all
+— and because the tile is opaque, a large psyx covers the grain it overlaps
+rather than sitting in a gap between it.
+
+Departing matters as much as arriving. A psyx used to vanish the instant it was
+replaced while its replacement eased in, which opens the hole again for as long
+as the ease takes — and the slower the piece is watched, the longer that is. A
+departing mark now fades over exactly the span its replacement takes to arrive.
+Both spans are scaled by size, because a large unit should have more gravity, not
+less: the coarsest psyx comes and goes in a third of the time the finest grain
+takes.
 
 This is a piece-shaped instance of something the section keeps finding. Starry
 Night grew a control for how rare its big stars are; Flotsam found its sizes had

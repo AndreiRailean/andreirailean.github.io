@@ -103,8 +103,23 @@ export function breathOf(psyx: Psyx, settings: Settings, time: number, spatial: 
   return 1 - depth + depth * swing
 }
 
-/** How long a newly packed psyx takes to be fully here. */
+/** How long a newly packed psyx of the finest grain takes to be fully here. */
 export const BIRTH_S = 0.5
+
+/**
+ * How much quicker the coarsest psyx arrives and leaves than the finest.
+ *
+ * **A large unit should have more gravity, not less.** Eased over the same span
+ * as a speck, a coarse mark spends its whole arrival as a translucent ghost of
+ * itself and its whole departure as a hole — and being large, both read as an
+ * event rather than as grain moving. The piece's author asked for this in as
+ * many words; it is also the third claim of
+ * `../docs/adr/20260830-large-units-demand-attention.md`.
+ */
+const GRAVITY = 0.32
+
+/** How long a psyx of this size takes to arrive or to go. */
+export const spanOf = (share: number) => BIRTH_S * (GRAVITY + (1 - GRAVITY) * (1 - Math.min(1, share)))
 
 /**
  * A psyx arriving, eased.
@@ -114,6 +129,6 @@ export const BIRTH_S = 0.5
  * and brighten into place instead, which is the only thing in the piece that
  * makes a size change legible as an event rather than a discontinuity.
  */
-export function arrivalOf(time: number, born: number): number {
-  return smooth(Math.min(1, Math.max(0, (time - born) / BIRTH_S)))
+export function arrivalOf(time: number, born: number, span = BIRTH_S): number {
+  return smooth(Math.min(1, Math.max(0, (time - born) / Math.max(1e-3, span))))
 }

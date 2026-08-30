@@ -112,6 +112,9 @@ test("psyxels come in a range of sizes, and the levels control is what decides i
 test("winding the life controls anywhere leaves the packing exactly as it was", async ({ page }) => {
   const experiment = await openPsyxels(page)
 
+  // Churn off first, and the counts compared as *deltas*: the landing scene
+  // repacks about once a second, so a bare count taken twice differs by a
+  // handful for reasons that have nothing to do with what is under test.
   const before = await experiment.api(({ api }) => {
     api.set({ churn: 0 })
     return api.stats()
@@ -132,6 +135,8 @@ test("winding the life controls anywhere leaves the packing exactly as it was", 
       weight: 0.3,
       inset: 0.4,
       wander: 0.6,
+      bloom: 1,
+      solid: 1,
       edge: 1,
       edgeHue: -180,
       playback: 2,
@@ -141,22 +146,36 @@ test("winding the life controls anywhere leaves the packing exactly as it was", 
 
   expect(after.psyxels).toBe(before.psyxels)
   expect(after.byDepth).toEqual(before.byDepth)
-  expect(after.changes).toBe(0)
+  expect(after.changes).toBe(before.changes)
 })
 
 test("the packing controls do repack, and say so", async ({ page }) => {
   const experiment = await openPsyxels(page)
-  const before = await experiment.api(({ api }) => api.stats())
-  const after = await experiment.api(({ api }) => {
-    api.set({ coarse: 0.055 })
+  const before = await experiment.api(({ api }) => {
+    api.set({ churn: 0 })
     return api.stats()
   })
-  expect(after.psyxels).toBeGreaterThan(before.psyxels * 1.5)
+  const coarser = await experiment.api(({ api }) => {
+    api.set({ coarse: 0.4 })
+    return api.stats()
+  })
+  const finer = await experiment.api(({ api }) => {
+    api.set({ coarse: 0.06 })
+    return api.stats()
+  })
+
+  // Bigger squares, fewer of them, and the other way round — a packing control
+  // is one that changes what exists rather than how it looks.
+  expect(coarser.psyxels).toBeLessThan(before.psyxels)
+  expect(finer.psyxels).toBeGreaterThan(coarser.psyxels * 1.5)
+  expect(finer.largest).toBeLessThan(coarser.largest)
 })
 
 test("the threshold sculpts the subject rather than dimming it", async ({ page }) => {
   const experiment = await openPsyxels(page)
 
+  // Churn off, or the field repacks between readings and the counts wander.
+  await experiment.api(({ api }) => api.set({ churn: 0 }))
   const at = (threshold: number) =>
     experiment.api(({ api, arg }) => {
       api.set({ threshold: arg })
@@ -264,21 +283,27 @@ test("bloom and overlap fill the ground around a large psyx without repacking", 
     return { lit: (await light(page)).lit, stats: await experiment.api(({ api }) => api.stats()) }
   }
 
-  const bare = await paint({ bloom: 0, inset: 0.2, churn: 0 })
+  const bare = await paint({ bloom: 0, solid: 0, inset: 0.2, churn: 0 })
   const bloomed = await paint({ bloom: 1 })
   const overlapped = await paint({ bloom: 0, inset: -0.4 })
+  const solid = await paint({ inset: 0.2, solid: 1 })
 
   // Read off the canvas rather than from `fill`, which is the marks' *bounding*
   // area and cannot see ink: the bloom does not change a mark's extent, only how
   // much of it is drawn on.
   expect(bloomed.lit).toBeGreaterThan(bare.lit * 1.15)
   expect(overlapped.lit).toBeGreaterThan(bare.lit * 1.15)
+  // A tile with the sign cut out of it is the complete answer: the square is
+  // filled and only the knockout is ground.
+  expect(solid.lit).toBeGreaterThan(bare.lit * 2)
 
   // And neither is a packing change: same psyxels, same sizes, in the same places.
   expect(bloomed.stats.psyxels).toBe(bare.stats.psyxels)
   expect(bloomed.stats.byDepth).toEqual(bare.stats.byDepth)
   expect(overlapped.stats.psyxels).toBe(bare.stats.psyxels)
   expect(overlapped.stats.byDepth).toEqual(bare.stats.byDepth)
+  expect(solid.stats.psyxels).toBe(bare.stats.psyxels)
+  expect(solid.stats.byDepth).toEqual(bare.stats.byDepth)
 })
 
 test("churn repacks squares over time, and holds still at zero", async ({ page }) => {

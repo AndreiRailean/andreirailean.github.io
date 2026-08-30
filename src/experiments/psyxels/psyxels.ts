@@ -2,7 +2,7 @@ import { packField, type Field, type Psyx } from "@/experiments/psyxels/field"
 import { paintGlyph } from "@/experiments/psyxels/glyphs"
 import { buildMask, maskSize, type Mask } from "@/experiments/psyxels/mask"
 import { createPalette, GROUND, type Palette } from "@/experiments/psyxels/palette"
-import { arrivalOf, breathOf, levelOf, morphOf } from "@/experiments/psyxels/pulse"
+import { arrivalOf, breathOf, levelOf, morphOf, spanOf } from "@/experiments/psyxels/pulse"
 import { needsPacking, needsSubject, type Settings } from "@/experiments/psyxels/settings"
 import { paintSubject } from "@/experiments/psyxels/subject"
 
@@ -139,12 +139,24 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
 
   const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")
 
-  /** Both are set together and rarely change between neighbours, so both are cached. */
-  let painted = ""
-  function setColour(colour: string): void {
-    if (colour === painted) return
-    painted = colour
+  /**
+   * Kept apart, and cached separately.
+   *
+   * They were set together, which is two property writes where one is wanted —
+   * and with the knockout tile a psyx sets a colour three times a frame, so the
+   * pair was six writes against three. Canvas state changes are most of what
+   * this piece costs.
+   */
+  let stroking = ""
+  let filling = ""
+  function setStroke(colour: string): void {
+    if (colour === stroking) return
+    stroking = colour
     ctx.strokeStyle = colour
+  }
+  function setFill(colour: string): void {
+    if (colour === filling) return
+    filling = colour
     ctx.fillStyle = colour
   }
 
@@ -205,11 +217,18 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
    * where it is was settled when it was packed. See `pulse.ts` for what each
    * factor answers.
    */
-  function paintPsyxel(psyx: Psyx, time: number, span: number, coarsePx: number): number {
+  function paintPsyx(psyx: Psyx, time: number, span: number, coarsePx: number, leaving = 0): number {
     const level = levelOf(psyx.ink, psyx.luck, settings.threshold, settings.fuzz, settings.flatten)
     if (level <= 0) return 0
 
-    const arrival = arrivalOf(time, psyx.born)
+    // How large this one is against the coarsest square, which decides both how
+    // quickly it arrives and how much bloom it is given.
+    const share = Math.min(1, psyx.size / coarsePx)
+    const life = spanOf(share)
+    // A ghost runs the same ease backwards over the same span, so a departure
+    // takes exactly as long as the arrival replacing it.
+    const arrival = leaving > 0 ? 1 - arrivalOf(time, leaving, life) : arrivalOf(time, psyx.born, life)
+    if (arrival <= 0) return 0
     const spatial = (psyx.x + psyx.y * 0.62) / span
     const alpha = level * breathOf(psyx, settings, time, spatial) * arrival
     if (alpha < ALPHA_FLOOR) return 0
@@ -265,31 +284,78 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
      * it is weighted by how large this psyx is against the coarsest — the fine
      * grain already reads as tone and is left alone.
      */
-    const size = Math.min(1, psyx.size / coarsePx)
-    const bloom = settings.bloom * size * size
+    // A solid tile has already filled the ground, so the bloom stands down.
+    const bloom = settings.bloom * share * share * (1 - settings.solid)
     if (bloom > 0.02) {
       const level = alpha * bloom * 0.3
       if (level >= ALPHA_FLOOR) {
-        setColour(palette.colour(psyx, settings, morph < 0.5 ? psyx.hueFrom : psyx.hue))
+        setStroke(palette.colour(psyx, settings, morph < 0.5 ? psyx.hueFrom : psyx.hue))
         ctx.globalAlpha = level
         paintGlyph(ctx, morph < 0.5 ? psyx.from : psyx.glyph, cx, cy, extent, weight * (1 + BLOOM_WIDTH * bloom))
       }
     }
 
+    /**
+     * **A tile with the sign knocked out of it, rather than a sign on the
+     * ground.**
+     *
+     * The other answer to a large psyx sitting in a hole, and the complete one:
+     * fill its square with its own colour and cut the mark out. Nothing is left
+     * empty, and because the tile is opaque it covers whatever a neighbour has
+     * spilled underneath — the piece's author asked for exactly that, that a
+     * larger psyx should "knock out the smaller pieces".
+     *
+     * The tile follows the *mark*, not the square. A wandering psyx that left
+     * its ground behind would open the hole again a step to one side, which is
+     * the thing that made an off-centre mark read as a slip rather than as a
+     * move.
+     */
+    if (settings.solid > 0) {
+      const tile = alpha * settings.solid
+      if (tile >= ALPHA_FLOOR) {
+        setFill(palette.colour(psyx, settings, morph < 0.5 ? psyx.hueFrom : psyx.hue))
+        ctx.globalAlpha = tile
+        ctx.beginPath()
+        // Rounded only where the rounding can be seen. `roundRect` costs several
+        // times a plain `rect` and a two-pixel corner on a six-pixel tile is not
+        // a corner.
+        if (room > 6) ctx.roundRect(cx - room, cy - room, room * 2, room * 2, room * 0.22)
+        else ctx.rect(cx - room, cy - room, room * 2, room * 2)
+        ctx.fill()
+
+        // Knocked out in the ground's own colour rather than composited out, so
+        // the tile stays opaque over whatever is beneath it. Skipped where the
+        // mark would be thinner than a line: below that the knockout is a
+        // scratch on a tile too small to read it.
+        if (extent > 3) {
+          setStroke(GROUND)
+          setFill(GROUND)
+          paintGlyph(ctx, morph < 0.5 ? psyx.from : psyx.glyph, cx, cy, extent, weight * 2)
+        }
+      }
+    }
+
+    const drawn = 1 - settings.solid
+    if (drawn <= 0) return room * room * 4
+
     if (morph < 1) {
-      const leaving = alpha * (1 - morph)
+      const leaving = alpha * drawn * (1 - morph)
       if (leaving >= ALPHA_FLOOR) {
         const scale = 1 - 0.22 * morph
-        setColour(palette.colour(psyx, settings, psyx.hueFrom))
+        const colour = palette.colour(psyx, settings, psyx.hueFrom)
+        setStroke(colour)
+        setFill(colour)
         ctx.globalAlpha = leaving
         paintGlyph(ctx, psyx.from, cx, cy, extent * scale, weight * scale)
       }
     }
 
-    const arriving = alpha * morph
+    const arriving = alpha * drawn * morph
     if (arriving >= ALPHA_FLOOR) {
       const scale = 0.78 + 0.22 * morph
-      setColour(palette.colour(psyx, settings, psyx.hue))
+      const colour = palette.colour(psyx, settings, psyx.hue)
+      setStroke(colour)
+      setFill(colour)
       ctx.globalAlpha = arriving
       paintGlyph(ctx, psyx.glyph, cx, cy, extent * scale, weight * scale)
     }
@@ -300,7 +366,7 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
   function draw(time: number): void {
     const began = performance.now()
     ctx.globalAlpha = 1
-    ctx.fillStyle = GROUND
+    setFill(GROUND)
     ctx.fillRect(0, 0, width, height)
 
     if (!field) return
@@ -316,8 +382,11 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
     // against. `field.ts` owns the same expression.
     const coarsePx = Math.max(6, settings.coarse * Math.min(width, height))
 
+    // Under everything: what has just been replaced, on its way out.
+    for (const ghost of field.ghosts()) paintPsyx(ghost, time, span, coarsePx, ghost.died)
+
     for (const psyx of psyxels) {
-      const covered = paintPsyxel(psyx, time, span, coarsePx)
+      const covered = paintPsyx(psyx, time, span, coarsePx)
       if (covered > 0) {
         painted++
         area += covered

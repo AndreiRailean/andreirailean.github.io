@@ -121,6 +121,16 @@ type Node = Psyx & {
   iy: number
   /** Its own generator, for every decision it will ever take. */
   rng: Rng
+  /**
+   * How many times running it has decided to stay whole.
+   *
+   * Each one makes the next decision likelier to go the other way, which bounds
+   * the tail. Without it the odds are memoryless and a coarse psyx that keeps
+   * winning the toss sits there for twenty seconds — reported as "a large psyx
+   * staying on screen for a very long time", and it is the mean that looked fine
+   * rather than the distribution.
+   */
+  patience: number
   /** When it last reconsidered its size, and the draw deciding when it next will. */
   changed: number
   changeRoll: number
@@ -128,9 +138,32 @@ type Node = Psyx & {
   flickRoll: number
 }
 
+/** A psyx that has been replaced, kept only long enough to fade. */
+export type Ghost = Psyx & { died: number }
+
+/**
+ * Longest a ghost is kept, in seconds of the piece's clock.
+ *
+ * The renderer decides how fast each one actually goes — a coarse psyx leaves
+ * faster than fine grain — so this is only the bound at which one can be
+ * forgotten.
+ */
+const MOURNING = 1.2
+
 export type Field = {
   /** Every leaf, including ones currently below the ink threshold. */
   psyxels: () => Psyx[]
+  /**
+   * Psyxels that have just been replaced, still fading.
+   *
+   * **A psyx that vanishes leaves a hole until whatever replaced it has
+   * arrived.** The arrival is eased over a good fraction of a second and the
+   * departure was instantaneous, so a coarse psyx dividing showed bare ground
+   * where it had been — worse the slower the piece is watched, since the ease
+   * follows the clock and the eye does not. Keeping the departing mark for as
+   * long as its replacement takes to arrive closes it.
+   */
+  ghosts: () => Ghost[]
   /** Advance to `time`: frame changes, and squares reconsidering their size. */
   update: (time: number, settings: Settings) => void
   /** How many squares have changed size since the field was packed. */
@@ -221,6 +254,7 @@ function makeNode(
     rng: makeRng(hashSeed(settings.seed, depth, ix, iy)),
     changed: time,
     changeRoll: 0,
+    patience: 0,
     flicked: time,
     flickRoll: 0,
   }
@@ -269,6 +303,10 @@ function decideSplit(node: Node, settings: Settings): boolean {
     if (node.rng() > settings.fuzz * 0.3) return true
   }
 
+  // A deadline rather than a lean, so the *tail* is cut and the mean is left
+  // alone: leaning the odds instead halved every coarse psyx's life, which is a
+  // different change from the one that was asked for.
+  if (node.patience >= PATIENCE_LIMIT && settings.variety > 0) return true
   return node.rng() < splitChance(settings.variety)
 }
 
@@ -289,6 +327,39 @@ function decideSplit(node: Node, settings: Settings): boolean {
  * are.
  */
 export const splitChance = (variety: number) => variety * 0.78
+
+/** A departing psyx, kept as plain data: no generator, no children, no clocks. */
+function mourn(node: Node, time: number, into: Ghost[]): void {
+  if (node.split && node.kids) {
+    for (const kid of node.kids) mourn(kid, time, into)
+    return
+  }
+  into.push({
+    x: node.x,
+    y: node.y,
+    size: node.size,
+    depth: node.depth,
+    ink: node.ink,
+    edge: node.edge,
+    luck: node.luck,
+    r: node.r,
+    g: node.g,
+    b: node.b,
+    born: node.born,
+    glyph: node.glyph,
+    from: node.from,
+    flicked: node.flicked,
+    gap: node.gap,
+    rate: node.rate,
+    hue: node.hue,
+    hueFrom: node.hueFrom,
+    phase: node.phase,
+    swing: node.swing,
+    offsetX: node.offsetX,
+    offsetY: node.offsetY,
+    died: time,
+  })
+}
 
 /**
  * Quarters a square, discarding children with nothing under them.
@@ -390,6 +461,17 @@ function revive(node: Node, time: number): void {
 const DEPTH_PATIENCE = 2.2
 
 /**
+ * How many turns running a psyx may decide to stay whole before it must divide.
+ *
+ * Without it the odds are memoryless: a coarse psyx that keeps winning a fair
+ * toss sits in one square for twenty seconds, which was reported as "a large
+ * psyx staying on screen for a very long time" against a *mean* that looked
+ * perfectly healthy. Three turns is reached by four scenes in a hundred, so the
+ * distribution keeps its shape and loses its tail.
+ */
+const PATIENCE_LIMIT = 3
+
+/**
  * What the slowing costs the field, given back.
  *
  * The control says how often a psyx is repacked, and it has to keep saying
@@ -465,6 +547,7 @@ export function packField(mask: Mask, settings: Settings, time: number): Field {
   let stale = true
   let changes = 0
   let flicks = 0
+  let departed: Ghost[] = []
 
   function collect(node: Node, into: Psyx[], counts: number[]): void {
     if (node.split && node.kids) {
@@ -489,11 +572,14 @@ export function packField(mask: Mask, settings: Settings, time: number): Field {
       node.changed = time
       node.changeRoll = node.rng()
       const wanted = decideSplit(node, settings)
+      node.patience = wanted ? 0 : node.patience + 1
       if (wanted !== node.split) {
         // `context` still carries the settings the field was packed with, which
         // is correct: anything in `needsPacking` rebuilds the whole field, so the
         // two can only differ in ways that do not reach geometry.
         context.time = time
+        // What is there now goes on fading while its replacement arrives.
+        mourn(node, time, departed)
         if (wanted) grow(context, node)
         else collapse(node, time, settings.vocabulary)
         changes++
@@ -537,7 +623,11 @@ export function packField(mask: Mask, settings: Settings, time: number): Field {
 
     update(time, settings) {
       for (const root of roots) visit(root, time, settings)
+      // Kept in one pass rather than spliced: a ghost list is tens of entries.
+      if (departed.length > 0) departed = departed.filter((ghost) => time - ghost.died < MOURNING)
     },
+
+    ghosts: () => departed,
 
     changes: () => changes,
 
