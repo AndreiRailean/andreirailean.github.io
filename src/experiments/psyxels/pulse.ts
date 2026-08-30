@@ -14,6 +14,34 @@ import type { Settings } from "@/experiments/psyxels/settings"
 
 const TAU = Math.PI * 2
 
+/** Eased at both ends: 6t⁵ − 15t⁴ + 10t³, whose first and second derivatives vanish at both. */
+const smooth = (t: number) => t * t * t * (t * (t * 6 - 15) + 10)
+
+/**
+ * Longest a change of frame may take, however slow the pixel is.
+ *
+ * A transition is a share of the interval it starts, so a pixel changing twice a
+ * minute would otherwise spend twenty seconds in the middle of a morph — which
+ * is not a slow change of frame, it is a pixel that never shows a frame at all.
+ */
+export const MORPH_MAX = 0.55
+
+/**
+ * How far a pixel is through its change of frame, eased at both ends.
+ *
+ * **A share of the current hold rather than a fixed duration**, because the
+ * flicker control spans two orders of magnitude: a quarter-second ease is
+ * languid at one change every two seconds and never completes at five a second,
+ * so the field would sit permanently between frames and the vocabulary would
+ * stop being legible. At `morph: 0` this is 1 from the first instant, which is
+ * the hard cut the piece had before.
+ */
+export function morphOf(pixel: Pixel, settings: Settings, time: number): number {
+  const span = Math.min(MORPH_MAX, settings.morph * pixel.gap)
+  if (!(span > 0)) return 1
+  return smooth(Math.min(1, Math.max(0, (time - pixel.flicked) / span)))
+}
+
 /**
  * How much of the subject a pixel is standing in for.
  *
@@ -72,6 +100,5 @@ export const BIRTH_S = 0.5
  * makes a size change legible as an event rather than a discontinuity.
  */
 export function arrivalOf(time: number, born: number): number {
-  const t = Math.min(1, Math.max(0, (time - born) / BIRTH_S))
-  return t * t * (3 - 2 * t)
+  return smooth(Math.min(1, Math.max(0, (time - born) / BIRTH_S)))
 }

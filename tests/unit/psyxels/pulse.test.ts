@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { Pixel } from "@/experiments/psyxels/field"
-import { arrivalOf, breathOf, BIRTH_S, levelOf } from "@/experiments/psyxels/pulse"
+import { arrivalOf, BIRTH_S, breathOf, levelOf, MORPH_MAX, morphOf } from "@/experiments/psyxels/pulse"
 import { DEFAULT_SETTINGS, type Settings } from "@/experiments/psyxels/settings"
 
 /**
@@ -22,8 +22,12 @@ const pixel = (over: Partial<Pixel> = {}): Pixel => ({
   b: 1,
   born: 0,
   glyph: 0,
+  from: 0,
+  flicked: 0,
+  gap: 1,
   rate: 1,
   hue: 0,
+  hueFrom: 0,
   phase: 0,
   swing: 1,
   ...over,
@@ -126,5 +130,52 @@ describe("arrivalOf", () => {
     const early = arrivalOf(0.05 * BIRTH_S, 0)
     const middle = arrivalOf(0.5 * BIRTH_S, 0) - arrivalOf(0.45 * BIRTH_S, 0)
     expect(early).toBeLessThan(middle)
+  })
+})
+
+describe("morphOf", () => {
+  const changed = (over: Partial<Pixel> = {}) => pixel({ from: 0, glyph: 1, flicked: 10, gap: 1, ...over })
+
+  it("runs from the instant of the change to the end of its span, eased at both ends", () => {
+    const scene = settings({ morph: 0.4 })
+    const span = 0.4
+    expect(morphOf(changed(), scene, 10)).toBe(0)
+    expect(morphOf(changed(), scene, 10 + span / 2)).toBeCloseTo(0.5, 6)
+    expect(morphOf(changed(), scene, 10 + span)).toBe(1)
+    expect(morphOf(changed(), scene, 40)).toBe(1)
+
+    // Eased: the first tenth of the span moves the mark far less than the middle.
+    const early = morphOf(changed(), scene, 10 + span * 0.1)
+    const middle = morphOf(changed(), scene, 10 + span * 0.55) - morphOf(changed(), scene, 10 + span * 0.45)
+    expect(early).toBeLessThan(middle)
+  })
+
+  it("is a hard cut at zero, which is what the piece did before it had this", () => {
+    const scene = settings({ morph: 0 })
+    expect(morphOf(changed(), scene, 10)).toBe(1)
+    expect(morphOf(changed(), scene, 10.0001)).toBe(1)
+  })
+
+  /**
+   * The transition is a share of the hold it starts, not a duration. The flicker
+   * control spans two orders of magnitude: a fixed quarter-second is languid at
+   * one change every two seconds and never completes at five a second, which
+   * would leave the field permanently between frames.
+   */
+  it("always finishes inside the hold it belongs to", () => {
+    for (const gap of [0.08, 0.2, 1, 4, 30]) {
+      for (const morph of [0.1, 0.55, 1]) {
+        const span = Math.min(MORPH_MAX, morph * gap)
+        expect(span).toBeLessThanOrEqual(gap)
+        expect(morphOf(changed({ gap }), settings({ morph }), 10 + gap)).toBe(1)
+      }
+    }
+  })
+
+  it("never takes longer than the cap, however slow the pixel is", () => {
+    // A pixel changing twice a minute would otherwise spend twenty seconds
+    // mid-morph, which is not a slow change of frame — it is a pixel that never
+    // shows one.
+    expect(morphOf(changed({ gap: 30 }), settings({ morph: 1 }), 10 + MORPH_MAX)).toBe(1)
   })
 })

@@ -77,6 +77,17 @@ flatten` at first, which looks right on a letter — ink is 1 almost everywhere 
   own speeds drift apart within a few cycles however they were aligned, so a
   travelling pulse built from phase alone smears back into a simmer while you
   watch it. `breathOf` mixes `rate` toward 1 by the same control.
+- **A ring that opens by growing from the centre sweeps through the strokes it
+  is meant to enclose.** Every circled sign then spends its transition as a
+  flower, which is a shape not in the vocabulary and reads as a fault. It sweeps
+  its arc instead — a circle being drawn, at its own radius the whole way —
+  starting from the pixel's own phase so the field does not draw in unison.
+- **A fixed transition duration cannot work here.** `flicker` spans two orders of
+  magnitude: a quarter-second ease is languid at one change every two seconds and
+  never completes at five a second, which leaves the field permanently between
+  frames. `morphOf` takes a share of the hold the pixel is currently in — which
+  is why a pixel stores the `gap` it entered — capped at `MORPH_MAX` so a pixel
+  changing twice a minute does not spend twenty seconds mid-morph.
 - **A vocabulary that shrinks leaves pixels showing frames that no longer
   exist.** It is read live, so nothing rebuilds when it moves; `visit` treats
   `glyph >= vocabulary` as a change due now.
@@ -116,9 +127,19 @@ flatten` at first, which looks right on a letter — ink is 1 almost everywhere 
   is asked, so a scene with `variety: 0` cannot be made to boil. The obvious
   implementation — reshuffle on a timer — takes that away and there is then no
   way to hold the packing still while the pixels live.
-- **Colour is redrawn with the frame, never on a clock of its own.** One event
-  rather than two overlapping animations, and it is what makes `flicker: 0`
-  genuinely held — frame, colour and all.
+- **Colour is redrawn with the frame, never on a clock of its own**, and it
+  slides across the same transition. One event rather than two overlapping
+  animations, and it is what makes `flicker: 0` genuinely held — frame, colour
+  and all. The slide is on the pixel's signed offset from the field's hue, not
+  around the wheel, so it never takes the long way round the spectrum.
+- **The diagonals are the upright strokes turned, not a third pair.** `armsOf`
+  is the whole model: `along` and `across` are the two stroke pairs and `spin`
+  is how far they are turned, an eighth of a turn when the diagonals are fully
+  present. It makes plus↔cross a rotation with no arm ever shortening — the best
+  transition in the vocabulary, and free. Split back into separate features it
+  becomes four strokes retracting into the middle while four others grow out of
+  it, which is a mark visibly falling apart. `glyphs.test.ts` pins the arm
+  lengths through the whole rotation.
 - **Black is the absence of subject, not a dark subject.** It is what lets one
   threshold sculpt a letterform and a face, and it is why the ground is never
   painted on.
@@ -151,7 +172,7 @@ its name and range alone.
 | `settings.ts` | `Settings`, the `CONTROLS` spec, presets, query parsing, what a change costs |
 | `subject.ts`  | the only place that knows what the picture is: a letter, or the portrait     |
 | `mask.ts`     | the subject as coverage: summed-area tables, variance, the white point       |
-| `glyphs.ts`   | the vocabulary of frames, the walk between them, and how one is drawn        |
+| `glyphs.ts`   | the vocabulary, the walk between frames, the blend between them, the drawing |
 | `field.ts`    | the quadtree: splitting, merging, churn, and a pixel's own life              |
 | `pulse.ts`    | the three factors that decide how bright a pixel is                          |
 | `palette.ts`  | the argument between the subject's colour and the pixel's                    |

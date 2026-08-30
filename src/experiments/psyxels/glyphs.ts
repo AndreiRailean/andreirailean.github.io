@@ -15,6 +15,14 @@
  * plus, so a pixel wandering by nearest neighbours grows a stroke, then a ring,
  * then loses the stroke — which reads as one thing changing its mind.
  *
+ * Describing a frame by its features pays a second time, and it is the reason
+ * this is not a set of pictures. **A change of frame is a change of features,
+ * so it can be played rather than cut.** A stroke grows out of the middle, a
+ * ring opens from the centre, a disc closes — and the pixel reads as one mark
+ * rearranging itself instead of one mark being swapped for another. Cross-fading
+ * two drawings would give the same information and none of that, at twice the
+ * draw calls.
+ *
  * They are drawn rather than typeset, in units of their own cell, because a
  * pixel here is anywhere between three and two hundred pixels across and a font
  * would have to be loaded, measured and hinted at every one of those sizes.
@@ -52,6 +60,34 @@ export const GLYPHS: Feature[] = [
 ]
 
 export const GLYPH_COUNT = GLYPHS.length
+
+/**
+ * How present each feature is, from 0 to 1.
+ *
+ * A settled pixel's are all 0 or 1 — it is showing one frame of the vocabulary.
+ * Between frames they are anywhere, which is the whole of the transition.
+ */
+export type Presence = { h: number; v: number; diagonal: number; ring: number; fill: number }
+
+const feature = (present: boolean, from: boolean, t: number) => (from ? 1 - t : 0) + (present ? t : 0)
+
+/**
+ * Where a pixel's mark is between two frames.
+ *
+ * Written into a scratch object rather than returned fresh: this runs once per
+ * pixel per frame, and thousands of short-lived objects a second is the kind of
+ * cost that does not show up anywhere legible.
+ */
+export function blendGlyphs(from: number, to: number, t: number, into: Presence): Presence {
+  const a = GLYPHS[Math.max(0, Math.min(GLYPH_COUNT - 1, from))]!
+  const b = GLYPHS[Math.max(0, Math.min(GLYPH_COUNT - 1, to))]!
+  into.h = feature(b.h, a.h, t)
+  into.v = feature(b.v, a.v, t)
+  into.diagonal = feature(b.diagonal, a.diagonal, t)
+  into.ring = feature(b.ring, a.ring, t)
+  into.fill = feature(b.fill, a.fill, t)
+  return into
+}
 
 /** How many features two frames disagree on. */
 function distance(a: Feature, b: Feature): number {
@@ -105,57 +141,117 @@ export function nextGlyph(current: number, count: number, roll: number): number 
 }
 
 /**
- * Paints one frame, centred, inside a box of half-width `extent`.
+ * Below this a feature is a smudge rather than a mark, and is left out.
+ *
+ * Not tidiness: a round-capped stroke of zero length is a *dot* the width of the
+ * line, so a stroke retracting all the way leaves a full-strength blob sitting
+ * in the middle of the pixel at the exact moment it was supposed to be gone.
+ */
+const PRESENT = 0.06
+
+const TURN = Math.PI * 2
+const QUARTER = Math.PI / 4
+
+/**
+ * The two stroke pairs a mark is made of: how far each reaches, and how far the
+ * pair is turned.
+ *
+ * Split out from the drawing so the rotation can be asserted on. It is the one
+ * piece of the vocabulary with a property worth pinning — a plus becoming a
+ * cross must never shorten an arm — and nothing about that is visible in a
+ * still.
+ */
+export function armsOf(presence: Presence): { along: number; across: number; spin: number } {
+  return {
+    along: Math.min(1, presence.h + presence.diagonal),
+    across: Math.min(1, presence.v + presence.diagonal),
+    spin: QUARTER * presence.diagonal,
+  }
+}
+
+/**
+ * Paints a mark, centred, inside a box of half-width `extent`.
  *
  * Everything is a fraction of `extent`, so the same call draws a legible mark at
- * three pixels and at two hundred. The strokes stop short of the ring rather
- * than crossing it, which is what makes a circled plus read as one sign instead
- * of a plus with a circle drawn over it.
+ * three pixels and at two hundred.
  *
- * One path, one stroke: at several thousand pixels a frame, the cost here is
- * canvas state changes rather than pixels touched.
+ * **The diagonals are not a third pair of strokes; they are the first two
+ * turned.** A cross is a plus rotated by an eighth turn, and saying so here is
+ * what makes that transition a *rotation* rather than four strokes retracting
+ * while four others grow out of the same point. It costs one sine and one
+ * cosine, it deletes a branch, and it gives the best-looking change in the
+ * vocabulary for free: a plus winds round into a cross and back. A minus
+ * becoming a cross is the same movement seen from further off — the stroke
+ * turns while a perpendicular one grows across it.
+ *
+ * The strokes stop short of the ring rather than crossing it, which is what
+ * makes a circled plus read as one sign instead of a plus with a circle drawn
+ * over it — and they pull in as the ring arrives, so that transition is one
+ * movement rather than a stroke that jumps shorter the instant a ring appears
+ * around it.
+ *
+ * One path, one stroke, whatever is in transition: at several thousand pixels a
+ * frame the cost here is canvas state changes rather than pixels touched, and a
+ * transition drawn as two overlaid frames would double them. The disc is the one
+ * exception — it is a fill — and only the frames that have one reach it.
  */
 export function paintGlyph(
   ctx: CanvasRenderingContext2D,
-  glyph: number,
+  presence: Presence,
   cx: number,
   cy: number,
   extent: number,
   lineWidth: number,
+  /** Where a ring starts drawing itself, in turns. The pixel's own, so the field does not sweep in unison. */
+  start = 0,
 ): void {
-  const shape = GLYPHS[Math.max(0, Math.min(GLYPH_COUNT - 1, glyph))]!
-  const radius = extent * 0.82
-  const reach = shape.ring ? radius * 0.58 : extent * 0.86
-  const diagonal = reach * 0.74
+  const full = extent * 0.82
+  const ring = presence.ring
+  // The strokes' reach is interpolated by how present the ring is, not by which
+  // frame is showing: a ring half open has the strokes half pulled in.
+  const reach = extent * 0.86 + (full * 0.58 - extent * 0.86) * ring
 
-  if (shape.fill) {
+  if (presence.fill > PRESENT) {
     ctx.beginPath()
-    ctx.arc(cx, cy, radius, 0, Math.PI * 2)
+    ctx.arc(cx, cy, full * presence.fill, 0, Math.PI * 2)
     ctx.fill()
-    return
   }
+
+  // A quarter of a quarter turn: 0 for the upright pair, an eighth of a turn
+  // when the diagonals are fully present, and anywhere between while it turns.
+  const { along, across, spin } = armsOf(presence)
+  const alongX = Math.cos(spin) * reach
+  const alongY = Math.sin(spin) * reach
 
   ctx.lineWidth = lineWidth
   ctx.beginPath()
+  let drawn = false
 
-  if (shape.ring) {
-    ctx.moveTo(cx + radius, cy)
-    ctx.arc(cx, cy, radius, 0, Math.PI * 2)
+  if (ring > PRESENT) {
+    /**
+     * **A ring draws itself round rather than growing from the middle.**
+     *
+     * Scaling the radius from zero was the first version and it is wrong in a
+     * specific way: an opening ring sweeps *through* the strokes it is meant to
+     * enclose, and every circled sign spends its transition as a flower. Sweeping
+     * the arc keeps the ring at its own radius the whole way, so the only thing
+     * moving is how much of it exists — and a circle being drawn is a movement
+     * anyone recognises. Same geometry, same single stroke, no alpha needed.
+     */
+    const at = start * TURN
+    ctx.arc(cx, cy, full, at, at + TURN * ring)
+    drawn = true
   }
-  if (shape.h) {
-    ctx.moveTo(cx - reach, cy)
-    ctx.lineTo(cx + reach, cy)
+  if (along > PRESENT) {
+    ctx.moveTo(cx - alongX * along, cy - alongY * along)
+    ctx.lineTo(cx + alongX * along, cy + alongY * along)
+    drawn = true
   }
-  if (shape.v) {
-    ctx.moveTo(cx, cy - reach)
-    ctx.lineTo(cx, cy + reach)
-  }
-  if (shape.diagonal) {
-    ctx.moveTo(cx - diagonal, cy - diagonal)
-    ctx.lineTo(cx + diagonal, cy + diagonal)
-    ctx.moveTo(cx + diagonal, cy - diagonal)
-    ctx.lineTo(cx - diagonal, cy + diagonal)
+  if (across > PRESENT) {
+    ctx.moveTo(cx + alongY * across, cy - alongX * across)
+    ctx.lineTo(cx - alongY * across, cy + alongX * across)
+    drawn = true
   }
 
-  ctx.stroke()
+  if (drawn) ctx.stroke()
 }

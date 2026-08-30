@@ -3,7 +3,7 @@ slug: psyxels
 title: Psyxels
 summary: A still picture packed out of pixels of every size, each one a small animation with a mind of its own.
 started: 2026-08-29
-updated: 2026-08-29
+updated: 2026-08-30
 poster: ./poster.webp
 tags:
   - canvas
@@ -87,9 +87,27 @@ rather than a slot being refilled with something unrelated. It never repeats its
 current frame: a change that changes nothing is a pause, and pauses are what the
 hold time is for.
 
-Its colour is drawn again at the same instant, which is the other half of it.
-Frame and colour arriving together make a change one event; drifting the hue on a
-clock of its own gives two overlapping animations and the field loses its beat.
+Describing frames by their features pays a second time, and it is why the marks
+are not a set of pictures. **A change of frame is a change of features, so it can
+be played rather than cut.** A stroke grows out of the middle. A ring draws
+itself round like a pen stroke, starting wherever that pixel happens to start,
+so the field never sweeps in unison. A disc closes. And the diagonals are not a
+third pair of strokes at all — a cross is a plus rotated by an eighth of a turn,
+and saying so in the geometry makes that transition a _rotation_: the mark winds
+round without either arm ever losing length. A minus becoming a cross is the same
+movement seen from further off, one stroke turning while another grows across it.
+
+The transition is a share of the hold it starts rather than a fixed duration.
+The flicker control spans two orders of magnitude, and a quarter-second ease is
+languid at one change every two seconds and never finishes at five a second —
+the field would sit permanently between frames and the vocabulary would stop
+being legible. **morph** is that share, and at 0 the frames snap, which is what
+the piece did first and is worth seeing once.
+
+Its colour is drawn again at the same instant and slides across the same
+transition, which is the other half of it. Frame and colour moving together make
+a change one event; drifting the hue on a clock of its own gives two overlapping
+animations and the field loses its beat.
 
 Nothing in the field runs on a shared clock. Each pixel has its own rate, its own
 phase and its own depth of breath, all drawn from its position and the seed — so

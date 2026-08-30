@@ -1,8 +1,8 @@
 import { packField, type Field, type Pixel } from "@/experiments/psyxels/field"
-import { paintGlyph } from "@/experiments/psyxels/glyphs"
+import { blendGlyphs, paintGlyph, type Presence } from "@/experiments/psyxels/glyphs"
 import { buildMask, maskSize, type Mask } from "@/experiments/psyxels/mask"
 import { createPalette, GROUND, type Palette } from "@/experiments/psyxels/palette"
-import { arrivalOf, breathOf, levelOf } from "@/experiments/psyxels/pulse"
+import { arrivalOf, breathOf, levelOf, morphOf } from "@/experiments/psyxels/pulse"
 import { needsPacking, needsSubject, type Settings } from "@/experiments/psyxels/settings"
 import { paintSubject } from "@/experiments/psyxels/subject"
 
@@ -112,6 +112,9 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
 
   const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")
 
+  /** Reused every pixel every frame; see `blendGlyphs`. */
+  const presence: Presence = { h: 0, v: 0, diagonal: 0, ring: 0, fill: 0 }
+
   /**
    * Rasterises the subject and reads it into the coverage tables.
    *
@@ -182,18 +185,20 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
     // in still arrives at full size, and four of them appearing inside the
     // square that was there a frame ago reads as a flash rather than a split.
     const extent = (pixel.size / 2) * (1 - settings.inset) * (0.6 + 0.4 * arrival)
-    const colour = palette.colour(pixel, settings)
+    const morph = morphOf(pixel, settings, time)
+    const colour = palette.colour(pixel, settings, morph)
 
     ctx.globalAlpha = alpha
     ctx.strokeStyle = colour
     ctx.fillStyle = colour
     paintGlyph(
       ctx,
-      pixel.glyph,
+      blendGlyphs(pixel.from, pixel.glyph, morph, presence),
       pixel.x + pixel.size / 2,
       pixel.y + pixel.size / 2,
       extent,
       Math.max(0.7, pixel.size * settings.weight),
+      pixel.phase,
     )
 
     return extent * extent * 4

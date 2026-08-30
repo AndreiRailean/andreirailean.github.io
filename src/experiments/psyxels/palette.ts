@@ -23,8 +23,11 @@ export const GROUND = "#05050a"
 const HUE_STEPS = 180
 
 export type Palette = {
-  /** The CSS colour a pixel paints with. */
-  colour: (pixel: Pixel, settings: Settings) => string
+  /**
+   * The CSS colour a pixel paints with, `morph` being how far it is through its
+   * change of frame — the colour slides across it rather than cutting.
+   */
+  colour: (pixel: Pixel, settings: Settings, morph: number) => string
   /** How many distinct colours have been built. Cheap insight into what a scene costs. */
   size: () => number
 }
@@ -72,8 +75,12 @@ export function createPalette(saturation: number, lightness = 0.56): Palette {
   const strings = new Map<number, string>()
 
   return {
-    colour(pixel, settings) {
-      const degrees = settings.hue + pixel.hue * settings.spread
+    colour(pixel, settings, morph) {
+      // Interpolated as a signed offset from the field's hue rather than around
+      // the wheel, so a pixel slides through the colours between its old and new
+      // draw instead of taking the long way round the spectrum.
+      const own = pixel.hueFrom + (pixel.hue - pixel.hueFrom) * morph
+      const degrees = settings.hue + own * settings.spread
       let bucket = Math.round((degrees / 360) * HUE_STEPS) % HUE_STEPS
       if (bucket < 0) bucket += HUE_STEPS
 

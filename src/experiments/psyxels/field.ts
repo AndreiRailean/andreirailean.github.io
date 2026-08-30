@@ -61,10 +61,18 @@ export type Pixel = {
   born: number
   /** Which frame it is showing. */
   glyph: number
+  /** The frame it is coming from, which it is still partly showing. */
+  from: number
+  /** When it last changed frame, which is when that transition started. */
+  flicked: number
+  /** How long this pixel's current hold is, so a transition can be a share of it. */
+  gap: number
   /** Its own speed, as a multiplier on flicker and tempo. Some pixels think faster. */
   rate: number
   /** Where its colour sits relative to the field's, in units of the spread. */
   hue: number
+  /** Where it was before its last change of frame; colour slides between the two. */
+  hueFrom: number
   /** Where it is in its own breath, 0 to 1. */
   phase: number
   /** How deeply it breathes, as a multiplier on the pulse depth. */
@@ -84,8 +92,7 @@ type Node = Pixel & {
   /** When it last reconsidered its size, and the draw deciding when it next will. */
   changed: number
   changeRoll: number
-  /** When it last changed frame, and the draw deciding when it next will. */
-  flicked: number
+  /** The draw deciding when it next changes frame. */
   flickRoll: number
 }
 
@@ -106,16 +113,20 @@ export type Field = {
 function breatheLife(node: Node, time: number, vocabulary: number): void {
   const rng = node.rng
   node.glyph = Math.floor(rng() * Math.max(1, Math.min(GLYPH_COUNT, vocabulary)))
+  // A newborn is not mid-transition: it arrives showing the frame it holds.
+  node.from = node.glyph
   node.rate = 0.35 + 1.9 * rng() ** 1.6
   // Divided by the clamp so the spread is a bound rather than a suggestion: at
   // ±2.5σ a pixel sits exactly `spread` degrees from the field's hue, and the
   // bulk of the population sits within 40% of it.
   node.hue = gaussian(rng) * 0.4
+  node.hueFrom = node.hue
   node.phase = rng()
   node.swing = 0.55 + 0.9 * rng()
   node.born = time
   node.flicked = time
   node.flickRoll = rng()
+  node.gap = 1
 }
 
 type Context = { mask: Mask; settings: Settings; time: number; originX: number; originY: number }
@@ -153,8 +164,11 @@ function makeNode(
     b: stats.b,
     born: time,
     glyph: 0,
+    from: 0,
+    gap: 1,
     rate: 1,
     hue: 0,
+    hueFrom: 0,
     phase: 0,
     swing: 1,
     split: false,
@@ -341,15 +355,21 @@ export function packField(mask: Mask, settings: Settings, time: number): Field {
     // exists, so that is a change due now rather than at the next tick.
     const due = node.glyph >= vocabulary || time - node.flicked >= flickGap(settings.flicker, node.flickRoll, node.rate)
     if (!due) return
+    node.from = node.glyph
     node.glyph = nextGlyph(node.glyph, vocabulary, node.rng())
     // **Colour is redrawn with the frame, not on a clock of its own.** A pixel
     // changing what it shows and what colour it is in the same instant is what
     // makes a frame change read as one event; drifting the hue separately gives
     // two overlapping animations and the field loses its beat. It also means
     // `flicker: 0` really is held — frame, colour and all.
+    node.hueFrom = node.hue
     node.hue = gaussian(node.rng) * 0.4
     node.flicked = time
     node.flickRoll = node.rng()
+    // The interval just entered, kept so a transition can be a share of it
+    // rather than a fixed duration: at five changes a second a quarter-second
+    // ease would never finish, and the field would never settle on a frame.
+    node.gap = flickGap(settings.flicker, node.flickRoll, node.rate)
     flicks++
   }
 
