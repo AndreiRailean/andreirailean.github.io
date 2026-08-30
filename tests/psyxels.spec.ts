@@ -287,9 +287,42 @@ test("bloom and overlap fill the ground around a large psyx without repacking", 
     return { lit: (await light(page)).lit, stats: await experiment.api(({ api }) => api.stats()) }
   }
 
-  // Glow off throughout: it spreads light of its own, which inflates every
-  // reading here and shrinks the ratios this test is about.
-  const bare = await paint({ bloom: 0, solid: 0, layers: 0, glow: 0, inset: 0.2, churn: 0 })
+  /**
+   * **A stated scene, not the landing one.**
+   *
+   * This measures *ratios* of lit area, and the landing scene is editorial: it
+   * already overlaps heavily and carries a glow, so `bare` was never bare and
+   * every ratio here was a fraction above its bound. It passed locally and
+   * failed in CI by one per cent. Flotsam's notes say the same thing in as many
+   * words — never use the defaults as a neutral baseline in a test.
+   *
+   * So: coarse squares, centred marks, real gaps between them, and every effect
+   * that spreads ink turned off.
+   */
+  const PLAIN = {
+    fill: 0.8,
+    coarse: 0.125,
+    levels: 3,
+    detail: 0.5,
+    variety: 0.5,
+    threshold: 0.4,
+    fuzz: 0,
+    flatten: 0.9,
+    weight: 0.12,
+    inset: 0.2,
+    wander: 0,
+    bloom: 0,
+    solid: 0,
+    layers: 0,
+    glow: 0,
+    afterglow: 0,
+    churn: 0,
+    flicker: 0,
+    pulse: 0,
+    playback: 1,
+  }
+
+  const bare = await paint(PLAIN)
   const bloomed = await paint({ bloom: 1 })
   const overlapped = await paint({ bloom: 0, inset: -0.4 })
   const solid = await paint({ inset: 0.2, solid: 1 })
@@ -298,15 +331,17 @@ test("bloom and overlap fill the ground around a large psyx without repacking", 
   // Read off the canvas rather than from `fill`, which is the marks' *bounding*
   // area and cannot see ink: the bloom does not change a mark's extent, only how
   // much of it is drawn on.
-  expect(bloomed.lit).toBeGreaterThan(bare.lit * 1.15)
-  expect(overlapped.lit).toBeGreaterThan(bare.lit * 1.15)
+  expect(bloomed.lit).toBeGreaterThan(bare.lit * 1.3)
+  expect(overlapped.lit).toBeGreaterThan(bare.lit * 1.2)
   // A tile with the sign cut out of it is the complete answer: the square is
-  // filled and only the knockout is ground. The margin is thin because the
-  // landing scene already overlaps heavily, so `bare` is not a sparse field.
-  expect(solid.lit).toBeGreaterThan(bare.lit * 1.4)
+  // filled and only the knockout is ground.
+  // Half again as much light, on a scene of coarse squares with real gaps
+  // between them: measured at 1.53, against 1.45 for the bloom and 1.89 for the
+  // layering. A tighter bound than these has failed in CI and passed here.
+  expect(solid.lit).toBeGreaterThan(bare.lit * 1.3)
   // And layering puts the coarse marks back over the grain that replaced them,
   // so what shows through the gaps in a big one is finer psyxels.
-  expect(layered.lit).toBeGreaterThan(bare.lit * 1.15)
+  expect(layered.lit).toBeGreaterThan(bare.lit * 1.4)
 
   // And neither is a packing change: same psyxels, same sizes, in the same places.
   expect(bloomed.stats.psyxels).toBe(bare.stats.psyxels)

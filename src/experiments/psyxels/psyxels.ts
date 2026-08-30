@@ -397,7 +397,14 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
         if (extent > 3) {
           setStroke(GROUND)
           setFill(GROUND)
-          paintGlyph(ctx, morph < 0.5 ? psyx.from : psyx.glyph, cx, cy, extent, weight * 2)
+          // Bolder than the drawn mark so it reads as a hole rather than a
+          // scratch — but **capped**, because doubling a heavy weight eats the
+          // tile it is cut from. At `weight` 0.12 the doubled knockout is a
+          // quarter of the square wide and a solid field came out *darker* than
+          // the same field drawn as marks, which is the opposite of what this
+          // is for.
+          const cut = Math.min(weight * 2, psyx.size * 0.13)
+          paintGlyph(ctx, morph < 0.5 ? psyx.from : psyx.glyph, cx, cy, extent, cut)
         }
       }
     }

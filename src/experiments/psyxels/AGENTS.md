@@ -195,6 +195,17 @@ flatten` at first, which looks right on a letter — ink is 1 almost everywhere 
   leaning the odds by how long a psyx had waited halved every coarse life, which
   is a different change from the one that was wanted. The test asserts the ratio
   of the longest life to the mean.
+- **The knockout is capped, not simply bolder.** It is drawn wider than the mark
+  so it reads as a hole rather than a scratch, and doubling the weight is fine
+  until the weight is heavy: at `weight` 0.12 a doubled knockout is a quarter of
+  the square wide, and a solid field came out _darker_ than the same field drawn
+  as marks. Found by a test whose ratio went the wrong way, not by eye.
+- **A test that measures ratios must state its own scene.** The bloom, overlap,
+  solid and layer checks compared against whatever the landing scene happened to
+  be; when that became a heavily overlapping one carrying a glow, `bare` was not
+  bare and every ratio sat a per cent above its bound — passing here and failing
+  in CI. They state a plain scene now. Flotsam's notes say the same thing:
+  _never use `DEFAULT_SETTINGS` as a neutral baseline in a test._
 - **`solid` is the complete answer to the hole, and it is a different piece.** A
   filled tile with the sign knocked out of it in the ground's colour: nothing is
   empty, and the tile is opaque, so a large psyx covers the grain it overlaps —
