@@ -40,6 +40,15 @@ src/pages/experiments/<slug>/  index.astro (the piece), about.astro (the note)
   Experiment code lives in `src/experiments/<slug>/`; only routes go in `pages`.
 - An experiment page **imports nothing from the rest of the site** — no
   `Layout.astro`, no `globals.css`, no Tailwind. It is a bare document.
+  **`npm run lint` fails this now**, so it is no longer convention: inside
+  `src/experiments/` and `src/pages/experiments/`, an `@/` import must start
+  `@/experiments/`, and a relative path may not climb into the site's folders.
+  Written as an allow-list rather than a list of the site's folders, so the
+  folder the site grows next is covered without anyone remembering. Copy what
+  you need into the section, or share it at the section level beside
+  `poster.ts`. `tests/unit/experiments-boundary.test.ts` keeps the rule from
+  going vacuous — a lint rule that stops matching anything leaves a green
+  suite.
 - Pages are indexable but nothing links to them yet. A link from the front page
   is expected later.
 
