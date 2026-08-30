@@ -80,6 +80,19 @@ rule a test enforces is one no future steward has to remember.
   meaningless. After a merge, fast-forward `main` in its own worktree
   (`/root/projects/andrei.md`) or it silently drifts.
 
+**`gh pr merge --delete-branch` does not work here, and its error reads like a
+failed merge.** It tries to check out `main` to clean up, `main` is checked out
+in another worktree, and it stops with `fatal: 'main' is already used by
+worktree`. **The merge has already landed at that point** — only the cleanup
+failed. Check `gh pr view <n> --json state` before doing anything else, or you
+will try to re-merge a merged PR. Merge without the flag and delete the branch by
+hand.
+
+**A worktree cut before a file landed does not have it**, which bites hardest
+with skills: the skill list is read at session start, so a session in an older
+worktree cannot see `/steward` however recently it was merged. Fast-forward that
+worktree, then restart the session.
+
 ## Handing over
 
 Most of what a departing steward wants to write down should not be written down.
