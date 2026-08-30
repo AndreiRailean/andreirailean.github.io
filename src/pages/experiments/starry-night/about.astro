@@ -1,11 +1,21 @@
 ---
 import { getCollection } from "astro:content"
 import Note, { type NoteTheme } from "@/experiments/gallery/Note.astro"
+import { PRESETS } from "@/experiments/starry-night/settings"
 
 // The note's furniture is the gallery's; only the paint is Starry Night's. See
 // docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.
 const entry = (await getCollection("experiments")).find(({ data }) => data.slug === "starry-night")
 if (!entry) throw new Error("Starry Night: missing about.md")
+
+// Taken from the primary rather than written down. This read `hsl(225, …)`,
+// which looked like a chosen offset and was not: Starry Night is the first
+// experiment and never caught up. When the notes were put on one layout its
+// hardcoded values were moved across as they stood, so 225 entered alongside
+// everything else without anyone making a colour decision about it — which is
+// why the history shows no drift window and still shows staleness.
+// Saturation and lightness stay Starry Night's own. See CONTEXT.md on *primary*.
+const primary = PRESETS[0]!.settings
 
 const theme: NoteTheme = {
   bg: "#05070f",
@@ -14,7 +24,7 @@ const theme: NoteTheme = {
   bright: "#f2f5fb",
   muted: "#79839c",
   edge: "rgb(255 255 255 / 12%)",
-  accent: "hsl(225, 40%, 68%)",
+  accent: `hsl(${primary.hue}, 40%, 68%)`,
 }
 ---
 
