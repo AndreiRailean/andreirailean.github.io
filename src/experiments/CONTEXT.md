@@ -57,6 +57,27 @@ be copied, sent, or handed back to be saved as a preset.
 Presets are recorded from exploration rather than designed up front; they are
 starting points, not fixed configurations.
 
+**Primary** — the _first_ preset, which is the piece's public face. Three
+surfaces read it and nothing else: the poster captured for the index, the
+backdrop the about page runs behind its sheet, and what a visitor gets landing on
+`/experiments/<slug>/` with no query string. Changing all three is therefore one
+move — promote a preset to first. "Primary" names the role rather than the code,
+which still just calls it `PRESETS[0]`.
+
+**`DEFAULT_SETTINGS`** — _not_ the primary, and the difference is newer than some
+of the pieces. It is the arbitrary set of values a piece starts from before any
+human has touched it: nothing in the UI can record a preset, so this is a place
+to begin rather than a scene anyone chose. Its role is diminishing and it may be
+replaced by randomised controls, with only playback speed pinned.
+
+**Nothing presentational may read `DEFAULT_SETTINGS`.** A note, a poster or a
+placard taking its scene or its tint from there is reading the arbitrary value
+instead of the chosen one, and it looks correct for exactly as long as the two
+coincide. Dangler's coincided until 2026-08-28, and its note has worn a hue from
+a scene the piece no longer runs ever since. `tests/unit/experiments-presets.test.ts`
+holds the half of this that is mechanical: a primary exists, and every preset
+carries the hue those surfaces tint themselves from.
+
 **Idle** — the state a piece enters after a few seconds without input, in which
 the pointer and the chrome both disappear. Suppressed while the pointer rests on
 the chrome, so a control cannot vanish mid-drag.
