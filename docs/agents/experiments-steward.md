@@ -93,7 +93,10 @@ in another worktree, and it stops with `fatal: 'main' is already used by
 worktree`. **The merge has already landed at that point** — only the cleanup
 failed. Check `gh pr view <n> --json state` before doing anything else, or you
 will try to re-merge a merged PR. Merge without the flag and delete the branch by
-hand.
+hand — and expect `git push origin --delete <branch>` to answer `remote ref does
+not exist`. That is not a failure: GitHub deletes the remote branch on merge by
+itself, so only the local one is left for you. Delete that with `git branch -D`
+after checking out something else.
 
 **A worktree cut before a file landed does not have it**, which bites hardest
 with skills: the skill list is read at session start, so a session in an older
