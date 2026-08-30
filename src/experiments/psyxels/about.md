@@ -182,6 +182,27 @@ to invert the relationship between a psyx's size and how long it lives. Written
 down, with the numbers, in
 `docs/adr/20260830-large-units-demand-attention.md`.
 
+## Light, and what it leaves behind
+
+**glow** is not a halo drawn around each psyx. The whole picture is blurred into
+a buffer at a quarter scale and added back over itself, so what glows is whatever
+happens to be _bright_ — and two psyxels close together glow more than either
+would alone, which is what light does and what a per-psyx halo cannot do at any
+price. Past about half it stops being light on a dark ground and becomes a lit
+sign.
+
+The buffer is faded rather than cleared between frames, and that is
+**afterglow**: it holds what was there, so a psyx easing out leaves its light
+behind for a moment. A phosphor rather than a filter. It fades on the piece's
+own clock, so watching a scene slowly _lengthens_ the trail — which is the right
+way round, since the reason to slow a scene down is to see what a psyx leaves
+behind.
+
+One consequence worth knowing: the canvas no longer paints its own ground. It is
+cleared to nothing and the page's black shows through, because a ground colour
+gathered into the glow buffer frame after frame settles into a grey wash over
+the whole picture. Only light is gathered.
+
 ## Colour spread, and what it is arguing with
 
 The subject has colours of its own. A white letter is white; a photograph is a

@@ -39,6 +39,8 @@ export type Settings = {
   bloom: number
   solid: number
   layers: number
+  glow: number
+  afterglow: number
   wander: number
   weight: number
   vocabulary: number
@@ -360,6 +362,28 @@ export const CONTROLS: Control[] = [
   {
     kind: "slider",
     group: "colour",
+    key: "glow",
+    label: "glow",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    format: (value) => (value === 0 ? "none" : `${Math.round(value * 100)}%`),
+    hint: "How much light the field spills into the space around it. Not a halo drawn per psyx — the whole picture is blurred into a buffer and added back over itself, so what glows is whatever happens to be bright, and two psyxels close together glow more than either would alone. Wound up past about half it is no longer light on a dark ground, it is a lit sign.",
+  },
+  {
+    kind: "slider",
+    group: "colour",
+    key: "afterglow",
+    label: "afterglow",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    format: (value) => (value === 0 ? "instant" : `${Math.round(value * 100)}%`),
+    hint: "How long the light takes to leave after the psyx that made it has gone. The buffer the glow is gathered in is faded rather than cleared, so it holds what was there — and a psyx easing out leaves its light behind for a moment, the way a phosphor does. It fades on the piece's own clock, so watching slowly lengthens the trail rather than shortening it.",
+  },
+  {
+    kind: "slider",
+    group: "colour",
     key: "edge",
     label: "edge",
     min: 0,
@@ -440,6 +464,8 @@ export const DEFAULT_SETTINGS: Settings = {
   bloom: 0.2,
   solid: 0,
   layers: 0.45,
+  glow: 0.35,
+  afterglow: 0.4,
   wander: 0.47,
   weight: 0.06,
   vocabulary: 3,
@@ -465,6 +491,28 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     settings: DEFAULT_SETTINGS,
   },
   {
+    label: "neon",
+    hint: "Fine grain at a high threshold, half-solid, spread across the whole wheel: tube light rather than ink.",
+    settings: {
+      ...DEFAULT_SETTINGS,
+      coarse: 0.027,
+      levels: 2,
+      detail: 0.49,
+      variety: 0.45,
+      threshold: 0.71,
+      fuzz: 0.6,
+      flatten: 0.31,
+      inset: -0.12,
+      solid: 0.37,
+      wander: 0.6,
+      weight: 0.145,
+      hue: 355,
+      spread: 180,
+      wildness: 0.61,
+      saturation: 1,
+    },
+  },
+  {
     label: "letter",
     hint: "The piece as first described: a white A, pixellated into signs, breathing in colour.",
     settings: {
@@ -480,6 +528,8 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       bloom: 0.55,
       solid: 0,
       layers: 0.4,
+      glow: 0.3,
+      afterglow: 0.35,
       wander: 0.18,
       weight: 0.15,
       vocabulary: 4,

@@ -30,6 +30,18 @@ const RUN_HZ = 30
 const ALPHA_FLOOR = 0.012
 
 /**
+ * How small the glow is gathered at, against the frame.
+ *
+ * A quarter in each direction is a sixteenth of the pixels, and the upscale
+ * afterwards is itself a blur — so most of the softness is free and the actual
+ * blur only has to smooth what is left.
+ */
+const GLOW_SCALE = 0.25
+
+/** Frames a fast-forward draws at the end, so the glow buffer is not empty. */
+const GLOW_SETTLE = 20
+
+/**
  * How much wider than its own stroke a psyx's bloom is, at full.
  *
  * Ten, because that is what it takes. A large plus at a light weight puts ink on
@@ -119,6 +131,25 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
   const stage = document.createElement("canvas")
   const stageCtx = stage.getContext("2d", { willReadFrequently: true })
 
+  /**
+   * Where the light is gathered, and kept.
+   *
+   * **The glow is a post-process, not a halo per psyx.** Drawing a sprite behind
+   * every mark gives each one its own aura and no two of them ever add up; here
+   * the whole frame is blurred into this buffer and composited back over itself,
+   * so what glows is whatever is *bright* — two psyxels close together glow more
+   * than either alone, which is what light does and what a per-psyx halo cannot
+   * do at any price.
+   *
+   * It is faded rather than cleared between frames, and that is the afterglow:
+   * the buffer holds what was there, so a psyx easing out leaves its light
+   * behind for a moment. A phosphor, not a filter.
+   */
+  const halo = document.createElement("canvas")
+  const haloCtx = halo.getContext("2d")
+  /** The clock reading the buffer was last faded against. */
+  let haloAt = 0
+
   let mask: Mask | null = null
   let field: Field | null = null
   let palette: Palette = createPalette(settings.saturation)
@@ -198,6 +229,8 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
       canvas.width = pixelWidth
       canvas.height = pixelHeight
     }
+    halo.width = Math.max(1, Math.round(pixelWidth * GLOW_SCALE))
+    halo.height = Math.max(1, Math.round(pixelHeight * GLOW_SCALE))
     // Setting either dimension clears the canvas, so a parked loop would leave
     // the piece simply gone after a resize. Inherited from Dangler and Flotsam,
     // where it was a real bug both times.
@@ -377,8 +410,17 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
   function draw(time: number): void {
     const began = performance.now()
     ctx.globalAlpha = 1
-    setFill(GROUND)
-    ctx.fillRect(0, 0, width, height)
+    /**
+     * **Cleared to nothing, not painted with the ground.**
+     *
+     * The page's own background is the ground — it always was, and the canvas
+     * was painting over it with the same colour for no reason. It matters now:
+     * the glow is gathered by blurring this canvas into a buffer that is added
+     * to itself frame after frame, and a ground of `#05050a` accumulated there
+     * would settle into a grey wash over the whole picture. Transparent, only
+     * the light is gathered.
+     */
+    ctx.clearRect(0, 0, width, height)
 
     if (!field) return
     const psyxels = field.psyxels()
@@ -425,9 +467,71 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
 
     if (debug) paintDebug(psyxels)
     ctx.globalAlpha = 1
+    if (settings.glow > 0 && haloCtx) gather(time)
+    else haloAt = time
     // Smoothed, because a single frame's timing is dominated by whatever else
     // the machine was doing during it.
     drawMs = drawMs === 0 ? performance.now() - began : drawMs * 0.9 + (performance.now() - began) * 0.1
+  }
+
+  /**
+   * Gathers this frame's light into the buffer, then adds the buffer back.
+   *
+   * The order is what stops it running away: the buffer is filled from the
+   * canvas *before* the glow is composited onto it, so the next frame gathers
+   * the field rather than the field plus its own glow.
+   */
+  function gather(time: number): void {
+    if (!haloCtx) return
+    const width = halo.width
+    const height = halo.height
+
+    /**
+     * Faded on the piece's clock rather than per frame, so the trail is the same
+     * length however fast the machine is drawing — and lengthens, in wall time,
+     * when the piece is watched slowly. That is the right way round: the whole
+     * point of slowing a scene down is to see what a psyx leaves behind.
+     */
+    const elapsed = Math.max(0, time - haloAt)
+    haloAt = time
+    const life = 0.04 + 1.8 * settings.afterglow
+    const kept = Math.exp(-elapsed / life)
+
+    haloCtx.setTransform(1, 0, 0, 1, 0, 0)
+    haloCtx.globalCompositeOperation = "destination-out"
+    haloCtx.globalAlpha = 1 - kept
+    haloCtx.filter = `blur(${Math.max(1, Math.min(width, height) * 0.006)}px)`
+    haloCtx.fillStyle = "#000"
+    haloCtx.fillRect(0, 0, width, height)
+
+    /**
+     * **Added at the same weight it was faded by**, which makes the buffer a
+     * running average of recent frames rather than a sum of them.
+     *
+     * Added at full weight it is a sum, and the sum's resting value is the frame
+     * divided by how much was faded — at a long afterglow and a fast frame rate
+     * that is a factor of a hundred and eighty, and the picture whites out. It
+     * also made the glow's strength depend on the frame rate, which is the kind
+     * of fault that looks like a taste problem on one machine and a bug on
+     * another.
+     */
+    haloCtx.globalCompositeOperation = "lighter"
+    haloCtx.globalAlpha = 1 - kept
+    haloCtx.filter = `blur(${Math.max(1, Math.min(width, height) * 0.006)}px)`
+    // The quarter-scale upscale at the end is itself a blur, so this only has to
+    // smooth what is left of the grain — and a wide radius here is most of what
+    // the glow costs.
+    haloCtx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, width, height)
+    haloCtx.filter = "none"
+
+    ctx.save()
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    ctx.globalCompositeOperation = "lighter"
+    ctx.globalAlpha = settings.glow
+    ctx.drawImage(halo, 0, 0, width, height, 0, 0, canvas.width, canvas.height)
+    ctx.restore()
+    ctx.globalCompositeOperation = "source-over"
+    ctx.globalAlpha = 1
   }
 
   /** The squares themselves, which the piece otherwise never shows. */
@@ -535,6 +639,11 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
       for (let i = 0; i < steps; i++) {
         clock += 1 / RUN_HZ
         field.update(clock, settings)
+        // The glow is gathered *between* frames, so a run that draws only its
+        // last one leaves the buffer holding a single frame's worth — a poster
+        // with no glow on a scene that has plenty. The last stretch is drawn as
+        // well, which is what the buffer needs to settle.
+        if (i >= steps - GLOW_SETTLE) draw(clock)
       }
       draw(clock)
       dirty = false

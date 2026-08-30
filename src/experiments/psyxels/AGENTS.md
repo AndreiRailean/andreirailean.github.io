@@ -211,6 +211,23 @@ flatten` at first, which looks right on a letter — ink is 1 almost everywhere 
   leaves and every one of them is large: blooming them buried the letter in soft
   discs at the first attempt.
 
+- **The glow buffer is a running average, not a sum.** Faded by `1 - kept` and
+  added back at `1 - kept`, so a steady field settles at its own brightness
+  whatever the frame rate. Added at full weight it is a sum whose resting value
+  is the frame divided by what was faded — at a long afterglow and sixty frames
+  a second that is a factor of a hundred and eighty, and the picture whites out.
+  It also made the glow's strength depend on the frame rate, which looks like a
+  taste problem on one machine and a bug on another.
+- **The buffer is filled before the glow is composited, never after.** The next
+  frame must gather the field, not the field plus its own glow, or it runs away.
+- **The canvas is cleared to nothing and the page supplies the ground.** A
+  `#05050a` ground gathered into the buffer frame after frame settles into a grey
+  wash over everything. Anything that starts painting a ground on the canvas
+  again brings that back.
+- **`run()` draws its last twenty steps.** The glow is gathered _between_ frames,
+  so a fast-forward that draws only its final one leaves the buffer holding a
+  single frame — a poster with no glow on a scene that has plenty.
+
 ## Invariants worth preserving
 
 - **A psyx is a pure function of `(seed, depth, column, row)`.** Its frame, its
@@ -321,6 +338,12 @@ reconsiders its size a handful of times a minute.
 `Mask` interface rather than a canvas: the tests hand it a synthetic subject with
 an exactly known area, which is how the cover, the pruning and the churn rate are
 checked without a browser.
+
+**The glow's cost is a software-rasteriser cost.** Gathering it takes the
+landing scene from 6.7ms a frame to 25, and almost none of that is the blur —
+removing the blur entirely saves 2ms. It is the full-resolution `drawImage` into
+the quarter-scale buffer, which a browser with a GPU does in the compositor and
+headless does with the CPU. Read it as a ratio, not a number.
 
 Headless runs without a GPU, so trust ratios rather than absolute rates. The cost
 is dominated by the number of psyxels and almost not at all by their size: about

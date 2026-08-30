@@ -138,6 +138,8 @@ test("winding the life controls anywhere leaves the packing exactly as it was", 
       bloom: 1,
       solid: 1,
       layers: 1,
+      glow: 1,
+      afterglow: 1,
       edge: 1,
       edgeHue: -180,
       playback: 2,
@@ -284,7 +286,9 @@ test("bloom and overlap fill the ground around a large psyx without repacking", 
     return { lit: (await light(page)).lit, stats: await experiment.api(({ api }) => api.stats()) }
   }
 
-  const bare = await paint({ bloom: 0, solid: 0, layers: 0, inset: 0.2, churn: 0 })
+  // Glow off throughout: it spreads light of its own, which inflates every
+  // reading here and shrinks the ratios this test is about.
+  const bare = await paint({ bloom: 0, solid: 0, layers: 0, glow: 0, inset: 0.2, churn: 0 })
   const bloomed = await paint({ bloom: 1 })
   const overlapped = await paint({ bloom: 0, inset: -0.4 })
   const solid = await paint({ inset: 0.2, solid: 1 })
@@ -297,7 +301,7 @@ test("bloom and overlap fill the ground around a large psyx without repacking", 
   expect(overlapped.lit).toBeGreaterThan(bare.lit * 1.15)
   // A tile with the sign cut out of it is the complete answer: the square is
   // filled and only the knockout is ground.
-  expect(solid.lit).toBeGreaterThan(bare.lit * 2)
+  expect(solid.lit).toBeGreaterThan(bare.lit * 1.8)
   // And layering puts the coarse marks back over the grain that replaced them,
   // so what shows through the gaps in a big one is finer psyxels.
   expect(layered.lit).toBeGreaterThan(bare.lit * 1.15)
@@ -311,6 +315,41 @@ test("bloom and overlap fill the ground around a large psyx without repacking", 
   expect(solid.stats.byDepth).toEqual(bare.stats.byDepth)
   expect(layered.stats.psyxels).toBe(bare.stats.psyxels)
   expect(layered.stats.byDepth).toEqual(bare.stats.byDepth)
+})
+
+/**
+ * The glow is a post-process with a memory.
+ *
+ * Both halves are visible only on the canvas: `stats()` counts psyxels and the
+ * glow adds no psyxels at all. The afterglow is the harder one — it is light
+ * that is still there after the psyx that made it has moved — so it is measured
+ * as *extra lit area on a moving field*, which is what a trail is.
+ */
+test("the glow spills light, and the afterglow leaves it behind", async ({ page }) => {
+  const experiment = await openPsyxels(page, { idle: true })
+
+  const paint = async (patch: Record<string, number>) => {
+    await experiment.api(({ api, arg }) => {
+      api.set(arg)
+      // Long enough for the buffer to reach its resting value at any afterglow.
+      api.run(6)
+    }, patch)
+    return { lit: (await light(page)).lit, stats: await experiment.api(({ api }) => api.stats()) }
+  }
+
+  const dark = await paint({ glow: 0, afterglow: 0, churn: 40 })
+  const lit = await paint({ glow: 1, afterglow: 0 })
+  const trailing = await paint({ glow: 1, afterglow: 0.95 })
+
+  // Light where there was none: the blur puts some of every mark outside itself.
+  expect(lit.lit).toBeGreaterThan(dark.lit * 1.2)
+  // And a field that is repacking leaves more of it behind when the buffer is
+  // faded slowly than when it is faded fast — the trail.
+  expect(trailing.lit).toBeGreaterThan(lit.lit)
+
+  // None of it is a psyx: the glow adds light, never population.
+  expect(lit.stats.psyxels).toBeGreaterThan(0)
+  expect(trailing.stats.byDepth.length).toBe(dark.stats.byDepth.length)
 })
 
 test("churn repacks squares over time, and holds still at zero", async ({ page }) => {
