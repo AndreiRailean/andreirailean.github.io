@@ -180,8 +180,8 @@ pessimistic — trust the ratios between configurations, not the numbers.
 
 ## Verifying
 
-`npm run build` covers `astro check`, `npm run lint` covers eslint, and neither
-sees anything visual.
+`npm run build` covers `astro check` and the link check below, `npm run lint`
+covers eslint, and none of them sees anything visual.
 
 - **`npm test` is two runners, and `tests/AGENTS.md` is the contract.** Vitest
   over `tests/unit/**/*.test.ts` for anything that is a function and a number;
@@ -199,6 +199,13 @@ sees anything visual.
   thing `npm test` adds.
 - **A 200 proves nothing about content.** Grep the response for text you expect;
   an empty collection renders a perfectly valid blank page.
+- **`npm run build` ends by checking that the built site answers its own
+  addresses.** `scripts/check-links.mts` walks `dist/`, resolves every local
+  `href`, `src`, `srcset`, `data-*` and `url()` against what was actually
+  written, and fails the build on anything dangling. It is on the deploy path
+  too — `withastro/action` builds by running the same script — because the bug
+  it was written for reached production through it. Run it alone with
+  `npm run check:links` against an existing `dist/`.
 - Both runners resolve the `@/` alias, so a test imports a module by the path the
   piece itself uses. Reaching for bare `node --experimental-strip-types` on a
   module still does not — that is what the runners are for.
