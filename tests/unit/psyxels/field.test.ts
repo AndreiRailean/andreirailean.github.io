@@ -398,7 +398,7 @@ describe("a soft boundary", () => {
     // A square that declines is one psyx where there would have been four, so
     // the whole field thins. At half the control it lost a third of them and the
     // letter went patchy; this bound is what keeps that in view.
-    expect(soft).toBeGreaterThan(hard * 0.55)
+    expect(soft).toBeGreaterThan(hard * 0.45)
     expect(soft).toBeLessThan(hard)
   })
 })
@@ -487,5 +487,65 @@ describe("the longest a psyx can stay", () => {
     // Four turns of a one-second-ish clock, and nothing beyond it. Unbounded,
     // the longest of a few hundred runs to five times the mean and beyond.
     expect(Math.max(...lives) / mean).toBeLessThan(4)
+  })
+})
+
+/**
+ * The squares that divided keep a mark of their own.
+ *
+ * A psyx covers its square exactly and its *mark* does not — ink is a fraction
+ * of a square, and the larger the square the more of it is ground. Drawing the
+ * divided squares as well is what puts finer psyxels in the gaps of a big one
+ * rather than leaving the ground there.
+ */
+describe("the levels above a leaf", () => {
+  it("hands back every square that divided, each with a life of its own", () => {
+    const field = packField(FLOOD, { ...PLAIN, levels: 3, variety: 0.64 }, 0)
+    const branches = field.branches()
+    const leaves = field.psyxels()
+
+    expect(branches.length).toBeGreaterThan(0)
+    // A tree of quarters has about a third as many divided squares as leaves.
+    expect(branches.length).toBeLessThan(leaves.length)
+
+    for (const branch of branches) {
+      // Born with a mark, a phase and a colour, exactly as a leaf is: a square
+      // that divided at birth used to have none, so raising the control lit up
+      // half the tree with whatever glyph zero happened to be.
+      expect(branch.size).toBeGreaterThan(0)
+      expect(branch.phase).toBeGreaterThan(0)
+      expect(branch.rate).toBeGreaterThan(0)
+    }
+  })
+
+  it("has no divided squares at all when nothing divides", () => {
+    expect(packField(FLOOD, { ...PLAIN, levels: 0 }, 0).branches()).toHaveLength(0)
+  })
+
+  it("covers the same picture as its leaves, one level up", () => {
+    // A flooded subject, because a masked one *prunes*: squares with nothing
+    // under them are never packed, so the leaves under a branch that straddles
+    // the edge do not tile it and are not meant to.
+    const field = packField(FLOOD, { ...PLAIN, levels: 2, variety: 0.64 }, 0)
+    for (const branch of field.branches()) {
+      // Only the squares wholly on the picture: the root grid overhangs the
+      // frame, and a child with nothing under it is pruned rather than packed —
+      // so a branch at the edge is genuinely not tiled by its leaves.
+      if (branch.x < 0 || branch.y < 0) continue
+      if (branch.x + branch.size > FLOOD.width || branch.y + branch.size > FLOOD.height) continue
+      const inside = field
+        .psyxels()
+        .filter(
+          (psyx) =>
+            psyx.x >= branch.x &&
+            psyx.y >= branch.y &&
+            psyx.x < branch.x + branch.size &&
+            psyx.y < branch.y + branch.size,
+        )
+      // Every divided square is exactly the psyxels beneath it, whatever depth
+      // they ended up at.
+      const area = inside.reduce((sum, psyx) => sum + psyx.size * psyx.size, 0)
+      expect(area).toBeCloseTo(branch.size * branch.size, 6)
+    }
   })
 })

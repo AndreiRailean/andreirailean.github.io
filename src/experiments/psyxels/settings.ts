@@ -38,6 +38,7 @@ export type Settings = {
   inset: number
   bloom: number
   solid: number
+  layers: number
   wander: number
   weight: number
   vocabulary: number
@@ -105,13 +106,23 @@ export const CONTROLS: Control[] = [
     kind: "slider",
     group: "packing",
     key: "coarse",
-    label: "coarse",
+    label: "biggest",
     min: 0.015,
     max: 0.6,
     step: 0.001,
     scale: "log",
-    format: (value) => `${(value * 100).toFixed(1)}% of frame`,
-    hint: "The largest a psyx is allowed to be, as a share of the frame's shorter side — so what the artwork is made of stays the same in a small window and a large one. A big coarse with few levels gives a blocky sign; a big coarse with many levels gives the widest spread of sizes, which is what makes the field look packed rather than gridded.",
+    /**
+     * Shown as a position on its own track rather than as what it is.
+     *
+     * It *is* a share of the frame's shorter side, and saying so — "12.0% of
+     * frame" — was both too long for the value column and more than anyone
+     * dragging it wants to know. It took the piece's author a while to find that
+     * this was the control for how big the biggest psyx is, which is a labelling
+     * failure and not a naming one: right is right, left is left, and the number
+     * is only there to be returned to.
+     */
+    format: (value) => String(Math.round(100 * (Math.log(value / 0.015) / Math.log(0.6 / 0.015)))),
+    hint: "How big the biggest psyx can be, and the size of the grid everything else is subdivided out of. Measured as a share of the frame's shorter side, so what the artwork is made of stays the same in a small window and a large one. Wide with few levels gives a blocky sign; wide with many levels gives the widest spread of sizes, which is what makes the field look packed rather than gridded.",
   },
   {
     kind: "slider",
@@ -201,6 +212,17 @@ export const CONTROLS: Control[] = [
     step: 0.01,
     format: (value) => (value === 0 ? "none" : `${Math.round(value * 100)}%`),
     hint: "How much of a dim, far wider version of itself a large psyx lays down behind its mark. A mark's ink is a fixed share of its own square, so the same drawing reads as tone at seven screen pixels and as a thin sign in a black hole at a hundred — and the hole is what makes a large psyx demand attention out of all proportion to what it is standing in for. This fills it, in the shape of the mark rather than as a patch, and it is weighted by size so the fine grain is left alone.",
+  },
+  {
+    kind: "slider",
+    group: "packing",
+    key: "layers",
+    label: "layers",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    format: (value) => (value === 0 ? "leaves" : `${Math.round(value * 100)}%`),
+    hint: "How strongly the squares that divided still show their own mark. A psyx covers its square exactly but its mark does not, and the larger the square the more of it is ground — so at zero a big mark is a sign in a hole. Wound up, the coarse marks come back over the grain that replaced them and what shows through the gaps in a big one is the finer psyxels underneath. Every level at once is the whole subdivision visible in one picture, which is a different piece and worth seeing.",
   },
   {
     kind: "slider",
@@ -417,6 +439,7 @@ export const DEFAULT_SETTINGS: Settings = {
   inset: 0,
   bloom: 0.2,
   solid: 0,
+  layers: 0.45,
   wander: 0.47,
   weight: 0.06,
   vocabulary: 3,
@@ -456,6 +479,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       inset: -0.08,
       bloom: 0.55,
       solid: 0,
+      layers: 0.4,
       wander: 0.18,
       weight: 0.15,
       vocabulary: 4,

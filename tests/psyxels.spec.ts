@@ -137,6 +137,7 @@ test("winding the life controls anywhere leaves the packing exactly as it was", 
       wander: 0.6,
       bloom: 1,
       solid: 1,
+      layers: 1,
       edge: 1,
       edgeHue: -180,
       playback: 2,
@@ -283,10 +284,11 @@ test("bloom and overlap fill the ground around a large psyx without repacking", 
     return { lit: (await light(page)).lit, stats: await experiment.api(({ api }) => api.stats()) }
   }
 
-  const bare = await paint({ bloom: 0, solid: 0, inset: 0.2, churn: 0 })
+  const bare = await paint({ bloom: 0, solid: 0, layers: 0, inset: 0.2, churn: 0 })
   const bloomed = await paint({ bloom: 1 })
   const overlapped = await paint({ bloom: 0, inset: -0.4 })
   const solid = await paint({ inset: 0.2, solid: 1 })
+  const layered = await paint({ solid: 0, layers: 1 })
 
   // Read off the canvas rather than from `fill`, which is the marks' *bounding*
   // area and cannot see ink: the bloom does not change a mark's extent, only how
@@ -296,6 +298,9 @@ test("bloom and overlap fill the ground around a large psyx without repacking", 
   // A tile with the sign cut out of it is the complete answer: the square is
   // filled and only the knockout is ground.
   expect(solid.lit).toBeGreaterThan(bare.lit * 2)
+  // And layering puts the coarse marks back over the grain that replaced them,
+  // so what shows through the gaps in a big one is finer psyxels.
+  expect(layered.lit).toBeGreaterThan(bare.lit * 1.15)
 
   // And neither is a packing change: same psyxels, same sizes, in the same places.
   expect(bloomed.stats.psyxels).toBe(bare.stats.psyxels)
@@ -304,6 +309,8 @@ test("bloom and overlap fill the ground around a large psyx without repacking", 
   expect(overlapped.stats.byDepth).toEqual(bare.stats.byDepth)
   expect(solid.stats.psyxels).toBe(bare.stats.psyxels)
   expect(solid.stats.byDepth).toEqual(bare.stats.byDepth)
+  expect(layered.stats.psyxels).toBe(bare.stats.psyxels)
+  expect(layered.stats.byDepth).toEqual(bare.stats.byDepth)
 })
 
 test("churn repacks squares over time, and holds still at zero", async ({ page }) => {

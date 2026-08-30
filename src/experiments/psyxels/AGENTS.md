@@ -198,6 +198,19 @@ flatten` at first, which looks right on a letter — ink is 1 almost everywhere 
   skipping the knockout below three took it to 13.6ms, and 8.6ms at 1 where the
   drawn mark is skipped entirely.
 
+- **`layers` needs every node to have a life, not only the leaves.** A square
+  that divides keeps its own mark, and `breatheLife` is called on creation for
+  every node because of it — a node born divided had no mark at all before, so
+  raising the control lit up half the tree with whatever glyph zero happened to
+  be. It also shifted every seeded stream by a few draws, which is why every
+  scene changed the day it went in.
+- **The divided squares are drawn _over_ the grain and without a bloom.** Over,
+  because what should show through the gaps in a big mark is the finer psyxels
+  that replaced it — underneath, the grain covers the coarse mark and the whole
+  thing reads as haze. Without, because there are a third as many branches as
+  leaves and every one of them is large: blooming them buried the letter in soft
+  discs at the first attempt.
+
 ## Invariants worth preserving
 
 - **A psyx is a pure function of `(seed, depth, column, row)`.** Its frame, its

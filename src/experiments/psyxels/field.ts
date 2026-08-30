@@ -154,6 +154,16 @@ export type Field = {
   /** Every leaf, including ones currently below the ink threshold. */
   psyxels: () => Psyx[]
   /**
+   * The squares that divided, each still holding a mark of its own.
+   *
+   * What `layers` draws. A leaf covers its square exactly, but its *mark* does
+   * not — ink is a fraction of a square, and the larger the square the more of
+   * it is ground. Drawing the divided squares as well puts the coarse marks back
+   * over the grain that replaced them, so what shows through the unfilled parts
+   * of a big mark is the finer psyxels underneath rather than the ground.
+   */
+  branches: () => Psyx[]
+  /**
    * Psyxels that have just been replaced, still fading.
    *
    * **A psyx that vanishes leaves a hole until whatever replaced it has
@@ -260,11 +270,13 @@ function makeNode(
   }
 
   node.changeRoll = node.rng()
-  if (decideSplit(node, settings)) {
-    grow(context, node)
-  } else {
-    breatheLife(node, time, settings.vocabulary)
-  }
+  // **Every node is given a life, not only the leaves.** A square that divides
+  // still has a mark of its own, and `layers` draws it: the coarse mark stays
+  // and the grain shows through the parts of it that are not ink. A node that
+  // was born divided had no mark at all before this, so raising the control lit
+  // up half the tree with whatever glyph zero happened to be.
+  breatheLife(node, time, settings.vocabulary)
+  if (decideSplit(node, settings)) grow(context, node)
 
   return node
 }
@@ -543,15 +555,17 @@ export function packField(mask: Mask, settings: Settings, time: number): Field {
   }
 
   let leaves: Psyx[] = []
+  let divided: Psyx[] = []
   let depths: number[] = []
   let stale = true
   let changes = 0
   let flicks = 0
   let departed: Ghost[] = []
 
-  function collect(node: Node, into: Psyx[], counts: number[]): void {
+  function collect(node: Node, into: Psyx[], counts: number[], above: Psyx[]): void {
     if (node.split && node.kids) {
-      for (const kid of node.kids) collect(kid, into, counts)
+      above.push(node)
+      for (const kid of node.kids) collect(kid, into, counts, above)
       return
     }
     into.push(node)
@@ -562,7 +576,8 @@ export function packField(mask: Mask, settings: Settings, time: number): Field {
     if (!stale) return
     leaves = []
     depths = []
-    for (const root of roots) collect(root, leaves, depths)
+    divided = []
+    for (const root of roots) collect(root, leaves, depths, divided)
     stale = false
   }
 
@@ -619,6 +634,11 @@ export function packField(mask: Mask, settings: Settings, time: number): Field {
     psyxels() {
       refresh()
       return leaves
+    },
+
+    branches() {
+      refresh()
+      return divided
     },
 
     update(time, settings) {

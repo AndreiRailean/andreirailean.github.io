@@ -146,8 +146,19 @@ patch of picture it stands for. Round marks in square boxes make it worse: the
 corners are never reached, and a mark that has wandered off its centre leaves the
 hole behind it exactly where it was.
 
-Three controls put ink back. **bloom** lays down the same mark again, far wider
-and dim, behind itself — filling the hole in the shape of what is in it rather
+Three controls put ink back, and one of them is the interesting one.
+
+**layers** draws the squares that _divided_, not only the leaves. A psyx covers
+its square exactly and its mark does not, so at zero a big mark is a sign in a
+hole; wound up, the coarse marks come back over the grain that replaced them and
+what shows through the gaps in a big one is the finer psyxels underneath. At the
+top it is the whole subdivision visible in one picture — every level of the tree
+at once, which is a different piece and worth seeing. It also settles the thing
+that made an off-centre mark look wrong: with the gaps filled there is no empty
+box for a mark to have wandered out of.
+
+The other two put ink where the mark itself is. **bloom** lays down the same mark again, far wider and
+dim, behind itself — filling the hole in the shape of what is in it rather
 than as a patch, and weighted by size, so the fine grain is left alone.
 **spacing** goes negative: marks spill past their own squares into their
 neighbours', which is the only thing that dissolves the lattice the subdivision

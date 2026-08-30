@@ -217,7 +217,15 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
    * where it is was settled when it was packed. See `pulse.ts` for what each
    * factor answers.
    */
-  function paintPsyx(psyx: Psyx, time: number, span: number, coarsePx: number, leaving = 0): number {
+  function paintPsyx(
+    psyx: Psyx,
+    time: number,
+    span: number,
+    coarsePx: number,
+    leaving = 0,
+    fade = 1,
+    withBloom = true,
+  ): number {
     const level = levelOf(psyx.ink, psyx.luck, settings.threshold, settings.fuzz, settings.flatten)
     if (level <= 0) return 0
 
@@ -230,7 +238,7 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
     const arrival = leaving > 0 ? 1 - arrivalOf(time, leaving, life) : arrivalOf(time, psyx.born, life)
     if (arrival <= 0) return 0
     const spatial = (psyx.x + psyx.y * 0.62) / span
-    const alpha = level * breathOf(psyx, settings, time, spatial) * arrival
+    const alpha = level * breathOf(psyx, settings, time, spatial) * arrival * fade
     if (alpha < ALPHA_FLOOR) return 0
 
     // The arrival scales the mark as well as fading it: four marks appearing at
@@ -284,8 +292,11 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
      * it is weighted by how large this psyx is against the coarsest — the fine
      * grain already reads as tone and is left alone.
      */
-    // A solid tile has already filled the ground, so the bloom stands down.
-    const bloom = settings.bloom * share * share * (1 - settings.solid)
+    // A solid tile has already filled the ground, so the bloom stands down — and
+    // so does a divided square, whose ground is filled by the grain that
+    // replaced it. Blooming those as well buried the letter in soft discs: there
+    // are a third as many branches as leaves and every one of them is large.
+    const bloom = withBloom ? settings.bloom * share * share * (1 - settings.solid) : 0
     if (bloom > 0.02) {
       const level = alpha * bloom * 0.3
       if (level >= ALPHA_FLOOR) {
@@ -390,6 +401,22 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
       if (covered > 0) {
         painted++
         area += covered
+      }
+    }
+
+    /**
+     * **Over the grain, not under it.**
+     *
+     * The coarse marks are drawn last so that what shows through the unfilled
+     * parts of one is the finer psyxels that replaced it. Underneath, the grain
+     * would cover the coarse mark instead and the layering would read as haze
+     * rather than as depth — which is the wrong way round: the piece's author
+     * asked for "smaller psyxels shown in the empty spaces left by the unfilled
+     * portions of the big ones".
+     */
+    if (settings.layers > 0) {
+      for (const branch of field.branches()) {
+        painted += paintPsyx(branch, time, span, coarsePx, 0, settings.layers, false) > 0 ? 1 : 0
       }
     }
 
