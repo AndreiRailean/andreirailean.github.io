@@ -351,10 +351,10 @@ in order to work at all, and every one of them was learned by breaking it.
 | `api.ts`      | `window.experiment`                                                          |
 
 `random.ts` holds only `homeFor` now. The generators it is built on —
-`hashSeed`, `makeRng`, `gaussian` — moved to `../kit/random.ts` when Psyxels
+`hashSeed`, `makeRng`, `gaussian` — moved to `../random.ts` when Psyxels
 became the third piece to want them, and what stayed behind is what is this
 piece's own choice about this piece's scale:
-`../docs/adr/20260829-a-third-copy-of-the-generators-moves-to-the-kit.md`.
+`../docs/adr/20260829-a-third-copy-of-the-generators-moves-to-the-section.md`.
 Nothing here is duplicated with another piece any more; if you find something
 that is, that is a bug rather than a policy. The chrome, its stylesheet,
 fullscreen, the clipboard and the wake lock all come from `../kit/` too.

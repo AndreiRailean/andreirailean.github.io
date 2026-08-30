@@ -2,8 +2,8 @@
  * Where an anchor goes: Dangler's own placement strategy.
  *
  * The generators everything here is built on — `hashSeed`, `makeRng`, `gaussian`
- * — moved to `../kit/random.ts` when a third piece wanted them; see
- * `../docs/adr/20260829-a-third-copy-of-the-generators-moves-to-the-kit.md`.
+ * — moved to `../random.ts` when a third piece wanted them; see
+ * `../docs/adr/20260829-a-third-copy-of-the-generators-moves-to-the-section.md`.
  * What stayed is what is *this piece's choice about this piece's scale*, and it
  * stayed for the reason in
  * `../docs/adr/20260829-a-low-discrepancy-scatter-does-not-scale.md`: an R2

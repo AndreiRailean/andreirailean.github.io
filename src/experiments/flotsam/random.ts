@@ -2,14 +2,14 @@
  * Where a speck starts: Flotsam's own placement strategy.
  *
  * The generators this is built on — `hashSeed` and `makeRng` — moved to
- * `../kit/random.ts` when a third piece wanted them; see
- * `../docs/adr/20260829-a-third-copy-of-the-generators-moves-to-the-kit.md`.
+ * `../random.ts` when a third piece wanted them; see
+ * `../docs/adr/20260829-a-third-copy-of-the-generators-moves-to-the-section.md`.
  * `homeFor` stayed, because a placement strategy is a choice about a scale and
  * the choice below is the one this piece's counts forced —
  * `../docs/adr/20260829-a-low-discrepancy-scatter-does-not-scale.md`.
  */
 
-import { hashSeed, makeRng } from "@/experiments/kit/random"
+import { hashSeed, makeRng } from "@/experiments/random"
 
 /**
  * Where speck `i` starts, as a fraction of the patch.

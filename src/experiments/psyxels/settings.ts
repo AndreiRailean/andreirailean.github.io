@@ -1,5 +1,14 @@
 import { keysOf, type ChoiceControl, type RangeControl, type SliderControl } from "@/experiments/kit/controls"
-import { isSubject, SUBJECT_LABELS, SUBJECTS, type SubjectKind } from "@/experiments/psyxels/subject"
+import {
+  FACE_LABELS,
+  FACES,
+  isFace,
+  isSubject,
+  SUBJECT_LABELS,
+  SUBJECTS,
+  type Face,
+  type SubjectKind,
+} from "@/experiments/psyxels/subject"
 import { GLYPH_COUNT } from "@/experiments/psyxels/glyphs"
 
 /**
@@ -17,14 +26,17 @@ import { GLYPH_COUNT } from "@/experiments/psyxels/glyphs"
 export type Settings = {
   seed: number
   subject: SubjectKind
+  face: Face
   fill: number
   coarse: number
   levels: number
   detail: number
   variety: number
   threshold: number
+  fuzz: number
   flatten: number
   inset: number
+  wander: number
   weight: number
   vocabulary: number
   morph: number
@@ -35,17 +47,19 @@ export type Settings = {
   wave: number
   hue: number
   spread: number
+  edge: number
+  edgeHue: number
   wildness: number
   saturation: number
   playback: number
 }
 
-export type NumericKey = Exclude<keyof Settings, "subject">
+export type NumericKey = Exclude<keyof Settings, "subject" | "face">
 
 export type ControlGroup = "subject" | "packing" | "colour" | "life"
 
 /** The panel's row kinds. A bound pair has no use here; a choice does. */
-export type Control = ((SliderControl<NumericKey> | RangeControl<NumericKey>) | ChoiceControl<"subject">) & {
+export type Control = ((SliderControl<NumericKey> | RangeControl<NumericKey>) | ChoiceControl<"subject" | "face">) & {
   group: ControlGroup
 }
 
@@ -55,7 +69,6 @@ export const GROUP_ORDER: ControlGroup[] = ["subject", "packing", "colour", "lif
 export const SEED_BOUNDS = { min: 0, max: 999_999 }
 
 const percent = (value: number) => `${Math.round(value * 100)}%`
-const pixels = (value: number) => `${Math.round(value)}px`
 const degrees = (value: number) => `${Math.round(value)}°`
 
 export const CONTROLS: Control[] = [
@@ -66,6 +79,14 @@ export const CONTROLS: Control[] = [
     label: "subject",
     options: SUBJECTS.map((value) => ({ value, label: SUBJECT_LABELS[value] })),
     hint: "What is underneath. A letterform and a photograph go through exactly the same machinery: the picture is read as coverage, and coverage is what the packing subdivides. Black is not a dark subject, it is no subject — which is why the portrait's shadows are bare ground rather than dark pixels.",
+  },
+  {
+    kind: "choice",
+    group: "subject",
+    key: "face",
+    label: "face",
+    options: FACES.map((value) => ({ value, label: FACE_LABELS[value] })),
+    hint: "Which letterform the subject is drawn with. It is asked for as a kind of shape rather than a named font, so the machine supplies whatever it has of that kind — and the character is what survives being packed: a grotesque gives even strokes and a hard silhouette, a roman gives thick-and-thin and serifs that break into separate psyxels, a script gives a stroke that changes width as it turns. Ignored by the portrait, which is not typeset.",
   },
   {
     kind: "slider",
@@ -83,12 +104,12 @@ export const CONTROLS: Control[] = [
     group: "packing",
     key: "coarse",
     label: "coarse",
-    min: 16,
-    max: 320,
-    step: 1,
+    min: 0.015,
+    max: 0.6,
+    step: 0.001,
     scale: "log",
-    format: pixels,
-    hint: "The largest a pixel is allowed to be, and the size of the grid everything else is subdivided out of. A big coarse with few levels gives a blocky sign; a big coarse with many levels gives the widest spread of sizes, which is what makes the field look packed rather than gridded.",
+    format: (value) => `${(value * 100).toFixed(1)}% of frame`,
+    hint: "The largest a psyxel is allowed to be, as a share of the frame's shorter side — so what the artwork is made of stays the same in a small window and a large one. A big coarse with few levels gives a blocky sign; a big coarse with many levels gives the widest spread of sizes, which is what makes the field look packed rather than gridded.",
   },
   {
     kind: "slider",
@@ -136,6 +157,17 @@ export const CONTROLS: Control[] = [
   },
   {
     kind: "slider",
+    group: "packing",
+    key: "fuzz",
+    label: "fuzz",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    format: (value) => (value === 0 ? "hard" : `${Math.round(value * 100)}%`),
+    hint: "How wide the band of doubt around the threshold is. At 0 a psyxel is inside the artwork or it does not exist, and the field ends on a line as exact as the letter's own — the one place it stops looking packed and starts looking clipped. Wound up, a psyxel near the boundary is there by its own luck, so the edge becomes a scatter thinning outward with psyxels hanging off the artwork entirely. Each one decides once and keeps its answer, so the fringe shimmers on the repacking's clock rather than every frame.",
+  },
+  {
+    kind: "slider",
     group: "colour",
     key: "flatten",
     label: "flatten",
@@ -155,6 +187,17 @@ export const CONTROLS: Control[] = [
     step: 0.01,
     format: percent,
     hint: "The gap left around each pixel inside its own square. A little of it is what makes the field read as separate pixels rather than as a drawing; none of it lets the big glyphs touch and interlock. It costs nothing but apparent density, and it changes the picture more than its size suggests.",
+  },
+  {
+    kind: "slider",
+    group: "packing",
+    key: "wander",
+    label: "wander",
+    min: 0,
+    max: 0.6,
+    step: 0.01,
+    format: (value) => (value === 0 ? "centred" : `${Math.round(value * 100)}%`),
+    hint: "How far a mark may sit from the centre of its own square. The packing is a subdivision, so the squares are a lattice and a coarse psyxel can only ever appear in a handful of places, which the eye learns in seconds. This breaks that without touching the cover: every square still answers for its own patch of the picture, and what is drawn for it is simply not centred. Far enough and marks cross into each other, which is the piece's only overlap.",
   },
   {
     kind: "slider",
@@ -270,6 +313,28 @@ export const CONTROLS: Control[] = [
   {
     kind: "slider",
     group: "colour",
+    key: "edge",
+    label: "edge",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    format: (value) => (value === 0 ? "none" : `${Math.round(value * 100)}%`),
+    hint: "How strongly a psyxel on a boundary is coloured differently from one in the middle of a flat area. The packing already knows where the contours are — unevenness is what makes a square subdivide — so the same number can pick the outline out in another colour. Deliberately not brightness: a psyxel half inside the subject is dim, and lighting it because it is also on the edge contradicts what the coverage just said.",
+  },
+  {
+    kind: "slider",
+    group: "colour",
+    key: "edgeHue",
+    label: "edge hue",
+    min: -180,
+    max: 180,
+    step: 1,
+    format: (value) => `${value > 0 ? "+" : ""}${Math.round(value)}°`,
+    hint: "Which way an edge is shifted around the wheel, at full edge strength. A right angle either way tints the outline without leaving the family; the far end is the complement, which reads as two colours of ink rather than one picture. Zero leaves the accent as saturation alone.",
+  },
+  {
+    kind: "slider",
+    group: "colour",
     key: "wildness",
     label: "wildness",
     min: 0,
@@ -315,14 +380,17 @@ export const CONTROLS: Control[] = [
 export const DEFAULT_SETTINGS: Settings = {
   seed: 8412,
   subject: "A",
+  face: "grotesque",
   fill: 0.82,
-  coarse: 112,
+  coarse: 0.125,
   levels: 4,
   detail: 0.5,
-  variety: 0.55,
+  variety: 0.71,
   threshold: 0.36,
+  fuzz: 0.45,
   flatten: 0.88,
   inset: 0.12,
+  wander: 0.18,
   weight: 0.15,
   vocabulary: 4,
   morph: 0.55,
@@ -333,6 +401,8 @@ export const DEFAULT_SETTINGS: Settings = {
   wave: 0.35,
   hue: 286,
   spread: 74,
+  edge: 0.45,
+  edgeHue: 96,
   wildness: 0.62,
   saturation: 0.8,
   playback: 1,
@@ -349,14 +419,17 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     hint: "The same letter with the colour taken out of it — the packing on its own.",
     settings: {
       ...DEFAULT_SETTINGS,
-      coarse: 140,
+      coarse: 0.155,
       levels: 3,
       detail: 0.55,
-      variety: 0.45,
+      variety: 0.58,
       threshold: 0.38,
       wildness: 0.05,
       saturation: 0.2,
       spread: 20,
+      // No accent either: this scene is what the packing looks like with the
+      // colour taken out, and an edge in another hue is colour.
+      edge: 0,
       pulse: 0.3,
       flicker: 0.5,
       churn: 5,
@@ -370,10 +443,10 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     settings: {
       ...DEFAULT_SETTINGS,
       seed: 41103,
-      coarse: 96,
+      coarse: 0.107,
       levels: 4,
       detail: 0.55,
-      variety: 0.66,
+      variety: 0.85,
       threshold: 0.33,
       vocabulary: 7,
       flicker: 4.6,
@@ -397,10 +470,10 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       seed: 2207,
       subject: "avatar",
       fill: 0.86,
-      coarse: 43,
+      coarse: 0.048,
       levels: 5,
       detail: 0.75,
-      variety: 0.59,
+      variety: 0.76,
       threshold: 0.61,
       flatten: 0.43,
       inset: 0.1,
@@ -414,6 +487,13 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 29,
       spread: 119,
       saturation: 0.57,
+      // The new controls, wound down from their defaults: a face has edges
+      // everywhere, and a boundary as soft as the letter's takes the wall's
+      // mid-tones with it.
+      fuzz: 0.22,
+      wander: 0.12,
+      edge: 0.3,
+      edgeHue: 58,
     },
   },
   {
@@ -424,10 +504,10 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       seed: 771,
       subject: "&",
       fill: 0.8,
-      coarse: 176,
+      coarse: 0.195,
       levels: 3,
       detail: 0.7,
-      variety: 0.5,
+      variety: 0.64,
       threshold: 0.32,
       inset: 0.12,
       weight: 0.15,
@@ -449,10 +529,10 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     settings: {
       ...DEFAULT_SETTINGS,
       seed: 60313,
-      coarse: 64,
+      coarse: 0.071,
       levels: 4,
       detail: 0.9,
-      variety: 0.72,
+      variety: 0.92,
       threshold: 0.36,
       inset: 0.05,
       weight: 0.2,
@@ -494,7 +574,11 @@ const INTEGER_KEYS: NumericKey[] = ["seed", "levels", "vocabulary"]
  */
 export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEFAULT_SETTINGS): Settings {
   const merged = { ...base, ...patch }
-  const settings: Settings = { ...merged, subject: isSubject(merged.subject) ? merged.subject : base.subject }
+  const settings: Settings = {
+    ...merged,
+    subject: isSubject(merged.subject) ? merged.subject : base.subject,
+    face: isFace(merged.face) ? merged.face : base.face,
+  }
 
   for (const key of Object.keys(BOUNDS) as NumericKey[]) {
     const bound = BOUNDS[key]
@@ -527,6 +611,9 @@ export function settingsFromQuery(params: URLSearchParams): Settings {
   const subject = params.get("subject")
   if (isSubject(subject)) patch.subject = subject
 
+  const face = params.get("face")
+  if (isFace(face)) patch.face = face
+
   return normalizeSettings(patch)
 }
 
@@ -537,6 +624,7 @@ export function settingsToQuery(settings: Settings): URLSearchParams {
     if (settings[key] !== DEFAULT_SETTINGS[key]) params.set(key, String(settings[key]))
   }
   if (settings.subject !== DEFAULT_SETTINGS.subject) params.set("subject", settings.subject)
+  if (settings.face !== DEFAULT_SETTINGS.face) params.set("face", settings.face)
   return params
 }
 
@@ -559,7 +647,7 @@ export function urlForSettings(settings: Settings, pathname: string): string {
  * only of those is one the piece would read as carrying nothing.
  */
 function namesASetting(params: URLSearchParams): boolean {
-  if (isSubject(params.get("subject"))) return true
+  if (isSubject(params.get("subject")) || isFace(params.get("face"))) return true
   return (Object.keys(BOUNDS) as NumericKey[]).some((key) => {
     const raw = params.get(key)
     return raw !== null && raw.trim() !== "" && Number.isFinite(Number(raw))
@@ -591,15 +679,20 @@ export function needsPacking(before: Settings, after: Settings): boolean {
   return (
     before.seed !== after.seed ||
     before.subject !== after.subject ||
+    before.face !== after.face ||
     before.fill !== after.fill ||
     before.coarse !== after.coarse ||
     before.levels !== after.levels ||
     before.detail !== after.detail ||
-    before.variety !== after.variety
+    before.variety !== after.variety ||
+    // Fuzz is the one control on both sides of the line: it softens which
+    // psyxels appear, which is read live, *and* lets an edge square decline to
+    // subdivide, which is the packing's business.
+    before.fuzz !== after.fuzz
   )
 }
 
 /** Whether a change needs the subject rasterised again. */
 export function needsSubject(before: Settings, after: Settings): boolean {
-  return before.subject !== after.subject || before.fill !== after.fill
+  return before.subject !== after.subject || before.face !== after.face || before.fill !== after.fill
 }

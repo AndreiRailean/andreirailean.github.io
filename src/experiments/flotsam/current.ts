@@ -50,7 +50,7 @@
  * rebuilt when the span changes or the window is resized.
  */
 
-import { hashSeed, makeRng } from "@/experiments/kit/random"
+import { hashSeed, makeRng } from "@/experiments/random"
 import { heading } from "@/experiments/flotsam/waves"
 
 /**

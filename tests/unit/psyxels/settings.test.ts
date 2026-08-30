@@ -19,7 +19,7 @@ import {
 describe("bounds", () => {
   it("has a bound for every numeric setting, so nothing arrives unclamped", () => {
     for (const key of Object.keys(DEFAULT_SETTINGS) as NumericKey[]) {
-      if (key === ("subject" as NumericKey)) continue
+      if (key === ("subject" as NumericKey) || key === ("face" as NumericKey)) continue
       expect(BOUNDS[key], key).toBeDefined()
     }
   })
@@ -56,9 +56,11 @@ describe("normalising", () => {
     expect(settings.vocabulary).toBe(BOUNDS.vocabulary.max)
   })
 
-  it("keeps the base's subject when handed one that does not exist", () => {
+  it("keeps the base's subject and face when handed ones that do not exist", () => {
     expect(normalizeSettings({ subject: "portrait" as never }).subject).toBe(DEFAULT_SETTINGS.subject)
     expect(normalizeSettings({ subject: "avatar" }).subject).toBe("avatar")
+    expect(normalizeSettings({ face: "comic" as never }).face).toBe(DEFAULT_SETTINGS.face)
+    expect(normalizeSettings({ face: "script" }).face).toBe("script")
   })
 
   it("fills gaps from the base rather than from the defaults when given one", () => {
@@ -71,7 +73,14 @@ describe("normalising", () => {
 
 describe("the query string", () => {
   it("round-trips a scene", () => {
-    const scene = normalizeSettings({ ...DEFAULT_SETTINGS, subject: "avatar", hue: 41, levels: 2, churn: 22 })
+    const scene = normalizeSettings({
+      ...DEFAULT_SETTINGS,
+      subject: "avatar",
+      face: "roman",
+      hue: 41,
+      levels: 2,
+      churn: 22,
+    })
     expect(settingsFromQuery(settingsToQuery(scene))).toEqual(scene)
   })
 
@@ -101,6 +110,7 @@ describe("the query string", () => {
 
     expect(settingsForLanding(new URLSearchParams("hue=200")).featured).toBe(false)
     expect(settingsForLanding(new URLSearchParams("subject=avatar")).featured).toBe(false)
+    expect(settingsForLanding(new URLSearchParams("face=script")).featured).toBe(false)
     // The same rule the parser applies: a URL made only of junk carries nothing.
     expect(settingsForLanding(new URLSearchParams("tempo=fast")).featured).toBe(true)
   })
@@ -110,11 +120,12 @@ describe("what a change costs", () => {
   /**
    * The piece's whole shape is in these two functions: everything absent from
    * them is read live, and can therefore be wound anywhere at all without a
-   * pixel moving.
+   * psyxel moving.
    */
   it("repacks for the packing controls and for nothing else", () => {
-    for (const key of ["seed", "subject", "fill", "coarse", "levels", "detail", "variety"] as const) {
-      const next = normalizeSettings({ [key]: key === "subject" ? "&" : DEFAULT_SETTINGS[key] + 1 })
+    for (const key of ["seed", "subject", "face", "fill", "coarse", "levels", "detail", "variety", "fuzz"] as const) {
+      const value = key === "subject" ? "&" : key === "face" ? "roman" : Number(DEFAULT_SETTINGS[key]) / 2
+      const next = normalizeSettings({ [key]: value })
       expect(needsPacking(DEFAULT_SETTINGS, next), key).toBe(true)
     }
 
@@ -140,8 +151,9 @@ describe("what a change costs", () => {
     }
   })
 
-  it("rasterises the subject again only when the subject or its size changed", () => {
+  it("rasterises the subject again only when the subject, its face or its size changed", () => {
     expect(needsSubject(DEFAULT_SETTINGS, { ...DEFAULT_SETTINGS, subject: "avatar" })).toBe(true)
+    expect(needsSubject(DEFAULT_SETTINGS, { ...DEFAULT_SETTINGS, face: "script" })).toBe(true)
     expect(needsSubject(DEFAULT_SETTINGS, { ...DEFAULT_SETTINGS, fill: 0.5 })).toBe(true)
     expect(needsSubject(DEFAULT_SETTINGS, { ...DEFAULT_SETTINGS, coarse: 40 })).toBe(false)
   })

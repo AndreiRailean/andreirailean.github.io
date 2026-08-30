@@ -1,4 +1,4 @@
-# A third copy of the generators moves to the kit
+# A third copy of the generators moves to the section level
 
 **Status:** Accepted — 2026-08-29
 
@@ -24,9 +24,21 @@ Flotsam's copies. The third would have been byte-identical again.
 
 ## Decision
 
-Those four move to `src/experiments/kit/random.ts`. All three pieces import them
-from there. `tests/unit/dangler/random.test.ts` moves with them, to
-`tests/unit/kit/random.test.ts`, since what it asserts is now the kit's.
+Those four move to `src/experiments/random.ts`. All three pieces import them from
+there. `tests/unit/dangler/random.test.ts` moves with them, to
+`tests/unit/random.test.ts`, since what it asserts belongs to no one piece.
+
+**Beside `poster.ts` and `window.d.ts`, not in `kit/`.** They went to `kit/`
+first, on the argument that the kit is _offered_ and so are the generators. That
+axis separates the kit from the gallery and says nothing about what belongs
+inside the kit; it was borrowed from one question to settle another. The test
+that discriminates is whether a piece can take one part without the others:
+`controls.ts` pulls in `copy` and `fullscreen`, `controls.css` dresses
+`controls.ts`, `wakelock` is the same browser surface — you take the chrome or
+you do not. The generators travel alone, need no browser, and their test runs in
+the node suite rather than the browser one. So `kit/` is the control surface and
+only that, and shared code that is not the control surface sits at the section
+level, where `poster.ts` and `window.d.ts` already do.
 
 What stays behind is every placement strategy built on top of them — Dangler's
 `r2Point` and `discPoint`, Flotsam's `homeFor`. Each piece keeps a `random.ts`
@@ -54,6 +66,7 @@ subtraction.
 - `kit/` holds a module with no DOM in it for the first time. That is fine and
   was always implied — the kit is _offered parts_, not _the chrome_.
 - Lifting `kit/` out with one experiment still leaves that experiment running,
-  which is the property the kit is held to.
+  which is the property the kit is held to. A piece now also depends on one
+  module beside it, which is the price of not having three copies of it.
 - Nothing about being in `kit/` makes it mandatory. A piece wanting a different
   generator writes one.

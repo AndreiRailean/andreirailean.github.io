@@ -6,7 +6,7 @@ import { expect, openExperiment, test } from "./support/experiment"
  * Psyxels, driven through its console API.
  *
  * The piece's whole claim is a separation nothing on screen can show: the
- * packing decides where the pixels are, the life decides what they do, and the
+ * packing decides where the psyxels are, the life decides what they do, and the
  * second is not allowed to touch the first. A field whose colour control
  * quietly repacks it and one whose does not look identical in any still, and
  * differ completely to watch — the first jumps every time you drag a slider.
@@ -20,21 +20,23 @@ import { expect, openExperiment, test } from "./support/experiment"
  * it.
  */
 
-/** The ground is `#05050a`, whose channels sum to 19. Anything well above it is a pixel. */
+/** The ground is `#05050a`, whose channels sum to 19. Anything well above it is a psyxel. */
 const LIT_THRESHOLD = 90
 
 /**
  * Intersection over union between the packed field and the subject it was read
  * from. A square is a square and a letter is not, so 1 is unreachable; below
- * about 0.6 the subject is being described rather than drawn.
+ * about 0.6 the subject is being described rather than drawn. The landing scene
+ * sits near 0.88 rather than higher on purpose: `fuzz` spends some of it on a
+ * boundary that is a scatter rather than a line.
  */
-const RECOGNISABLE = 0.85
+const RECOGNISABLE = 0.8
 
 function openPsyxels(page: Parameters<typeof openExperiment>[0], options?: Parameters<typeof openExperiment>[2]) {
   return openExperiment<ExperimentApi>(page, "psyxels", options)
 }
 
-/** How many canvas pixels are brighter than the ground, and where their weight sits. */
+/** How many canvas psyxels are brighter than the ground, and where their weight sits. */
 async function light(page: Parameters<typeof openExperiment>[0]) {
   return page.evaluate((threshold) => {
     const canvas = document.querySelector("canvas")
@@ -77,10 +79,10 @@ test("the packing covers the subject well enough to recognise it", async ({ page
   const experiment = await openPsyxels(page)
   const stats = await experiment.api(({ api }) => api.stats())
   expect(stats.match).toBeGreaterThan(RECOGNISABLE)
-  expect(stats.pixels).toBeGreaterThan(200)
+  expect(stats.psyxels).toBeGreaterThan(200)
 })
 
-test("pixels come in a range of sizes, and the levels control is what decides it", async ({ page }) => {
+test("psyxels come in a range of sizes, and the levels control is what decides it", async ({ page }) => {
   const experiment = await openPsyxels(page)
 
   const mixed = await experiment.api(({ api }) => api.stats())
@@ -99,7 +101,7 @@ test("pixels come in a range of sizes, and the levels control is what decides it
 /**
  * The piece's thesis, as a test.
  *
- * Everything in the moving half is read live and none of it may move a pixel.
+ * Everything in the moving half is read live and none of it may move a psyxel.
  * Without this the obvious implementation — rebuild on any change — passes every
  * other test here and is a different piece to use: every drag of the colour
  * slider reshuffles the field under your hand.
@@ -126,12 +128,15 @@ test("winding the life controls anywhere leaves the packing exactly as it was", 
       morph: 1,
       weight: 0.3,
       inset: 0.4,
+      wander: 0.6,
+      edge: 1,
+      edgeHue: -180,
       playback: 2,
     })
     return api.stats()
   })
 
-  expect(after.pixels).toBe(before.pixels)
+  expect(after.psyxels).toBe(before.psyxels)
   expect(after.byDepth).toEqual(before.byDepth)
   expect(after.changes).toBe(0)
 })
@@ -140,10 +145,10 @@ test("the packing controls do repack, and say so", async ({ page }) => {
   const experiment = await openPsyxels(page)
   const before = await experiment.api(({ api }) => api.stats())
   const after = await experiment.api(({ api }) => {
-    api.set({ coarse: 48 })
+    api.set({ coarse: 0.055 })
     return api.stats()
   })
-  expect(after.pixels).toBeGreaterThan(before.pixels * 1.5)
+  expect(after.psyxels).toBeGreaterThan(before.psyxels * 1.5)
 })
 
 test("the threshold sculpts the subject rather than dimming it", async ({ page }) => {
@@ -159,16 +164,16 @@ test("the threshold sculpts the subject rather than dimming it", async ({ page }
   const middling = await at(0.45)
   const lean = await at(0.97)
 
-  // Same packing at every setting: the threshold decides which packed pixels
+  // Same packing at every setting: the threshold decides which packed psyxels
   // appear, never how many are packed. `live` rather than `drawn`, which is the
   // last frame's paint count and so still reports the settings before this one.
-  expect(middling.pixels).toBe(fat.pixels)
-  expect(lean.pixels).toBe(fat.pixels)
+  expect(middling.psyxels).toBe(fat.psyxels)
+  expect(lean.psyxels).toBe(fat.psyxels)
 
   // Wide open, nearly everything packed is let through — not quite all of it,
   // because quartering a square that straddles an edge leaves children with a
   // sliver of ink and no more. Winding it up takes the fringe away in order.
-  expect(fat.live).toBeGreaterThan(fat.pixels * 0.9)
+  expect(fat.live).toBeGreaterThan(fat.psyxels * 0.9)
   expect(middling.live).toBeLessThan(fat.live)
   expect(lean.live).toBeLessThan(middling.live)
 
@@ -182,6 +187,52 @@ test("the threshold sculpts the subject rather than dimming it", async ({ page }
    */
   expect(fat.match).toBeLessThan(middling.match)
   expect(lean.match).toBeLessThan(middling.match)
+})
+
+test("fuzz softens the boundary rather than trimming the subject", async ({ page }) => {
+  const experiment = await openPsyxels(page)
+
+  const at = (fuzz: number) =>
+    experiment.api(({ api, arg }) => {
+      api.set({ fuzz: arg })
+      return api.stats()
+    }, fuzz)
+
+  const hard = await at(0)
+  const soft = await at(1)
+
+  // Both halves of the control show here: squares that decline to subdivide
+  // (fewer psyxels, some of them coarse and hanging over the edge), and psyxels
+  // let through by their own luck rather than by the rule.
+  expect(soft.psyxels).toBeLessThan(hard.psyxels)
+  expect(soft.match).toBeLessThan(hard.match)
+  // Still a letter, though: this is a soft edge, not a lost one.
+  expect(soft.match).toBeGreaterThan(0.7)
+})
+
+test("the edge accent is colour and only colour", async ({ page }) => {
+  const experiment = await openPsyxels(page)
+
+  const plain = await experiment.api(({ api }) => {
+    api.set({ edge: 0, churn: 0 })
+    return api.stats()
+  })
+  const accented = await experiment.api(({ api }) => {
+    api.set({ edge: 1, edgeHue: 180 })
+    // The colour count is filled in while drawing, so a reading taken before the
+    // next frame still describes the settings before this one — the same trap
+    // `drawn` sets, and the reason `live` exists.
+    api.run(0.2)
+    return api.stats()
+  })
+
+  // Not one psyxel moved, and none appeared or went.
+  expect(accented.psyxels).toBe(plain.psyxels)
+  expect(accented.byDepth).toEqual(plain.byDepth)
+  expect(accented.live).toBe(plain.live)
+  // But the scene needs more colours than it did, because the psyxels on the
+  // contours are no longer drawn from the same span of the wheel as the rest.
+  expect(accented.colours).toBeGreaterThan(plain.colours)
 })
 
 test("churn repacks squares over time, and holds still at zero", async ({ page }) => {
@@ -256,7 +307,7 @@ test("the portrait is a photograph that actually arrived", async ({ page }) => {
   // rasterises to nothing at all — a blank subject and no error anywhere. The
   // count is the only thing that says it arrived.
   await expect
-    .poll(async () => (await experiment.api(({ api }) => api.stats())).pixels, { timeout: 5000 })
+    .poll(async () => (await experiment.api(({ api }) => api.stats())).psyxels, { timeout: 5000 })
     .toBeGreaterThan(500)
   expect(portrait.byDepth.length).toBeGreaterThan(2)
 
@@ -278,7 +329,9 @@ test("every setting has a control, and a scene survives its own URL", async ({ p
     expect(named.has(key), key).toBe(true)
   }
 
-  const scene = await experiment.api(({ api }) => api.set({ hue: 33, levels: 2, subject: "&", spread: 140 }))
+  const scene = await experiment.api(({ api }) =>
+    api.set({ hue: 33, levels: 2, subject: "&", face: "roman", spread: 140 }),
+  )
   const url = await experiment.api(({ api }) => api.url())
   await page.goto(url)
   await page.waitForFunction(() => Boolean(window.experiment))
@@ -294,7 +347,7 @@ test("every preset loads, packs something, and keeps its subject", async ({ page
       api.run(4)
       return api.stats()
     }, preset.label)
-    expect(stats.pixels, preset.label).toBeGreaterThan(100)
+    expect(stats.psyxels, preset.label).toBeGreaterThan(100)
     expect(stats.live, preset.label).toBeGreaterThan(50)
   }
 })

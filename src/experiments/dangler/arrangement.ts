@@ -13,7 +13,7 @@
  */
 
 import { makeCanopy } from "@/experiments/dangler/canopy"
-import { gaussian, hashSeed, makeRng } from "@/experiments/kit/random"
+import { gaussian, hashSeed, makeRng } from "@/experiments/random"
 import type { StrandSpec } from "@/experiments/dangler/rope"
 import type { Settings } from "@/experiments/dangler/settings"
 

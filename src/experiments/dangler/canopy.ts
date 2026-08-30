@@ -1,5 +1,5 @@
 import { discPoint, r2Point } from "@/experiments/dangler/random"
-import { hashSeed, makeRng } from "@/experiments/kit/random"
+import { hashSeed, makeRng } from "@/experiments/random"
 
 /**
  * The invisible object the strands hang from.

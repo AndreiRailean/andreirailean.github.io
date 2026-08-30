@@ -33,7 +33,8 @@ Three of those records are rules you will otherwise rediscover the hard way:
 ```
 src/experiments/<slug>/        code, about.md, poster.ts, AGENTS.md
 src/experiments/gallery/       imposed: the index, the notes, the way out
-src/experiments/kit/           offered: parts a piece builds its chrome from
+src/experiments/kit/           offered: the control surface a piece builds its chrome from
+src/experiments/*.ts           shared and owned by no piece: poster, window.d.ts, random
 src/pages/experiments/<slug>/  index.astro (the piece), about.astro (the note)
 ```
 
@@ -205,9 +206,11 @@ exercised in both directions:
 - `wakelock.ts` moved in when Flotsam was about to make it a third byte-identical
   copy — `docs/adr/20260829-the-third-copy-moves-to-the-kit.md`.
 - The **generators** — `hashSeed`, `makeRng`, `gaussian` — waited for a third
-  piece and moved in with Psyxels, whose every pixel draws from
-  `makeRng(hashSeed(seed, depth, column, row))`:
-  `docs/adr/20260829-a-third-copy-of-the-generators-moves-to-the-kit.md`.
+  piece and were hoisted with Psyxels, whose every psyxel draws from
+  `makeRng(hashSeed(seed, depth, column, row))`. They went to the **section
+  level** rather than into `kit/`: the kit is the control surface, whose parts
+  travel together, and the generators travel alone and need no browser. See
+  `docs/adr/20260829-a-third-copy-of-the-generators-moves-to-the-section.md`.
 - The **placement strategies** built on them did **not**, and each piece keeps
   its own. Copying one copies a choice about scale that does not travel:
   Dangler's R2 sequence is right for eighty anchors and is a visible lattice at

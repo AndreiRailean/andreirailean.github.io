@@ -1,17 +1,17 @@
 import { describe, expect, it } from "vitest"
-import type { Pixel } from "@/experiments/psyxels/field"
+import type { Psyxel } from "@/experiments/psyxels/field"
 import { arrivalOf, BIRTH_S, breathOf, levelOf, MORPH_MAX, morphOf } from "@/experiments/psyxels/pulse"
 import { DEFAULT_SETTINGS, type Settings } from "@/experiments/psyxels/settings"
 
 /**
- * The three factors that decide how bright a pixel is.
+ * The three factors that decide how bright a psyxel is.
  *
  * They are separate so that each can be reasoned about, and the reasoning is
  * what these pin: a threshold that fades instead of cutting loses the letter's
  * edge, and a curve that does not flatten loses the letter's interior.
  */
 
-const pixel = (over: Partial<Pixel> = {}): Pixel => ({
+const psyxel = (over: Partial<Psyxel> = {}): Psyxel => ({
   x: 0,
   y: 0,
   size: 20,
@@ -25,6 +25,10 @@ const pixel = (over: Partial<Pixel> = {}): Pixel => ({
   from: 0,
   flicked: 0,
   gap: 1,
+  edge: 0,
+  luck: 0,
+  offsetX: 0,
+  offsetY: 0,
   rate: 1,
   hue: 0,
   hueFrom: 0,
@@ -37,13 +41,13 @@ const settings = (over: Partial<Settings> = {}): Settings => ({ ...DEFAULT_SETTI
 
 describe("levelOf", () => {
   it("makes a hole rather than a fade below the threshold", () => {
-    expect(levelOf(0.39, 0.4, 0.5)).toBe(0)
-    expect(levelOf(0.4, 0.4, 0.5)).toBe(0)
-    expect(levelOf(0.41, 0.4, 0.5)).toBeGreaterThan(0)
+    expect(levelOf(0.39, 0, 0.4, 0, 0.5)).toBe(0)
+    expect(levelOf(0.4, 0, 0.4, 0, 0.5)).toBe(0)
+    expect(levelOf(0.41, 0, 0.4, 0, 0.5)).toBeGreaterThan(0)
   })
 
   it("leaves a full square at full strength whatever the curve", () => {
-    for (const flatten of [0, 0.5, 1]) expect(levelOf(1, 0.4, flatten)).toBeCloseTo(1, 12)
+    for (const flatten of [0, 0.5, 1]) expect(levelOf(1, 0, 0.4, 0, flatten)).toBeCloseTo(1, 12)
   })
 
   /**
@@ -52,14 +56,14 @@ describe("levelOf", () => {
    * everywhere — and gives a photograph a hard cut with no shading above it.
    */
   it("still shades the tones above the threshold when flatten is low", () => {
-    const dim = levelOf(0.55, 0.5, 0.1)
-    const bright = levelOf(0.85, 0.5, 0.1)
+    const dim = levelOf(0.55, 0, 0.5, 0, 0.1)
+    const bright = levelOf(0.85, 0, 0.5, 0, 0.1)
     expect(bright / dim).toBeGreaterThan(2.5)
   })
 
   it("all but erases that shading when flatten is high", () => {
-    const dim = levelOf(0.55, 0.5, 1)
-    const bright = levelOf(0.85, 0.5, 1)
+    const dim = levelOf(0.55, 0, 0.5, 0, 1)
+    const bright = levelOf(0.85, 0, 0.5, 0, 1)
     expect(bright / dim).toBeLessThan(1.25)
   })
 
@@ -67,7 +71,7 @@ describe("levelOf", () => {
     for (const flatten of [0, 0.4, 0.88, 1]) {
       let last = -1
       for (let ink = 0.3; ink <= 1.0001; ink += 0.05) {
-        const level = levelOf(ink, 0.3, flatten)
+        const level = levelOf(ink, 0, 0.3, 0, flatten)
         expect(level).toBeGreaterThanOrEqual(last)
         expect(level).toBeLessThanOrEqual(1)
         last = level
@@ -78,12 +82,12 @@ describe("levelOf", () => {
 
 describe("breathOf", () => {
   it("is exactly one when the pulse is off, so nothing is spent to hold still", () => {
-    for (let t = 0; t < 4; t += 0.37) expect(breathOf(pixel(), settings({ pulse: 0 }), t, 0.3)).toBe(1)
+    for (let t = 0; t < 4; t += 0.37) expect(breathOf(psyxel(), settings({ pulse: 0 }), t, 0.3)).toBe(1)
   })
 
   it("swings between full and the depth asked for, and never past either", () => {
     const scene = settings({ pulse: 0.6, tempo: 1, wave: 0 })
-    const one = pixel({ swing: 1 })
+    const one = psyxel({ swing: 1 })
     let low = 1
     let high = 0
     for (let t = 0; t < 4; t += 1 / 60) {
@@ -101,10 +105,10 @@ describe("breathOf", () => {
    * wave built from phase alone smears back into a simmer while you watch it —
    * which is what it did.
    */
-  it("brings pixels at one place into step whatever their own rates were", () => {
+  it("brings psyxels at one place into step whatever their own rates were", () => {
     const scene = settings({ pulse: 1, tempo: 0.5, wave: 1 })
-    const quick = pixel({ rate: 2.1, phase: 0.8 })
-    const slow = pixel({ rate: 0.4, phase: 0.15 })
+    const quick = psyxel({ rate: 2.1, phase: 0.8 })
+    const slow = psyxel({ rate: 0.4, phase: 0.15 })
     for (const t of [0, 3, 11, 40]) {
       expect(breathOf(quick, scene, t, 0.25)).toBeCloseTo(breathOf(slow, scene, t, 0.25), 10)
     }
@@ -112,8 +116,8 @@ describe("breathOf", () => {
 
   it("leaves them alone at the other end of the same control", () => {
     const scene = settings({ pulse: 1, tempo: 0.5, wave: 0 })
-    const quick = pixel({ rate: 2.1, phase: 0.8 })
-    const slow = pixel({ rate: 0.4, phase: 0.15 })
+    const quick = psyxel({ rate: 2.1, phase: 0.8 })
+    const slow = psyxel({ rate: 0.4, phase: 0.15 })
     expect(breathOf(quick, scene, 3, 0.25)).not.toBeCloseTo(breathOf(slow, scene, 3, 0.25), 2)
   })
 })
@@ -134,7 +138,7 @@ describe("arrivalOf", () => {
 })
 
 describe("morphOf", () => {
-  const changed = (over: Partial<Pixel> = {}) => pixel({ from: 0, glyph: 1, flicked: 10, gap: 1, ...over })
+  const changed = (over: Partial<Psyxel> = {}) => psyxel({ from: 0, glyph: 1, flicked: 10, gap: 1, ...over })
 
   it("runs from the instant of the change to the end of its span, eased at both ends", () => {
     const scene = settings({ morph: 0.4 })
@@ -172,9 +176,9 @@ describe("morphOf", () => {
     }
   })
 
-  it("never takes longer than the cap, however slow the pixel is", () => {
-    // A pixel changing twice a minute would otherwise spend twenty seconds
-    // mid-morph, which is not a slow change of frame — it is a pixel that never
+  it("never takes longer than the cap, however slow the psyxel is", () => {
+    // A psyxel changing twice a minute would otherwise spend twenty seconds
+    // mid-morph, which is not a slow change of frame — it is a psyxel that never
     // shows one.
     expect(morphOf(changed({ gap: 30 }), settings({ morph: 1 }), 10 + MORPH_MAX)).toBe(1)
   })

@@ -23,15 +23,49 @@ export const isSubject = (value: unknown): value is SubjectKind =>
   typeof value === "string" && (SUBJECTS as readonly string[]).includes(value)
 
 /**
- * A heavy grotesque, whatever the machine has.
+ * The letterforms on offer, as generic families rather than named faces.
  *
- * The exact face does not matter and must not be relied on: the subject is
- * rasterised to coverage immediately, and by the time anything is drawn the
- * letterform survives only as a field of cells. What does matter is *weight* —
- * a light face at this scale gives strokes a few cells wide, and a letter three
- * cells wide is not a letter, it is a scribble.
+ * **Which face the machine picks is deliberately not this piece's business.**
+ * The subject is rasterised to coverage immediately and survives only as a field
+ * of psyxels, so what matters is the *character* of the shape — whether its
+ * strokes are even or modulated, whether it has serifs to break up, whether it
+ * is drawn with a pen. A generic family asks the machine for that character and
+ * takes whatever it has, which is the same bargain the piece makes with a
+ * viewer's monitor.
+ *
+ * The consequence is worth stating: two machines show different letters. A
+ * capture from this repo's headless Chromium is whatever fonts the box has, and
+ * a laptop will differ. That is fine for a piece whose subject is a shape, and
+ * it is why the poster's recipe does not name a face.
  */
-const FACE = '800 {size}px "Helvetica Neue", Helvetica, Arial, "DejaVu Sans", sans-serif'
+export const FACES = ["grotesque", "roman", "script", "typewriter"] as const
+
+export type Face = (typeof FACES)[number]
+
+export const FACE_LABELS: Record<Face, string> = {
+  grotesque: "grotesque",
+  roman: "roman",
+  script: "script",
+  typewriter: "typed",
+}
+
+export const isFace = (value: unknown): value is Face =>
+  typeof value === "string" && (FACES as readonly string[]).includes(value)
+
+/**
+ * Weight is the one thing a face cannot be left to decide.
+ *
+ * A light letter at this scale gives strokes a few psyxels wide, and a letter
+ * three psyxels wide is not a letter, it is a scribble. The grotesque is asked
+ * for the heaviest weight it has; the others are asked for a middleweight,
+ * because a bold script is a blot.
+ */
+const STACKS: Record<Face, string> = {
+  grotesque: '800 {size}px "Helvetica Neue", Helvetica, Arial, sans-serif',
+  roman: '700 {size}px Georgia, "Times New Roman", serif',
+  script: '600 {size}px "Snell Roundhand", "Apple Chancery", "Segoe Script", cursive',
+  typewriter: '700 {size}px "Courier New", ui-monospace, monospace',
+}
 
 /**
  * Fits a glyph to a box by measuring it rather than trusting the font size.
@@ -40,16 +74,17 @@ const FACE = '800 {size}px "Helvetica Neue", Helvetica, Arial, "DejaVu Sans", sa
  * face — so a fixed size would make the subject's height depend on which font
  * the machine happened to have. Measured, then scaled by the ratio, it does not.
  */
-function fitText(ctx: CanvasRenderingContext2D, text: string, boxWidth: number, boxHeight: number): void {
+function fitText(ctx: CanvasRenderingContext2D, text: string, face: Face, boxWidth: number, boxHeight: number): void {
   const probe = 100
-  ctx.font = FACE.replace("{size}", String(probe))
+  const stack = STACKS[face]
+  ctx.font = stack.replace("{size}", String(probe))
   const metrics = ctx.measureText(text)
   const width = metrics.actualBoundingBoxLeft + metrics.actualBoundingBoxRight
   const height = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent
   if (width <= 0 || height <= 0) return
 
   const size = probe * Math.min(boxWidth / width, boxHeight / height)
-  ctx.font = FACE.replace("{size}", String(size))
+  ctx.font = stack.replace("{size}", String(size))
 
   // Centred on the ink rather than on the baseline, which is what "fill the
   // height of the screen" means to anyone looking at it. Only vertically:
@@ -76,6 +111,7 @@ export function paintSubject(
   width: number,
   height: number,
   kind: SubjectKind,
+  face: Face,
   fill: number,
   avatar: HTMLImageElement | null,
 ): Drawn {
@@ -96,7 +132,7 @@ export function paintSubject(
   ctx.textAlign = "center"
   ctx.textBaseline = "alphabetic"
   ctx.translate(width / 2, height / 2)
-  fitText(ctx, kind, width * fill, box)
+  fitText(ctx, kind, face, width * fill, box)
   ctx.fillText(kind, 0, 0)
   ctx.restore()
   return { ok: true }

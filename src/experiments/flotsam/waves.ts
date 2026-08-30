@@ -45,7 +45,7 @@
  * the span slider and glacial at the other, without a tempo control anywhere.
  */
 
-import { hashSeed, makeRng } from "@/experiments/kit/random"
+import { hashSeed, makeRng } from "@/experiments/random"
 
 /** Standard gravity, in m/s². Taken literally, like every other unit here. */
 export const G = 9.80665

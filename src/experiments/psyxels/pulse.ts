@@ -1,13 +1,13 @@
-import type { Pixel } from "@/experiments/psyxels/field"
+import type { Psyxel } from "@/experiments/psyxels/field"
 import type { Settings } from "@/experiments/psyxels/settings"
 
 /**
- * How bright a pixel is at a moment: the three factors, kept separate and kept
+ * How bright a psyxel is at a moment: the three factors, kept separate and kept
  * out of the drawing code.
  *
  * They multiply, and they answer different questions. `levelOf` is *how much
  * subject is here*, which is a fact about the picture. `breathOf` is *where the
- * pixel is in its own cycle*, which is a fact about the pixel. `arrivalOf` is
+ * psyxel is in its own cycle*, which is a fact about the psyxel. `arrivalOf` is
  * *how long it has existed*, which is a fact about the packing. Only the first
  * survives when everything is turned off, and that is the still image.
  */
@@ -18,16 +18,16 @@ const TAU = Math.PI * 2
 const smooth = (t: number) => t * t * t * (t * (t * 6 - 15) + 10)
 
 /**
- * Longest a change of frame may take, however slow the pixel is.
+ * Longest a change of frame may take, however slow the psyxel is.
  *
- * A transition is a share of the interval it starts, so a pixel changing twice a
+ * A transition is a share of the interval it starts, so a psyxel changing twice a
  * minute would otherwise spend twenty seconds in the middle of a morph — which
- * is not a slow change of frame, it is a pixel that never shows a frame at all.
+ * is not a slow change of frame, it is a psyxel that never shows a frame at all.
  */
 export const MORPH_MAX = 0.55
 
 /**
- * How far a pixel is through its change of frame, eased at both ends.
+ * How far a psyxel is through its change of frame, eased at both ends.
  *
  * **A share of the current hold rather than a fixed duration**, because the
  * flicker control spans two orders of magnitude: a quarter-second ease is
@@ -36,63 +36,78 @@ export const MORPH_MAX = 0.55
  * stop being legible. At `morph: 0` this is 1 from the first instant, which is
  * the hard cut the piece had before.
  */
-export function morphOf(pixel: Pixel, settings: Settings, time: number): number {
-  const span = Math.min(MORPH_MAX, settings.morph * pixel.gap)
+export function morphOf(psyxel: Psyxel, settings: Settings, time: number): number {
+  const span = Math.min(MORPH_MAX, settings.morph * psyxel.gap)
   if (!(span > 0)) return 1
-  return smooth(Math.min(1, Math.max(0, (time - pixel.flicked) / span)))
+  return smooth(Math.min(1, Math.max(0, (time - psyxel.flicked) / span)))
 }
 
 /**
- * How much of the subject a pixel is standing in for.
+ * How much of the subject a psyxel is standing in for, and whether it is there
+ * at all.
  *
- * A black point and a curve, which is one more thing than it first needed and
- * the difference between a letter and a portrait working at once.
+ * A black point, a band of doubt around it, and a curve above it.
  *
- * `threshold` is the black point: below it a pixel is not dim, it is *absent* —
- * a hole in the field rather than a faint mark. That is what makes a letter's
- * edge hard, and on a photograph it is what decides which tones are the subject
- * at all. The portrait's wall is a mid grey and its shadowed cheek is not far
- * off it; where the point falls between them is the whole difference between a
- * face and a rectangle of pixels.
+ * `threshold` is the black point. On a letter it decides how much of a square
+ * has to be inside the stroke before it appears; on a photograph it decides
+ * which tones are the subject at all — the portrait's wall is a mid grey and its
+ * shadowed cheek is not far off it, and where the point falls between them is
+ * the difference between a face and a rectangle of psyxels.
  *
- * `flatten` is the curve above it, from linear to nearly flat. The first
- * version of this lifted the level toward full instead — `ink + (1 - ink) ×
- * flatten` — and it looked right on the letter, where ink is 1 almost
- * everywhere, while giving the photograph a hard cut with no shading above it:
- * every surviving tone came out at nearly the same brightness and the face read
- * as a splotch. A curve costs one `**` and gives both, because a letter's
- * interior is at 1 whatever exponent it is raised to.
+ * **`fuzz` is what stops that being a cut.** A hard point means a psyxel is
+ * inside the artwork or it does not exist, and a letter drawn that way has a
+ * boundary as exact as the letter's own — which is the one place the field stops
+ * looking packed and starts looking clipped. Inside the band, a psyxel is there
+ * *by luck*: its own draw against how far through the band its coverage sits. So
+ * the boundary becomes a scatter of psyxels thinning outward, some of them
+ * hanging off the edge of the artwork entirely, rather than a line. At `fuzz: 0`
+ * the band closes and this is exactly the cut it was before.
+ *
+ * `flatten` is the curve above the band, from linear to nearly flat. The first
+ * version lifted the level toward full instead — `ink + (1 - ink) × flatten` —
+ * which looks right on a letter, where ink is 1 almost everywhere, and gives a
+ * photograph a hard cut with no shading above it: every surviving tone came out
+ * at nearly the same brightness and the face read as a splotch.
  */
-export function levelOf(ink: number, threshold: number, flatten: number): number {
-  if (ink <= threshold) return 0
-  const above = (ink - threshold) / Math.max(1e-6, 1 - threshold)
+export function levelOf(ink: number, luck: number, threshold: number, fuzz: number, flatten: number): number {
+  const band = 0.5 * fuzz
+  const floor = threshold - band
+  if (ink <= floor) return 0
+
+  if (band > 0 && ink < threshold + band) {
+    // Eased so the fringe thins out rather than ending on a line of its own.
+    const through = (ink - floor) / (2 * band)
+    if (luck > through * through * (3 - 2 * through)) return 0
+  }
+
+  const above = (ink - floor) / Math.max(1e-6, 1 - floor)
   return Math.min(1, above ** (1 - 0.92 * flatten))
 }
 
 /**
- * Where a pixel is in its own breath, as a multiplier from `1 - depth` to 1.
+ * Where a psyxel is in its own breath, as a multiplier from `1 - depth` to 1.
  *
- * `wave` mixes the pixel's own phase toward one read off its position, and its
+ * `wave` mixes the psyxel's own phase toward one read off its position, and its
  * own rate toward the field's — both, because a wave crossing a field whose
- * pixels run at different rates smears back into a simmer within a few cycles.
- * At `wave: 0` every pixel is alone and the field shimmers; at 1 the pulse is a
+ * psyxels run at different rates smears back into a simmer within a few cycles.
+ * At `wave: 0` every psyxel is alone and the field shimmers; at 1 the pulse is a
  * single slope travelling across the picture.
  */
-export function breathOf(pixel: Pixel, settings: Settings, time: number, spatial: number): number {
-  const depth = Math.min(1, settings.pulse * pixel.swing)
+export function breathOf(psyxel: Psyxel, settings: Settings, time: number, spatial: number): number {
+  const depth = Math.min(1, settings.pulse * psyxel.swing)
   if (depth <= 0) return 1
 
-  const rate = pixel.rate + (1 - pixel.rate) * settings.wave
-  const phase = pixel.phase + (spatial - pixel.phase) * settings.wave
+  const rate = psyxel.rate + (1 - psyxel.rate) * settings.wave
+  const phase = psyxel.phase + (spatial - psyxel.phase) * settings.wave
   const swing = 0.5 + 0.5 * Math.sin(TAU * (time * settings.tempo * rate + phase))
   return 1 - depth + depth * swing
 }
 
-/** How long a newly packed pixel takes to be fully here. */
+/** How long a newly packed psyxel takes to be fully here. */
 export const BIRTH_S = 0.5
 
 /**
- * A pixel arriving, eased.
+ * A psyxel arriving, eased.
  *
  * Repacking is instantaneous underneath — a square is four squares between one
  * frame and the next — and shown that way it reads as a glitch. Newcomers grow

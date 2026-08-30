@@ -22,7 +22,7 @@
  */
 
 import { homeFor } from "@/experiments/flotsam/random"
-import { gaussian, hashSeed, makeRng } from "@/experiments/kit/random"
+import { gaussian, hashSeed, makeRng } from "@/experiments/random"
 import { sizeResponse, stokesDrift, type Sea } from "@/experiments/flotsam/waves"
 
 /** Salts, so a speck's size, colour and home cannot correlate with each other. */

@@ -1,6 +1,6 @@
-import { gaussian, hashSeed, makeRng, type Rng } from "@/experiments/kit/random"
+import { gaussian, hashSeed, makeRng, type Rng } from "@/experiments/random"
 import { GLYPH_COUNT, nextGlyph } from "@/experiments/psyxels/glyphs"
-// The arrival ease's own length. This file decides when a pixel was born and
+// The arrival ease's own length. This file decides when a psyxel was born and
 // `pulse.ts` decides what being newly born looks like, so the constant lives
 // with the second of those and is read here.
 import { BIRTH_S } from "@/experiments/psyxels/pulse"
@@ -12,47 +12,64 @@ import type { Settings } from "@/experiments/psyxels/settings"
  * gaps, and how they change size while you watch.
  *
  * **It is a quadtree, and that choice does most of the work.** The obvious
- * reading of "pixels of different sizes packed into the frame" is a bin-packing
+ * reading of "psyxels of different sizes packed into the frame" is a bin-packing
  * problem — place a 40, then a 20, then fill the gaps — and it is the wrong one
  * twice over. It leaves slivers no square fits, and it has no cheap answer to
- * "this pixel should now be smaller" other than repacking everything around it.
- * Quartering has neither problem: a square either is one pixel or is four,
+ * "this psyxel should now be smaller" other than repacking everything around it.
+ * Quartering has neither problem: a square either is one psyxel or is four,
  * recursively, so the cover is exact by construction and a size change is one
  * local event that disturbs nothing outside its own square.
  *
- * A pixel's size is decided by two things, and keeping them separate is what
+ * A psyxel's size is decided by two things, and keeping them separate is what
  * makes the piece legible:
  *
  * - **Detail forces a split.** A square straddling an edge has high variance, so
  *   it quarters, and its children quarter again if they still straddle. Contours
- *   therefore get small pixels and flat interiors keep large ones, without
+ *   therefore get small psyxels and flat interiors keep large ones, without
  *   anything here knowing what the picture is. This is what keeps an A an A.
  * - **Variety splits for no reason.** Detail alone gives the tidy fine-at-the-
  *   edges look of a compression artefact. A square that had no need to split and
  *   does anyway is what makes the field read as populated rather than computed.
  *
  * Churn is those two decisions being taken again, per square, on the square's
- * own clock. Nothing else moves a pixel.
+ * own clock. Nothing else moves a psyxel.
  */
 
-/** No pixel smaller than this. Below it a glyph is a smudge and the count explodes. */
+/** No psyxel narrower than this many screen pixels. Below it a mark is a smudge and the count explodes. */
 const MIN_PX = 3
 
 /**
- * One pixel: a square of the picture, and a small mind of its own.
+ * One psyxel: a square of the picture, and a small mind of its own.
  *
- * The first block is what the packing decided and the second is what the pixel
+ * The first block is what the packing decided and the second is what the psyxel
  * decided. Only the packing can change the first, and it does so by replacing
- * the pixel rather than by editing it — which is why a pixel's `born` is the
+ * the psyxel rather than by editing it — which is why a psyxel's `born` is the
  * moment its square came into existence and not the moment the field started.
  */
-export type Pixel = {
+export type Psyxel = {
   x: number
   y: number
   size: number
   depth: number
   /** Mean coverage of the subject under this square, 0 to 1. */
   ink: number
+  /**
+   * How much of an edge of the subject runs under it, 0 to 1.
+   *
+   * The same unevenness the packing subdivides on, normalised — so it is high
+   * along a contour and zero in a flat interior, and the colour can say so.
+   */
+  edge: number
+  /**
+   * Its own draw, held for as long as it exists.
+   *
+   * What makes a soft boundary *dithered* rather than merely dim: a psyxel half
+   * inside the subject is either there or not, decided once, and the band of
+   * them along an edge is what reads as fuzz. Re-rolled only when the square is
+   * repacked, so the fringe shimmers on the churn's clock rather than every
+   * frame.
+   */
+  luck: number
   /** Ink-weighted colour of the subject under it, each channel 0 to 1. */
   r: number
   g: number
@@ -65,9 +82,9 @@ export type Pixel = {
   from: number
   /** When it last changed frame, which is when that transition started. */
   flicked: number
-  /** How long this pixel's current hold is, so a transition can be a share of it. */
+  /** How long this psyxel's current hold is, so a transition can be a share of it. */
   gap: number
-  /** Its own speed, as a multiplier on flicker and tempo. Some pixels think faster. */
+  /** Its own speed, as a multiplier on flicker and tempo. Some psyxels think faster. */
   rate: number
   /** Where its colour sits relative to the field's, in units of the spread. */
   hue: number
@@ -77,13 +94,28 @@ export type Pixel = {
   phase: number
   /** How deeply it breathes, as a multiplier on the pulse depth. */
   swing: number
+  /** Where its mark sits inside its own square, as a fraction of the square, −1 to 1. */
+  offsetX: number
+  offsetY: number
 }
 
-type Node = Pixel & {
+type Node = Psyxel & {
   /** Unevenness under the square: 0 flat, 0.5 a hard edge through the middle. */
   dev: number
   split: boolean
   kids: Node[] | null
+  /**
+   * The children it had when it last merged, kept rather than discarded.
+   *
+   * **A big psyxel coming and going must not restir the grain underneath it.**
+   * Rebuilding the subtree on every split gave a square's fine psyxels a life no
+   * longer than its coarse one — every ancestor that changed its mind wiped
+   * them — so the finest grain turned over several times faster than anything
+   * else and the large marks were the only stable thing on screen. Kept, they
+   * resume: same marks, same colours, same places, arriving again rather than
+   * being replaced.
+   */
+  spare: Node[] | null
   /** Column and row at this depth, so a square's identity survives a repack. */
   ix: number
   iy: number
@@ -98,18 +130,18 @@ type Node = Pixel & {
 
 export type Field = {
   /** Every leaf, including ones currently below the ink threshold. */
-  pixels: () => Pixel[]
+  psyxels: () => Psyxel[]
   /** Advance to `time`: frame changes, and squares reconsidering their size. */
   update: (time: number, settings: Settings) => void
   /** How many squares have changed size since the field was packed. */
   changes: () => number
-  /** How many frame changes the pixels have made since the field was packed. */
+  /** How many frame changes the psyxels have made since the field was packed. */
   flicks: () => number
   /** Leaves by depth, coarsest first. */
   byDepth: () => number[]
 }
 
-/** A pixel's own draws, in a fixed order so adding one does not restir the field. */
+/** A psyxel's own draws, in a fixed order so adding one does not restir the field. */
 function breatheLife(node: Node, time: number, vocabulary: number): void {
   const rng = node.rng
   node.glyph = Math.floor(rng() * Math.max(1, Math.min(GLYPH_COUNT, vocabulary)))
@@ -117,12 +149,15 @@ function breatheLife(node: Node, time: number, vocabulary: number): void {
   node.from = node.glyph
   node.rate = 0.35 + 1.9 * rng() ** 1.6
   // Divided by the clamp so the spread is a bound rather than a suggestion: at
-  // ±2.5σ a pixel sits exactly `spread` degrees from the field's hue, and the
+  // ±2.5σ a psyxel sits exactly `spread` degrees from the field's hue, and the
   // bulk of the population sits within 40% of it.
   node.hue = gaussian(rng) * 0.4
   node.hueFrom = node.hue
   node.phase = rng()
   node.swing = 0.55 + 0.9 * rng()
+  node.luck = rng()
+  node.offsetX = rng() * 2 - 1
+  node.offsetY = rng() * 2 - 1
   node.born = time
   node.flicked = time
   node.flickRoll = rng()
@@ -166,6 +201,10 @@ function makeNode(
     glyph: 0,
     from: 0,
     gap: 1,
+    edge: Math.min(1, stats.dev / 0.36),
+    luck: 0,
+    offsetX: 0,
+    offsetY: 0,
     rate: 1,
     hue: 0,
     hueFrom: 0,
@@ -173,6 +212,7 @@ function makeNode(
     swing: 1,
     split: false,
     kids: null,
+    spare: null,
     ix,
     iy,
     // Salted by depth and position rather than by a running index: a square's
@@ -208,12 +248,67 @@ function decideSplit(node: Node, settings: Settings): boolean {
   if (node.depth >= settings.levels) return false
   if (node.size / 2 < MIN_PX) return false
   const threshold = 0.5 * (1 - settings.detail) + 0.012
-  if (node.dev > threshold) return true
-  return node.rng() < settings.variety
+
+  if (node.dev > threshold) {
+    /**
+     * **Fuzz lets an edge square decline to subdivide.**
+     *
+     * Detail alone makes the boundary the finest thing in the picture, so the
+     * artwork ends in a hairline however soft the psyxels either side of it are
+     * — the field looks clipped to a shape rather than packed into one. A square
+     * that declines stays coarse and *hangs over* the edge, which is the only
+     * way a large mark ever sits outside the subject.
+     *
+     * Kept deliberately low, because declining is not free: a square that stays
+     * whole is one psyxel where there would have been four, so this thins the
+     * whole field and not just its edge. At 0.5 the landing scene lost a third
+     * of its psyxels and the letter went patchy; at 0.3 it loses a tenth and the
+     * boundary still breaks up. The rest of the softness is `levelOf`'s, which
+     * only ever *adds* psyxels outside the subject.
+     */
+    if (node.rng() > settings.fuzz * 0.3) return true
+  }
+
+  return node.rng() < splitChance(settings.variety)
 }
 
-/** Quarters a square, discarding children with nothing under them. */
+/**
+ * How likely a square with no reason to divide is to divide anyway.
+ *
+ * **Deliberately capped short of certain, and that is the whole control.** Read
+ * as a raw probability it reached 1 and every square divided — so the setting
+ * called *variety* produced, at its maximum, a field of one size with no variety
+ * in it at all. The complaint came from the piece's author and it is exactly
+ * right: a control whose extreme is uniform is not describing what it does.
+ *
+ * At this cap the sizes are as mixed as a single probability can make them —
+ * roughly a quarter of the picture's area at the coarsest size and a third at
+ * the finest, with the rest spread between. A field of nothing but fine psyxels
+ * is still reachable, and it is `coarse` and `levels` that reach it, because
+ * that is a statement about what sizes exist rather than about how mixed they
+ * are.
+ */
+export const splitChance = (variety: number) => variety * 0.78
+
+/**
+ * Quarters a square, discarding children with nothing under them.
+ *
+ * A subtree kept from a previous split is resumed rather than rebuilt: the same
+ * psyxels come back, showing what they were showing, and only their arrival is
+ * played again. See `spare`.
+ */
 function grow(context: Context, node: Node): void {
+  if (node.spare) {
+    node.split = true
+    node.kids = node.spare
+    node.spare = null
+    // Their own clocks stopped while they were not there. Restarting both from
+    // now keeps a returning subtree from firing a burst of held-up changes in
+    // its first frame.
+    for (const kid of node.kids) revive(kid, context.time)
+    return
+  }
+
   const half = node.size / 2
   const kids: Node[] = []
   for (let row = 0; row < 2; row++) {
@@ -243,11 +338,20 @@ function grow(context: Context, node: Node): void {
   node.kids = kids
 }
 
-/** Collapses a square back to one pixel, which arrives new. */
+/** Collapses a square back to one psyxel, which arrives new. The grain underneath is kept. */
 function collapse(node: Node, time: number, vocabulary: number): void {
   node.split = false
+  node.spare = node.kids
   node.kids = null
   breatheLife(node, time, vocabulary)
+}
+
+/** Restarts a subtree's clocks, and plays its arrival again. */
+function revive(node: Node, time: number): void {
+  node.born = time
+  node.changed = time
+  node.flicked = time
+  if (node.kids) for (const kid of node.kids) revive(kid, time)
 }
 
 /**
@@ -257,21 +361,73 @@ function collapse(node: Node, time: number, vocabulary: number): void {
  * churn control retimes every square that has not yet fired instead of only
  * those packed after the change.
  */
-const changeGap = (churn: number, roll: number) => (churn <= 0 ? Infinity : (60 / churn) * (0.4 + 1.5 * roll))
+/**
+ * How much longer each level down waits between reconsidering itself.
+ *
+ * **A psyxel's life is not its own square's clock; it is the first of its
+ * ancestors to change its mind.** With every square asking at the same rate, a
+ * psyxel four levels down had five clocks that could end it and a coarse one had
+ * one — so the fine grain turned over five times faster, and the large marks sat
+ * still while everything around them boiled. That is exactly backwards for a
+ * picture where the large marks are the ones the eye goes to.
+ *
+ * Measured over ninety seconds at the landing scene, mean age in seconds by
+ * level, coarsest first:
+ *
+ * | patience | ages                            | flips | match |
+ * | -------- | ------------------------------- | ----- | ----- |
+ * | 1 (none) | 12.2, 10.3, 7.0, 7.0, 10.0      | 2894  | 0.888 |
+ * | 2.2      | 7.7, 10.5, 11.3, 12.8, 14.6     | 764   | 0.934 |
+ * | 3        | 7.5, 15.1, 18.2, 19.8, 20.8     | 402   | 0.821 |
+ *
+ * Left alone, the coarse marks are the longest-lived thing on screen, which is
+ * backwards when they are also the marks the eye goes to. At 2.2 the order is
+ * reversed and the ages run monotonically the other way. Further than that the
+ * fine grain stops turning over at all, and the letterform starts to suffer —
+ * every change is a whole coarse square's worth, and some of them merge across
+ * a stroke.
+ */
+const DEPTH_PATIENCE = 2.2
 
-/** The gap before a pixel next picks a frame. Divided by its own rate: some pixels are quick. */
+/**
+ * What the slowing costs the field, given back.
+ *
+ * The control says how often a psyxel is repacked, and it has to keep saying
+ * that: slowing the deep squares without this took the whole field from a
+ * thousand changes a minute to thirty, because almost every square *is* a deep
+ * one. The series `1 + 1/3 + 1/9 + …` sums to this, so dividing the interval by
+ * it leaves a deep psyxel's total rate at the control's value and a coarse one's
+ * within a third of it — where before they differed fivefold.
+ */
+const DEPTH_SPREAD = DEPTH_PATIENCE / (DEPTH_PATIENCE - 1)
+
+const changeGap = (churn: number, roll: number, depth: number) =>
+  churn <= 0 ? Infinity : ((60 / churn) * (0.4 + 1.5 * roll) * DEPTH_PATIENCE ** depth) / DEPTH_SPREAD
+
+/** The gap before a psyxel next picks a frame. Divided by its own rate: some psyxels are quick. */
 const flickGap = (flicker: number, roll: number, rate: number) =>
   flicker <= 0 ? Infinity : (0.35 + 1.6 * roll) / flicker / rate
 
 /**
- * Packs a subject into pixels.
+ * Packs a subject into psyxels.
  *
  * The root grid is centred on the frame and overhangs it by a cell, so the
  * pattern does not lock to the top-left corner — which it visibly does when a
  * subject sits square with a grid that starts at the origin.
  */
 export function packField(mask: Mask, settings: Settings, time: number): Field {
-  const coarse = Math.max(MIN_PX * 2, settings.coarse)
+  /**
+   * **The coarsest square is a share of the frame, not a number of screen
+   * pixels.**
+   *
+   * In screen pixels the piece was a different picture in every window: the
+   * subject scales with the frame and the squares did not, so a letter that was
+   * fifty psyxels across on a wide monitor was twenty in a small window and came
+   * apart — its match against the subject fell from 0.94 to 0.82 between 1920
+   * and 1024. What the artwork is made *of* is the artistic quantity here; how
+   * many screen pixels that happens to be is not.
+   */
+  const coarse = Math.max(MIN_PX * 2, settings.coarse * Math.min(mask.width, mask.height))
   const columns = Math.ceil(mask.width / coarse) + 1
   const rows = Math.ceil(mask.height / coarse) + 1
   const context: Context = {
@@ -304,13 +460,13 @@ export function packField(mask: Mask, settings: Settings, time: number): Field {
     }
   }
 
-  let leaves: Pixel[] = []
+  let leaves: Psyxel[] = []
   let depths: number[] = []
   let stale = true
   let changes = 0
   let flicks = 0
 
-  function collect(node: Node, into: Pixel[], counts: number[]): void {
+  function collect(node: Node, into: Psyxel[], counts: number[]): void {
     if (node.split && node.kids) {
       for (const kid of node.kids) collect(kid, into, counts)
       return
@@ -329,7 +485,7 @@ export function packField(mask: Mask, settings: Settings, time: number): Field {
 
   /** One square's turn: reconsider its size, or, being a leaf, its frame. */
   function visit(node: Node, time: number, settings: Settings): void {
-    if (time - node.changed >= changeGap(settings.churn, node.changeRoll)) {
+    if (time - node.changed >= changeGap(settings.churn, node.changeRoll, node.depth)) {
       node.changed = time
       node.changeRoll = node.rng()
       const wanted = decideSplit(node, settings)
@@ -351,13 +507,13 @@ export function packField(mask: Mask, settings: Settings, time: number): Field {
     }
 
     const vocabulary = Math.max(1, Math.min(GLYPH_COUNT, Math.round(settings.vocabulary)))
-    // A shrinking vocabulary can leave a pixel showing a frame that no longer
+    // A shrinking vocabulary can leave a psyxel showing a frame that no longer
     // exists, so that is a change due now rather than at the next tick.
     const due = node.glyph >= vocabulary || time - node.flicked >= flickGap(settings.flicker, node.flickRoll, node.rate)
     if (!due) return
     node.from = node.glyph
     node.glyph = nextGlyph(node.glyph, vocabulary, node.rng())
-    // **Colour is redrawn with the frame, not on a clock of its own.** A pixel
+    // **Colour is redrawn with the frame, not on a clock of its own.** A psyxel
     // changing what it shows and what colour it is in the same instant is what
     // makes a frame change read as one event; drifting the hue separately gives
     // two overlapping animations and the field loses its beat. It also means
@@ -374,7 +530,7 @@ export function packField(mask: Mask, settings: Settings, time: number): Field {
   }
 
   return {
-    pixels() {
+    psyxels() {
       refresh()
       return leaves
     },
