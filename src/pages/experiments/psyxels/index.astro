@@ -1,0 +1,187 @@
+---
+import "@/experiments/kit/controls.css"
+import avatar from "@/experiments/psyxels/avatar.jpg"
+
+// A deliberately bare document: no Layout, no globals.css, no Tailwind. The
+// experiment owns the whole viewport and shares no chrome with the rest of the
+// site.
+//
+// The portrait's address is handed to the script as an attribute rather than
+// imported inside it, because only the frontmatter gets Astro's resolved,
+// hashed asset URL. The file itself lives in the experiment's own folder rather
+// than in `src/assets/`: an experiment imports nothing from the site, and a
+// picture is no more exempt from that than a stylesheet would be.
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Psyxels</title>
+    <meta
+      name="description"
+      content="A still picture packed out of pixels of every size, each one a small animation with a mind of its own."
+    />
+    <style is:global>
+      /* Dark only. The subject is light on an unlit ground and the ground is
+         genuinely empty — inverted, the black would become a subject of its own
+         and the piece would be about something else. */
+      html {
+        --ground: #05050a;
+        --accent: hsl(286, 70%, 66%);
+        --ui-text: rgb(255 255 255 / 74%);
+        --ui-label: rgb(255 255 255 / 52%);
+        --ui-heading: rgb(255 255 255 / 34%);
+        --ui-panel: rgb(9 7 15 / 86%);
+        --ui-chip: rgb(12 9 19 / 76%);
+        --ui-edge: rgb(255 255 255 / 13%);
+        --ui-edge-hover: rgb(255 255 255 / 32%);
+        --ui-on-bg: hsl(286, 42%, 40%);
+        --ui-on-text: hsl(286, 70%, 96%);
+        --ui-on-edge: rgb(255 255 255 / 40%);
+        --track: rgb(255 255 255 / 16%);
+        --ui-fade: 0.35s;
+
+        /* Twenty-one rows under four headings. The labels are single words, so
+           the name column is narrower than Flotsam's. */
+        --ui-label-col: 6.5rem;
+        --ui-value-col: 5rem;
+        --ui-panel-min: 22.5rem;
+        --ui-row-gap: 0.26rem;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: var(--ground);
+      }
+
+      body {
+        overflow: hidden;
+      }
+
+      canvas {
+        position: fixed;
+        inset: 0;
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="stage" data-avatar={avatar.src}></canvas>
+    <div id="ui"></div>
+
+    <script>
+      import { createControls } from "@/experiments/kit/controls"
+      import { keepAwake } from "@/experiments/kit/wakelock"
+      import { announceApi, createApi } from "@/experiments/psyxels/api"
+      import { createPsyxels } from "@/experiments/psyxels/psyxels"
+      import { reroll } from "@/experiments/psyxels/reroll"
+      import {
+        CONTROLS,
+        GROUP_ORDER,
+        PRESETS,
+        normalizeSettings,
+        settingsForLanding,
+        urlForSettings,
+      } from "@/experiments/psyxels/settings"
+
+      function requireElement<T extends Element>(id: string, type: new () => T): T {
+        const element = document.getElementById(id)
+        if (!(element instanceof type)) {
+          throw new Error(`Psyxels: missing #${id}`)
+        }
+        return element
+      }
+
+      const canvas = requireElement("stage", HTMLCanvasElement)
+      const ui = requireElement("ui", HTMLDivElement)
+
+      // Read once and reused below. The escape hatches are pulled from the same
+      // object rather than from `window.location.search`, because the landing
+      // rewrite at the end of this script changes what that says.
+      const params = new URLSearchParams(window.location.search)
+
+      const { settings, featured } = settingsForLanding(params)
+
+      // Started now and handed over undecoded. The engine rebuilds when it
+      // arrives, so the letter scenes never wait for a face they do not show.
+      const avatar = new Image()
+      avatar.src = canvas.dataset.avatar ?? ""
+
+      /** Hue reaches the chrome, so the controls take the colour of the field. */
+      function applyTheme(next: { hue: number }) {
+        document.documentElement.style.setProperty("--accent", `hsl(${next.hue}, 70%, 66%)`)
+        document.documentElement.style.setProperty("--ui-on-bg", `hsl(${next.hue}, 42%, 40%)`)
+        document.documentElement.style.setProperty("--ui-on-text", `hsl(${next.hue}, 70%, 96%)`)
+      }
+
+      applyTheme(settings)
+
+      const scene = createPsyxels(canvas, settings, { avatar })
+      scene.start()
+
+      // The chrome comes from the kit — offered, not imposed; see
+      // src/experiments/docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.
+      // Everything below is Psyxels' own: which rows exist, how they group, the
+      // one validator every input goes through, and what a scene's address is.
+      const controls = createControls({
+        root: ui,
+        aboutHref: "/experiments/psyxels/about/",
+        settings,
+        controls: CONTROLS,
+        presets: PRESETS,
+        groups: GROUP_ORDER,
+        actions: [
+          {
+            label: "reroll",
+            shortcut: "r",
+            hint: "A fresh packing of the same picture. The seed travels in the address bar.",
+            run: (chrome) => reroll(chrome),
+          },
+        ],
+        normalize: (next) => normalizeSettings(next),
+        url: (next) => urlForSettings(next, window.location.pathname),
+        copyLabel: "copy link to this field",
+        onChange: (next) => {
+          applyTheme(next)
+          scene.setSettings(next)
+        },
+      })
+
+      // Left running deliberately, so hold the display on.
+      const wakeLock = keepAwake()
+
+      // Console handle. See src/experiments/AGENTS.md. Held locally as well as
+      // on `window`, which is typed `unknown` so the experiments stay
+      // independent of one another — see src/experiments/window.d.ts.
+      const api = createApi(controls, wakeLock, scene)
+      window.experiment = api
+      announceApi()
+
+      // Escape hatches for tools that cannot evaluate JS. None is a setting, so
+      // none belongs in the shareable query string.
+      if (params.get("panel") === "1") api.panel(true)
+      const idleParam = params.get("idle")
+      if (idleParam !== null) api.idle(idleParam !== "0")
+      if (params.get("debug") === "1") api.debug(true)
+      // A field that has never repacked is the seed's first guess and nothing
+      // more; `?run=90` is how a still gets one that has lived a little.
+      const run = Number(params.get("run"))
+      if (Number.isFinite(run) && run > 0) api.run(run)
+
+      // Last, so the escape hatches above are read from the URL as opened. The
+      // address now describes the scene on screen, which means a link copied
+      // without touching anything keeps working when the featured preset
+      // changes. Non-setting params drop out, exactly as they do on the first
+      // slider drag.
+      if (featured) {
+        window.history.replaceState(null, "", urlForSettings(settings, window.location.pathname))
+      }
+    </script>
+  </body>
+</html>

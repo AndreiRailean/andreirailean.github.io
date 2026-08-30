@@ -23,8 +23,9 @@ Three of those records are rules you will otherwise rediscover the hard way:
   `docs/adr/20260829-a-wrapped-patch-needs-a-periodic-field.md`.
 - **A placement strategy is a choice about a scale, and does not travel with the
   file it is written in.** Dangler's R2 sequence is right for eighty anchors and
-  comes out as a visible lattice at nine thousand specks; `random.ts` is
-  duplicated, so copying it copies the choice. See
+  comes out as a visible lattice at nine thousand specks. It is why each piece
+  keeps its own `random.ts` holding only its own placement, while the generators
+  underneath them are the kit's. See
   `docs/adr/20260829-a-low-discrepancy-scatter-does-not-scale.md`.
 
 ## Layout
@@ -32,7 +33,8 @@ Three of those records are rules you will otherwise rediscover the hard way:
 ```
 src/experiments/<slug>/        code, about.md, poster.ts, AGENTS.md
 src/experiments/gallery/       imposed: the index, the notes, the way out
-src/experiments/kit/           offered: parts a piece builds its chrome from
+src/experiments/kit/           offered: the control surface a piece builds its chrome from
+src/experiments/*.ts           shared and owned by no piece: poster, window.d.ts, random
 src/pages/experiments/<slug>/  index.astro (the piece), about.astro (the note)
 ```
 
@@ -51,6 +53,43 @@ src/pages/experiments/<slug>/  index.astro (the piece), about.astro (the note)
   suite.
 - Pages are indexable but nothing links to them yet. A link from the front page
   is expected later.
+
+## Presets
+
+**A preset states every setting, and inherits from nothing.** Not from another
+preset, and not from `DEFAULT_SETTINGS`. Spreading over the defaults reads as
+tidy and is a trap: the day the featured scene changes, every preset that did
+not name a setting silently takes the new one's value for it. Psyxels lost four
+of its six scenes to a quarter-speed playback that way, and Flotsam's
+`settings.ts` already stated the rule — a scene someone found by dragging sliders
+should stay the scene they found. Recorded, with what it cost, in
+`docs/adr/20260830-a-preset-inherits-from-nothing.md`.
+
+**`DEFAULT_SETTINGS` is a baseline, not a scene.** It is what `normalizeSettings`
+fills gaps from and what `settingsToQuery` measures a link against, so it should
+move only when the meaning of a control moves.
+
+**Position one is only position one.** A bare address lands on the first preset
+and the page rewrites the URL to that scene's full query, so a visitor leaves
+with a link to _that scene_ rather than to whatever is featured next month.
+Nothing else follows from being first.
+
+## Adding a piece
+
+Four places outside the experiment's own folder know a slug, and three of them
+fail loudly while the fourth fails by silently leaving the piece out:
+
+- `scripts/posters.ts` — `SLUGS`, or `npm run posters -- <slug>` says the
+  experiment does not exist.
+- `tests/kit.spec.ts` — `PIECES`, which runs the whole chrome suite against it.
+- `tests/experiments-index.spec.ts` — `EXPECTED`, which pins the index's
+  contents.
+- `tests/experiments-notes.spec.ts` — `NOTES`, so a third note cannot quietly
+  become a third shape.
+
+A piece also needs `src/pages/experiments/<slug>/{index,about}.astro`, and an
+`about.md` whose `poster:` line is added _after_ the first capture — the
+collection resolves it through `image()` and a missing file 500s the index.
 
 ## The `about.md` collection
 
@@ -195,11 +234,18 @@ exercised in both directions:
 
 - `wakelock.ts` moved in when Flotsam was about to make it a third byte-identical
   copy — `docs/adr/20260829-the-third-copy-moves-to-the-kit.md`.
-- `random.ts` did **not**, and stays duplicated on purpose. Two pieces have it and
-  Starry Night wants none of it. Copying it copies a choice about scale that does
-  not travel: Dangler's R2 sequence is right for eighty anchors and is a visible
-  lattice at nine thousand specks —
-  `docs/adr/20260829-a-low-discrepancy-scatter-does-not-scale.md`.
+- The **generators** — `hashSeed`, `makeRng`, `gaussian` — waited for a third
+  piece and were hoisted with Psyxels, whose every psyx draws from
+  `makeRng(hashSeed(seed, depth, column, row))`. They went to the **section
+  level** rather than into `kit/`: the kit is the control surface, whose parts
+  travel together, and the generators travel alone and need no browser. See
+  `docs/adr/20260829-a-third-copy-of-the-generators-moves-to-the-section.md`.
+- The **placement strategies** built on them did **not**, and each piece keeps
+  its own. Copying one copies a choice about scale that does not travel:
+  Dangler's R2 sequence is right for eighty anchors and is a visible lattice at
+  nine thousand specks —
+  `docs/adr/20260829-a-low-discrepancy-scatter-does-not-scale.md`. The seam is
+  stability without policy below, policy above.
 
 ### The kit renders the chrome, and dresses it
 

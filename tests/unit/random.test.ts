@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { gaussian, hashSeed, makeRng } from "@/experiments/dangler/random"
+import { gaussian, hashSeed, makeRng } from "@/experiments/random"
 
 /**
  * The seeded generators everything else in the piece is built on. If these are

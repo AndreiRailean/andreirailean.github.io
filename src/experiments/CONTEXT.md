@@ -61,6 +61,19 @@ starting points, not fixed configurations.
 the pointer and the chrome both disappear. Suppressed while the pointer rests on
 the chrome, so a control cannot vanish mid-drag.
 
+**Organic change** — the section's aim, and the thing every piece is trading
+against. Motion that reads as _something happening_ rather than as a mechanism
+running: a field that changes without a beat you can count, a population that
+turns over without any one member holding your eye. Named by the pieces' author
+across four of them, and the reason **large units are a cost** — a bigger star,
+speck or psyx demands attention out of proportion to what it stands for, and a
+big one that also sits still is what breaks the illusion first. Recorded, with
+what each piece did about it, in
+`docs/adr/20260830-large-units-demand-attention.md`.
+
+Deliberately not a rule and not checkable. It is what the numbers in a
+`stats()` are ultimately in service of, and what a preset is chosen against.
+
 **Console API** — `window.experiment`, the scriptable handle every piece
 exposes. Exists because anything reachable only by pointer cannot be checked
 from a headless browser at all; see `AGENTS.md`.

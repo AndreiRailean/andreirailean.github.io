@@ -8,7 +8,7 @@
  * cannot say whether one was ever scheduled.
  */
 
-import { hashSeed, makeRng } from "@/experiments/dangler/random"
+import { hashSeed, makeRng } from "@/experiments/random"
 import type { Settings } from "@/experiments/dangler/settings"
 
 /** Peak breeze acceleration at `breeze` 1, in world units per second². */

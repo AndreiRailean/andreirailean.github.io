@@ -65,7 +65,7 @@ const SIZE_BUDGET_BYTES = 400_000
  * recipe is a placeholder, and the failure mode — a poster nobody chose, shipped
  * to the index — is worse than the chore.
  */
-const SLUGS = ["dangler", "flotsam", "starry-night"]
+const SLUGS = ["dangler", "flotsam", "psyxels", "starry-night"]
 
 async function main(): Promise<void> {
   const wanted = process.argv.slice(2)

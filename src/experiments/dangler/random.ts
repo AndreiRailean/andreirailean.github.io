@@ -1,66 +1,20 @@
 /**
- * Seeded randomness.
+ * Where an anchor goes: Dangler's own placement strategy.
  *
- * Everything about an arrangement is drawn from here, so a seed plus the
- * geometry settings is the whole description of a scene — which is what lets an
- * arrangement survive a URL.
+ * The generators everything here is built on — `hashSeed`, `makeRng`, `gaussian`
+ * — moved to `../random.ts` when a third piece wanted them; see
+ * `../docs/adr/20260829-a-third-copy-of-the-generators-moves-to-the-section.md`.
+ * What stayed is what is *this piece's choice about this piece's scale*, and it
+ * stayed for the reason in
+ * `../docs/adr/20260829-a-low-discrepancy-scatter-does-not-scale.md`: an R2
+ * sequence is right for eighty anchors and comes out as a visible lattice at
+ * nine thousand specks, so it must not travel to the next piece by being
+ * somewhere convenient.
  *
- * The important property is not randomness but *stability*: strand 7 must draw the
- * same numbers whether the scene holds eight strands or eighty. That is why
- * callers derive a private generator per strand from `hashSeed(seed, index)`
- * rather than pulling from one shared stream, and why anchor positions come from
- * a low-discrepancy sequence indexed by `i` rather than from successive draws.
+ * The important property remains *stability*: anchor 7 sits in the same place
+ * whether the scene holds eight strands or eighty, which is why these are
+ * indexed by `i` rather than pulled from a stream.
  */
-
-export type Rng = () => number
-
-/** Avalanche mixer. Two rounds is enough to decorrelate adjacent indices. */
-function mix(value: number): number {
-  let h = value | 0
-  h = Math.imul(h ^ (h >>> 16), 0x45d9f3b)
-  h = Math.imul(h ^ (h >>> 16), 0x45d9f3b)
-  return (h ^ (h >>> 16)) >>> 0
-}
-
-/**
- * Combines a seed with any number of salts into a new seed.
- *
- * Salts are what keep independent uses of one seed from correlating: a strand's
- * shape and a strand's colour draw from `hashSeed(seed, w, SHAPE)` and
- * `hashSeed(seed, w, COLOUR)`, so widening the hue spread cannot quietly move a
- * strand.
- */
-export function hashSeed(seed: number, ...salts: number[]): number {
-  let h = mix(seed)
-  for (const salt of salts) h = mix(h ^ mix(salt))
-  return h >>> 0
-}
-
-/** mulberry32 — small, fast, and good enough for placing dots. */
-export function makeRng(seed: number): Rng {
-  let state = seed | 0
-  return () => {
-    state = (state + 0x6d2b79f5) | 0
-    let t = Math.imul(state ^ (state >>> 15), 1 | state)
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  }
-}
-
-/**
- * A standard normal draw, clamped to ±2.5σ.
- *
- * The clamp is not tidiness. Hue spread is a σ in degrees, and an unclamped 4σ
- * outlier at σ=60 puts a bead 240° from the base hue — one bead of the wrong
- * colour entirely, appearing at random, which reads as a bug rather than as
- * variation.
- */
-export function gaussian(rng: Rng): number {
-  const u = Math.max(rng(), Number.EPSILON)
-  const v = rng()
-  const value = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v)
-  return Math.max(-2.5, Math.min(2.5, value))
-}
 
 /** Reciprocal of the plastic number, and its square: the R2 sequence's steps. */
 const R2_A1 = 0.7548776662466927

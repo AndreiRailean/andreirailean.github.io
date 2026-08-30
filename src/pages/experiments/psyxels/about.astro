@@ -1,0 +1,37 @@
+---
+import { getCollection } from "astro:content"
+import Note, { type NoteTheme } from "@/experiments/gallery/Note.astro"
+
+// The note's furniture is the gallery's; only the paint is Psyxels'. See
+// docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.
+const entry = (await getCollection("experiments")).find(({ data }) => data.slug === "psyxels")
+if (!entry) throw new Error("Psyxels: missing about.md")
+
+const theme: NoteTheme = {
+  bg: "#05050a",
+  sheet: "rgb(5 5 10 / 82%)",
+  fg: "#d6d3de",
+  bright: "#f4f1f8",
+  muted: "#867f92",
+  edge: "rgb(255 255 255 / 12%)",
+  accent: "hsl(286, 62%, 74%)",
+}
+---
+
+<Note entry={entry} theme={theme} backdrop={0.4}>
+  <script>
+    import { createPsyxels } from "@/experiments/psyxels/psyxels"
+    import { PRESETS } from "@/experiments/psyxels/settings"
+
+    const canvas = document.getElementById("backdrop")
+    if (canvas instanceof HTMLCanvasElement) {
+      // The featured scene, which is what the piece itself opens on — not the
+      // defaults, which are the piece's *zero* rather than anything anyone
+      // chose. No portrait is handed over, so a page whose featured scene became
+      // the photographic one would need to pass an image the way the piece's own
+      // page does.
+      const scene = createPsyxels(canvas, PRESETS[0]!.settings)
+      scene.start()
+    }
+  </script>
+</Note>

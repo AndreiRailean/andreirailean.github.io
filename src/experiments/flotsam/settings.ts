@@ -491,6 +491,15 @@ export const DEFAULT_SETTINGS: Settings = {
  * the scene they found; inheriting the defaults would let it drift silently the
  * next time one of those is retuned.
  */
+/**
+ * kit-opt-out: the landing scene *is* `DEFAULT_SETTINGS` here, deliberately —
+ * both are one recorded scene, and `settingsForLanding` is the indirection that
+ * lets the featured scene change later without invalidating a link. Every other
+ * preset is written out in full, which is the rule in
+ * `../docs/adr/20260830-a-preset-inherits-from-nothing.md`. Worth revisiting: the
+ * identity means retuning the defaults edits a recorded scene, which is exactly
+ * what cost Psyxels four of its six.
+ */
 export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
   {
     label: "offing",

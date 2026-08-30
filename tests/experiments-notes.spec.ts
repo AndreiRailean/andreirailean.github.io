@@ -15,6 +15,8 @@ import { expect, test } from "./support/experiment.ts"
 const NOTES = [
   { slug: "starry-night", title: "Starry Night" },
   { slug: "dangler", title: "Dangler" },
+  { slug: "flotsam", title: "Flotsam" },
+  { slug: "psyxels", title: "Psyxels" },
 ]
 
 /** In this order, on every note, forever. That is the whole point of the layout. */
