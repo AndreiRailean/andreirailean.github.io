@@ -46,10 +46,12 @@ rule a test enforces is one no future steward has to remember.
 
 ## What the role actually does
 
-- **Announce yourself, to everyone.** Peers are told to route shared-code
-  questions to the steward by name, so a handover is silent until you say so.
-  Tell **every live session** that stewardship has moved, with your own session
-  name — not only the ones building experiments. Starting a second steward does
+- **Announce yourself, to everyone.** Not to hand peers the contract — that is in
+  `src/experiments/AGENTS.md` now, and peers are told to file an issue labelled
+  `kit` rather than find you, precisely so a handover costs nobody anything.
+  Announce to deliver what the repo does not have yet: what is red, a trap in
+  flight, a check you have just found vacuous. Tell **every live session**, with
+  your own session name — not only the ones building experiments. Starting a second steward does
   not stand the first one down, and the announcement is the only thing that
   reaches them; a steward is not an experiment session, so the narrower reading
   excluded the one peer who most needed to hear it. Do not try to detect which
