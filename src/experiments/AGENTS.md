@@ -32,7 +32,7 @@ Three of those records are rules you will otherwise rediscover the hard way:
 
 ```
 src/experiments/<slug>/        code, about.md, poster.ts, AGENTS.md
-src/experiments/gallery/       imposed: the index, the notes, the way out
+src/experiments/gallery/       imposed: the index, the notes, the interactive view, the way out
 src/experiments/kit/           offered: the control surface a piece builds its chrome from
 src/experiments/*.ts           shared and owned by no piece: poster, window.d.ts, random
 src/pages/experiments/<slug>/  index.astro (the piece), about.astro (the note)
@@ -157,7 +157,13 @@ src/experiments/<slug>/poster.webp   the result, referenced from about.md
 
 Every experiment exposes `window.experiment` so its controls can be driven
 without a pointer. Minimum surface: `get()`, `set(patch)`, `preset(n)`,
-`panel(open)`, `idle(force)`. See an existing experiment for the shape.
+`presets()`, `panel(open)`, `idle(force)`. See an existing experiment for the
+shape.
+
+`presets()` joined that list with the interactive view, which is the first thing
+other than a test to drive a piece through this handle: a swipe through the
+scenes has to be able to say what it landed on. `tests/support/experiment.ts`
+carries the same list as `BaseApi`.
 
 The global is declared **once for the section**, as `unknown`, in `window.d.ts`;
 each piece keeps its own typed reference rather than widening it. Do not add a
@@ -271,6 +277,44 @@ exercised in both directions:
   nine thousand specks —
   `docs/adr/20260829-a-low-discrepancy-scatter-does-not-scale.md`. The seam is
   stability without policy below, policy above.
+
+### The interactive view
+
+On a touch device a piece is presented full-bleed with no chrome at all, and the
+two gestures are the whole interface: **across for the piece's scenes, up and
+down for the wall.** `gallery/Reel.astro` is the furniture — an X out to the
+index, and a placard naming the scene — and `gallery/reel.ts` is the behaviour.
+Both are imposed, for the reason the notes are: a visitor should not have to
+relearn how to leave, or which way the next piece is, in the next room.
+
+- **It reaches a piece through `window.experiment` and nothing else.**
+  `gallery/` may not import a piece, and does not need to — the console API was
+  built so a headless check could get past the pointer, and this is the same need
+  from the other side. So nothing in `reel.ts` knows what a setting means, which
+  is what keeps it from growing per-piece knowledge.
+- **`?reel=1` forces it on and `?reel=0` off**, in the idiom of `?panel=1` and
+  `?idle=`. Not only for tools: it is how the view gets looked at on a desktop,
+  and Playwright cannot emulate `(hover: none) and (pointer: coarse)` at all.
+  `?feel=quiet|drag|scrub` picks how the gesture behaves while that is still
+  being decided.
+- **A piece says one thing about all of it**: `chrome: !isReel()`. The kit stays
+  headless rather than being skipped, because `createControls` is the settings,
+  the validator and the URL sync as well as the bar — see `chrome` in
+  `kit/controls.ts`.
+- **The kit publishes which preset is on screen** as `data-preset` on `<html>`,
+  beside `data-idle`. It already knew, and nothing else can work it out without
+  an opinion about what a piece's settings mean. Absent, not `-1`, when the scene
+  is nobody's preset.
+- **The address the view arrived at is read once, at import.** A piece landed on
+  bare rewrites its own query and drops every param that is not a setting, so
+  reading the live address later says both that this visit never asked for the
+  view and that the poster is a still of something else. Both were live bugs.
+- **A poster is held over the canvas until the piece has drawn**, then crossfaded
+  out — and removed outright when the address carries settings, since then it is
+  a still of a different scene. This happens with a mouse too: a cold landing is
+  otherwise a black rectangle for as long as the piece takes to produce a frame.
+- Neither axis wraps, and adding a piece needs no change here — the order comes
+  from `gallery/order.ts`, which the index uses too.
 
 ### The kit renders the chrome, and dresses it
 

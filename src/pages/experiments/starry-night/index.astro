@@ -1,6 +1,8 @@
 ---
 import "@/experiments/kit/controls.css"
 
+import Reel from "@/experiments/gallery/Reel.astro"
+
 // A deliberately bare document: no Layout, no globals.css, no Tailwind. The
 // experiment owns the whole viewport and shares no chrome with the rest of the
 // site.
@@ -78,11 +80,16 @@ import "@/experiments/kit/controls.css"
   </head>
   <body>
     <canvas id="sky"></canvas>
+    {/* The interactive view: full-bleed piece, two axes of swipe, on a touch device.
+        Between the canvas and `#ui` because DOM order is the whole stacking
+        arrangement here — see the note in Reel.astro. */}
+    <Reel slug="starry-night" />
     <div id="ui"></div>
 
     <script>
       import { createStarfield } from "@/experiments/starry-night/starfield"
       import { createControls } from "@/experiments/kit/controls"
+      import { isReel } from "@/experiments/gallery/reel"
       import {
         CONTROLS,
         PRESETS,
@@ -130,6 +137,10 @@ import "@/experiments/kit/controls.css"
       // undivided, where Dangler's twenty-seven do not.
       const controls = createControls({
         root: ui,
+        // Headless on a touch device: the kit keeps the settings, the validator
+        // and the URL sync, and draws no bar. The interactive view presents the
+        // piece full-bleed and moves through presets by swipe instead.
+        chrome: !isReel(),
         aboutHref: "/experiments/starry-night/about/",
         settings,
         controls: CONTROLS,

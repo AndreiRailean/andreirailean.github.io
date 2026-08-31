@@ -41,6 +41,14 @@ export type BaseApi = {
   get: () => Record<string, unknown>
   set: (patch: Record<string, never>) => Record<string, unknown>
   preset: (which: number | string) => Record<string, unknown>
+  /**
+   * The preset names, in keyboard order.
+   *
+   * Part of the minimum surface since the gallery's interactive view arrived:
+   * a swipe through the presets has to be able to say what it landed on, and it
+   * reaches every piece through this handle and nothing else.
+   */
+  presets: () => string[]
   panel: (open?: boolean) => boolean
   idle: (force?: boolean | null) => void
 }

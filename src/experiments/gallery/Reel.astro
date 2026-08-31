@@ -1,0 +1,207 @@
+---
+import { Image } from "astro:assets"
+import { getCollection } from "astro:content"
+
+import { neighbours, wallOrder } from "@/experiments/gallery/order"
+
+/**
+ * The interactive view's furniture, and the poster held over a piece while it
+ * boots.
+ *
+ * Imposed, like the rest of `gallery/`: a piece includes this and chooses
+ * nothing about it, for the same reason it does not get to move the note's exit.
+ * A visitor should not have to find the way out twice.
+ *
+ * The behaviour is in `reel.ts`; this file is markup, appearance, and the two
+ * facts the script cannot work out for itself — which pieces sit either side of
+ * this one on the wall, and what they are called.
+ *
+ * **Placed after the canvas and before the kit's `#ui`.** Nothing here carries a
+ * `z-index`: every layer is `position: fixed` with an automatic stacking level,
+ * so DOM order is the whole arrangement — canvas, then poster, then this
+ * furniture, then the chrome. A `z-index` on any one of them would jump it over
+ * the chrome, which has none.
+ */
+
+interface Props {
+  /** The piece this view is of. */
+  slug: string
+}
+
+const { slug } = Astro.props
+
+const order = wallOrder(await getCollection("experiments"))
+const here = order.find((entry) => entry.data.slug === slug)
+const { previous, next } = neighbours(
+  order.map((entry) => entry.data.slug),
+  slug,
+)
+
+const titleOf = (want: string | null) => order.find((entry) => entry.data.slug === want)?.data.title ?? ""
+---
+
+{
+  /*
+   * The piece's own poster, held over the canvas until the piece has drawn.
+   *
+   * Not decoration: a cold landing is a black rectangle for as long as the piece
+   * takes to produce its first frame, and on a phone that is long enough to read
+   * as a broken page. The poster is captured from the primary preset, which is
+   * exactly what a bare address renders — so what it stands in for is the scene
+   * that is about to appear, not an approximation of it. `reel.ts` removes it
+   * outright when the address carries settings, since then it is a still of a
+   * different scene.
+   */
+  here?.data.poster && (
+    <Image class="curtain" src={here.data.poster} alt="" widths={[720, 1440]} sizes="100vw" loading="eager" />
+  )
+}
+
+<div
+  id="reel"
+  hidden
+  data-previous={previous ?? undefined}
+  data-previous-title={previous ? titleOf(previous) : undefined}
+  data-next={next ?? undefined}
+  data-next-title={next ? titleOf(next) : undefined}
+>
+  <a class="out" href="/experiments/" aria-label="Back to the index">×</a>
+  <div class="placard">
+    <p class="scene" aria-live="polite"></p>
+    <p class="hint" hidden>← scenes → &nbsp;·&nbsp; ↑ pieces ↓</p>
+  </div>
+</div>
+
+<style>
+  /*
+   * Dressed from the kit's token contract — `--ui-panel`, `--ui-text`,
+   * `--ui-edge`, `--ui-chip` — rather than from a palette of its own.
+   *
+   * The index is achromatic on purpose, because a hue there would take sides
+   * between the pieces. Here it would do something worse: Starry Night drives
+   * the whole chrome a second time from an inverted scheme, so a dark glass slab
+   * hardcoded in this file would sit as a black plate on a light sky. Every one
+   * of these tokens has a fallback, so the furniture works on a piece that sets
+   * none of them.
+   */
+  .curtain {
+    position: fixed;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    object-fit: cover;
+  }
+
+  #reel {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    font:
+      400 0.8125rem/1.5 ui-monospace,
+      "SF Mono",
+      Menlo,
+      monospace;
+    letter-spacing: 0.03em;
+    color: var(--ui-text, rgb(255 255 255 / 72%));
+    /* Together with the pointer, the way the chrome already goes. One idle state
+       for the whole view rather than a second timer racing the kit's. */
+    transition: opacity var(--ui-fade, 0.35s) ease-out;
+  }
+
+  :global(html[data-idle="true"]) #reel {
+    opacity: 0;
+  }
+
+  /*
+   * The way out. Top left, because the two swipe axes both start from the middle
+   * of the screen and a thumb reaching for either should not be able to find
+   * this by accident.
+   */
+  .out {
+    position: absolute;
+    top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
+    left: calc(env(safe-area-inset-left, 0px) + 0.75rem);
+    display: grid;
+    width: 2.25rem;
+    height: 2.25rem;
+    pointer-events: auto;
+    place-items: center;
+    background: var(--ui-chip, rgb(8 14 19 / 74%));
+    border: 1px solid var(--ui-edge, rgb(255 255 255 / 12%));
+    border-radius: 50%;
+    color: inherit;
+    font-size: 1.125rem;
+    line-height: 1;
+    text-decoration: none;
+    backdrop-filter: blur(12px) saturate(130%);
+  }
+
+  /*
+   * A gallery label, in the placard idiom the index and the chrome already use:
+   * inset from the edges rather than run to them, so it reads as a card laid on
+   * the work.
+   */
+  .placard {
+    position: absolute;
+    right: calc(env(safe-area-inset-right, 0px) + 0.75rem);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+    left: calc(env(safe-area-inset-left, 0px) + 0.75rem);
+    padding: 0.45rem 0.7rem;
+    background: var(--ui-panel, rgb(6 12 16 / 84%));
+    border: 1px solid var(--ui-edge, rgb(255 255 255 / 12%));
+    border-radius: 0.35rem;
+    backdrop-filter: blur(14px) saturate(130%);
+  }
+
+  .scene {
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /*
+   * Shown once a session and never again.
+   *
+   * Nothing on the screen says either axis exists, and a full-bleed graphic with
+   * no affordances is a picture until someone happens to drag it. It rides the
+   * placard, so it leaves with the chrome rather than being a thing to dismiss.
+   */
+  .hint {
+    margin: 0.2rem 0 0;
+    color: var(--ui-heading, rgb(255 255 255 / 34%));
+    font-size: 0.6875rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #reel {
+      transition: none;
+    }
+  }
+</style>
+
+<style is:global>
+  /*
+   * Panning is ours, so the browser's is off — otherwise a vertical swipe fights
+   * the overscroll bounce and a horizontal one is eaten by the page. `pinch-zoom`
+   * rather than `none`, so a visitor can still magnify the work.
+   */
+  html[data-reel] {
+    touch-action: pinch-zoom;
+    overscroll-behavior: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  html[data-reel] canvas {
+    -webkit-touch-callout: none;
+  }
+</style>
+
+<script>
+  import { mountReel } from "@/experiments/gallery/reel"
+
+  mountReel()
+</script>
