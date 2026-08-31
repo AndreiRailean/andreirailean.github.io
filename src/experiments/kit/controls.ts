@@ -194,6 +194,22 @@ export type Options<S extends object> = {
   aboutHref?: string
   /** The copy button's resting label — pieces word it differently. */
   copyLabel?: string
+  /**
+   * Whether to mount the bar and the panel. Default true.
+   *
+   * `false` is **headless**: everything below still exists — the settings, the
+   * validator, preset application, the URL sync, the idle state — and none of it
+   * is drawn. This is not a piece's choice but the gallery's: on a touch device
+   * the interactive view presents the piece full-bleed and moves through presets
+   * by swipe, and a bar of controls too small to hit would be in the way of the
+   * work rather than in service of it.
+   *
+   * It is an option rather than a piece hiding the chrome in CSS because
+   * `createControls` is the state machine as well as the appearance. Nothing can
+   * skip calling it: the console API is built on the handle it returns, and a
+   * piece with no `window.experiment` is a piece no test can reach.
+   */
+  chrome?: boolean
 }
 
 function button(label: string, className = ""): HTMLButtonElement {
@@ -207,6 +223,7 @@ function button(label: string, className = ""): HTMLButtonElement {
 export function createControls<S extends object>(options: Options<S>): Controls<S> {
   const { root, controls: specs, presets, groups, actions = [], normalize, url, onChange, aboutHref } = options
   const copyLabel = options.copyLabel ?? "copy link to these settings"
+  const chrome = options.chrome ?? true
 
   let current: S = { ...options.settings }
   let panelOpen = false
@@ -221,7 +238,10 @@ export function createControls<S extends object>(options: Options<S>): Controls<
   panel.className = "panel"
   panel.hidden = true
 
-  root.append(bar, panel)
+  // Built either way, appended only when the chrome is wanted: `render()` writes
+  // to these nodes on every change and a headless mount would otherwise need a
+  // second code path through the one function everything goes through.
+  if (chrome) root.append(bar, panel)
 
   // --- idle handling -------------------------------------------------------
 
@@ -446,12 +466,27 @@ export function createControls<S extends object>(options: Options<S>): Controls<
       }
     }
 
+    const matching = presets.findIndex((preset) =>
+      (Object.keys(preset.settings) as (keyof S)[]).every((key) => preset.settings[key] === current[key]),
+    )
+
     presetButtons.forEach((element, index) => {
-      const preset = presets[index]
-      const matches =
-        preset && (Object.keys(preset.settings) as (keyof S)[]).every((key) => preset.settings[key] === current[key])
-      element.dataset.active = String(Boolean(matches))
+      element.dataset.active = String(index === matching)
     })
+
+    /*
+     * Which preset is on screen, published on `<html>` beside the idle state.
+     *
+     * The kit already knows this — it is what lights a preset button — and
+     * nothing else can work it out without an opinion about what a piece's
+     * settings mean. Published rather than returned because the reader is CSS
+     * and the gallery's interactive view, neither of which holds this handle.
+     * Absent, rather than -1, when the scene is nobody's preset: a shared link
+     * to a scene found by dragging sliders is the normal way to be in that
+     * state, and `[data-preset]` should not match for it.
+     */
+    if (matching < 0) delete document.documentElement.dataset.preset
+    else document.documentElement.dataset.preset = String(matching)
   }
 
   function syncUrl() {
