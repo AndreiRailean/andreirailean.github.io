@@ -51,8 +51,10 @@ the pointer after a few idle seconds, the way video controls do.
 full-bleed, no chrome, and three gestures — across for the piece's scenes, up and
 down for the wall, and a tap to **hold** it. Its furniture is an X out to the
 index and a placard naming the scene with a dot per scene, which come and go with
-the same idle state the chrome does, plus one mark in the middle of the screen
-that does not: the hold, and a word at either end of the wall. Gallery, therefore
+the same idle state the chrome does, and one slot in the middle of the screen for
+what is about the view rather than the work — the piece's name on the way in, a
+mark for the hold, a word at either end of the wall. Everything there shows and
+then goes; none of it is a state readout. Gallery, therefore
 imposed: a piece chooses nothing about it and says one thing about it, which is
 that the kit should not draw a bar. It reaches a piece only through the **console
 API**, so it holds no knowledge of any piece.

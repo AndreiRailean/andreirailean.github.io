@@ -52,23 +52,29 @@ const titleOf = (want: string | null) => order.find((entry) => entry.data.slug =
 
   {
     /*
-     * One slot in the middle of the screen, for the two things that are about
-     * the view rather than about the work: that the piece is held, and that
-     * there is nothing past this end of the wall. They share a slot because they
-     * are never both worth saying — a word about the wall wins while it is up.
+     * One slot in the middle of the screen, for everything that is about the
+     * view rather than about the work: which piece this is, that it has just
+     * been held or let go, and that there is nothing past this end of the wall.
      *
-     * Outside the idle fade below, deliberately. A hold that disappeared after
-     * two seconds would leave a slow piece looking identical to a running one,
-     * which is exactly the piece most likely to be paused.
+     * They share the slot because they are never worth saying at once, and each
+     * shows and then goes on its own — the same bargain the chrome makes.
+     * Nothing here is a persistent state readout.
+     *
+     * The spans wrap their icons rather than being hidden directly: `hidden` is
+     * an HTML attribute and an inline SVG is not an HTML element.
      */
   }
   <div class="middle" hidden>
-    <span class="held" hidden>
-      {/* Wrapped rather than hidden directly: `hidden` is an HTML attribute and
-          an inline SVG is not an HTML element. */}
+    <p class="name" hidden></p>
+    <span class="mark held" hidden>
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
         <rect x="6" y="4" width="4.25" height="16" fill="currentColor"></rect>
         <rect x="13.75" y="4" width="4.25" height="16" fill="currentColor"></rect>
+      </svg>
+    </span>
+    <span class="mark playing" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M7 4 20 12 7 20Z" fill="currentColor"></path>
       </svg>
     </span>
     <p class="word" role="status" hidden></p>
@@ -240,24 +246,55 @@ const titleOf = (want: string | null) => order.find((entry) => entry.data.slug =
     top: 50%;
     left: 50%;
     justify-items: center;
+    max-width: min(88vw, 32rem);
     transform: translate(-50%, -50%);
   }
 
-  .held:not([hidden]) {
+  /* One going-away for everything in the slot, so the three read as one piece
+     of furniture that comes and goes rather than three that behave differently. */
+  .middle > * {
+    transition: opacity 600ms ease-out;
+    animation: reel-arrive 240ms ease-out;
+  }
+
+  .middle > [data-going="true"] {
+    opacity: 0;
+  }
+
+  .mark:not([hidden]) {
     display: block;
   }
 
-  .held {
+  .mark {
     color: var(--ui-text, rgb(255 255 255 / 72%));
     opacity: 0.55;
     filter: drop-shadow(0 1px 6px rgb(0 0 0 / 35%));
-    animation: reel-held 220ms ease-out;
   }
 
-  .held svg {
+  .mark svg {
     display: block;
     width: 4rem;
     height: 4rem;
+  }
+
+  /*
+   * Which piece this is, on the way in.
+   *
+   * A piece boots to an empty canvas — there is no still held over it any more,
+   * and the poster that used to be is in
+   * `docs/adr/20260901-a-poster-held-over-a-booting-piece.md`. Naming the piece
+   * over that gap is what a swipe between two full-bleed graphics otherwise
+   * lacks: without it, arriving somewhere new and arriving nowhere look the
+   * same.
+   */
+  .name {
+    margin: 0;
+    font-size: clamp(1.75rem, 11vw, 3.25rem);
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+    text-align: center;
+    text-shadow: 0 1px 14px rgb(0 0 0 / 45%);
   }
 
   .word {
@@ -267,22 +304,9 @@ const titleOf = (want: string | null) => order.find((entry) => entry.data.slug =
     color: inherit;
     text-align: center;
     backdrop-filter: blur(12px) saturate(130%);
-    animation: reel-word 260ms ease-out;
-    transition: opacity 600ms ease-out;
   }
 
-  .word[data-going="true"] {
-    opacity: 0;
-  }
-
-  @keyframes reel-held {
-    from {
-      opacity: 0;
-      transform: scale(0.82);
-    }
-  }
-
-  @keyframes reel-word {
+  @keyframes reel-arrive {
     from {
       opacity: 0;
     }
@@ -290,9 +314,12 @@ const titleOf = (want: string | null) => order.find((entry) => entry.data.slug =
 
   @media (prefers-reduced-motion: reduce) {
     .out,
-    .placard,
-    .word {
+    .placard {
       transition: none;
+    }
+
+    .middle > * {
+      animation: none;
     }
 
     .dots :global(li) {

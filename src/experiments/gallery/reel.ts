@@ -29,11 +29,13 @@ const RESIST_LIMIT = 96
 /** The outgoing slide: long enough to read as a departure, short enough not to be a wait. */
 const LEAVE_MS = 260
 
-/** How long a word about the wall stays up before it starts going. */
-const WORD_MS = 1400
+/** How long each thing in the middle of the screen stays up before it starts going. */
+const MARK_MS = 850
+const NAME_MS = 1300
+const WORD_MS = 1500
 
-/** How long it takes to go, matching the transition in `Reel.astro`. */
-const WORD_FADE_MS = 600
+/** How long anything there takes to go, matching the transition in `Reel.astro`. */
+const GOING_MS = 600
 
 /** How long the one-time gesture hint stays up. */
 const HINT_MS = 6000
@@ -156,7 +158,9 @@ export function mountReel(): void {
   const dots = root.querySelector<HTMLElement>(".dots")
   const hint = root.querySelector<HTMLElement>(".hint")
   const middle = root.querySelector<HTMLElement>(".middle")
-  const held = root.querySelector<HTMLElement>(".held")
+  const held = root.querySelector<HTMLElement>(".mark.held")
+  const playing = root.querySelector<HTMLElement>(".mark.playing")
+  const name = root.querySelector<HTMLElement>(".name")
   const word = root.querySelector<HTMLElement>(".word")
 
   const feel = feelOf()
@@ -172,8 +176,6 @@ export function mountReel(): void {
   let index = -1
   let paused = false
   let leaving = false
-  let wordTimer = 0
-  let wordGoing = 0
 
   const surfaces = () => [...document.querySelectorAll<HTMLElement>("canvas")]
 
@@ -216,38 +218,45 @@ export function mountReel(): void {
 
   // --- the middle slot -----------------------------------------------------
 
-  /** Shows whichever of the two things belongs there, or nothing. */
-  function renderMiddle() {
-    if (!middle || !held || !word) return
-    const saying = !word.hidden
-    held.hidden = !paused || saying
-    middle.hidden = !saying && !paused
+  let showing: HTMLElement | null = null
+  let holdTimer = 0
+  let goneTimer = 0
+
+  const put = (element: HTMLElement) => {
+    element.hidden = true
+    delete element.dataset.going
   }
 
   /**
-   * A word about the wall, in the middle of the screen, that then goes.
+   * Shows one thing in the middle of the screen, which then goes.
    *
-   * The ends of the vertical axis were silent: a swipe that met the end of the
-   * list was indistinguishable from one the view had failed to register, which
-   * is the reading a visitor will reach for first.
+   * One slot and one timer pair for all of them, so two cannot be up at once
+   * and a second flash always replaces the first rather than racing it. The
+   * arrival animation restarts for free: `hidden` is `display: none`, and
+   * leaving that state re-runs a CSS animation.
    */
-  function sayWord(text: string) {
-    if (!word) return
-    window.clearTimeout(wordTimer)
-    window.clearTimeout(wordGoing)
-    word.textContent = text
-    word.hidden = false
-    delete word.dataset.going
-    renderMiddle()
+  function flash(element: HTMLElement | null, text: string | null, holdMs: number) {
+    if (!middle || !element) return
+    window.clearTimeout(holdTimer)
+    window.clearTimeout(goneTimer)
+    if (showing && showing !== element) put(showing)
 
-    wordTimer = window.setTimeout(() => {
-      word.dataset.going = "true"
-      wordGoing = window.setTimeout(() => {
-        word.hidden = true
-        delete word.dataset.going
-        renderMiddle()
-      }, WORD_FADE_MS)
-    }, WORD_MS)
+    if (text !== null) element.textContent = text
+    put(element)
+    element.hidden = false
+    showing = element
+    middle.hidden = false
+
+    holdTimer = window.setTimeout(() => {
+      element.dataset.going = "true"
+      goneTimer = window.setTimeout(() => {
+        put(element)
+        if (showing === element) {
+          showing = null
+          middle.hidden = true
+        }
+      }, GOING_MS)
+    }, holdMs)
   }
 
   // --- holding the piece ---------------------------------------------------
@@ -255,7 +264,7 @@ export function mountReel(): void {
   function setPaused(next: boolean) {
     if (!handle || next === paused) return
     paused = handle.pause(next)
-    renderMiddle()
+    flash(paused ? held : playing, null, MARK_MS)
   }
 
   /**
@@ -375,7 +384,12 @@ export function mountReel(): void {
         leaveTo(towards, dy < 0 ? -1 : 1)
         return
       }
-      sayWord(dy < 0 ? "the end of the wall" : "the start of the wall")
+      /*
+       * The ends of the vertical axis were silent, and a swipe that met the end
+       * of the wall was indistinguishable from one the view had failed to
+       * register — which is the reading a visitor reaches for first.
+       */
+      flash(word, dy < 0 ? "the end of the wall" : "the start of the wall", WORD_MS)
     }
     offset(0, 0, feel === "drag")
     sayScene()
@@ -387,6 +401,17 @@ export function mountReel(): void {
   window.addEventListener("pointercancel", onPointerUp, { passive: true })
 
   // --- boot ----------------------------------------------------------------
+
+  /*
+   * Which piece this is, named over the gap where it boots.
+   *
+   * Before anything is awaited, because the gap is the point: a piece arrives as
+   * an empty canvas, and between two full-bleed graphics that makes arriving
+   * somewhere new and arriving nowhere look the same. It is also the swipe's
+   * only acknowledgement — the placard is still naming the scene, and on a slow
+   * piece the first frames say nothing either.
+   */
+  flash(name, document.title, NAME_MS)
 
   void (async () => {
     handle = await pieceReady()

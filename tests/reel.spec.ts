@@ -176,7 +176,7 @@ test("the dots say how many scenes there are and which one this is", async ({ pa
   await expect(dots.nth(0)).toHaveAttribute("data-here", "false")
 })
 
-test("a tap holds the piece, and says so somewhere that does not fade", async ({ page }) => {
+test("a tap holds the piece and says so, and then stops saying it", async ({ page }) => {
   const slugs = await wall(page)
   await openExperiment<ReelApi>(page, slugs[0], { query: { reel: "1" }, idle: false })
 
@@ -188,14 +188,27 @@ test("a tap holds the piece, and says so somewhere that does not fade", async ({
   await page.mouse.click(middle.x, middle.y)
   await expect(page.locator("#reel .held")).toBeVisible()
 
-  // Held is a state, not an event: a slow piece paused and a slow piece running
-  // look identical, so the mark has to survive the chrome going.
-  await page.evaluate(() => document.documentElement.setAttribute("data-idle", "true"))
-  await expect(page.locator("#reel .held")).toBeVisible()
+  // Everything in the middle of the screen goes, the way the chrome does.
+  await expect(page.locator("#reel .held")).toBeHidden({ timeout: 5000 })
 
-  await page.evaluate(() => document.documentElement.setAttribute("data-idle", "false"))
+  // And the hold outlives the mark that announced it: the next tap is a resume,
+  // which is the other icon rather than the same one again.
   await page.mouse.click(middle.x, middle.y)
+  await expect(page.locator("#reel .playing")).toBeVisible()
   await expect(page.locator("#reel .held")).toBeHidden()
+})
+
+test("arriving names the piece over the gap where it boots, and then stops", async ({ page }) => {
+  const slugs = await wall(page)
+
+  // Not through `openExperiment`, which waits for the piece's own module: the
+  // name is up during exactly that wait, which is the whole point of it.
+  await page.goto(`/experiments/${slugs[0]}/?reel=1`)
+
+  const name = page.locator("#reel .name")
+  await expect(name).toBeVisible()
+  await expect(name).toHaveText(await page.title())
+  await expect(name).toBeHidden({ timeout: 5000 })
 })
 
 test("swiping past the end of the wall says there is nothing there", async ({ page }) => {
