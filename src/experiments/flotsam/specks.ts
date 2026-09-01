@@ -52,19 +52,45 @@ const CORE_PX = 64
 const GLARE_STEPS = 6
 
 /**
- * Smallest a core may be drawn, in css px.
+ * Smallest a core may be drawn, in **device** pixels.
  *
  * Below about this, antialiasing spreads a dot's area over several pixels at
  * fractional coverage, so it can never reach the opacity it was asked for and a
  * whole population of small specks silently contributes nothing. Under the floor
  * the size is held and the *alpha* is scaled by the area given up instead, which
- * is what the speck would actually have contributed.
+ * is what the speck would actually have contributed. The trade is exactly
+ * energy-preserving — `a·πr²` is unchanged — so what the floor costs is never
+ * light, only **peak brightness**. That is the distinction the whole of this
+ * constant turns on: the peak is the shine.
+ *
+ * **Device pixels, not css px, and that is the correction.** The floor exists
+ * because of a real pixel grid, and the canvas is backed at `dpr` — so on a 2×
+ * screen a 0.7 css-px floor is 1.4 device pixels, nearly three across, and it
+ * was spreading cores the screen could resolve perfectly well. Flotsam's
+ * `simmer` is where it showed: 241 metres of water across the short side puts
+ * its largest core at 0.95 css px on a laptop and 0.43 on a phone, so every
+ * speck in the scene fell under the old floor and the brightest of them was
+ * drawn at 38% of its peak. Cores that had been hard points inside the haze
+ * became dull smudges in it, and the haze — a 30px halo, in css px, unchanged by
+ * any of this — was all that was left to see.
+ *
+ * At `dpr` 1 the floor is what it always was, so nothing about a scene found on
+ * a plain monitor moves.
  *
  * This matters far more here than in Dangler. The size range is the control the
  * piece is about, and at a wide span the entire small half of it is sub-pixel —
  * without this floor, widening the range would appear to *delete* flotsam.
  */
-export const MIN_CORE_PX = 0.7
+export const MIN_CORE_DEVICE_PX = 0.7
+
+/**
+ * The reference size a glare is dimmed against, in css px.
+ *
+ * Numerically what the floor used to be, and deliberately left there: it is no
+ * longer a statement about pixels but about how much light a speck this small
+ * reflects, and it is the scale every scene here was found at.
+ */
+const MIN_CORE_CSS_PX = 0.7
 
 /** How much wider than the core a halo has to be before it is worth compositing. */
 const HALO_WORTH_DRAWING = 1.08
@@ -75,6 +101,19 @@ const TAU = Math.PI * 2
 const SOLID_FRACTION = 0.86
 
 export type Specks = {
+  /**
+   * The canvas's backing scale, so the sub-pixel floor can be applied in the
+   * pixels it is about. Set once a frame beside `setSoftness`.
+   */
+  setScale: (dpr: number) => void
+  /**
+   * Pieces whose core landed under the floor and were therefore drawn wider and
+   * fainter than asked.
+   *
+   * Not a cost so much as a reading of how much of the population the screen can
+   * still resolve as a point. All of them, and the scene is haze.
+   */
+  dimmed: () => number
   /**
    * How sharply a piece's edge falls off, 0 for a defined edge and 1 for a soft
    * ball. Uniform across a frame, so it is set once rather than passed per
@@ -138,6 +177,8 @@ export function createSpecks(context: CanvasRenderingContext2D): Specks {
   const cores = new Map<number, HTMLCanvasElement>()
   let filled = 0
   let light = 0
+  let dimmedCount = 0
+  let floorPx = MIN_CORE_DEVICE_PX
   let softness = 0
 
   function bucket(hue: number, saturation: number): number {
@@ -292,18 +333,39 @@ export function createSpecks(context: CanvasRenderingContext2D): Specks {
     },
 
     draw(x, y, coreRadius, haloRadius, hue, saturation, alpha) {
+      /*
+       * The glare and the body are dimmed by different amounts, and separating
+       * them is what this is about.
+       *
+       * Both used to take one alpha, attenuated by however much the body had to
+       * be *widened* to clear the sub-pixel floor. For the body that is exactly
+       * right and exactly energy-preserving — `a·πr²` is unchanged, so what the
+       * floor costs is never light, only peak brightness. For the glare it was a
+       * coincidence: the glare is not widened by the floor and has no reason to
+       * be dimmed by it.
+       *
+       * It is not the wrong number, though, only the wrong reason. A smaller
+       * speck reflects less light, so its glare should be fainter in proportion
+       * to its area — which is what `(r / MIN_CORE_CSS_PX)²` says, read as an
+       * area ratio rather than as a pixel-grid correction. So the glare keeps the
+       * css-px reference it was tuned against and the body gets the device-pixel
+       * floor it was always about.
+       */
+      const glareAlpha = coreRadius < MIN_CORE_CSS_PX ? alpha * (coreRadius / MIN_CORE_CSS_PX) ** 2 : alpha
+
       let r = coreRadius
       let a = alpha
 
-      if (r < MIN_CORE_PX) {
-        a *= (r / MIN_CORE_PX) ** 2
-        r = MIN_CORE_PX
+      if (r < floorPx) {
+        a *= (r / floorPx) ** 2
+        r = floorPx
+        dimmedCount++
       }
-      if (a <= 0.002) return
+      if (a <= 0.002 && glareAlpha <= 0.002) return
 
       const outer = Math.max(r, haloRadius)
       const opacity = Math.min(1, a)
-      context.globalAlpha = opacity
+      context.globalAlpha = Math.min(1, glareAlpha)
 
       // A halo no wider than the body is not a halo, and at the counts this
       // piece runs the second draw is half the frame's calls — nine thousand
@@ -323,18 +385,27 @@ export function createSpecks(context: CanvasRenderingContext2D): Specks {
         }
       }
 
+      context.globalAlpha = opacity
       if (r > CORE_PX / 2) paintBody(x, y, r, hue, saturation)
       else context.drawImage(core(bucket(hue, saturation)), x - r, y - r, r * 2, r * 2)
 
       filled += Math.PI * outer * outer
-      light += opacity * Math.PI * outer * outer
+      // Weighted by the glare's alpha, which is what covers the canvas. The body
+      // is a rounding error against a thirty-pixel halo, and `light` is the
+      // number the scenes were judged against.
+      light += Math.min(1, glareAlpha) * Math.PI * outer * outer
     },
 
     fill: () => filled,
     lit: () => light,
+    dimmed: () => dimmedCount,
+    setScale(dpr) {
+      floorPx = MIN_CORE_DEVICE_PX / Math.max(1, dpr)
+    },
     reset: () => {
       filled = 0
       light = 0
+      dimmedCount = 0
     },
   }
 }
