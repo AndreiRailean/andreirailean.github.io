@@ -331,13 +331,16 @@ relearn how to leave, or which way the next piece is, in the next room.
 - Neither axis wraps, and adding a piece needs no change here — the order comes
   from `gallery/order.ts`, which the index uses too.
 
+The seam, and the two routes not taken, are in
+`docs/adr/20260901-the-gallery-presents-a-piece-on-a-phone.md`.
+
 **A poster was held over the canvas while the piece booted, and it is gone.** It
 removed the black rectangle of a cold landing, and it cost more than it saved:
 the still is of a scene the piece is not yet running — no poster here is
 reproducible, and two pieces need seconds to establish — so the crossfade landed
 as a visible jump from one picture to a different one. Booting straight into the
 piece is honest about what is happening. Do not put it back without solving the
-mismatch.
+mismatch: `docs/adr/20260901-a-poster-held-over-a-booting-piece.md`.
 
 ### The kit renders the chrome, and dresses it
 
