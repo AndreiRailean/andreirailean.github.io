@@ -127,11 +127,43 @@ re-asking a room that has already answered.
 
 The comment is what makes the claim readable, because the assignee alone is not.
 `@me` resolves to the human's GitHub account, so two stewards assign the _same_
-name and an abandoned claim looks exactly like a live one. **An item assigned
-with no live session behind it is stale** — check `ListAgents` against the
-claiming comment, then take it and say so. Unassign yourself when you finish or
-stand down, or you leave a corpse that stops the next steward touching the item
-at all, which is worse than the duplication this prevents.
+name and an abandoned claim looks exactly like a live one.
+
+**Deciding whether a claim is still live: derive it, and never from `ListAgents`
+absence.** An earlier version of this file said to check `ListAgents` against the
+claiming comment — four lines after saying a steward on another machine is never
+in `ListAgents` at all. Those cannot both be right. Such a claim always reads as
+having nobody behind it, so the rule instructed the next steward to take exactly
+the work the claim exists to protect, and the polarity was backwards besides: the
+claims that are checkable that way are the ones least likely to be corpses.
+
+`ListAgents` may **confirm** liveness and may never deny it. What derives:
+
+- **A branch naming the issue timestamps itself.**
+  `git for-each-ref --sort=-committerdate refs/heads` reads last-commit time with
+  no memory and no exit-time discipline. Worktrees share refs through the common
+  `.git` dir, so a branch on this machine is visible without a fetch or a push;
+  pushing buys the same visibility across machines. A pushed branch with no PR
+  costs nothing — `test.yml` and `lint.yml` are both `on: pull_request`.
+- **The claiming comment and the issue's own activity** are timestamped by GitHub
+  and reach everywhere, which is the property `ListAgents` lacks.
+
+A claim is stale when **nothing has moved** — no branch naming it, and no commit
+or comment since. When it is genuinely unclear, say so on the issue before taking
+it rather than after; that costs one comment and leaves the next reader a trail
+either way.
+
+The corollary is **commit early rather than push early**. Uncommitted work is
+invisible to every one of these, so a session holding an item and nothing else is
+indistinguishable from one that has died.
+
+**Unassigning on the way out is a courtesy, not the mechanism.** It only covers
+standing down, and dying is the case that matters — a dead session cannot
+unassign itself, so a corpse is the default outcome of any session that ends
+abruptly, which is most of them. A correctness requirement that has to be
+remembered at exit is in the weakest possible place: this repo produced two
+same-day cases of a documented rule broken by its own author within the hour,
+`9f9a438` and the trap recorded above.
 
 Land your own infrastructure work once CI is green — that is a standing
 authorisation, so do not stop to ask for each step. Leave visual work to Andrei's
