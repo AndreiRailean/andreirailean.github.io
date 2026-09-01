@@ -65,7 +65,7 @@ rendered without a GPU would fail for reasons nobody can read, and we would lear
 to ignore it. The one visual assertion worth making is coarse and robust: that
 there are canvas pixels brighter than the ground at all.
 
-## Reading a canvas after changing a setting
+## Reading a canvas — or a draw-time stat — after changing a setting
 
 **`set()` does not draw.** Every piece here marks the scene dirty and asks for
 one animation frame, so the canvas holds the _previous_ frame until that frame
@@ -73,6 +73,20 @@ runs. A `getImageData` in the round trip straight after a `set()` is inside that
 window, and how wide the window is depends on when the browser next produces a
 frame — which differs between one CI runner and another. **Wait for a frame
 before reading**; `painted()` in `tests/flotsam.spec.ts` is the one-liner.
+
+**This is not only about pixels.** A `stats()` field accumulated _while drawing_
+goes stale in exactly the same window, and it comes back as an ordinary number
+rather than as an obviously old frame, so nothing about it looks suspicious.
+Flotsam's `light` is summed by `specks.lit()` during the draw; the exposure spec
+read it straight after a `set()` and got the previous exposure's value —
+intermittently, so it passed locally and on three CI runs before failing on the
+fourth. Psyxels' `drawn`, `fill`, `colours`, `drawMs` and `fps` are the same kind
+and its `AGENTS.md` names them, which is the part worth copying: say which of a
+piece's stats are computed in `stats()` and which are filled in while drawing.
+
+Two fixes, both right for different cases. Wait a frame when you want the value
+that frame produces. Compute the field in `stats()` instead when it never needed
+a frame — psyxels added a `live` count for that reason after hitting this twice.
 
 The reason this is a section rule and not a line in one spec is how well it
 hides. It cost two sessions and three disproved hypotheses as issue #65:

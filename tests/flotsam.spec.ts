@@ -348,10 +348,12 @@ test("exposure changes how much light the scene makes and nothing else about it"
     idle: true,
   })
 
+  await painted(page)
   const full = await experiment.api(({ api }) => api.stats())
   expect(full.light).toBeGreaterThan(0)
 
   await experiment.api(({ api }) => api.set({ exposure: 0.4 }))
+  await painted(page)
   const dim = await experiment.api(({ api }) => api.stats())
 
   expect(dim.light).toBeLessThan(full.light * 0.6)
@@ -365,6 +367,7 @@ test("exposure changes how much light the scene makes and nothing else about it"
   expect(dim.drawnDots).toBe(full.drawnDots)
 
   await experiment.api(({ api }) => api.set({ exposure: 0 }))
+  await painted(page)
   expect((await experiment.api(({ api }) => api.stats())).light).toBe(0)
   expect(await litPixels(page)).toBe(0)
 })
