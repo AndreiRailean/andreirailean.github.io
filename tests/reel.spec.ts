@@ -29,6 +29,47 @@ type ReelApi = BaseApi & {
   controls: () => { key: string; min: number; max: number }[]
 }
 
+/**
+ * Everything the middle of the screen has said, recorded from inside the page.
+ *
+ * Nothing there stays: the piece's name, the hold and the release all show for
+ * under two seconds and then go, which is the behaviour under test. Asserting on
+ * the live DOM from out here races it — and loses on a loaded CI runner, where
+ * `goto` can return after the name has already gone. So a mutation observer
+ * installed before the page's own scripts writes down what appeared, and the
+ * assertions read that.
+ *
+ * Each entry is `class|text`, which is enough to tell the four apart.
+ */
+type ReelWindow = Window & { __shown?: string[] }
+
+async function recordMiddle(page: Page) {
+  await page.addInitScript(() => {
+    const shown: string[] = []
+    ;(window as ReelWindow).__shown = shown
+
+    const look = () => {
+      for (const element of document.querySelectorAll<HTMLElement>("#reel .middle > *")) {
+        if (element.hidden) continue
+        const entry = `${element.className}|${element.textContent?.trim() ?? ""}`
+        if (shown[shown.length - 1] !== entry) shown.push(entry)
+      }
+    }
+
+    // `document`, not `document.documentElement`: an init script runs at document
+    // start, where the root element may not exist yet and `observe` would throw
+    // — leaving an empty record that looks exactly like nothing having happened.
+    new MutationObserver(look).observe(document, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["hidden"],
+    })
+  })
+}
+
+const middleSaid = (page: Page) => page.evaluate(() => (window as ReelWindow).__shown ?? [])
+
 /** Where a gesture starts: the middle of the screen, clear of both bits of furniture. */
 async function swipe(page: Page, dx: number, dy: number) {
   const view = page.viewportSize()
@@ -181,15 +222,15 @@ test("the dots say how many scenes there are and which one this is", async ({ pa
 
 test("a tap holds the piece and says so, and then stops saying it", async ({ page }) => {
   const slugs = await wall(page)
+  await recordMiddle(page)
   await openExperiment<ReelApi>(page, slugs[0], { query: { reel: "1" }, idle: false })
 
   const view = page.viewportSize()
   if (!view) throw new Error("no viewport to tap")
   const middle = { x: Math.round(view.width / 2), y: Math.round(view.height / 2) }
 
-  await expect(page.locator("#reel .held")).toBeHidden()
   await page.mouse.click(middle.x, middle.y)
-  await expect(page.locator("#reel .held")).toBeVisible()
+  await expect.poll(() => middleSaid(page)).toContain("mark held|")
 
   // Everything in the middle of the screen goes, the way the chrome does.
   await expect(page.locator("#reel .held")).toBeHidden({ timeout: 5000 })
@@ -197,33 +238,31 @@ test("a tap holds the piece and says so, and then stops saying it", async ({ pag
   // And the hold outlives the mark that announced it: the next tap is a resume,
   // which is the other icon rather than the same one again.
   await page.mouse.click(middle.x, middle.y)
-  await expect(page.locator("#reel .playing")).toBeVisible()
-  await expect(page.locator("#reel .held")).toBeHidden()
+  await expect.poll(() => middleSaid(page)).toContain("mark playing|")
 })
 
 test("arriving names the piece over the gap where it boots, and then stops", async ({ page }) => {
   const slugs = await wall(page)
+  await recordMiddle(page)
 
   // Not through `openExperiment`, which waits for the piece's own module: the
   // name is up during exactly that wait, which is the whole point of it.
   await page.goto(`/experiments/${slugs[0]}/?reel=1`)
 
-  const name = page.locator("#reel .name")
-  await expect(name).toBeVisible()
-  await expect(name).toHaveText(await page.title())
-  await expect(name).toBeHidden({ timeout: 5000 })
+  await expect.poll(() => middleSaid(page)).toContain(`name|${await page.title()}`)
+  await expect(page.locator("#reel .name")).toBeHidden({ timeout: 5000 })
 })
 
 test("swiping past the end of the wall says there is nothing there", async ({ page }) => {
   const slugs = await wall(page)
   const last = slugs[slugs.length - 1]
+  await recordMiddle(page)
   await openExperiment<ReelApi>(page, last, { query: { reel: "1" }, idle: false })
 
   // Silence here reads as a gesture the view failed to register, which is the
   // explanation a visitor reaches for first.
   await swipe(page, 0, -200)
-  await expect(page.locator("#reel .word")).toBeVisible()
-  await expect(page.locator("#reel .word")).toHaveText(/end of the wall/)
+  await expect.poll(() => middleSaid(page)).toContain("word|the end of the wall")
 
   // And then goes, rather than sitting on the work.
   await expect(page.locator("#reel .word")).toBeHidden({ timeout: 5000 })
