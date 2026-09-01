@@ -586,6 +586,15 @@ test("the defaults are a baseline rather than a scene, and no preset leans on th
   expect(PRESETS[0]!.settings).not.toEqual(DEFAULT_SETTINGS)
 })
 
+/**
+ * How long the field is held, in ms.
+ *
+ * Named because two assertions depend on the gap between it and the resume
+ * window: the bug this test exists for adds exactly this much clock in one
+ * step, so the ceiling below has to sit well under it.
+ */
+const HELD_MS = 3000
+
 test("holding the field stops its clock, and letting go picks up where it left off", async ({ page }) => {
   const experiment = await openPsyxels(page, { idle: false })
   const clock = () => experiment.api(({ api }) => api.stats().clock)
@@ -598,7 +607,7 @@ test("holding the field stops its clock, and letting go picks up where it left o
   const held = await clock()
   // Held far longer than it is then let to run, so the two are told apart by a
   // wide margin rather than by a tight bound on a timer nobody controls.
-  await page.waitForTimeout(1500)
+  await page.waitForTimeout(HELD_MS)
   expect(await clock()).toBe(held)
 
   /*
@@ -610,9 +619,27 @@ test("holding the field stops its clock, and letting go picks up where it left o
    * enough to read in a test.
    */
   expect(await experiment.api(({ api }) => api.pause(false))).toBe(false)
+  const resumedAt = Date.now()
   await page.waitForTimeout(200)
   const after = await clock()
+  const elapsed = (Date.now() - resumedAt) / 1000
   expect(after).toBeGreaterThan(held)
-  // A resume that took the hold in one step would add 1.5s of clock or more.
-  expect(after - held).toBeLessThan(0.8)
+
+  /*
+   * Two bounds, because one of them has to be measured rather than assumed.
+   *
+   * The clock is right to have advanced by however long the resume window
+   * really was, and that is not the 200ms asked for: on a loaded runner the
+   * wait plus two round trips through the page took 805ms, which failed a flat
+   * `< 0.8` bound while the piece was behaving perfectly. So the first bound
+   * scales with the time that actually passed.
+   *
+   * The second is the one the bug would blow through, and it does not scale —
+   * a resume that took the hold in one step adds the whole `HELD_MS`. It needs
+   * a real gap under that, which is why the hold is generous: a runner slow
+   * enough to spend two seconds in the resume window is slow enough that the
+   * flat bound would be wrong anyway.
+   */
+  expect(after - held, "the clock gained more than the time that has passed").toBeLessThan(elapsed + 0.3)
+  expect(after - held, "the clock took the held interval in one step").toBeLessThan(HELD_MS / 1000 - 1)
 })
