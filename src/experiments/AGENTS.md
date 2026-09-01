@@ -322,6 +322,13 @@ relearn how to leave, or which way the next piece is, in the next room.
   headless rather than being skipped, because `createControls` is the settings,
   the validator and the URL sync as well as the bar — see `chrome` in
   `kit/controls.ts`.
+- **Headless does not mean keyless.** `chrome: false` skips appending the bar and
+  the panel; the kit's `keydown` listener registers either way, so the digits,
+  `c`, `f`, a piece's action shortcuts and `←` / `→` all still work here. That is
+  wanted — a tablet with a keyboard gets what the swipe gives — and it stays
+  consistent because both paths go through the kit's one `apply()`, and the
+  placard and dots read `data-preset` through a mutation observer rather than
+  being written by whichever gesture moved the scene.
 - **The kit publishes which preset is on screen** as `data-preset` on `<html>`,
   beside `data-idle`. It already knew, and nothing else can work it out without
   an opinion about what a piece's settings mean. Absent, not `-1`, when the scene
@@ -394,6 +401,14 @@ were mistakes about how the chrome _works_, made in a file with no reason to kno
   Starry Night drives the whole thing a second time from its inverted scheme.
 - **Import it in the page's frontmatter**, so it is a real stylesheet in the
   head rather than something the client script injects.
+- **The keys are the kit's too**: `c` and `Escape` for the panel, `f` for
+  fullscreen, a digit for that preset, and **`←` / `→` to step through them**,
+  clamped at both ends the way the interactive view's swipe is. A piece's own
+  `actions` add single letters. The one trap: the arrow guard tests the _focused
+  element_, not whether the focus is inside the chrome. Scoping it to the chrome
+  is the obvious guard and is wrong — clicking a preset leaves the focus on that
+  button, so the very next arrow press, the likeliest one there is, would do
+  nothing. A field that uses arrows keeps them; a button has no use for one.
 - **Still offered.** A piece that wants different chrome declines the import,
   exactly as it can decline `controls.ts`. The three tokens' worth of theming is
   the cheap path, not the only one.
