@@ -44,7 +44,7 @@ is a cut, not a dissolve.
 Two pieces make it worse than that. Flotsam's specks take a wave period or two
 to gather into lines and its poster is captured after running the sea forward;
 Dangler settles its ropes twice before the shutter. Their posters are of a scene
-that is *seconds* ahead of frame one, so the crossfade lands on a visibly
+that is _seconds_ ahead of frame one, so the crossfade lands on a visibly
 less-established picture — the piece appears to fall apart as it comes alive.
 
 ## What would make it viable

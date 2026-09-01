@@ -87,9 +87,11 @@ const portrait = await getImage({ src: avatar, format: "jpeg" })
   </head>
   <body>
     <canvas id="stage" data-avatar={portrait.src}></canvas>
-    {/* The interactive view: full-bleed piece, two axes of swipe, on a touch device.
+    {
+      /* The interactive view: full-bleed piece, two axes of swipe, on a touch device.
         Between the canvas and `#ui` because DOM order is the whole stacking
-        arrangement here — see the note in Reel.astro. */}
+        arrangement here — see the note in Reel.astro. */
+    }
     <Reel slug="psyxels" />
     <div id="ui"></div>
 

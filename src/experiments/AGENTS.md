@@ -321,13 +321,13 @@ relearn how to leave, or which way the next piece is, in the next room.
   chrome does — a persistent hold mark was tried first and was more furniture
   than the view wanted.
 - **A tap holds the piece**, through `pause()`. The state outlives the mark that
-  announced it, which is why a resume shows the *other* icon rather than the
+  announced it, which is why a resume shows the _other_ icon rather than the
   same one again — on a slow piece that is the only thing distinguishing held
   from running.
 - **Arriving names the piece, large, over the gap where it boots.** A piece
   arrives as an empty canvas, and between two full-bleed graphics that makes
   arriving somewhere new and arriving nowhere look the same. It is also the
-  swipe's only acknowledgement: the placard is still naming the *scene*.
+  swipe's only acknowledgement: the placard is still naming the _scene_.
 - **The dots are the only thing that says the horizontal axis exists.** A gesture
   with no visible extent is one nobody tries twice, and the placard's own words
   cannot say how many scenes are left. The vertical axis gets a one-line hint,

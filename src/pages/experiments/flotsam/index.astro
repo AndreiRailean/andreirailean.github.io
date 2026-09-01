@@ -68,9 +68,11 @@ import Reel from "@/experiments/gallery/Reel.astro"
   </head>
   <body>
     <canvas id="water"></canvas>
-    {/* The interactive view: full-bleed piece, two axes of swipe, on a touch device.
+    {
+      /* The interactive view: full-bleed piece, two axes of swipe, on a touch device.
         Between the canvas and `#ui` because DOM order is the whole stacking
-        arrangement here — see the note in Reel.astro. */}
+        arrangement here — see the note in Reel.astro. */
+    }
     <Reel slug="flotsam" />
     <div id="ui"></div>
 

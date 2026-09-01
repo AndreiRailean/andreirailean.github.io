@@ -56,10 +56,12 @@ const sceneIndex = (page: Page) => page.evaluate(() => document.documentElement.
  */
 async function wall(page: Page): Promise<string[]> {
   await page.goto("/experiments/")
-  const hrefs = await page.locator(".plate a.open").evaluateAll((links) =>
-    links.map((link) => link.getAttribute("href") ?? ""),
-  )
-  return hrefs.map((href) => href.match(/^\/experiments\/([^/]+)\/$/)?.[1]).filter((slug): slug is string => Boolean(slug))
+  const hrefs = await page
+    .locator(".plate a.open")
+    .evaluateAll((links) => links.map((link) => link.getAttribute("href") ?? ""))
+  return hrefs
+    .map((href) => href.match(/^\/experiments\/([^/]+)\/$/)?.[1])
+    .filter((slug): slug is string => Boolean(slug))
 }
 
 test("a touch device gets the piece and no panel; a mouse still gets the panel", async ({ page }) => {
@@ -90,10 +92,11 @@ test("the kit publishes which preset is on screen, and forgets when it is nobody
   const controls = await experiment.api(({ api }) => api.controls())
   const slider = controls.find((control) => control.max > control.min)
   if (!slider) throw new Error("no numeric control to nudge")
-  await experiment.api(
-    ({ api, arg }) => api.set({ [arg.key]: (arg.min + arg.max) / 2 } as never),
-    { key: slider.key, min: slider.min, max: slider.max },
-  )
+  await experiment.api(({ api, arg }) => api.set({ [arg.key]: (arg.min + arg.max) / 2 } as never), {
+    key: slider.key,
+    min: slider.min,
+    max: slider.max,
+  })
   expect(await sceneIndex(page)).toBeUndefined()
 })
 
