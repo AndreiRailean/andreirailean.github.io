@@ -82,10 +82,23 @@ export function announceApi(): void {
   console.log(`%cStarry Night%c is scriptable from here.\n\n${body}\n`, "font-weight:600", "font-weight:400")
 }
 
+/**
+ * One entry per **settings key**, not per control.
+ *
+ * A range owns two keys and used to report them as one entry with a `keys`
+ * array, which was the only shape in the section that could not be driven by
+ * `report.key`. Reading `.key` off it gave `undefined`, and a test that then set
+ * that key wrote to a setting no piece has and passed because nothing moved —
+ * see #85. Flattening matches what the other three pieces already did.
+ *
+ * `kind` is kept, and is this piece's own addition: it is what lets a caller
+ * tell a choice from a toggle from a slider without guessing from which fields
+ * are present.
+ */
 export type ControlReport =
-  | { kind: "slider" | "range"; keys: string[]; label: string; hint: string; min: number; max: number }
-  | { kind: "choice"; keys: string[]; label: string; hint: string; options: string[] }
-  | { kind: "toggle"; keys: string[]; label: string; hint: string }
+  | { kind: "slider" | "range"; key: string; label: string; hint: string; min: number; max: number }
+  | { kind: "choice"; key: string; label: string; hint: string; options: string[] }
+  | { kind: "toggle"; key: string; label: string; hint: string }
 
 export function createApi(controls: Controls<Settings>, wakeLock: WakeLock, sky: Starfield): ExperimentApi {
   // Held here rather than read back off the scene: whether a piece is paused is
@@ -114,21 +127,23 @@ export function createApi(controls: Controls<Settings>, wakeLock: WakeLock, sky:
     presets: () => PRESETS.map(({ label }) => label),
 
     controls: () =>
-      CONTROLS.map((control): ControlReport => {
-        const shared = { keys: keysOf(control), label: control.label, hint: control.hint }
-        // Switched on the discriminant rather than through `isNumericControl`,
-        // whose negative branch narrows to nothing useful: the numeric alias is
-        // parameterised by `NumericKey` while the union is parameterised by every
-        // key, so TypeScript cannot subtract one from the other.
-        switch (control.kind) {
-          case "choice":
-            return { kind: "choice", ...shared, options: control.options.map(({ value }) => value) }
-          case "toggle":
-            return { kind: "toggle", ...shared }
-          default:
-            return { kind: control.kind, ...shared, min: control.min, max: control.max }
-        }
-      }),
+      CONTROLS.flatMap((control): ControlReport[] =>
+        keysOf(control).map((key): ControlReport => {
+          const shared = { key: String(key), label: control.label, hint: control.hint }
+          // Switched on the discriminant rather than through `isNumericControl`,
+          // whose negative branch narrows to nothing useful: the numeric alias is
+          // parameterised by `NumericKey` while the union is parameterised by every
+          // key, so TypeScript cannot subtract one from the other.
+          switch (control.kind) {
+            case "choice":
+              return { kind: "choice", ...shared, options: control.options.map(({ value }) => value) }
+            case "toggle":
+              return { kind: "toggle", ...shared }
+            default:
+              return { kind: control.kind, ...shared, min: control.min, max: control.max }
+          }
+        }),
+      ),
 
     panel(open) {
       const next = open ?? !controls.isPanelOpen()

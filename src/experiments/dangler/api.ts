@@ -1,6 +1,6 @@
 import type { Dangler, DanglerStats } from "@/experiments/dangler/dangler"
 import { reroll } from "@/experiments/dangler/reroll"
-import type { Controls } from "@/experiments/kit/controls"
+import { keysOf, type Controls } from "@/experiments/kit/controls"
 import { setFullscreen, toggleFullscreen } from "@/experiments/kit/fullscreen"
 import { CONTROLS, normalizeSettings, PRESETS, type Settings } from "@/experiments/dangler/settings"
 import type { WakeLock } from "@/experiments/kit/wakelock"
@@ -115,15 +115,25 @@ export function createApi(controls: Controls<Settings>, wakeLock: WakeLock, scen
 
     presets: () => PRESETS.map(({ label }) => label),
 
+    // Flattened over `keysOf`, so a bound pair reports both of its ends —
+    // matching Flotsam and Psyxels, and one entry per settings key.
+    //
+    // This read `control.key` directly until #85. A range control carries
+    // `keys` and no `key`, so it would have reported `undefined` the day
+    // Dangler gained one; it was correct only because Dangler has none. A
+    // caller reading `.key` off such an entry writes to a setting no piece has,
+    // and the assertion after it passes because nothing moved.
     controls: () =>
-      CONTROLS.map((control) => ({
-        key: control.key,
-        group: control.group,
-        label: control.label,
-        min: control.min,
-        max: control.max,
-        hint: control.hint,
-      })),
+      CONTROLS.flatMap((control) =>
+        keysOf(control).map((key) => ({
+          key,
+          group: control.group,
+          label: control.label,
+          min: control.min,
+          max: control.max,
+          hint: control.hint,
+        })),
+      ),
 
     reroll: (seed) => reroll(controls, seed),
 

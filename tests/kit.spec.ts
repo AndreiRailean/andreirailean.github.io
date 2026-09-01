@@ -176,6 +176,42 @@ for (const slug of PIECES) {
     expect(await shown(), `${slug} still claims a preset after ${key} moved`).toBeUndefined()
   })
 
+  /**
+   * `controls()` reports one entry per **settings key**, and every key is real.
+   *
+   * The shape had drifted three ways and nothing said which was the contract.
+   * Flotsam and Psyxels flattened over `keysOf` — one entry per key. Dangler
+   * read `control.key` directly, which is `undefined` for a range control and
+   * was correct only because Dangler has none. Starry Night reported one entry
+   * per *control* with a `keys` array and no `key` at all.
+   *
+   * That cost a real assertion: generic code reading `.key` got `undefined` on
+   * Starry Night, wrote the patch to a setting no piece has, and the check that
+   * followed passed because nothing had moved. See #85, and #84 where it bit.
+   *
+   * So the contract is the flat one, and this holds every piece to it. A key
+   * that does not name a real setting is the failure worth catching — it is
+   * indistinguishable from a working control until something tries to drive it.
+   */
+  test(`${slug}: reports one control entry per settings key`, async ({ page }) => {
+    const experiment = await openExperiment<BaseApi & { controls: () => { key?: unknown }[] }>(page, slug, {
+      idle: false,
+    })
+
+    const entries = await experiment.api(({ api }) => api.controls())
+    expect(entries.length, `${slug} reports no controls`).toBeGreaterThan(0)
+
+    const settings = await experiment.api(({ api }) => api.get())
+    const unusable = entries.filter((entry) => typeof entry.key !== "string" || !(entry.key in settings))
+
+    expect(
+      unusable.map((entry) => JSON.stringify(entry)),
+      `${slug}: every controls() entry needs a \`key\` naming a real setting. An entry reporting ` +
+        `\`keys\` instead, or a key the piece has no setting for, cannot be driven — and code that ` +
+        `tries writes to nothing and passes. Flatten over keysOf(), as the other pieces do.`,
+    ).toEqual([])
+  })
+
   test(`${slug}: the panel is reachable by keyboard and its rows are labelled`, async ({ page }) => {
     const experiment = await openExperiment<BaseApi>(page, slug, { idle: false })
     await experiment.api(({ api }) => api.panel(true))

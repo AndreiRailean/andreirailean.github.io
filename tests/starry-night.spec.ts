@@ -83,9 +83,11 @@ test("settings survive the round trip through the query string", async ({ page }
     // validator rejects — passing while testing nothing.
     const patch: Record<string, unknown> = {}
     for (const control of api.controls()) {
-      const key = control.keys[0]!
+      // One entry per settings key since #85, so a range's two ends arrive as
+      // two entries and no longer need unpacking here.
+      const key = control.key
       if (control.kind === "slider" || control.kind === "range") {
-        for (const each of control.keys) patch[each] = control.min + (control.max - control.min) * 0.37
+        patch[key] = control.min + (control.max - control.min) * 0.37
       } else if (control.kind === "choice") {
         const held = api.get()[key as keyof ReturnType<typeof api.get>]
         patch[key] = control.options.find((option) => option !== held) ?? control.options[0]
