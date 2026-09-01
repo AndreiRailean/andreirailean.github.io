@@ -53,6 +53,72 @@ for (const slug of PIECES) {
     expect(await experiment.api(({ api }) => api.get())).toEqual(second)
   })
 
+  /**
+   * `data-preset` on `<html>`, which the kit publishes and the gallery reads.
+   *
+   * The interactive view names the scene on its placard and lights one dot from
+   * this attribute and nothing else — it is the only way anything outside the
+   * kit can know which preset is on screen without holding an opinion about
+   * what a piece's settings mean, which is exactly what `gallery/` may not have.
+   *
+   * It arrived in #82 with its only check inside `tests/reel.spec.ts`, the
+   * consumer's own spec. That tested that the reel's reading worked, not that
+   * the kit publishes anything: delete the reel and the promise went with it,
+   * and the next surface to rely on it would start from an untested one. So it
+   * is asserted here, across every piece, the same way every other kit
+   * behaviour is. See #83.
+   *
+   * Absent rather than `-1` for a scene that is nobody's preset. That
+   * distinction is the whole reason the attribute can be trusted — a piece
+   * someone has dragged a slider on must not keep claiming to be preset 0.
+   */
+  test(`${slug}: publishes which preset is on screen, and stops when it is nobody's`, async ({ page }) => {
+    const experiment = await openExperiment<BaseApi>(page, slug, { idle: false })
+    const html = page.locator("html")
+    const shown = () => page.evaluate(() => document.documentElement.dataset.preset)
+
+    // A bare landing is the primary, which is position one.
+    await expect(html).toHaveAttribute("data-preset", "0")
+
+    // Every preset names itself, so the placard cannot be right by luck at
+    // index 0 and wrong everywhere else. Each scene is kept, because the last
+    // assertion needs a value that belongs to none of them.
+    const names = await experiment.api(({ api }) => api.presets())
+    const scenes: Record<string, unknown>[] = []
+    for (let index = 0; index < names.length; index++) {
+      scenes.push(await experiment.api(({ api, arg }) => api.preset(arg), index + 1))
+      expect(await shown(), `${slug} preset ${index} (${names[index]})`).toBe(String(index))
+    }
+
+    // And a scene that is nobody's preset says so by saying nothing.
+    //
+    // Driven through `get`/`set` and the presets alone — the documented minimum
+    // surface — rather than through `controls()`. Two earlier attempts failed
+    // for reasons worth keeping: the slider's midpoint happened to *be* the
+    // loaded preset's value on starry-night, so nothing moved; and
+    // `controls()` is not the same shape in every piece, so reading `.key` off
+    // it silently yielded `undefined` there and the nudge went to a key no
+    // piece has. A kit-wide assertion may only lean on what every piece
+    // promises.
+    const scene = scenes.at(-1)!
+    const numeric = Object.keys(scene).filter((key) => typeof scene[key] === "number")
+    const key = numeric.find((candidate) => new Set(scenes.map((each) => each[candidate])).size > 1) ?? numeric[0]
+    if (key === undefined) throw new Error(`${slug}: no numeric setting to move`)
+
+    // A value no preset uses for this key, so the attribute has to go absent
+    // rather than land on a neighbour by coincidence.
+    const taken = new Set(scenes.map((each) => each[key] as number))
+    let free = (scene[key] as number) + 1
+    while (taken.has(free)) free += 1
+
+    const moved = await experiment.api(({ api, arg }) => api.set({ [arg.key]: arg.value } as never), {
+      key,
+      value: free,
+    })
+    expect(moved[key], `${slug}: setting ${key} did not take, so nothing was tested`).toBe(free)
+    expect(await shown(), `${slug} still claims a preset after ${key} moved`).toBeUndefined()
+  })
+
   test(`${slug}: the panel is reachable by keyboard and its rows are labelled`, async ({ page }) => {
     const experiment = await openExperiment<BaseApi>(page, slug, { idle: false })
     await experiment.api(({ api }) => api.panel(true))
