@@ -51,7 +51,7 @@ base by default and `origin/main` after a fetch is the right one.
 
 **Merge, do not rebase, once a branch is pushed or claimed.** A rebase rewrites
 committer dates, and a branch's last-commit time is what
-`docs/agents/experiments-steward.md` uses to tell a live claim from an abandoned
+`.claude/skills/steward/SKILL.md` uses to tell a live claim from an abandoned
 one. Rebasing a claimed branch destroys the only heartbeat it has. Rewritten
 dates have already confused an ordering question here once.
 
