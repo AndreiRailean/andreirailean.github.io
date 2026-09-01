@@ -66,7 +66,10 @@ rule a test enforces is one no future steward has to remember.
   excluded the one peer who most needed to hear it. Do not try to detect which
   peer is the steward — a session name says nothing about the role, and
   `img-preview-1f` held it. If someone replies claiming it, whichever of you is
-  mid-PR finishes and the other waits. Silence is not a competing claim.
+  mid-PR finishes and the other waits. Silence is not a competing claim, and the
+  broadcast is best-effort: `ListAgents` may not reach a steward on another
+  machine at all, so the durable claim is the assignee and comment on the issue
+  itself. Announce for latency, assign for authority.
 - **Answer kit gaps.** A piece needing something the kit lacks is a gap the next
   piece will hit too. Change the shared thing; do not let the piece work around
   it. `scale: "log"` arrived exactly this way.
