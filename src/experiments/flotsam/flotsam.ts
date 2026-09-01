@@ -81,6 +81,17 @@ export type FlotsamStats = {
   /** Summed sprite area drawn this frame, in css px². The real cost model. */
   fillPx: number
   /**
+   * Pieces the screen cannot resolve as a point: their core fell under the
+   * sub-pixel floor, so they were drawn wider and fainter than asked.
+   *
+   * The trade is energy-preserving, so `light` barely notices it — which is why
+   * this is reported separately. `light` is dominated by the halo and says how
+   * much haze there is; this says how much of the population is *only* haze. At
+   * `simmer` on a phone it was all of them, and that is what "the dots lost their
+   * shine" turned out to mean.
+   */
+  dimmedDots: number
+  /**
    * How much light the scene is making, as alpha-weighted sprite area over the
    * area of the canvas.
    *
@@ -357,6 +368,9 @@ export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flo
     const [hx, hy, hz] = halfway()
     const { glint, shade, gleam, exposure, softness } = settings
     specks.setSoftness(softness)
+    // The sub-pixel floor is about the real pixel grid, and the canvas is backed
+    // at `dpr`. See MIN_CORE_DEVICE_PX.
+    specks.setScale(dpr)
     const reach = sea.reach || 1
     const trains = scatter.trains
     let orbitSum = 0
@@ -657,6 +671,7 @@ export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flo
       transport,
       drawnDots,
       fillPx: Math.round(specks.fill()),
+      dimmedDots: specks.dimmed(),
       light: Math.round((specks.lit() / Math.max(1, width * height)) * 1000) / 1000,
       clock,
       fps: Math.round(fps * 10) / 10,

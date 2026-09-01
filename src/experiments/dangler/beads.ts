@@ -19,18 +19,35 @@ const HALO_PX = 64
 const CORE_PX = 32
 
 /**
- * Smallest a core may be drawn, in css px.
+ * Smallest a core may be drawn, in **device** pixels.
  *
  * Below about this, antialiasing spreads a dot's area across several pixels at
  * fractional coverage, so it can never reach the opacity it was asked for and a
  * whole population of far bulbs silently contributes nothing. Under the floor
  * the size is held and the *alpha* is scaled by the area given up instead, which
  * is what the bulb would actually have contributed.
+ *
+ * **Device pixels, not css px.** The floor is about a real pixel grid and the
+ * canvas is backed at `dpr`, so on a 2× screen a 0.7 css-px floor is 1.4 device
+ * pixels — it was spreading cores the screen could resolve perfectly well. At
+ * `dpr` 1 the floor is what it always was, so nothing found on a plain monitor
+ * moves.
+ *
+ * Flotsam had the same line, copied, and needed a second fix this piece does
+ * **not**: its halo is a radius in px computed from the *unfloored* core, so the
+ * floor never widens it and dimming it by the area given up over-dims the haze.
+ * Here `outer` is a multiple of the *floored* core, so the glow grows with the
+ * body and dimming both is the right compensation. See #94 — two blocks that
+ * read identically encoding different geometry.
  */
-export const MIN_CORE_PX = 0.7
+export const MIN_CORE_DEVICE_PX = 0.7
 
 export type Beads = {
   draw: (x: number, y: number, radius: number, halo: number, hue: number, saturation: number, alpha: number) => void
+  /** The canvas's backing scale, so the sub-pixel floor applies in the pixels it is about. */
+  setScale: (dpr: number) => void
+  /** Bulbs whose core landed under the floor, and so were drawn wider and fainter than asked. */
+  dimmed: () => number
   /** Total sprite area drawn since the last reset, in css px². */
   fill: () => number
   reset: () => void
@@ -76,6 +93,8 @@ export function createBeads(context: CanvasRenderingContext2D): Beads {
   const halos = new Map<number, HTMLCanvasElement>()
   const cores = new Map<number, HTMLCanvasElement>()
   let filled = 0
+  let dimmedCount = 0
+  let floorPx = MIN_CORE_DEVICE_PX
 
   function bucket(hue: number, saturation: number): number {
     const h = Math.round(((((hue % 360) + 360) % 360) / 360) * HUE_BUCKETS) % HUE_BUCKETS
@@ -132,9 +151,10 @@ export function createBeads(context: CanvasRenderingContext2D): Beads {
       let r = radius
       let a = alpha
 
-      if (r < MIN_CORE_PX) {
-        a *= (r / MIN_CORE_PX) ** 2
-        r = MIN_CORE_PX
+      if (r < floorPx) {
+        a *= (r / floorPx) ** 2
+        r = floorPx
+        dimmedCount++
       }
       if (a <= 0.002) return
 
@@ -149,8 +169,13 @@ export function createBeads(context: CanvasRenderingContext2D): Beads {
     },
 
     fill: () => filled,
+    dimmed: () => dimmedCount,
+    setScale(dpr) {
+      floorPx = MIN_CORE_DEVICE_PX / Math.max(1, dpr)
+    },
     reset: () => {
       filled = 0
+      dimmedCount = 0
     },
   }
 }

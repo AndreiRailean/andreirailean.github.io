@@ -307,6 +307,27 @@ in order to work at all, and every one of them was learned by breaking it.
   sub-pixel, so a low exposure loses the haze before it loses the large pieces —
   which is the opposite of what someone dimming a scene usually wants. Pair a low
   exposure with a _higher_ size mix, not a lower one.
+- **The glare and the body are dimmed by different amounts, and must stay that
+  way.** The sub-pixel floor widens a body to `MIN_CORE_DEVICE_PX / dpr` and
+  scales its alpha by the area given up, which is exactly energy-preserving — so
+  what the floor costs is never light, only peak brightness. **The peak is the
+  shine.** The glare is not widened by the floor and has no business being dimmed
+  by it, and giving both one alpha tripled the haze on every 2× screen the moment
+  the floor moved to device pixels. The glare keeps a css-px reference, read as
+  an area ratio — a smaller speck reflects less light — rather than as a
+  pixel-grid correction. `tests/flotsam.spec.ts` pins both halves and each was
+  watched to fail. See #94.
+- **`stats().dimmedDots` says how much of the population is only haze.** `light`
+  will not: it is dominated by a thirty-pixel halo, so it barely moves when every
+  core in the scene goes under the floor. That is what "the specks lost their
+  shine" turned out to mean on a phone, and there was no number for it before.
+- **A phone is not a smaller window on this piece, it is a wider one.** `span` is
+  metres across the shorter side **in css px**, so a 390px phone shows the same
+  water as an 860px laptop through 2.2× fewer pixels and every core shrinks with
+  it. `simmer`'s largest core is 0.95 css px on a laptop and 0.43 on a phone. The
+  floor correction moves 88 specks of 4060 above the floor and is very nearly
+  invisible; the framing is the real cause, and changing what `span` means moves
+  every scene on both this piece and Dangler. Not decided.
 - **A preset whose numbers look wrong is not a broken preset.** `simmer` sits at
   a dispersion of 1.02 and an orbit of a third of a pixel; `migration` at a
   minimum Jacobian of 0.81; `dream` at a `light` of 6.7 where every other scene
