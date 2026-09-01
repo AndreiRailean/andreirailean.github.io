@@ -1,4 +1,4 @@
-import { axisOf, commits, resist, scrubSteps, type Axis } from "@/experiments/gallery/gesture"
+import { axisOf, commits, type Axis } from "@/experiments/gallery/gesture"
 
 /**
  * The interactive view: a piece full-bleed on a touch device, with two axes of
@@ -20,15 +20,6 @@ import { axisOf, commits, resist, scrubSteps, type Axis } from "@/experiments/ga
  * relearn how to leave, or which way the next piece is, in the next room.
  */
 
-/** How far a drag carries one scene in the scrubbing feel, in px. */
-const SCRUB_STRIDE = 64
-
-/** How far a blocked axis can be pulled before it stops giving, in px. */
-const RESIST_LIMIT = 96
-
-/** The outgoing slide: long enough to read as a departure, short enough not to be a wait. */
-const LEAVE_MS = 260
-
 /** How long each thing in the middle of the screen stays up before it starts going. */
 const MARK_MS = 850
 const NAME_MS = 1300
@@ -40,23 +31,24 @@ const GOING_MS = 600
 /** How long the one-time gesture hint stays up. */
 const HINT_MS = 6000
 
-/**
- * Three feels, so the gesture can be judged by using it rather than described.
+/*
+ * Two other gestures were built and thrown away, and both are worth not
+ * rebuilding.
  *
- * - `quiet` — nothing on screen moves. The scene changes on release, and the
- *   placard names it.
- * - `drag` — the piece follows the finger and either snaps back or carries on out.
- * - `scrub` — scenes change continuously under the fingertip, so one long drag
- *   riffles through everything a piece has.
+ * `drag` had the piece follow the finger and either snap back or carry on out.
+ * `scrub` changed scenes continuously under the fingertip, so one long drag
+ * riffled through everything a piece had. Both were tried on a phone against
+ * this one and neither earned its place: the dragging read as an animation about
+ * the swipe rather than about the work, and the scrubbing invited the reading
+ * that a horizontal drag seeks *within* a scene — a fast-forward — which is not
+ * a thing any piece here has.
  *
- * Chosen with `?feel=`. Not a setting, so it never joins the shareable query
- * string a piece builds from its own state.
+ * What is left is the one that needs no explaining: the scene changes when the
+ * finger comes off, and nothing moves that the piece did not move.
  */
-const FEELS = ["quiet", "drag", "scrub"] as const
-export type Feel = (typeof FEELS)[number]
 
 /** Non-setting params the view carries from one piece to the next. */
-const CARRIED: readonly string[] = ["reel", "feel"]
+const CARRIED: readonly string[] = ["reel"]
 
 /**
  * The address as it arrived, read once at import.
@@ -87,11 +79,6 @@ export function isReel(search: string = ENTRY): boolean {
   if (forced === "1") return true
   if (forced === "0") return false
   return window.matchMedia("(hover: none) and (pointer: coarse)").matches
-}
-
-export function feelOf(search: string = ENTRY): Feel {
-  const asked = new URLSearchParams(search).get("feel")
-  return FEELS.find((feel) => feel === asked) ?? "quiet"
 }
 
 /** The address of another piece, carrying the params that describe how this view is being looked at. */
@@ -163,9 +150,8 @@ export function mountReel(): void {
   const name = root.querySelector<HTMLElement>(".name")
   const word = root.querySelector<HTMLElement>(".word")
 
-  const feel = feelOf()
   root.hidden = false
-  html.dataset.reel = feel
+  html.dataset.reel = "on"
 
   const previous = neighbourFrom(root, "previous")
   const next = neighbourFrom(root, "next")
@@ -176,15 +162,6 @@ export function mountReel(): void {
   let index = -1
   let paused = false
   let leaving = false
-
-  const surfaces = () => [...document.querySelectorAll<HTMLElement>("canvas")]
-
-  function offset(x: number, y: number, animate = false) {
-    for (const surface of surfaces()) {
-      surface.style.transition = animate ? `transform ${LEAVE_MS}ms cubic-bezier(0.2, 0, 0.1, 1)` : "none"
-      surface.style.transform = x === 0 && y === 0 ? "" : `translate3d(${x}px, ${y}px, 0)`
-    }
-  }
 
   /**
    * Which scene the piece is actually on.
@@ -293,36 +270,24 @@ export function mountReel(): void {
     drawWhileHeld()
   }
 
-  /** The name a horizontal gesture would land on, for the placard to preview mid-drag. */
-  const wouldLand = (dx: number) => names[Math.min(names.length - 1, Math.max(0, index + (dx < 0 ? 1 : -1)))]
-
-  function leaveTo(neighbour: Neighbour, away: -1 | 1) {
+  function leaveTo(neighbour: Neighbour) {
     if (leaving) return
     leaving = true
-    say(neighbour.title)
-    const go = () => window.location.assign(pieceHref(neighbour.slug, ENTRY))
-    if (feel === "quiet") {
-      go()
-      return
-    }
-    offset(0, away * window.innerHeight, true)
-    window.setTimeout(go, LEAVE_MS)
+    window.location.assign(pieceHref(neighbour.slug, ENTRY))
   }
 
   // --- the gesture ---------------------------------------------------------
 
-  let from: { x: number; y: number; at: number; id: number; index: number } | null = null
+  let from: { x: number; y: number; at: number; id: number } | null = null
   let axis: Axis | null = null
-  let scrubbed = 0
 
   const isFurniture = (target: EventTarget | null) => target instanceof Element && Boolean(target.closest(".out"))
 
   function onPointerDown(event: PointerEvent) {
     if (leaving || from || isFurniture(event.target)) return
     index = readIndex()
-    from = { x: event.clientX, y: event.clientY, at: event.timeStamp, id: event.pointerId, index }
+    from = { x: event.clientX, y: event.clientY, at: event.timeStamp, id: event.pointerId }
     axis = null
-    scrubbed = 0
   }
 
   function onPointerMove(event: PointerEvent) {
@@ -330,28 +295,16 @@ export function mountReel(): void {
     const dx = event.clientX - from.x
     const dy = event.clientY - from.y
 
+    /*
+     * Nothing but locking the axis.
+     *
+     * The placard used to name the scene the swipe *would* land on while the
+     * finger was still down, and it was the most confusing thing in the view:
+     * the name changed, the work did not, and the two disagreed until the finger
+     * came off. A label that describes something not on the screen is worse than
+     * no label, so the placard now only ever names what is actually running.
+     */
     axis ??= axisOf(dx, dy)
-    if (!axis) return
-
-    if (axis === "x") {
-      if (feel === "scrub") {
-        // Left is forward, so a drag leftwards walks up the list.
-        const steps = scrubSteps(-dx, SCRUB_STRIDE)
-        if (steps !== scrubbed) {
-          scrubbed = steps
-          toPreset(from.index + steps)
-        }
-        return
-      }
-      const blocked = (dx < 0 && index >= names.length - 1) || (dx > 0 && index <= 0)
-      if (feel === "drag") offset(blocked ? resist(dx, RESIST_LIMIT) : dx, 0)
-      say(wouldLand(dx) ?? document.title)
-      return
-    }
-
-    const towards = dy < 0 ? next : previous
-    if (feel === "drag") offset(0, towards ? dy : resist(dy, RESIST_LIMIT))
-    if (towards) say(towards.title)
   }
 
   function onPointerUp(event: PointerEvent) {
@@ -372,8 +325,8 @@ export function mountReel(): void {
     }
 
     if (settled === "x") {
-      if (feel !== "scrub" && commits(dx, elapsed)) toPreset(index + (dx < 0 ? 1 : -1))
-      offset(0, 0, feel === "drag")
+      // Left is forward, the way a page turns.
+      if (commits(dx, elapsed)) toPreset(index + (dx < 0 ? 1 : -1))
       sayScene()
       return
     }
@@ -381,7 +334,7 @@ export function mountReel(): void {
     const towards = dy < 0 ? next : previous
     if (commits(dy, elapsed)) {
       if (towards) {
-        leaveTo(towards, dy < 0 ? -1 : 1)
+        leaveTo(towards)
         return
       }
       /*
@@ -391,7 +344,6 @@ export function mountReel(): void {
        */
       flash(word, dy < 0 ? "the end of the wall" : "the start of the wall", WORD_MS)
     }
-    offset(0, 0, feel === "drag")
     sayScene()
   }
 

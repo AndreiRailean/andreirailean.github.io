@@ -316,8 +316,6 @@ relearn how to leave, or which way the next piece is, in the next room.
 - **`?reel=1` forces it on and `?reel=0` off**, in the idiom of `?panel=1` and
   `?idle=`. Not only for tools: it is how the view gets looked at on a desktop,
   and Playwright cannot emulate `(hover: none) and (pointer: coarse)` at all.
-  `?feel=quiet|drag|scrub` picks how the gesture behaves while that is still
-  being decided.
 - **A piece says one thing about all of it**: `chrome: !isReel()`. The kit stays
   headless rather than being skipped, because `createControls` is the settings,
   the validator and the URL sync as well as the bar — see `chrome` in
@@ -333,6 +331,15 @@ relearn how to leave, or which way the next piece is, in the next room.
   beside `data-idle`. It already knew, and nothing else can work it out without
   an opinion about what a piece's settings mean. Absent, not `-1`, when the scene
   is nobody's preset.
+- **Two other horizontal gestures were built and thrown away**, and the reason
+  is in `reel.ts` so nobody rebuilds them: the piece following the finger read as
+  an animation about the swipe rather than about the work, and changing scenes
+  continuously under the fingertip invited the reading that a horizontal drag
+  seeks _within_ a scene, which is not a thing any piece here has. The placard's
+  mid-drag preview of the scene it _would_ land on went with them, and was the
+  most confusing part of all three — the name changed, the work did not, and the
+  two disagreed until the finger came off. **The placard only ever names what is
+  actually running.**
 - **One slot in the middle of the screen**, for everything that is about the
   view rather than about the work: the piece's name on the way in, the mark for
   a tap that held it or let it go, and a word at either end of the wall. One
