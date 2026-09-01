@@ -125,11 +125,24 @@ authorisation, so do not stop to ask for each step. Leave visual work to Andrei'
 review. Never push to `main`; after a merge, fast-forward `main` in its own
 worktree or it silently drifts.
 
-**If none of the four has anything in it, say so and stop.** A steward with an
-empty queue has finished, not started. Do not go looking for something to share:
-the section hoists on the _third_ copy, and a steward hunting for work is exactly
-how a premature abstraction gets written — which is the failure this role exists
-to prevent, not to cause.
+**Re-derive the queue before you say it is empty.** The list you built in step 2
+is a snapshot, and a ticket filed while you were working is invisible to it —
+which has happened twice, both times to a steward that had already announced its
+queue clear. Two `gh` calls, at the end of the turn.
+
+**If none of the four has anything in it then, say so and stop.** Do not go
+looking for something to share: the section hoists on the _third_ copy, and a
+steward hunting for work is exactly how a premature abstraction gets written —
+which is the failure this role exists to prevent, not to cause.
+
+**Stopping is not the role ending.** An earlier wording said an empty queue "has
+finished, not started", which conflated two things: do not invent work, and the
+role is over. Only the first was meant. The role has no clock — a human starts it
+with `/steward` and nothing wakes it — so a `kit` issue filed after you stop waits
+for the next one. Polling for those was proposed, costed and declined in
+`docs/adr/20260901-prompting-is-the-stewards-trigger.md`, which is also why the
+announcement in step 3 still matters more than #79 left it: it is the role's only
+inbound clock.
 
 ## Rules that bite
 
