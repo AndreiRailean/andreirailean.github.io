@@ -1,6 +1,8 @@
 ---
 import "@/experiments/kit/controls.css"
 
+import Reel from "@/experiments/gallery/Reel.astro"
+
 // A deliberately bare document: no Layout, no globals.css, no Tailwind. The
 // experiment owns the whole viewport and shares no chrome with the rest of the
 // site.
@@ -66,11 +68,18 @@ import "@/experiments/kit/controls.css"
   </head>
   <body>
     <canvas id="lights"></canvas>
+    {
+      /* The interactive view: full-bleed piece, two axes of swipe, on a touch device.
+        Between the canvas and `#ui` because DOM order is the whole stacking
+        arrangement here — see the note in Reel.astro. */
+    }
+    <Reel slug="dangler" />
     <div id="ui"></div>
 
     <script>
       import { createDangler } from "@/experiments/dangler/dangler"
       import { createControls } from "@/experiments/kit/controls"
+      import { isReel } from "@/experiments/gallery/reel"
       import { reroll } from "@/experiments/dangler/reroll"
       import {
         CONTROLS,
@@ -122,6 +131,10 @@ import "@/experiments/kit/controls.css"
       // one validator every input goes through, and what a scene's address is.
       const controls = createControls({
         root: ui,
+        // Headless on a touch device: the kit keeps the settings, the validator
+        // and the URL sync, and draws no bar. The interactive view presents the
+        // piece full-bleed and moves through presets by swipe instead.
+        chrome: !isReel(),
         aboutHref: "/experiments/dangler/about/",
         settings,
         controls: CONTROLS,

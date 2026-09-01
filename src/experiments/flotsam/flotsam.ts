@@ -102,6 +102,16 @@ export type FlotsamStats = {
 export type Flotsam = {
   start: () => void
   stop: () => void
+  /**
+   * Hold the loop where it is, or let it run on.
+   *
+   * Not `stop()` and `start()`: those are teardown and setup — they drop and
+   * re-add the resize listener, and starting redraws and re-measures. This parks the
+   * animation frame and nothing else, and resuming picks the clock up from the
+   * moment it comes back rather than from where it was left, so a piece held for
+   * a minute does not leap a minute when it is let go.
+   */
+  setPaused: (paused: boolean) => void
   setSettings: (next: Settings) => void
   /** Advance the sea by this many seconds at once, then redraw. */
   run: (seconds: number) => void
@@ -580,6 +590,16 @@ export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flo
       frame = 0
       running = false
       window.removeEventListener("resize", onResize)
+    },
+
+    setPaused(paused) {
+      if (!paused) {
+        wake()
+        return
+      }
+      if (frame) cancelAnimationFrame(frame)
+      frame = 0
+      running = false
     },
 
     setSettings(next) {

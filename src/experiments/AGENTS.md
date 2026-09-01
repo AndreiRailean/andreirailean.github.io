@@ -32,7 +32,7 @@ Three of those records are rules you will otherwise rediscover the hard way:
 
 ```
 src/experiments/<slug>/        code, about.md, poster.ts, AGENTS.md
-src/experiments/gallery/       imposed: the index, the notes, the way out
+src/experiments/gallery/       imposed: the index, the notes, the interactive view, the way out
 src/experiments/kit/           offered: the control surface a piece builds its chrome from
 src/experiments/*.ts           shared and owned by no piece: poster, window.d.ts, random
 src/pages/experiments/<slug>/  index.astro (the piece), about.astro (the note)
@@ -157,7 +157,21 @@ src/experiments/<slug>/poster.webp   the result, referenced from about.md
 
 Every experiment exposes `window.experiment` so its controls can be driven
 without a pointer. Minimum surface: `get()`, `set(patch)`, `preset(n)`,
-`panel(open)`, `idle(force)`. See an existing experiment for the shape.
+`presets()`, `pause(held)`, `panel(open)`, `idle(force)`. See an existing
+experiment for the shape.
+
+`presets()` and `pause()` joined that list with the interactive view, which is
+the first thing other than a test to drive a piece through this handle: a swipe
+through the scenes has to say what it landed on, and a tap has to hold the piece.
+`tests/support/experiment.ts` carries the same list as `BaseApi`.
+
+**`pause()` is not the scene's `stop()`.** `stop()` is teardown — it drops the
+resize listener, and in two pieces `start()` visibly moves the scene on the way
+back: Dangler settles its ropes and Flotsam re-measures and redraws. Every piece
+therefore has a `setPaused(held)` that parks the animation frame and nothing
+else, and picks the clock up from the moment it comes back rather than from where
+it was left. Starry Night is the one piece where `stop`/`start` already did
+exactly that.
 
 The global is declared **once for the section**, as `unknown`, in `window.d.ts`;
 each piece keeps its own typed reference rather than widening it. Do not add a
@@ -271,6 +285,78 @@ exercised in both directions:
   nine thousand specks —
   `docs/adr/20260829-a-low-discrepancy-scatter-does-not-scale.md`. The seam is
   stability without policy below, policy above.
+
+### The interactive view
+
+On a touch device a piece is presented full-bleed with no chrome at all, and the
+two gestures are the whole interface: **across for the piece's scenes, up and
+down for the wall.** `gallery/Reel.astro` is the furniture — an X out to the
+index, and a placard naming the scene — and `gallery/reel.ts` is the behaviour.
+Both are imposed, for the reason the notes are: a visitor should not have to
+relearn how to leave, or which way the next piece is, in the next room.
+
+- **It reaches a piece through `window.experiment` and nothing else.**
+  `gallery/` may not import a piece, and does not need to — the console API was
+  built so a headless check could get past the pointer, and this is the same need
+  from the other side. So nothing in `reel.ts` knows what a setting means, which
+  is what keeps it from growing per-piece knowledge.
+- **`?reel=1` forces it on and `?reel=0` off**, in the idiom of `?panel=1` and
+  `?idle=`. Not only for tools: it is how the view gets looked at on a desktop,
+  and Playwright cannot emulate `(hover: none) and (pointer: coarse)` at all.
+  `?feel=quiet|drag|scrub` picks how the gesture behaves while that is still
+  being decided.
+- **A piece says one thing about all of it**: `chrome: !isReel()`. The kit stays
+  headless rather than being skipped, because `createControls` is the settings,
+  the validator and the URL sync as well as the bar — see `chrome` in
+  `kit/controls.ts`.
+- **The kit publishes which preset is on screen** as `data-preset` on `<html>`,
+  beside `data-idle`. It already knew, and nothing else can work it out without
+  an opinion about what a piece's settings mean. Absent, not `-1`, when the scene
+  is nobody's preset.
+- **One slot in the middle of the screen**, for everything that is about the
+  view rather than about the work: the piece's name on the way in, the mark for
+  a tap that held it or let it go, and a word at either end of the wall. One
+  timer pair for all of them, so two cannot be up at once and a second flash
+  replaces the first rather than racing it. Every one of them goes, the way the
+  chrome does — a persistent hold mark was tried first and was more furniture
+  than the view wanted.
+- **A tap holds the piece**, through `pause()`. The state outlives the mark that
+  announced it, which is why a resume shows the _other_ icon rather than the
+  same one again — on a slow piece that is the only thing distinguishing held
+  from running.
+- **Arriving names the piece, large, over the gap where it boots.** A piece
+  arrives as an empty canvas, and between two full-bleed graphics that makes
+  arriving somewhere new and arriving nowhere look the same. It is also the
+  swipe's only acknowledgement: the placard is still naming the _scene_.
+- **The dots are the only thing that says the horizontal axis exists.** A gesture
+  with no visible extent is one nobody tries twice, and the placard's own words
+  cannot say how many scenes are left. The vertical axis gets a one-line hint,
+  once a session.
+- **Both ends of the vertical axis say so**, and then stop saying it. Silence at
+  the end of the wall reads as a gesture the view failed to register, which is
+  the explanation a visitor reaches for first.
+- **The screen is held awake by the kit's `wakelock.ts`, and only over HTTPS.**
+  Screen Wake Lock is a secure-context API, so a piece served over plain `http`
+  to anything but localhost silently gets no lock — which is every phone looking
+  at a dev server by IP. Nothing is wrong when that happens, and there is
+  nothing to fix in the page.
+- **The address the view arrived at is read once, at import.** A piece landed on
+  bare rewrites its own query and drops every param that is not a setting, so
+  reading the live address later says this visit never asked for the view. That
+  was a live bug the browser suite caught.
+- Neither axis wraps, and adding a piece needs no change here — the order comes
+  from `gallery/order.ts`, which the index uses too.
+
+The seam, and the two routes not taken, are in
+`docs/adr/20260901-the-gallery-presents-a-piece-on-a-phone.md`.
+
+**A poster was held over the canvas while the piece booted, and it is gone.** It
+removed the black rectangle of a cold landing, and it cost more than it saved:
+the still is of a scene the piece is not yet running — no poster here is
+reproducible, and two pieces need seconds to establish — so the crossfade landed
+as a visible jump from one picture to a different one. Booting straight into the
+piece is honest about what is happening. Do not put it back without solving the
+mismatch: `docs/adr/20260901-a-poster-held-over-a-booting-piece.md`.
 
 ### The kit renders the chrome, and dresses it
 

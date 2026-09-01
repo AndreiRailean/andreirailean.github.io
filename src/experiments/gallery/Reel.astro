@@ -1,0 +1,358 @@
+---
+import { getCollection } from "astro:content"
+
+import { neighbours, wallOrder } from "@/experiments/gallery/order"
+
+/**
+ * The interactive view's furniture.
+ *
+ * Imposed, like the rest of `gallery/`: a piece includes this and chooses
+ * nothing about it, for the same reason it does not get to move the note's exit.
+ * A visitor should not have to find the way out twice.
+ *
+ * The behaviour is in `reel.ts`; this file is markup, appearance, and the two
+ * facts the script cannot work out for itself — which pieces sit either side of
+ * this one on the wall, and what they are called.
+ *
+ * **Placed after the canvas and before the kit's `#ui`.** Nothing here carries a
+ * `z-index`: every layer is `position: fixed` with an automatic stacking level,
+ * so DOM order is the whole arrangement. A `z-index` on any one of them would
+ * jump it over the chrome, which has none.
+ */
+
+interface Props {
+  /** The piece this view is of. */
+  slug: string
+}
+
+const { slug } = Astro.props
+
+const order = wallOrder(await getCollection("experiments"))
+const { previous, next } = neighbours(
+  order.map((entry) => entry.data.slug),
+  slug,
+)
+
+const titleOf = (want: string | null) => order.find((entry) => entry.data.slug === want)?.data.title ?? ""
+---
+
+<div
+  id="reel"
+  hidden
+  data-previous={previous ?? undefined}
+  data-previous-title={previous ? titleOf(previous) : undefined}
+  data-next={next ?? undefined}
+  data-next-title={next ? titleOf(next) : undefined}
+>
+  <a class="out" href="/experiments/" aria-label="Back to the index">
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M5 5 19 19M19 5 5 19" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+    </svg>
+  </a>
+
+  {
+    /*
+     * One slot in the middle of the screen, for everything that is about the
+     * view rather than about the work: which piece this is, that it has just
+     * been held or let go, and that there is nothing past this end of the wall.
+     *
+     * They share the slot because they are never worth saying at once, and each
+     * shows and then goes on its own — the same bargain the chrome makes.
+     * Nothing here is a persistent state readout.
+     *
+     * The spans wrap their icons rather than being hidden directly: `hidden` is
+     * an HTML attribute and an inline SVG is not an HTML element.
+     */
+  }
+  <div class="middle" hidden>
+    <p class="name" hidden></p>
+    <span class="mark held" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <rect x="6" y="4" width="4.25" height="16" fill="currentColor"></rect>
+        <rect x="13.75" y="4" width="4.25" height="16" fill="currentColor"></rect>
+      </svg>
+    </span>
+    <span class="mark playing" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M7 4 20 12 7 20Z" fill="currentColor"></path>
+      </svg>
+    </span>
+    <p class="word" role="status" hidden></p>
+  </div>
+
+  <div class="placard">
+    <p class="scene"></p>
+    <ol class="dots" aria-hidden="true"></ol>
+    <p class="hint" hidden>← scenes → &nbsp;·&nbsp; ↑ pieces ↓</p>
+  </div>
+</div>
+
+<style>
+  /*
+   * Dressed from the kit's token contract — `--ui-panel`, `--ui-text`,
+   * `--ui-edge` — rather than from a palette of its own.
+   *
+   * The index is achromatic on purpose, because a hue there would take sides
+   * between the pieces. Here it would do something worse: Starry Night drives
+   * the whole chrome a second time from an inverted scheme, so a dark slab
+   * hardcoded in this file would sit as a black plate on a light sky. Every one
+   * of these tokens has a fallback, so the furniture works on a piece that sets
+   * none of them.
+   */
+  #reel {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    font:
+      400 0.8125rem/1.5 ui-monospace,
+      "SF Mono",
+      Menlo,
+      monospace;
+    letter-spacing: 0.03em;
+    color: var(--ui-text, rgb(255 255 255 / 72%));
+  }
+
+  /* The way out and the label go with the pointer, the way the chrome already
+     does. The middle slot does not — see the note on it above. */
+  .out,
+  .placard {
+    transition: opacity var(--ui-fade, 0.35s) ease-out;
+  }
+
+  :global(html[data-idle="true"]) .out,
+  :global(html[data-idle="true"]) .placard {
+    opacity: 0;
+  }
+
+  /*
+   * The way out. Square, because a round button reads as a floating control and
+   * this is a corner of the frame. Top left: both swipe axes start from the
+   * middle of the screen, and a thumb reaching for either should not be able to
+   * find this by accident.
+   */
+  .out {
+    position: absolute;
+    top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
+    left: calc(env(safe-area-inset-left, 0px) + 0.75rem);
+    display: grid;
+    width: 2.75rem;
+    height: 2.75rem;
+    pointer-events: auto;
+    place-items: center;
+    background: var(--ui-chip, rgb(8 14 19 / 74%));
+    border: 1px solid var(--ui-edge, rgb(255 255 255 / 12%));
+    border-radius: 0;
+    color: inherit;
+    backdrop-filter: blur(12px) saturate(130%);
+  }
+
+  .out svg {
+    display: block;
+    width: 1.375rem;
+    height: 1.375rem;
+  }
+
+  /*
+   * A caption along the foot of the frame rather than a card laid on it.
+   *
+   * Flush to three edges and unrounded, over a gradient rather than a slab: a
+   * bordered box with corners is an object on top of the work and takes the
+   * attention that goes with being one. The gradient does the only job the slab
+   * was doing, which is keeping small text readable over whatever the piece
+   * happens to be drawing there.
+   */
+  .placard {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 1rem;
+    padding: 2.25rem calc(env(safe-area-inset-right, 0px) + 0.9rem) calc(env(safe-area-inset-bottom, 0px) + 0.7rem)
+      calc(env(safe-area-inset-left, 0px) + 0.9rem);
+    background: linear-gradient(to top, var(--ui-panel, rgb(6 12 16 / 84%)) 35%, transparent);
+  }
+
+  .scene {
+    flex: 1 1 auto;
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /*
+   * How many scenes there are, and which one this is.
+   *
+   * Nothing else on the screen says the horizontal axis has anywhere to go, and
+   * a gesture with no visible extent is one nobody tries twice. Marked
+   * `aria-hidden`: the placard already names the scene in words, and a row of
+   * unlabelled bullets would be read out as a second, worse copy of that.
+   */
+  .dots {
+    display: flex;
+    flex: none;
+    gap: 0.3rem;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /*
+   * `:global` on the item, because there are as many dots as the piece has
+   * scenes and only the piece can say — so they are built in the script, and a
+   * scoped rule would never match them. Astro stamps its scope onto elements in
+   * the template, and these are not in it.
+   */
+  .dots :global(li) {
+    width: 0.3125rem;
+    height: 0.3125rem;
+    border-radius: 50%;
+    background: currentcolor;
+    opacity: 0.3;
+    transition:
+      opacity 200ms ease-out,
+      transform 200ms ease-out;
+  }
+
+  .dots :global(li[data-here="true"]) {
+    opacity: 1;
+    transform: scale(1.35);
+  }
+
+  /*
+   * Shown once a session and never again.
+   *
+   * The dots say the scenes go across; nothing says the wall goes up and down.
+   * It rides the placard, so it leaves with the chrome rather than being a thing
+   * to dismiss.
+   */
+  .hint {
+    flex: 1 0 100%;
+    margin: 0;
+    color: var(--ui-heading, rgb(255 255 255 / 34%));
+    font-size: 0.6875rem;
+  }
+
+  .middle:not([hidden]) {
+    display: grid;
+  }
+
+  .middle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    justify-items: center;
+    max-width: min(88vw, 32rem);
+    transform: translate(-50%, -50%);
+  }
+
+  /* One going-away for everything in the slot, so the three read as one piece
+     of furniture that comes and goes rather than three that behave differently. */
+  .middle > * {
+    transition: opacity 600ms ease-out;
+    animation: reel-arrive 240ms ease-out;
+  }
+
+  .middle > [data-going="true"] {
+    opacity: 0;
+  }
+
+  .mark:not([hidden]) {
+    display: block;
+  }
+
+  .mark {
+    color: var(--ui-text, rgb(255 255 255 / 72%));
+    opacity: 0.55;
+    filter: drop-shadow(0 1px 6px rgb(0 0 0 / 35%));
+  }
+
+  .mark svg {
+    display: block;
+    width: 4rem;
+    height: 4rem;
+  }
+
+  /*
+   * Which piece this is, on the way in.
+   *
+   * A piece boots to an empty canvas — there is no still held over it any more,
+   * and the poster that used to be is in
+   * `docs/adr/20260901-a-poster-held-over-a-booting-piece.md`. Naming the piece
+   * over that gap is what a swipe between two full-bleed graphics otherwise
+   * lacks: without it, arriving somewhere new and arriving nowhere look the
+   * same.
+   */
+  .name {
+    margin: 0;
+    font-size: clamp(1.75rem, 11vw, 3.25rem);
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+    text-align: center;
+    text-shadow: 0 1px 14px rgb(0 0 0 / 45%);
+  }
+
+  .word {
+    margin: 0;
+    padding: 0.5rem 0.85rem;
+    background: var(--ui-chip, rgb(8 14 19 / 74%));
+    color: inherit;
+    text-align: center;
+    backdrop-filter: blur(12px) saturate(130%);
+  }
+
+  @keyframes reel-arrive {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .out,
+    .placard {
+      transition: none;
+    }
+
+    .middle > * {
+      animation: none;
+    }
+
+    .dots :global(li) {
+      transition: none;
+    }
+
+    .held,
+    .word {
+      animation: none;
+    }
+  }
+</style>
+
+<style is:global>
+  /*
+   * Panning is ours, so the browser's is off — otherwise a vertical swipe fights
+   * the overscroll bounce and a horizontal one is eaten by the page.
+   * `pinch-zoom` rather than `none`, so a visitor can still magnify the work.
+   */
+  html[data-reel] {
+    touch-action: pinch-zoom;
+    overscroll-behavior: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  html[data-reel] canvas {
+    -webkit-touch-callout: none;
+  }
+</style>
+
+<script>
+  import { mountReel } from "@/experiments/gallery/reel"
+
+  mountReel()
+</script>

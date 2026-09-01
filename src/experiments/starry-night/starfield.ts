@@ -78,6 +78,17 @@ export type Starfield = {
   stats: () => StarfieldStats
   start: () => void
   stop: () => void
+  /**
+   * Hold the sky where it is, or let it run on.
+   *
+   * The one piece where this is exactly `start` and `stop` already: they park
+   * and restart the frame and touch nothing else, and `start` zeroes
+   * `lastFrameMs` so a sky held for a minute does not leap a minute when it is
+   * let go. Named separately anyway, because it is what the gallery's
+   * interactive view asks every piece for and the other three cannot answer it
+   * with their own `stop`.
+   */
+  setPaused: (paused: boolean) => void
   destroy: () => void
 }
 
@@ -503,5 +514,8 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
   rebuildClouds()
   window.addEventListener("resize", handleResize)
 
-  return { setSettings, stats, start, stop, destroy }
+  /** Exactly `start` and `stop` here; see the note on the type. */
+  const setPaused = (paused: boolean) => (paused ? stop() : start())
+
+  return { setSettings, stats, start, stop, setPaused, destroy }
 }

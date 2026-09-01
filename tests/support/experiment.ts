@@ -41,6 +41,22 @@ export type BaseApi = {
   get: () => Record<string, unknown>
   set: (patch: Record<string, never>) => Record<string, unknown>
   preset: (which: number | string) => Record<string, unknown>
+  /**
+   * The preset names, in keyboard order.
+   *
+   * Part of the minimum surface since the gallery's interactive view arrived:
+   * a swipe through the presets has to be able to say what it landed on, and it
+   * reaches every piece through this handle and nothing else.
+   */
+  presets: () => string[]
+  /**
+   * Hold the piece where it is, or let it run on. Omit to toggle.
+   *
+   * Minimum surface for the same reason as `presets()`: a tap in the interactive
+   * view holds the piece, and the gallery reaches every piece through this
+   * handle and nothing else.
+   */
+  pause: (held?: boolean) => boolean
   panel: (open?: boolean) => boolean
   idle: (force?: boolean | null) => void
 }

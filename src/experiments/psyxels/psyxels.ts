@@ -105,6 +105,16 @@ export type PsyxelsStats = {
 export type Psyxels = {
   start: () => void
   stop: () => void
+  /**
+   * Hold the loop where it is, or let it run on.
+   *
+   * Not `stop()` and `start()`: those are teardown and setup — they drop and
+   * re-add the resize listener, and starting disconnects nothing but re-arms the observer. This parks the
+   * animation frame and nothing else, and resuming picks the clock up from the
+   * moment it comes back rather than from where it was left, so a piece held for
+   * a minute does not leap a minute when it is let go.
+   */
+  setPaused: (paused: boolean) => void
   setSettings: (next: Settings) => void
   /** Draw the squares the packing chose, which the piece never shows. */
   setDebug: (on: boolean) => void
@@ -630,6 +640,18 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
       last = 0
       fpsSince = performance.now()
       handle = window.requestAnimationFrame(step)
+    },
+
+    setPaused(paused) {
+      if (!paused) {
+        if (running) return
+        running = true
+        last = 0
+        handle = window.requestAnimationFrame(step)
+        return
+      }
+      running = false
+      window.cancelAnimationFrame(handle)
     },
 
     stop() {

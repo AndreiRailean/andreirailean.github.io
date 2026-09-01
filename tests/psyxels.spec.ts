@@ -585,3 +585,34 @@ test("the defaults are a baseline rather than a scene, and no preset leans on th
   }
   expect(PRESETS[0]!.settings).not.toEqual(DEFAULT_SETTINGS)
 })
+
+test("holding the field stops its clock, and letting go picks up where it left off", async ({ page }) => {
+  const experiment = await openPsyxels(page, { idle: false })
+  const clock = () => experiment.api(({ api }) => api.stats().clock)
+
+  await page.waitForTimeout(300)
+  const before = await clock()
+  expect(before).toBeGreaterThan(0)
+
+  expect(await experiment.api(({ api }) => api.pause(true))).toBe(true)
+  const held = await clock()
+  // Held far longer than it is then let to run, so the two are told apart by a
+  // wide margin rather than by a tight bound on a timer nobody controls.
+  await page.waitForTimeout(1500)
+  expect(await clock()).toBe(held)
+
+  /*
+   * And resumes from the moment it comes back, not from the moment it was
+   * stopped. `stop()` and `start()` would not do this — they are teardown and
+   * setup, and the piece's clock would take the whole held interval in one step
+   * the frame after. Checked here rather than in the gallery's own spec because
+   * the clock is this piece's, and this is the piece whose clock moves fast
+   * enough to read in a test.
+   */
+  expect(await experiment.api(({ api }) => api.pause(false))).toBe(false)
+  await page.waitForTimeout(200)
+  const after = await clock()
+  expect(after).toBeGreaterThan(held)
+  // A resume that took the hold in one step would add 1.5s of clock or more.
+  expect(after - held).toBeLessThan(0.8)
+})

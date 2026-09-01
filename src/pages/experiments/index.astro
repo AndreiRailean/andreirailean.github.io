@@ -3,13 +3,16 @@ import "@fontsource-variable/archivo/wdth.css"
 import { Image } from "astro:assets"
 import { getCollection } from "astro:content"
 
+import { wallOrder } from "@/experiments/gallery/order"
+
 // Deliberately no site Layout: the experiments section is its own place and
 // will get its own theme eventually. Kept minimal so it imposes nothing on the
 // experiments it lists — the font is imported straight from the package rather
 // than through the site's stylesheet, and it is not one of the site's two.
-const experiments = (await getCollection("experiments")).sort(
-  (a, b) => b.data.updated.valueOf() - a.data.updated.valueOf(),
-)
+// The wall's order comes from `gallery/order`, which the interactive view reads
+// too: swiping up on a phone has to move through the pieces in the order the
+// list you came from showed them.
+const experiments = wallOrder(await getCollection("experiments"))
 
 const formatDate = (date: Date) => date.toLocaleDateString("en-GB", { month: "short", year: "numeric" })
 

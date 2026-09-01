@@ -19,7 +19,7 @@ land on. The piece is the artwork, and the only thing an experiment owns
 entirely: its palette, its motion, its geometry, what it draws.
 
 **Gallery** — the surfaces a visitor crosses between pieces: the index, the
-notes, the way out. Shared and _imposed_ — one implementation each experiment
+notes, the interactive view, the way out. Shared and _imposed_ — one implementation each experiment
 tints, because a visitor should not have to relearn the exit in the next room. An
 experiment does not get to move it.
 
@@ -46,6 +46,22 @@ looked for, gone while watching.
 
 **Chrome** — a piece's controls. Appears on input and disappears together with
 the pointer after a few idle seconds, the way video controls do.
+
+**Interactive view** — what the gallery renders a piece as on a touch device:
+full-bleed, no chrome, and three gestures — across for the piece's scenes, up and
+down for the wall, and a tap to **hold** it. Its furniture is an X out to the
+index and a placard naming the scene with a dot per scene, which come and go with
+the same idle state the chrome does, and one slot in the middle of the screen for
+what is about the view rather than the work — the piece's name on the way in, a
+mark for the hold, a word at either end of the wall. Everything there shows and
+then goes; none of it is a state readout. Gallery, therefore
+imposed: a piece chooses nothing about it and says one thing about it, which is
+that the kit should not draw a bar. It reaches a piece only through the **console
+API**, so it holds no knowledge of any piece.
+
+**Held** — a piece with its animation frame parked, from a tap. Distinct from a
+scene's `stop()`, which is teardown; a held piece keeps its listeners and picks
+its clock up from the moment it is let go.
 
 **Panel** — the expanded settings surface behind the chrome's `adjust`.
 
