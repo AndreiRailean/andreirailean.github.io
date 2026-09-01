@@ -49,29 +49,3 @@ export function commits(travel: number, elapsed: number): boolean {
   if (distance < AXIS_LOCK) return false
   return distance / Math.max(elapsed, 1) >= COMMIT_SPEED
 }
-
-/**
- * Travel with a wall behind it: asymptotic, so a blocked direction gives a
- * little and never gives way.
- *
- * At `limit` of pull it has moved half of `limit`, and it cannot reach `limit`
- * however hard it is pulled. This is what the ends of both axes do — neither
- * wraps, so the last preset and the last piece need to feel like ends rather
- * than like a gesture that failed to register.
- */
-export function resist(travel: number, limit: number): number {
-  const distance = Math.abs(travel)
-  return Math.sign(travel) * ((limit * distance) / (distance + limit))
-}
-
-/**
- * How many presets a continuous drag has moved through, for the scrubbing feel.
- *
- * Truncated rather than rounded: the step lands when the finger has actually
- * covered a stride, so the scene changes under the fingertip at the moment the
- * distance is paid rather than half a stride early.
- */
-export function scrubSteps(travel: number, stride: number): number {
-  if (stride <= 0) return 0
-  return Math.trunc(travel / stride)
-}
