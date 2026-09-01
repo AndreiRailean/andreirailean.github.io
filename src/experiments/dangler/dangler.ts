@@ -36,6 +36,16 @@ export type DanglerStats = {
 export type Dangler = {
   start: () => void
   stop: () => void
+  /**
+   * Hold the loop where it is, or let it run on.
+   *
+   * Not `stop()` and `start()`: those are teardown and setup — they drop and
+   * re-add the resize listener, and starting settles the ropes, which visibly moves the scene. This parks the
+   * animation frame and nothing else, and resuming picks the clock up from the
+   * moment it comes back rather than from where it was left, so a piece held for
+   * a minute does not leap a minute when it is let go.
+   */
+  setPaused: (paused: boolean) => void
   setSettings: (next: Settings) => void
   /** Runs the scene to rest. Returns once it is still. */
   settle: () => void
@@ -493,6 +503,16 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
       frame = 0
       running = false
       window.removeEventListener("resize", onResize)
+    },
+
+    setPaused(paused) {
+      if (!paused) {
+        wake()
+        return
+      }
+      if (frame) cancelAnimationFrame(frame)
+      frame = 0
+      running = false
     },
 
     setSettings(next) {

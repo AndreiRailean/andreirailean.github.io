@@ -43,6 +43,17 @@ export type ExperimentApi = {
   debug: (on: boolean) => void
   /** Open or close the settings panel; omit to toggle. Returns the new state. */
   panel: (open?: boolean) => boolean
+  /**
+   * Hold the piece where it is, or let it run on. Omit to toggle; returns
+   * whether it is now held.
+   *
+   * Part of the section's minimum surface since the interactive view arrived: a
+   * tap on a phone holds the piece, and there is nothing else on the screen for
+   * that to go through. Distinct from the scene's own `stop()`, which is
+   * teardown — it drops listeners and, in two pieces, visibly moves the scene on
+   * the way back.
+   */
+  pause: (held?: boolean) => boolean
   /** Pin idle on or off — hiding the cursor and chrome. Omit to resume auto. */
   idle: (force?: boolean | null) => void
   /** The shareable URL for the current scene. */
@@ -70,6 +81,7 @@ export function announceApi(): void {
     ["experiment.run(60)", "skip a minute of sea forward"],
     ["experiment.debug(true)", "show the crests and the current"],
     ["experiment.panel(true)", "open the settings panel"],
+    ["experiment.pause()", "hold the sea where it is, or let it run on"],
     ["experiment.idle(false)", "stop the chrome hiding itself"],
     ["experiment.fullscreen()", "toggle fullscreen (or press f)"],
     ["experiment.awake()", "is the display being held awake"],
@@ -83,6 +95,10 @@ export function announceApi(): void {
 }
 
 export function createApi(controls: Controls<Settings>, wakeLock: WakeLock, scene: Flotsam): ExperimentApi {
+  // Held here rather than read back off the scene: whether a piece is paused is
+  // a fact about how it is being looked at, not about what it is drawing.
+  let paused = false
+
   return {
     get: () => controls.getSettings(),
 
@@ -129,6 +145,12 @@ export function createApi(controls: Controls<Settings>, wakeLock: WakeLock, scen
       const next = open ?? !controls.isPanelOpen()
       controls.setPanelOpen(next)
       return next
+    },
+
+    pause(held) {
+      paused = held ?? !paused
+      scene.setPaused(paused)
+      return paused
     },
 
     idle(force = null) {

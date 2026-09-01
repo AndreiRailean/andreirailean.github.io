@@ -49,6 +49,14 @@ export type BaseApi = {
    * reaches every piece through this handle and nothing else.
    */
   presets: () => string[]
+  /**
+   * Hold the piece where it is, or let it run on. Omit to toggle.
+   *
+   * Minimum surface for the same reason as `presets()`: a tap in the interactive
+   * view holds the piece, and the gallery reaches every piece through this
+   * handle and nothing else.
+   */
+  pause: (held?: boolean) => boolean
   panel: (open?: boolean) => boolean
   idle: (force?: boolean | null) => void
 }
