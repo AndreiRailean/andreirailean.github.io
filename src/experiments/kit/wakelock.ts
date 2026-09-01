@@ -57,6 +57,21 @@ export function keepAwake(): WakeLock {
 
   const onVisibilityChange = () => void acquire()
   document.addEventListener("visibilitychange", onVisibilityChange)
+
+  /*
+   * And on the first touch, because some browsers will only grant a lock to a
+   * document that has been interacted with.
+   *
+   * The call above happens as the module loads, which on a piece landed on
+   * directly is before the visitor has done anything at all — and a refusal
+   * there is silent and final, since `visibilitychange` never fires on a page
+   * that stayed visible the whole time. Cheap to leave attached: `acquire`
+   * returns immediately once a lock is held.
+   */
+  const onInteraction = () => void acquire()
+  window.addEventListener("pointerdown", onInteraction, { passive: true })
+  window.addEventListener("keydown", onInteraction, { passive: true })
+
   void acquire()
 
   return {
@@ -64,6 +79,8 @@ export function keepAwake(): WakeLock {
     release() {
       wanted = false
       document.removeEventListener("visibilitychange", onVisibilityChange)
+      window.removeEventListener("pointerdown", onInteraction)
+      window.removeEventListener("keydown", onInteraction)
       void sentinel?.release()
       sentinel = null
     },
