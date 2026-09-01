@@ -9,12 +9,13 @@
  */
 
 /** What can be pixellated. Every one of them is a still image by the time the field sees it. */
-export const SUBJECTS = ["A", "&", "avatar"] as const
+export const SUBJECTS = ["A", "L", "&", "avatar"] as const
 
 export type SubjectKind = (typeof SUBJECTS)[number]
 
 export const SUBJECT_LABELS: Record<SubjectKind, string> = {
   A: "A",
+  L: "L",
   "&": "&",
   avatar: "portrait",
 }
