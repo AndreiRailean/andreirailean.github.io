@@ -8,6 +8,15 @@ it, and tell them.
 Invoke the role with `/steward`. That skill reads this file, then derives the
 current situation rather than being told it.
 
+**A human is the trigger, and there is no other one.** The role has no clock:
+nothing wakes a steward when a `kit` issue is filed or a branch lands, so one
+filed after a steward stops waits for the next `/steward`. Polling for it was
+proposed, costed and declined —
+`docs/adr/20260901-prompting-is-the-stewards-trigger.md`, which also records what
+push channels exist at all, so nobody re-investigates. The practical consequence
+is in the skill: re-derive the queue before declaring it empty, and stopping is
+not the role ending.
+
 ## Scope
 
 **All of `src/experiments/`**, not only `kit/`. The scope was widened once,
