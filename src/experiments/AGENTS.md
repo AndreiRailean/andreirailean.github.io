@@ -322,6 +322,13 @@ relearn how to leave, or which way the next piece is, in the next room.
   headless rather than being skipped, because `createControls` is the settings,
   the validator and the URL sync as well as the bar — see `chrome` in
   `kit/controls.ts`.
+- **Headless does not mean keyless.** `chrome: false` skips appending the bar and
+  the panel; the kit's `keydown` listener registers either way, so the digits,
+  `c`, `f`, a piece's action shortcuts and `←` / `→` all still work here. That is
+  wanted — a tablet with a keyboard gets what the swipe gives — and it stays
+  consistent because both paths go through the kit's one `apply()`, and the
+  placard and dots read `data-preset` through a mutation observer rather than
+  being written by whichever gesture moved the scene.
 - **The kit publishes which preset is on screen** as `data-preset` on `<html>`,
   beside `data-idle`. It already knew, and nothing else can work it out without
   an opinion about what a piece's settings mean. Absent, not `-1`, when the scene
