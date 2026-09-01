@@ -1,12 +1,10 @@
 ---
-import { Image } from "astro:assets"
 import { getCollection } from "astro:content"
 
 import { neighbours, wallOrder } from "@/experiments/gallery/order"
 
 /**
- * The interactive view's furniture, and the poster held over a piece while it
- * boots.
+ * The interactive view's furniture.
  *
  * Imposed, like the rest of `gallery/`: a piece includes this and chooses
  * nothing about it, for the same reason it does not get to move the note's exit.
@@ -18,9 +16,8 @@ import { neighbours, wallOrder } from "@/experiments/gallery/order"
  *
  * **Placed after the canvas and before the kit's `#ui`.** Nothing here carries a
  * `z-index`: every layer is `position: fixed` with an automatic stacking level,
- * so DOM order is the whole arrangement — canvas, then poster, then this
- * furniture, then the chrome. A `z-index` on any one of them would jump it over
- * the chrome, which has none.
+ * so DOM order is the whole arrangement. A `z-index` on any one of them would
+ * jump it over the chrome, which has none.
  */
 
 interface Props {
@@ -31,7 +28,6 @@ interface Props {
 const { slug } = Astro.props
 
 const order = wallOrder(await getCollection("experiments"))
-const here = order.find((entry) => entry.data.slug === slug)
 const { previous, next } = neighbours(
   order.map((entry) => entry.data.slug),
   slug,
@@ -39,23 +35,6 @@ const { previous, next } = neighbours(
 
 const titleOf = (want: string | null) => order.find((entry) => entry.data.slug === want)?.data.title ?? ""
 ---
-
-{
-  /*
-   * The piece's own poster, held over the canvas until the piece has drawn.
-   *
-   * Not decoration: a cold landing is a black rectangle for as long as the piece
-   * takes to produce its first frame, and on a phone that is long enough to read
-   * as a broken page. The poster is captured from the primary preset, which is
-   * exactly what a bare address renders — so what it stands in for is the scene
-   * that is about to appear, not an approximation of it. `reel.ts` removes it
-   * outright when the address carries settings, since then it is a still of a
-   * different scene.
-   */
-  here?.data.poster && (
-    <Image class="curtain" src={here.data.poster} alt="" widths={[720, 1440]} sizes="100vw" loading="eager" />
-  )
-}
 
 <div
   id="reel"
@@ -65,9 +44,39 @@ const titleOf = (want: string | null) => order.find((entry) => entry.data.slug =
   data-next={next ?? undefined}
   data-next-title={next ? titleOf(next) : undefined}
 >
-  <a class="out" href="/experiments/" aria-label="Back to the index">×</a>
+  <a class="out" href="/experiments/" aria-label="Back to the index">
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M5 5 19 19M19 5 5 19" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+    </svg>
+  </a>
+
+  {
+    /*
+     * One slot in the middle of the screen, for the two things that are about
+     * the view rather than about the work: that the piece is held, and that
+     * there is nothing past this end of the wall. They share a slot because they
+     * are never both worth saying — a word about the wall wins while it is up.
+     *
+     * Outside the idle fade below, deliberately. A hold that disappeared after
+     * two seconds would leave a slow piece looking identical to a running one,
+     * which is exactly the piece most likely to be paused.
+     */
+  }
+  <div class="middle" hidden>
+    <span class="held" hidden>
+      {/* Wrapped rather than hidden directly: `hidden` is an HTML attribute and
+          an inline SVG is not an HTML element. */}
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <rect x="6" y="4" width="4.25" height="16" fill="currentColor"></rect>
+        <rect x="13.75" y="4" width="4.25" height="16" fill="currentColor"></rect>
+      </svg>
+    </span>
+    <p class="word" role="status" hidden></p>
+  </div>
+
   <div class="placard">
-    <p class="scene" aria-live="polite"></p>
+    <p class="scene"></p>
+    <ol class="dots" aria-hidden="true"></ol>
     <p class="hint" hidden>← scenes → &nbsp;·&nbsp; ↑ pieces ↓</p>
   </div>
 </div>
@@ -75,25 +84,15 @@ const titleOf = (want: string | null) => order.find((entry) => entry.data.slug =
 <style>
   /*
    * Dressed from the kit's token contract — `--ui-panel`, `--ui-text`,
-   * `--ui-edge`, `--ui-chip` — rather than from a palette of its own.
+   * `--ui-edge` — rather than from a palette of its own.
    *
    * The index is achromatic on purpose, because a hue there would take sides
    * between the pieces. Here it would do something worse: Starry Night drives
-   * the whole chrome a second time from an inverted scheme, so a dark glass slab
+   * the whole chrome a second time from an inverted scheme, so a dark slab
    * hardcoded in this file would sit as a black plate on a light sky. Every one
    * of these tokens has a fallback, so the furniture works on a piece that sets
    * none of them.
    */
-  .curtain {
-    position: fixed;
-    inset: 0;
-    display: block;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    object-fit: cover;
-  }
-
   #reel {
     position: fixed;
     inset: 0;
@@ -105,57 +104,73 @@ const titleOf = (want: string | null) => order.find((entry) => entry.data.slug =
       monospace;
     letter-spacing: 0.03em;
     color: var(--ui-text, rgb(255 255 255 / 72%));
-    /* Together with the pointer, the way the chrome already goes. One idle state
-       for the whole view rather than a second timer racing the kit's. */
+  }
+
+  /* The way out and the label go with the pointer, the way the chrome already
+     does. The middle slot does not — see the note on it above. */
+  .out,
+  .placard {
     transition: opacity var(--ui-fade, 0.35s) ease-out;
   }
 
-  :global(html[data-idle="true"]) #reel {
+  :global(html[data-idle="true"]) .out,
+  :global(html[data-idle="true"]) .placard {
     opacity: 0;
   }
 
   /*
-   * The way out. Top left, because the two swipe axes both start from the middle
-   * of the screen and a thumb reaching for either should not be able to find
-   * this by accident.
+   * The way out. Square, because a round button reads as a floating control and
+   * this is a corner of the frame. Top left: both swipe axes start from the
+   * middle of the screen, and a thumb reaching for either should not be able to
+   * find this by accident.
    */
   .out {
     position: absolute;
     top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
     left: calc(env(safe-area-inset-left, 0px) + 0.75rem);
     display: grid;
-    width: 2.25rem;
-    height: 2.25rem;
+    width: 2.75rem;
+    height: 2.75rem;
     pointer-events: auto;
     place-items: center;
     background: var(--ui-chip, rgb(8 14 19 / 74%));
     border: 1px solid var(--ui-edge, rgb(255 255 255 / 12%));
-    border-radius: 50%;
+    border-radius: 0;
     color: inherit;
-    font-size: 1.125rem;
-    line-height: 1;
-    text-decoration: none;
     backdrop-filter: blur(12px) saturate(130%);
   }
 
+  .out svg {
+    display: block;
+    width: 1.375rem;
+    height: 1.375rem;
+  }
+
   /*
-   * A gallery label, in the placard idiom the index and the chrome already use:
-   * inset from the edges rather than run to them, so it reads as a card laid on
-   * the work.
+   * A caption along the foot of the frame rather than a card laid on it.
+   *
+   * Flush to three edges and unrounded, over a gradient rather than a slab: a
+   * bordered box with corners is an object on top of the work and takes the
+   * attention that goes with being one. The gradient does the only job the slab
+   * was doing, which is keeping small text readable over whatever the piece
+   * happens to be drawing there.
    */
   .placard {
     position: absolute;
-    right: calc(env(safe-area-inset-right, 0px) + 0.75rem);
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
-    left: calc(env(safe-area-inset-left, 0px) + 0.75rem);
-    padding: 0.45rem 0.7rem;
-    background: var(--ui-panel, rgb(6 12 16 / 84%));
-    border: 1px solid var(--ui-edge, rgb(255 255 255 / 12%));
-    border-radius: 0.35rem;
-    backdrop-filter: blur(14px) saturate(130%);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 1rem;
+    padding: 2.25rem calc(env(safe-area-inset-right, 0px) + 0.9rem)
+      calc(env(safe-area-inset-bottom, 0px) + 0.7rem) calc(env(safe-area-inset-left, 0px) + 0.9rem);
+    background: linear-gradient(to top, var(--ui-panel, rgb(6 12 16 / 84%)) 35%, transparent);
   }
 
   .scene {
+    flex: 1 1 auto;
     margin: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -163,21 +178,130 @@ const titleOf = (want: string | null) => order.find((entry) => entry.data.slug =
   }
 
   /*
+   * How many scenes there are, and which one this is.
+   *
+   * Nothing else on the screen says the horizontal axis has anywhere to go, and
+   * a gesture with no visible extent is one nobody tries twice. Marked
+   * `aria-hidden`: the placard already names the scene in words, and a row of
+   * unlabelled bullets would be read out as a second, worse copy of that.
+   */
+  .dots {
+    display: flex;
+    flex: none;
+    gap: 0.3rem;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /*
+   * `:global` on the item, because there are as many dots as the piece has
+   * scenes and only the piece can say — so they are built in the script, and a
+   * scoped rule would never match them. Astro stamps its scope onto elements in
+   * the template, and these are not in it.
+   */
+  .dots :global(li) {
+    width: 0.3125rem;
+    height: 0.3125rem;
+    border-radius: 50%;
+    background: currentcolor;
+    opacity: 0.3;
+    transition:
+      opacity 200ms ease-out,
+      transform 200ms ease-out;
+  }
+
+  .dots :global(li[data-here="true"]) {
+    opacity: 1;
+    transform: scale(1.35);
+  }
+
+  /*
    * Shown once a session and never again.
    *
-   * Nothing on the screen says either axis exists, and a full-bleed graphic with
-   * no affordances is a picture until someone happens to drag it. It rides the
-   * placard, so it leaves with the chrome rather than being a thing to dismiss.
+   * The dots say the scenes go across; nothing says the wall goes up and down.
+   * It rides the placard, so it leaves with the chrome rather than being a thing
+   * to dismiss.
    */
   .hint {
-    margin: 0.2rem 0 0;
+    flex: 1 0 100%;
+    margin: 0;
     color: var(--ui-heading, rgb(255 255 255 / 34%));
     font-size: 0.6875rem;
   }
 
+  .middle:not([hidden]) {
+    display: grid;
+  }
+
+  .middle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    justify-items: center;
+    transform: translate(-50%, -50%);
+  }
+
+  .held:not([hidden]) {
+    display: block;
+  }
+
+  .held {
+    color: var(--ui-text, rgb(255 255 255 / 72%));
+    opacity: 0.55;
+    filter: drop-shadow(0 1px 6px rgb(0 0 0 / 35%));
+    animation: reel-held 220ms ease-out;
+  }
+
+  .held svg {
+    display: block;
+    width: 4rem;
+    height: 4rem;
+  }
+
+  .word {
+    margin: 0;
+    padding: 0.5rem 0.85rem;
+    background: var(--ui-chip, rgb(8 14 19 / 74%));
+    color: inherit;
+    text-align: center;
+    backdrop-filter: blur(12px) saturate(130%);
+    animation: reel-word 260ms ease-out;
+    transition: opacity 600ms ease-out;
+  }
+
+  .word[data-going="true"] {
+    opacity: 0;
+  }
+
+  @keyframes reel-held {
+    from {
+      opacity: 0;
+      transform: scale(0.82);
+    }
+  }
+
+  @keyframes reel-word {
+    from {
+      opacity: 0;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    #reel {
+    .out,
+    .placard,
+    .word {
       transition: none;
+    }
+
+    .dots :global(li) {
+      transition: none;
+    }
+
+    .held,
+    .word {
+      animation: none;
     }
   }
 </style>
@@ -185,8 +309,8 @@ const titleOf = (want: string | null) => order.find((entry) => entry.data.slug =
 <style is:global>
   /*
    * Panning is ours, so the browser's is off — otherwise a vertical swipe fights
-   * the overscroll bounce and a horizontal one is eaten by the page. `pinch-zoom`
-   * rather than `none`, so a visitor can still magnify the work.
+   * the overscroll bounce and a horizontal one is eaten by the page.
+   * `pinch-zoom` rather than `none`, so a visitor can still magnify the work.
    */
   html[data-reel] {
     touch-action: pinch-zoom;

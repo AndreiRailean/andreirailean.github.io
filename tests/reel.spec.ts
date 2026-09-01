@@ -161,17 +161,54 @@ test("the last piece has nothing below it", async ({ page }) => {
   expect(new URL(page.url()).pathname).toBe(`/experiments/${last}/`)
 })
 
-test("the poster is held over the piece and then lifted", async ({ page }) => {
+test("the dots say how many scenes there are and which one this is", async ({ page }) => {
   const slugs = await wall(page)
-  await openExperiment<BaseApi>(page, slugs[0], { query: { reel: "1" }, idle: false })
+  const experiment = await openExperiment<ReelApi>(page, slugs[0], { query: { reel: "1" }, idle: false })
+  const names = await experiment.api(({ api }) => api.presets())
 
-  // Decoded, not merely present: a broken poster is an `<img>` with a
-  // `naturalWidth` of zero and would hold nothing up at all.
-  const curtain = page.locator(".curtain")
-  if ((await curtain.count()) > 0) {
-    await expect
-      .poll(() => curtain.evaluate((img: HTMLImageElement) => img.naturalWidth))
-      .toBeGreaterThan(0)
-  }
-  await expect(curtain).toHaveCount(0, { timeout: 15_000 })
+  const dots = page.locator("#reel .dots li")
+  await expect(dots).toHaveCount(names.length)
+  await expect(page.locator('#reel .dots li[data-here="true"]')).toHaveCount(1)
+  await expect(dots.nth(0)).toHaveAttribute("data-here", "true")
+
+  await swipe(page, -140, 0)
+  await expect(dots.nth(1)).toHaveAttribute("data-here", "true")
+  await expect(dots.nth(0)).toHaveAttribute("data-here", "false")
+})
+
+test("a tap holds the piece, and says so somewhere that does not fade", async ({ page }) => {
+  const slugs = await wall(page)
+  await openExperiment<ReelApi>(page, slugs[0], { query: { reel: "1" }, idle: false })
+
+  const view = page.viewportSize()
+  if (!view) throw new Error("no viewport to tap")
+  const middle = { x: Math.round(view.width / 2), y: Math.round(view.height / 2) }
+
+  await expect(page.locator("#reel .held")).toBeHidden()
+  await page.mouse.click(middle.x, middle.y)
+  await expect(page.locator("#reel .held")).toBeVisible()
+
+  // Held is a state, not an event: a slow piece paused and a slow piece running
+  // look identical, so the mark has to survive the chrome going.
+  await page.evaluate(() => document.documentElement.setAttribute("data-idle", "true"))
+  await expect(page.locator("#reel .held")).toBeVisible()
+
+  await page.evaluate(() => document.documentElement.setAttribute("data-idle", "false"))
+  await page.mouse.click(middle.x, middle.y)
+  await expect(page.locator("#reel .held")).toBeHidden()
+})
+
+test("swiping past the end of the wall says there is nothing there", async ({ page }) => {
+  const slugs = await wall(page)
+  const last = slugs[slugs.length - 1]
+  await openExperiment<ReelApi>(page, last, { query: { reel: "1" }, idle: false })
+
+  // Silence here reads as a gesture the view failed to register, which is the
+  // explanation a visitor reaches for first.
+  await swipe(page, 0, -200)
+  await expect(page.locator("#reel .word")).toBeVisible()
+  await expect(page.locator("#reel .word")).toHaveText(/end of the wall/)
+
+  // And then goes, rather than sitting on the work.
+  await expect(page.locator("#reel .word")).toBeHidden({ timeout: 5000 })
 })

@@ -48,12 +48,18 @@ looked for, gone while watching.
 the pointer after a few idle seconds, the way video controls do.
 
 **Interactive view** — what the gallery renders a piece as on a touch device:
-full-bleed, no chrome, and two gestures — across for the piece's scenes, up and
-down for the wall. Its own furniture is an X out to the index and a placard
-naming the scene, both of which come and go with the same idle state the chrome
-does. Gallery, therefore imposed: a piece chooses nothing about it and says one
-thing about it, which is that the kit should not draw a bar. It reaches a piece
-only through the **console API**, so it holds no knowledge of any piece.
+full-bleed, no chrome, and three gestures — across for the piece's scenes, up and
+down for the wall, and a tap to **hold** it. Its furniture is an X out to the
+index and a placard naming the scene with a dot per scene, which come and go with
+the same idle state the chrome does, plus one mark in the middle of the screen
+that does not: the hold, and a word at either end of the wall. Gallery, therefore
+imposed: a piece chooses nothing about it and says one thing about it, which is
+that the kit should not draw a bar. It reaches a piece only through the **console
+API**, so it holds no knowledge of any piece.
+
+**Held** — a piece with its animation frame parked, from a tap. Distinct from a
+scene's `stop()`, which is teardown; a held piece keeps its listeners and picks
+its clock up from the moment it is let go.
 
 **Panel** — the expanded settings surface behind the chrome's `adjust`.
 

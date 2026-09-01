@@ -157,13 +157,21 @@ src/experiments/<slug>/poster.webp   the result, referenced from about.md
 
 Every experiment exposes `window.experiment` so its controls can be driven
 without a pointer. Minimum surface: `get()`, `set(patch)`, `preset(n)`,
-`presets()`, `panel(open)`, `idle(force)`. See an existing experiment for the
-shape.
+`presets()`, `pause(held)`, `panel(open)`, `idle(force)`. See an existing
+experiment for the shape.
 
-`presets()` joined that list with the interactive view, which is the first thing
-other than a test to drive a piece through this handle: a swipe through the
-scenes has to be able to say what it landed on. `tests/support/experiment.ts`
-carries the same list as `BaseApi`.
+`presets()` and `pause()` joined that list with the interactive view, which is
+the first thing other than a test to drive a piece through this handle: a swipe
+through the scenes has to say what it landed on, and a tap has to hold the piece.
+`tests/support/experiment.ts` carries the same list as `BaseApi`.
+
+**`pause()` is not the scene's `stop()`.** `stop()` is teardown — it drops the
+resize listener, and in two pieces `start()` visibly moves the scene on the way
+back: Dangler settles its ropes and Flotsam re-measures and redraws. Every piece
+therefore has a `setPaused(held)` that parks the animation frame and nothing
+else, and picks the clock up from the moment it comes back rather than from where
+it was left. Starry Night is the one piece where `stop`/`start` already did
+exactly that.
 
 The global is declared **once for the section**, as `unknown`, in `window.d.ts`;
 each piece keeps its own typed reference rather than widening it. Do not add a
@@ -305,16 +313,31 @@ relearn how to leave, or which way the next piece is, in the next room.
   beside `data-idle`. It already knew, and nothing else can work it out without
   an opinion about what a piece's settings mean. Absent, not `-1`, when the scene
   is nobody's preset.
+- **A tap holds the piece**, through `pause()`. The mark that says so sits in
+  the middle of the screen and does **not** go with the chrome, because a slow
+  piece held and a slow piece running look identical — and a slow piece is the
+  one most likely to be paused.
+- **The dots are the only thing that says the horizontal axis exists.** A gesture
+  with no visible extent is one nobody tries twice, and the placard's own words
+  cannot say how many scenes are left. The vertical axis gets a one-line hint,
+  once a session.
+- **Both ends of the vertical axis say so**, in the middle of the screen, and
+  then stop saying it. Silence at the end of the wall reads as a gesture the view
+  failed to register, which is the explanation a visitor reaches for first.
 - **The address the view arrived at is read once, at import.** A piece landed on
   bare rewrites its own query and drops every param that is not a setting, so
-  reading the live address later says both that this visit never asked for the
-  view and that the poster is a still of something else. Both were live bugs.
-- **A poster is held over the canvas until the piece has drawn**, then crossfaded
-  out — and removed outright when the address carries settings, since then it is
-  a still of a different scene. This happens with a mouse too: a cold landing is
-  otherwise a black rectangle for as long as the piece takes to produce a frame.
+  reading the live address later says this visit never asked for the view. That
+  was a live bug the browser suite caught.
 - Neither axis wraps, and adding a piece needs no change here — the order comes
   from `gallery/order.ts`, which the index uses too.
+
+**A poster was held over the canvas while the piece booted, and it is gone.** It
+removed the black rectangle of a cold landing, and it cost more than it saved:
+the still is of a scene the piece is not yet running — no poster here is
+reproducible, and two pieces need seconds to establish — so the crossfade landed
+as a visible jump from one picture to a different one. Booting straight into the
+piece is honest about what is happening. Do not put it back without solving the
+mismatch.
 
 ### The kit renders the chrome, and dresses it
 

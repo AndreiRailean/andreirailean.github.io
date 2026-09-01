@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { feelOf, pieceHref, posterMatchesScene } from "@/experiments/gallery/reel"
+import { feelOf, pieceHref } from "@/experiments/gallery/reel"
 
 /**
  * The address arithmetic of the interactive view. The gestures and the DOM need
@@ -23,20 +23,6 @@ describe("pieceHref", () => {
     // Settings are the piece's own vocabulary. Flotsam's `span` means nothing to
     // Psyxels, and handing it over would land on a scene neither piece chose.
     expect(pieceHref("psyxels", "?reel=1&span=40&hue=202")).toBe("/experiments/psyxels/?reel=1")
-  })
-})
-
-describe("posterMatchesScene", () => {
-  it("holds for an address that names no scene", () => {
-    // The posters are captured from the primary preset, which is exactly what a
-    // bare address renders.
-    expect(posterMatchesScene("")).toBe(true)
-    expect(posterMatchesScene("?reel=1&feel=scrub")).toBe(true)
-  })
-
-  it("fails for a shared link, which is a still of nothing on the screen", () => {
-    expect(posterMatchesScene("?hue=202&span=12")).toBe(false)
-    expect(posterMatchesScene("?reel=1&hue=202")).toBe(false)
   })
 })
 

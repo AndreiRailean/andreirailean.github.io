@@ -2,16 +2,16 @@ import { axisOf, commits, resist, scrubSteps, type Axis } from "@/experiments/ga
 
 /**
  * The interactive view: a piece full-bleed on a touch device, with two axes of
- * swipe.
+ * swipe and a tap that holds it.
  *
- * Horizontal moves through the piece's presets, vertical moves through the wall.
- * Neither wraps — the collection has a top and a bottom exactly as the index
- * does, and the way out is an X rather than a place you arrive at by
- * overshooting.
+ * Across moves through the piece's scenes, up and down move through the wall,
+ * and a tap pauses. Neither axis wraps — the collection has a top and a bottom
+ * exactly as the index does, and the way out is an X rather than a place you
+ * arrive at by overshooting.
  *
  * **It reaches the piece through `window.experiment` and nothing else.**
- * `gallery/` may not import a piece and does not need to: every piece already
- * publishes `preset(n)` and `presets()`, because anything reachable only by
+ * `gallery/` may not import a piece and does not need to: every piece publishes
+ * `preset(n)`, `presets()` and `pause()`, because anything reachable only by
  * pointer is untestable headlessly. That handle is the whole seam, so this file
  * knows nothing about settings, hues, or what any piece draws. See the console
  * API section of `src/experiments/AGENTS.md`.
@@ -20,7 +20,7 @@ import { axisOf, commits, resist, scrubSteps, type Axis } from "@/experiments/ga
  * relearn how to leave, or which way the next piece is, in the next room.
  */
 
-/** How far a drag carries one preset in the scrubbing feel, in px. */
+/** How far a drag carries one scene in the scrubbing feel, in px. */
 const SCRUB_STRIDE = 64
 
 /** How far a blocked axis can be pulled before it stops giving, in px. */
@@ -29,8 +29,11 @@ const RESIST_LIMIT = 96
 /** The outgoing slide: long enough to read as a departure, short enough not to be a wait. */
 const LEAVE_MS = 260
 
-/** How long the poster is crossfaded out over, once the piece has drawn. */
-const CURTAIN_MS = 420
+/** How long a word about the wall stays up before it starts going. */
+const WORD_MS = 1400
+
+/** How long it takes to go, matching the transition in `Reel.astro`. */
+const WORD_FADE_MS = 600
 
 /** How long the one-time gesture hint stays up. */
 const HINT_MS = 6000
@@ -38,11 +41,11 @@ const HINT_MS = 6000
 /**
  * Three feels, so the gesture can be judged by using it rather than described.
  *
- * - `quiet` — nothing on screen moves. The preset changes on release, and the
+ * - `quiet` — nothing on screen moves. The scene changes on release, and the
  *   placard names it.
  * - `drag` — the piece follows the finger and either snaps back or carries on out.
- * - `scrub` — presets change continuously under the fingertip, so one long drag
- *   riffles through every scene a piece has.
+ * - `scrub` — scenes change continuously under the fingertip, so one long drag
+ *   riffles through everything a piece has.
  *
  * Chosen with `?feel=`. Not a setting, so it never joins the shareable query
  * string a piece builds from its own state.
@@ -56,19 +59,15 @@ const CARRIED: readonly string[] = ["reel", "feel"]
 /**
  * The address as it arrived, read once at import.
  *
- * **Not `window.location.search` at the point of use.** A piece landed on
- * bare rewrites its own address to the primary preset's full query — that is the
- * whole point of the landing rewrite, so a visitor leaves with a link to the
- * scene they saw — and the rewrite drops every param that is not a setting.
- * Reading the live address afterwards therefore says two false things: that this
- * visit did not ask for the interactive view, and that the address carries a
- * scene the poster is not a still of. Both were live bugs, and the second lifted
- * the poster with a jump-cut on every bare landing.
+ * **Not `window.location.search` at the point of use.** A piece landed on bare
+ * rewrites its own address to the primary preset's full query — that is the
+ * point of the landing rewrite, so a visitor leaves with a link to the scene
+ * they saw — and the rewrite drops every param that is not a setting. Reading
+ * the live address afterwards therefore claims this visit never asked for the
+ * interactive view, which was a live bug the browser suite caught.
  *
  * This module's script runs before the piece's, so import time is before the
- * rewrite.
- *
- * Guarded only so the unit runner can import this file for the pure address
+ * rewrite. Guarded only so the unit runner can import this file for the pure
  * helpers below; nothing here runs anywhere but a browser.
  */
 const ENTRY = typeof window === "undefined" ? "" : window.location.search
@@ -105,44 +104,31 @@ export function pieceHref(slug: string, search = ""): string {
   return `/experiments/${slug}/${query ? `?${query}` : ""}`
 }
 
-/** Whether the address describes a scene the piece's own poster is a still of. */
-export function posterMatchesScene(search: string): boolean {
-  return [...new URLSearchParams(search).keys()].every((key) => CARRIED.includes(key))
-}
-
 /** The piece's own scriptable handle, structurally. `window.experiment` is typed `unknown` on purpose. */
 type PieceHandle = {
   preset: (which: number) => unknown
   presets: () => string[]
+  pause: (held?: boolean) => boolean
 }
 
 function pieceHandle(): PieceHandle | null {
   const api = window.experiment
   if (!api || typeof api !== "object") return null
   const candidate = api as Partial<PieceHandle>
-  return typeof candidate.preset === "function" && typeof candidate.presets === "function"
-    ? (candidate as PieceHandle)
-    : null
+  const complete =
+    typeof candidate.preset === "function" &&
+    typeof candidate.presets === "function" &&
+    typeof candidate.pause === "function"
+  return complete ? (candidate as PieceHandle) : null
 }
 
 const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve))
 
-/**
- * Waits for the piece to publish its handle, and then for it to have drawn.
- *
- * The second wait is not belt-and-braces: every piece here marks the scene dirty
- * and asks for one animation frame, so the canvas is still empty at the moment
- * the handle appears. It is the same window `tests/AGENTS.md` warns about reading
- * a canvas inside, and lifting the poster during it shows a black rectangle.
- */
-async function pieceDrawn(): Promise<PieceHandle | null> {
+/** Waits for the piece to publish its handle. It is a module script, so it arrives after the document. */
+async function pieceReady(): Promise<PieceHandle | null> {
   for (let attempt = 0; attempt < 300; attempt++) {
     const handle = pieceHandle()
-    if (handle) {
-      await nextFrame()
-      await nextFrame()
-      return handle
-    }
+    if (handle) return handle
     await nextFrame()
   }
   return null
@@ -163,39 +149,15 @@ function neighbourFrom(root: HTMLElement, which: "previous" | "next"): Neighbour
  */
 export function mountReel(): void {
   const root = document.getElementById("reel")
-  if (!(root instanceof HTMLElement)) return
+  if (!(root instanceof HTMLElement) || !isReel()) return
 
   const html = document.documentElement
-  const curtain = document.querySelector<HTMLImageElement>(".curtain")
   const label = root.querySelector<HTMLElement>(".scene")
+  const dots = root.querySelector<HTMLElement>(".dots")
   const hint = root.querySelector<HTMLElement>(".hint")
-
-  /**
-   * Lifts the poster held over the canvas.
-   *
-   * Runs whatever the pointer is: it is what stops a cold landing being a black
-   * rectangle for as long as the piece takes to draw, which is as true with a
-   * mouse as with a finger.
-   */
-  async function raiseCurtain() {
-    if (!curtain) return
-    if (!posterMatchesScene(ENTRY)) {
-      // A link carrying settings is a link to a scene the poster is not of. The
-      // posters are captured from the primary preset, which is what a bare
-      // address renders and nothing else.
-      curtain.remove()
-      return
-    }
-    await pieceDrawn()
-    curtain.style.transition = `opacity ${CURTAIN_MS}ms ease-out`
-    curtain.style.opacity = "0"
-    window.setTimeout(() => curtain.remove(), CURTAIN_MS + 60)
-  }
-
-  if (!isReel()) {
-    void raiseCurtain()
-    return
-  }
+  const middle = root.querySelector<HTMLElement>(".middle")
+  const held = root.querySelector<HTMLElement>(".held")
+  const word = root.querySelector<HTMLElement>(".word")
 
   const feel = feelOf()
   root.hidden = false
@@ -206,14 +168,14 @@ export function mountReel(): void {
 
   let handle: PieceHandle | null = null
   let names: string[] = []
-  /** Which preset is on screen, or -1 for a scene that is nobody's preset — a shared link. */
+  /** Which scene is on screen, or -1 for one that is nobody's preset — a shared link. */
   let index = -1
+  let paused = false
   let leaving = false
+  let wordTimer = 0
+  let wordGoing = 0
 
-  const surfaces = (): HTMLElement[] =>
-    [...document.querySelectorAll<HTMLElement>("canvas"), curtain].filter(
-      (element): element is HTMLElement => Boolean(element) && element!.isConnected,
-    )
+  const surfaces = () => [...document.querySelectorAll<HTMLElement>("canvas")]
 
   function offset(x: number, y: number, animate = false) {
     for (const surface of surfaces()) {
@@ -223,7 +185,7 @@ export function mountReel(): void {
   }
 
   /**
-   * Which preset the piece is actually on.
+   * Which scene the piece is actually on.
    *
    * The kit publishes it on `<html>` beside its idle state; reading that rather
    * than comparing settings is what keeps this file free of any opinion about
@@ -238,10 +200,77 @@ export function mountReel(): void {
     if (label) label.textContent = text
   }
 
+  function markDots() {
+    if (!dots) return
+    for (const [at, dot] of [...dots.children].entries()) {
+      if (dot instanceof HTMLElement) dot.dataset.here = String(at === index)
+    }
+  }
+
   /** What the placard says at rest: the scene's name, or the piece's when the scene is nobody's preset. */
   function sayScene() {
     index = readIndex()
     say(names[index] ?? document.title)
+    markDots()
+  }
+
+  // --- the middle slot -----------------------------------------------------
+
+  /** Shows whichever of the two things belongs there, or nothing. */
+  function renderMiddle() {
+    if (!middle || !held || !word) return
+    const saying = !word.hidden
+    held.hidden = !paused || saying
+    middle.hidden = !saying && !paused
+  }
+
+  /**
+   * A word about the wall, in the middle of the screen, that then goes.
+   *
+   * The ends of the vertical axis were silent: a swipe that met the end of the
+   * list was indistinguishable from one the view had failed to register, which
+   * is the reading a visitor will reach for first.
+   */
+  function sayWord(text: string) {
+    if (!word) return
+    window.clearTimeout(wordTimer)
+    window.clearTimeout(wordGoing)
+    word.textContent = text
+    word.hidden = false
+    delete word.dataset.going
+    renderMiddle()
+
+    wordTimer = window.setTimeout(() => {
+      word.dataset.going = "true"
+      wordGoing = window.setTimeout(() => {
+        word.hidden = true
+        delete word.dataset.going
+        renderMiddle()
+      }, WORD_FADE_MS)
+    }, WORD_MS)
+  }
+
+  // --- holding the piece ---------------------------------------------------
+
+  function setPaused(next: boolean) {
+    if (!handle || next === paused) return
+    paused = handle.pause(next)
+    renderMiddle()
+  }
+
+  /**
+   * Changing scene while the piece is held.
+   *
+   * A held piece still has to show the scene it was just moved to, and every
+   * piece here marks itself dirty and waits for an animation frame — so the hold
+   * is lifted for exactly the two frames that takes and then put back. Simply
+   * re-pausing would cancel the frame before it ran and leave the previous scene
+   * on the canvas under the new scene's name.
+   */
+  function drawWhileHeld() {
+    if (!handle || !paused) return
+    handle.pause(false)
+    requestAnimationFrame(() => requestAnimationFrame(() => handle?.pause(true)))
   }
 
   function toPreset(wanted: number) {
@@ -251,6 +280,8 @@ export function mountReel(): void {
     handle.preset(clamped + 1)
     index = clamped
     say(names[index] ?? "")
+    markDots()
+    drawWhileHeld()
   }
 
   /** The name a horizontal gesture would land on, for the placard to preview mid-drag. */
@@ -324,8 +355,9 @@ export function mountReel(): void {
     axis = null
 
     if (!settled) {
-      // A tap. The kit's idle timer has already woken the chrome on `touchstart`;
-      // all this owes the visitor is the placard saying where they are.
+      // A tap holds the piece, or lets it go. The kit's idle timer has already
+      // woken the chrome on `touchstart`, so the placard comes back with it.
+      setPaused(!paused)
       sayScene()
       return
     }
@@ -338,9 +370,12 @@ export function mountReel(): void {
     }
 
     const towards = dy < 0 ? next : previous
-    if (commits(dy, elapsed) && towards) {
-      leaveTo(towards, dy < 0 ? -1 : 1)
-      return
+    if (commits(dy, elapsed)) {
+      if (towards) {
+        leaveTo(towards, dy < 0 ? -1 : 1)
+        return
+      }
+      sayWord(dy < 0 ? "the end of the wall" : "the start of the wall")
     }
     offset(0, 0, feel === "drag")
     sayScene()
@@ -354,13 +389,27 @@ export function mountReel(): void {
   // --- boot ----------------------------------------------------------------
 
   void (async () => {
-    handle = await pieceDrawn()
+    handle = await pieceReady()
     names = handle?.presets() ?? []
-    sayScene()
-    void raiseCurtain()
 
-    // Nothing on the screen says the two axes exist, so the first visit is told
-    // once. It rides the placard, so it leaves with the chrome.
+    if (dots) {
+      dots.replaceChildren(...names.map(() => document.createElement("li")))
+    }
+    sayScene()
+
+    /*
+     * The placard is a readout of the piece, not a record of the last gesture.
+     *
+     * Watching the kit's published scene rather than updating the label at each
+     * of the places that change one: a preset loaded from the console, or a
+     * setting nudged, would otherwise leave the name and the lit dot describing
+     * a scene that is no longer on the screen.
+     */
+    new MutationObserver(() => {
+      if (readIndex() !== index) sayScene()
+    }).observe(html, { attributes: true, attributeFilter: ["data-preset"] })
+
+    // The dots say the scenes go across; nothing says the wall goes up and down.
     if (hint && !sessionStorage.getItem("reel-hinted")) {
       hint.hidden = false
       sessionStorage.setItem("reel-hinted", "1")
