@@ -633,3 +633,59 @@ test("survives a resize instead of vanishing", async ({ page }) => {
   await expect.poll(() => litPixels(page), { timeout: 5000 }).toBeGreaterThan(0)
   expect((await experiment.api(({ api }) => api.stats())).drawnDots).toBeGreaterThan(0)
 })
+
+/**
+ * The sub-pixel floor is about a real pixel grid, so it is stated in device
+ * pixels and the canvas is backed at `dpr`.
+ *
+ * Two properties, and the second is the one that caught a wrong first attempt.
+ *
+ * A denser screen must **resolve more cores as points** — that is the whole
+ * reason the floor exists, and stating it in css px meant a 2× screen was
+ * spreading dots it could have drawn sharply. `simmer` is the scene where it
+ * showed: on a phone every one of its four thousand specks fell under the old
+ * floor and the brightest was drawn at 38% of its peak, so hard points inside a
+ * haze became dull smudges in it.
+ *
+ * And the light must **not move**, because the floor trades size for alpha and
+ * that trade is energy-preserving. The first fix lowered the floor and left one
+ * alpha shared with the halo — which the floor never widens — and tripled the
+ * haze on every 2× screen while looking, in the diff, like a units correction.
+ * `light` is the only thing that says so.
+ */
+test("a denser screen resolves more cores, and makes no more light doing it", async ({ browser }) => {
+  const read = async (deviceScaleFactor: number) => {
+    const context = await browser.newContext({ viewport: { width: 900, height: 700 }, deviceScaleFactor })
+    try {
+      const page = await context.newPage()
+      await page.goto("/experiments/flotsam/")
+      await page.waitForFunction(() => Boolean(window.experiment), undefined, { timeout: 15_000 })
+      await page.evaluate(() => (window.experiment as ExperimentApi).preset("simmer"))
+      await page.evaluate(() => (window.experiment as ExperimentApi).run(60))
+      await page.waitForTimeout(300)
+      // Awaited before the `finally` closes the context out from under it.
+      const stats = await page.evaluate(() => {
+        const reading = (window.experiment as ExperimentApi).stats()
+        return { light: reading.light, dimmed: reading.dimmedDots, dots: reading.dots }
+      })
+      return stats
+    } finally {
+      await context.close()
+    }
+  }
+
+  const plain = await read(1)
+  const dense = await read(2)
+
+  expect(plain.dots, "the two runs are not looking at the same scene").toBe(dense.dots)
+
+  // Strictly fewer, not merely different: halving the floor can only move cores
+  // from under it to over it.
+  expect(dense.dimmed, "a 2× screen resolved no more cores than a 1× one").toBeLessThan(plain.dimmed)
+
+  // The scene makes the same light either way. A tenth is far tighter than the
+  // threefold the shared-alpha version produced, and loose enough for a
+  // population whose sizes are drawn from a seeded distribution.
+  expect(dense.light).toBeGreaterThan(plain.light * 0.9)
+  expect(dense.light).toBeLessThan(plain.light * 1.1)
+})

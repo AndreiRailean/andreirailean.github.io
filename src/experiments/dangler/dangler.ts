@@ -26,6 +26,16 @@ export type DanglerStats = {
   drawnBeads: number
   /** Summed sprite area drawn this frame, in css px². The real cost model. */
   fillPx: number
+  /**
+   * Bulbs the screen cannot resolve as a point: their core fell under the
+   * sub-pixel floor, so they were drawn wider and fainter than asked.
+   *
+   * Expected to be a small share here — the strands are near and the bulbs are
+   * large — which is exactly why it is worth reporting rather than assuming. It
+   * is the number that says whether moving the floor to device pixels changed
+   * this piece at all.
+   */
+  dimmedBeads: number
   /** Largest link-length violation, in world units. ~0 means settled. */
   maxConstraintError: number
   fps: number
@@ -307,6 +317,9 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
 
     updateFrames(ropes, frames)
     beads.reset()
+    // The sub-pixel floor is about the real pixel grid, and the canvas is backed
+    // at `dpr`. See MIN_CORE_DEVICE_PX.
+    beads.setScale(dpr)
     drawnBeads = 0
 
     context.globalCompositeOperation = "lighter"
@@ -572,6 +585,7 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
       particles: ropes.particleCount,
       drawnBeads,
       fillPx: Math.round(beads.fill()),
+      dimmedBeads: beads.dimmed(),
       maxConstraintError: ropes.maxError(),
       fps: Math.round(fps * 10) / 10,
       running,

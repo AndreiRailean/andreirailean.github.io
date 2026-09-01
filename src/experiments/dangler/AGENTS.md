@@ -171,8 +171,23 @@ screen — a wrong strand and a right one both look like a scatter of dots.
   so `set: 0` left `stiffness` nothing to scale and "a stiff strand holds its
   bend" became vacuous. `tests/unit/dangler/rope.test.ts` states its own `PLAIN`
   scene; anything measuring physics should do the same.
-- **Core radii stay at or above `MIN_CORE_PX`**, trading size for alpha below it.
-  Starry Night's sub-pixel lesson applies here unchanged.
+- **Core radii stay at or above `MIN_CORE_DEVICE_PX`**, trading size for alpha
+  below it. Starry Night's sub-pixel lesson applies here unchanged.
+
+  **Device pixels, not css px** — the floor is about a real pixel grid and the
+  canvas is backed at `dpr`, so a css-px floor was spreading cores a 2× screen
+  could resolve. Measured across every preset at 1× and 2×, `stats().dimmedBeads`
+  is **zero**: the floor never bites in this piece, the bulbs are far too large.
+  So the correction is inert here and was made anyway, because Flotsam copied
+  this line and the unit error went with it — see #94.
+
+  Flotsam needed a **second** fix that this piece does not, and the difference is
+  worth knowing before copying either way. Here `outer` is a multiple of the
+  _floored_ core, so the glow grows with the body and dimming both by the area
+  given up is right. Flotsam's halo is a radius in px computed from the
+  _unfloored_ core, so the floor never widens it and one shared alpha over-dims
+  the haze. Two blocks that read identically, encoding different geometry.
+
 - **The wind stays pure.** Gusts are derived from the clock and the seed rather
   than accumulated, which is what makes them reproducible and checkable outside a
   browser. A burst lasts about two seconds; no still frame can tell you one was
