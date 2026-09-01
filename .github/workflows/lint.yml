@@ -3,6 +3,13 @@ name: Lint code
 on:
   - pull_request
 
+# A second push to the same branch supersedes the first, so an iterative session
+# does not leave a queue of runs testing commits nobody will merge. Keyed on the
+# ref rather than the workflow alone, or one branch's push would cancel another's.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     runs-on: ubuntu-latest

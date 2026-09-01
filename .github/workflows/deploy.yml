@@ -8,6 +8,13 @@ on:
   # Allows you to run this workflow manually from the Actions tab on GitHub.
   workflow_dispatch:
 
+# Deploys queue rather than superseding: cancelling one mid-flight can leave the
+# Pages site published from a half-finished upload. `cancel-in-progress: false`
+# is deliberate and differs from the pull-request workflows for that reason.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
 # Allow this job to clone the repo and create a page deployment
 permissions:
   contents: read
