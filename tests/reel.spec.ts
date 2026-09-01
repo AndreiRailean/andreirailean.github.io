@@ -173,6 +173,36 @@ test("swiping across moves through the scenes, and stops at both ends", async ({
   expect(await sceneIndex(page)).toBe(String(names.length - 1))
 })
 
+test("the placard names what is running, not what a swipe would land on", async ({ page }) => {
+  const slugs = await wall(page)
+  const experiment = await openExperiment<ReelApi>(page, slugs[0], { query: { reel: "1" }, idle: false })
+  const names = await experiment.api(({ api }) => api.presets())
+
+  const view = page.viewportSize()
+  if (!view) throw new Error("no viewport to swipe across")
+  const x = Math.round(view.width / 2)
+  const y = Math.round(view.height / 2)
+
+  const scene = page.locator("#reel .scene")
+  await expect(scene).toHaveText(names[0])
+
+  /*
+   * Mid-drag, past the commit threshold, finger still down.
+   *
+   * The placard used to preview the scene the swipe would land on here, and it
+   * was the most confusing thing in the view: the name changed, the work did
+   * not, and the two disagreed until the finger came off. A label describing
+   * something that is not on the screen is worse than no label.
+   */
+  await page.mouse.move(x, y)
+  await page.mouse.down()
+  await page.mouse.move(x - 140, y, { steps: 12 })
+  await expect(scene, "the placard named a scene that was not running").toHaveText(names[0])
+
+  await page.mouse.up()
+  await expect(scene).toHaveText(names[1])
+})
+
 test("a twitch is not a swipe", async ({ page }) => {
   const slugs = await wall(page)
   await openExperiment<BaseApi>(page, slugs[0], { query: { reel: "1" }, idle: false })

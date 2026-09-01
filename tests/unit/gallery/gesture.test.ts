@@ -1,14 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import {
-  AXIS_LOCK,
-  axisOf,
-  COMMIT_SPEED,
-  COMMIT_TRAVEL,
-  commits,
-  resist,
-  scrubSteps,
-} from "@/experiments/gallery/gesture"
+import { AXIS_LOCK, axisOf, COMMIT_SPEED, COMMIT_TRAVEL, commits } from "@/experiments/gallery/gesture"
 
 describe("axisOf", () => {
   it("says nothing until the movement is bigger than the lock", () => {
@@ -46,34 +38,5 @@ describe("commits", () => {
 
   it("reads a gesture the same in both directions", () => {
     expect(commits(-COMMIT_TRAVEL, 2000)).toBe(commits(COMMIT_TRAVEL, 2000))
-  })
-})
-
-describe("resist", () => {
-  it("gives half of the limit at a limit's worth of pull", () => {
-    expect(resist(100, 100)).toBeCloseTo(50)
-  })
-
-  it("never reaches the limit however hard it is pulled", () => {
-    expect(resist(100_000, 100)).toBeLessThan(100)
-    expect(resist(100_000, 100)).toBeGreaterThan(99)
-  })
-
-  it("keeps the direction of the pull", () => {
-    expect(resist(-100, 100)).toBeCloseTo(-50)
-    expect(resist(0, 100)).toBe(0)
-  })
-})
-
-describe("scrubSteps", () => {
-  it("steps when the stride has actually been covered, not half of it", () => {
-    expect(scrubSteps(59, 60)).toBe(0)
-    expect(scrubSteps(60, 60)).toBe(1)
-    expect(scrubSteps(-60, 60)).toBe(-1)
-    expect(scrubSteps(181, 60)).toBe(3)
-  })
-
-  it("stays still for a stride of nothing", () => {
-    expect(scrubSteps(500, 0)).toBe(0)
   })
 })
