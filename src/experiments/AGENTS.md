@@ -165,6 +165,19 @@ the first thing other than a test to drive a piece through this handle: a swipe
 through the scenes has to say what it landed on, and a tap has to hold the piece.
 `tests/support/experiment.ts` carries the same list as `BaseApi`.
 
+**`controls()` reports one entry per settings key, and every key must be real.**
+Flatten over the kit's `keysOf(control)`: a range owns two settings and has
+`keys` rather than a `key`, so a piece mapping `control.key` straight through
+reports `undefined` for it. Three pieces did something different here and
+nothing said which was the contract — Dangler read `control.key` and was correct
+only because it happens to have no range control; Starry Night reported one
+entry per _control_ with a `keys` array. It cost a real assertion, because
+generic code reading `.key` off those got `undefined`, wrote its patch to a
+setting no piece has, and then passed because nothing had moved. Extra fields
+are fine — Starry Night keeps a `kind` discriminant, the others carry `group` —
+but `key` is the part everything else may rely on.
+`tests/kit.spec.ts` holds every piece to it.
+
 **`pause()` is not the scene's `stop()`.** `stop()` is teardown — it drops the
 resize listener, and in two pieces `start()` visibly moves the scene on the way
 back: Dangler settles its ropes and Flotsam re-measures and redraws. Every piece

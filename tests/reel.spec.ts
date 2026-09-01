@@ -130,14 +130,21 @@ test("the kit publishes which preset is on screen, and forgets when it is nobody
   // The reel reads this attribute instead of comparing settings, so a scene that
   // is nobody's preset has to be legible as such rather than reported as the
   // first one.
-  const controls = await experiment.api(({ api }) => api.controls())
-  const slider = controls.find((control) => control.max > control.min)
-  if (!slider) throw new Error("no numeric control to nudge")
-  await experiment.api(({ api, arg }) => api.set({ [arg.key]: (arg.min + arg.max) / 2 } as never), {
-    key: slider.key,
-    min: slider.min,
-    max: slider.max,
+  //
+  // Moved to a value that is demonstrably not the one already held, and the
+  // move is asserted before the attribute is. The midpoint was the obvious
+  // choice and is a trap: on at least one piece it *is* the loaded preset's
+  // value for that key, so nothing moves and the attribute is correct to stay —
+  // the assertion then passes having tested nothing. See #85.
+  const before = await experiment.api(({ api }) => api.get())
+  const key = Object.keys(before).find((name) => typeof before[name] === "number")
+  if (key === undefined) throw new Error("no numeric setting to move")
+
+  const moved = await experiment.api(({ api, arg }) => api.set({ [arg.key]: arg.value } as never), {
+    key,
+    value: (before[key] as number) + 1,
   })
+  expect(moved[key], `${key} did not take the new value, so nothing was tested`).not.toBe(before[key])
   expect(await sceneIndex(page)).toBeUndefined()
 })
 
