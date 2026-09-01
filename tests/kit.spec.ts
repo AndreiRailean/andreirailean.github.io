@@ -54,6 +54,63 @@ for (const slug of PIECES) {
   })
 
   /**
+   * Left and right step through the presets, the way a swipe does on a phone.
+   *
+   * Stepping is not the digits with extra steps: it is how a scene gets compared
+   * to the one beside it, where hunting for the right digit is a different
+   * gesture entirely. Asserted through the published `data-preset` rather than
+   * by comparing settings, which is what the kit itself uses to decide.
+   */
+  test(`${slug}: left and right step through the presets, and stop at both ends`, async ({ page }) => {
+    const experiment = await openExperiment<BaseApi>(page, slug, { idle: false })
+    const shown = () => page.evaluate(() => document.documentElement.dataset.preset)
+
+    const names = await experiment.api(({ api }) => api.presets())
+    test.skip(names.length < 2, `${slug} has only one preset`)
+
+    expect(await shown()).toBe("0")
+
+    await page.keyboard.press("ArrowRight")
+    expect(await shown(), `${slug}: right did not step forward`).toBe("1")
+    await page.keyboard.press("ArrowLeft")
+    expect(await shown(), `${slug}: left did not step back`).toBe("0")
+
+    // Neither end wraps, which is what the same gesture does in the interactive
+    // view. Pressed past the stop rather than up to it, since a clamp that is
+    // off by one only shows when it is overshot.
+    await page.keyboard.press("ArrowLeft")
+    expect(await shown(), `${slug}: the primary wrapped to the last preset`).toBe("0")
+
+    for (let step = 0; step < names.length + 1; step++) await page.keyboard.press("ArrowRight")
+    expect(await shown(), `${slug}: the last preset wrapped to the primary`).toBe(String(names.length - 1))
+  })
+
+  /**
+   * A focused slider keeps its own arrow keys.
+   *
+   * Arrows are how a range input is operated without a pointer, and the panel is
+   * deliberately keyboard-reachable — taking them would make every slider
+   * unusable for anyone not holding a mouse.
+   *
+   * The assertion is about the presets, not about the slider: whether the value
+   * moves is the browser's business, and a handle already sitting on its stop
+   * would not move either. What must not happen is the scene jumping to the next
+   * preset.
+   */
+  test(`${slug}: a focused slider keeps its own arrow keys`, async ({ page }) => {
+    const experiment = await openExperiment<BaseApi>(page, slug, { idle: false })
+    await experiment.api(({ api }) => api.panel(true))
+
+    const slider = page.locator(".panel input[type=range]").first()
+    await expect(slider).toBeVisible()
+    await slider.focus()
+
+    await page.keyboard.press("ArrowRight")
+    const shown = await page.evaluate(() => document.documentElement.dataset.preset)
+    expect(shown, `${slug}: an arrow on a focused slider stepped the presets`).not.toBe("1")
+  })
+
+  /**
    * `data-preset` on `<html>`, which the kit publishes and the gallery reads.
    *
    * The interactive view names the scene on its placard and lights one dot from

@@ -381,6 +381,14 @@ were mistakes about how the chrome _works_, made in a file with no reason to kno
   Starry Night drives the whole thing a second time from its inverted scheme.
 - **Import it in the page's frontmatter**, so it is a real stylesheet in the
   head rather than something the client script injects.
+- **The keys are the kit's too**: `c` and `Escape` for the panel, `f` for
+  fullscreen, a digit for that preset, and **`←` / `→` to step through them**,
+  clamped at both ends the way the interactive view's swipe is. A piece's own
+  `actions` add single letters. The one trap: the arrow guard tests the _focused
+  element_, not whether the focus is inside the chrome. Scoping it to the chrome
+  is the obvious guard and is wrong — clicking a preset leaves the focus on that
+  button, so the very next arrow press, the likeliest one there is, would do
+  nothing. A field that uses arrows keeps them; a button has no use for one.
 - **Still offered.** A piece that wants different chrome declines the import,
   exactly as it can decline `controls.ts`. The three tokens' worth of theming is
   the cheap path, not the only one.

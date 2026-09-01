@@ -228,6 +228,8 @@ export function createControls<S extends object>(options: Options<S>): Controls<
   let current: S = { ...options.settings }
   let panelOpen = false
   let pointerOverUi = false
+  /** Which preset the current settings are, or -1 for a scene that is nobody's. */
+  let matching = -1
   let idleTimer = 0
   let pinnedIdle: boolean | null = null
 
@@ -268,7 +270,7 @@ export function createControls<S extends object>(options: Options<S>): Controls<
 
   const presetButtons = presets.map((preset, index) => {
     const element = button(`${index + 1} ${preset.label}`, "preset")
-    element.title = `${preset.hint} (key ${index + 1})`
+    element.title = `${preset.hint} (key ${index + 1}, or ← →)`
     element.addEventListener("click", () => apply(normalize({ ...preset.settings })))
     return element
   })
@@ -466,7 +468,7 @@ export function createControls<S extends object>(options: Options<S>): Controls<
       }
     }
 
-    const matching = presets.findIndex((preset) =>
+    matching = presets.findIndex((preset) =>
       (Object.keys(preset.settings) as (keyof S)[]).every((key) => preset.settings[key] === current[key]),
     )
 
@@ -531,6 +533,50 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     }
     if (key === "f") {
       void toggleFullscreen()
+      return
+    }
+
+    /*
+     * Left and right step through the presets, the way a swipe does on a phone.
+     *
+     * The digits already load one each, and they stop being reachable past nine
+     * — but that is not the reason this exists. Stepping is how a scene gets
+     * *compared* to the one beside it, and hunting for the right digit is not
+     * the same gesture at all.
+     *
+     * **Not while a field that uses them has the focus.** A range input's arrow
+     * keys are how it is operated without a pointer, and the panel is
+     * deliberately keyboard-reachable — taking them would make every slider
+     * unusable for anyone not holding a mouse. The digits have the same
+     * collision and keep it for now; arrows are worth guarding because arrows
+     * are the *native* way to work the thing they would be taken from.
+     *
+     * The test is the element, not the chrome. Scoping it to "inside the
+     * controls" is the obvious guard and is wrong: clicking a preset leaves the
+     * focus on that button, so the very next arrow press — the likeliest one
+     * there is — would do nothing. A button has no use for an arrow key; a field
+     * does.
+     *
+     * Clamps at both ends rather than wrapping, which is what the interactive
+     * view does with the same gesture. From a scene that is nobody's preset,
+     * either direction lands on the primary — there is no position to step from,
+     * and the primary is the piece's public face.
+     */
+    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      const target = event.target
+      const typing =
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLSelectElement ||
+        target instanceof HTMLTextAreaElement ||
+        (target instanceof HTMLElement && target.isContentEditable)
+      if (typing) return
+
+      const wanted = matching + (event.key === "ArrowRight" ? 1 : -1)
+      const stepped = presets[Math.min(presets.length - 1, Math.max(0, wanted))]
+      if (stepped) {
+        event.preventDefault()
+        apply(normalize({ ...stepped.settings }))
+      }
       return
     }
 
