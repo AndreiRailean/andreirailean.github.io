@@ -82,6 +82,16 @@ stands down. **Silence is not a competing claim** — nobody answering means you
 hold it, so proceed. Two stewards is a misconfiguration rather than a scaling
 mode, and the point of this step is to make it loud, not to support it.
 
+**The broadcast is best-effort, and the claim of record is on the issue.**
+`ListAgents` reaches this machine, plus Remote Control and cloud sessions where
+those happen to be connected — which is not guaranteed. So a steward on another
+machine may never see your claim and you may never see theirs, and arbitration
+does not get to run at all. That is deliberate rather than unsolved: the thing
+that costs anything is two stewards doing the same work, and **claiming the item
+in step 5 prevents that on its own**, because GitHub reaches every agent
+regardless of machine and outlives the session that wrote it. Announce for
+latency; assign for authority. If the two ever disagree, the assignee wins.
+
 **Silence is weak evidence from a busy session, and this is a known limit rather
 than an oversight.** A peer mid-task may not process an inbound message for a
 long time, so proceeding on silence can still leave two live stewards — more
@@ -108,9 +118,12 @@ Ordered by what costs other sessions most:
 
 **Claim an item before starting it**, and check it is not already claimed:
 `gh issue edit <n> --add-assignee @me`, then a one-line comment naming your
-session. Arbitration in step 3 can still fail — a steward can start while you are
-mid-turn — and this makes the duplication visible in the one place both of you
-already look.
+session. **This is the authoritative claim, not the announcement.** Step 3 can
+fail outright rather than merely race — a steward on another machine is not
+reachable by `ListAgents` and never hears you — so the broadcast is a latency
+optimisation and this is the thing that actually holds. It is also the only part
+with any memory: a steward starting tomorrow reads who last claimed instead of
+re-asking a room that has already answered.
 
 The comment is what makes the claim readable, because the assignee alone is not.
 `@me` resolves to the human's GitHub account, so two stewards assign the _same_
@@ -146,6 +159,14 @@ inbound clock.
 
 ## Rules that bite
 
+- **"Every live session" means every row, with no judgement applied.** Both ways
+  of narrowing it are the banned steward-detection heuristic wearing a different
+  hat, and this session did both within an hour of writing the rule: it messaged
+  one peer _because its name looked like a steward's_, and skipped another
+  _because a background shell looked like it would not care_. A name says
+  nothing — `img-preview-1f` held the role — and neither does a session kind.
+  Announcing to everybody is cheap **because** it needs no guess; the moment you
+  make one, detection is back.
 - **A peer exchange needs a stop condition, and you have to set it.** Once a
   finding is established, hand it over once and stop. An exchange about a stale
   accent ran six round trips past its own conclusion because each reply was
