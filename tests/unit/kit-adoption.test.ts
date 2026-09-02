@@ -174,8 +174,7 @@ describe.each(slugs)("%s", (slug) => {
     }
     expect(
       clashes,
-      `${clashes.join("; ")}. Import it, or say why not with a ` +
-        `"${OPT_OUT} <reason>" comment in that file.`,
+      `${clashes.join("; ")}. Import it, or say why not with a ` + `"${OPT_OUT} <reason>" comment in that file.`,
     ).toEqual([])
   })
 
