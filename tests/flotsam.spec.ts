@@ -296,6 +296,25 @@ test("wave drift moves the flotsam over a minute and nothing over a frame", asyn
     idle: true,
   })
 
+  // `run(1/60)` rather than `painted()`, and it is not interchangeable here.
+  //
+  // `transport` is the only stat in this piece written by `advance()` rather
+  // than by `draw()` — see the table in flotsam/AGENTS.md. `tick()` has two
+  // paths, and the `dirty` one draws without integrating, so a frame wait
+  // refreshes every *other* stat and leaves this one exactly as stale as it was.
+  // Measured on a parked scene: five frame waits left it byte-identical at
+  // 1.2720048, and one `run(1/60)` took it to 0. `run()` calls `advance()`
+  // directly, so it does not depend on whether the scene happens to be animated.
+  //
+  // A step is also what the assertion means: "nothing over a frame" should say
+  // the sea was stepped and nothing transported, not that a stat was refreshed
+  // in time. Read straight after the `set()` this returned the *unchanged*
+  // value — 1.2720048 both sides, byte-identical, which is issue #65's exact
+  // signature and is what made it look like anything but a race. Issue #107.
+  //
+  // `RUN_STEP` is 1/60 and `run()` rounds `seconds / RUN_STEP`, so anything
+  // under about 0.008 rounds to zero steps and silently does nothing.
+  await experiment.api(({ api }) => api.run(1 / 60))
   const stats = await experiment.api(({ api }) => api.stats())
   // uₛ = Q²c, and an eight-metre wave runs at 3.5 m/s, so 0.36 × 3.5.
   expect(stats.transport).toBeGreaterThan(0.5)
@@ -303,6 +322,7 @@ test("wave drift moves the flotsam over a minute and nothing over a frame", asyn
 
   const off = await experiment.api(({ api }) => api.set({ stokes: 0 }))
   expect(off.stokes).toBe(0)
+  await experiment.api(({ api }) => api.run(1 / 60))
   expect((await experiment.api(({ api }) => api.stats())).transport).toBe(0)
 })
 
