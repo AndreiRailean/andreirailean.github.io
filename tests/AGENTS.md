@@ -88,6 +88,17 @@ Two fixes, both right for different cases. Wait a frame when you want the value
 that frame produces. Compute the field in `stats()` instead when it never needed
 a frame — psyxels added a `live` count for that reason after hitting this twice.
 
+**And a third case, because "wait a frame" is not always enough: ask what the
+frame actually runs.** A loop with a dirty path draws without integrating, so a
+field written during _integration_ survives any number of frame waits while
+every field written during _draw_ refreshes. Flotsam's `transport` is written in
+`advance()` and nothing else is: five frame waits on a parked scene left it
+byte-identical, and one `api.run(1 / 60)` zeroed it — #107. Where a piece
+exposes a step (`run`, `settle`), prefer it to a frame wait for anything the
+integrator computes; it does not depend on whether the scene happens to be
+animated. The distinction is invisible in the stat, which comes back as an
+ordinary plausible number either way.
+
 The reason this is a section rule and not a line in one spec is how well it
 hides. It cost two sessions and three disproved hypotheses as issue #65:
 

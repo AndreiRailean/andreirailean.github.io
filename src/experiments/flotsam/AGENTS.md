@@ -338,6 +338,35 @@ in order to work at all, and every one of them was learned by breaking it.
   where the current does all the work. Do not "fix" either by winding the
   steepness up. The numbers in `stats()` say whether the machinery is working,
   not whether a scene is worth looking at.
+- **Most of `stats()` is one frame behind, and `transport` is behind
+  differently from the rest.** `tests/AGENTS.md` asks every piece to say which
+  of its stats are computed on the spot and which are filled in while drawing;
+  psyxels does, and this piece did not until #107 — despite `light` being the
+  original case that section was written for, and #65 being this piece's.
+
+  | written where                                          | stats                                                                              |
+  | ------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+  | on the spot in `stats()`, always current               | `dots`, `trains`, `steepness`, `clock`, `running`                                  |
+  | in `draw()`, so one frame behind                       | `drawnDots`, `orbit`, `dispersion`, `minJacobian`, `fillPx`, `dimmedDots`, `light` |
+  | in `advance()`, so behind until the sea is **stepped** | **`transport`**                                                                    |
+  | in `tick()`                                            | `fps`                                                                              |
+
+  The last row is the trap. `tick()` has two paths: when `isAnimated()` it
+  integrates and draws, but the `dirty` path **draws without integrating**. So
+  `painted()` — the section's one-liner for this whole bug class — refreshes
+  every stat in the `draw()` row and cannot touch `transport`. On a scene that
+  is not animated it never will, however long you wait: measured at five frame
+  waits leaving it byte-identical at 1.2720048, where one `api.run(1 / 60)` took
+  it to 0. **Step the sea to read `transport`; a frame wait is for the others.**
+  `run()` calls `advance()` directly, so it does not depend on `isAnimated()` —
+  and note `RUN_STEP` is `1/60` and `run()` rounds `seconds / RUN_STEP`, so
+  anything under about `0.008` rounds to no steps and silently does nothing.
+
+  `isAnimated()` is also not what it sounds like: it is true whenever
+  `steepness > 0`, so a scene with waves is animated even with the water
+  entirely still. Turning `steepness` off is what parks the loop, not turning
+  the current off.
+
 - **`gleam` is the cost, not the count.** `simmer` draws four thousand pieces —
   fewer than half of `windrows` — and fills nearly six million square pixels
   against that scene's quarter million, because a thirty-pixel halo is nine
