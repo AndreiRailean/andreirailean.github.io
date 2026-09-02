@@ -102,7 +102,7 @@ with `notify_when_idle` and let it answer before you take anything irreversible.
 
 ## 4. Check what is mechanical still works
 
-`npm run test:unit` covers `tests/unit/kit-adoption.test.ts`, which is the part
+`pnpm run test:unit` covers `tests/unit/kit-adoption.test.ts`, which is the part
 of the role that runs without you. If it has gone vacuous, that is a steward's
 problem before anything else is.
 

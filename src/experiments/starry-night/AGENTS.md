@@ -83,16 +83,16 @@ Every item below was a real bug in this experiment, not a hypothetical.
 
 ## Verifying a change
 
-`npm run build` covers `astro check` and `npm run lint` covers eslint. Neither
+`pnpm run build` covers `astro check` and `pnpm run lint` covers eslint. Neither
 sees anything visual. `tests/AGENTS.md` explains the two runners; what matters
 here is which of this piece's failures each one reaches.
 
-- **`npx vitest run starry-night`** covers the parts with no canvas in them: the
+- **`pnpm exec vitest run starry-night`** covers the parts with no canvas in them: the
   envelope, the size distribution, the lifespan spread, query parsing, the
   presets. These are the failures that are invisible _and_ slow to notice — a
   layer with the wrong lifespan looks fine until two of them beat against each
   other for eight minutes.
-- **`npx playwright test starry-night`** covers the page. Both the styling bug
+- **`pnpm exec playwright test starry-night`** covers the page. Both the styling bug
   and the always-open panel reported zero console errors and were only visible in
   an image — but neither needed a pixel comparison to catch: one is a computed
   `background-color`, the other is whether the panel is hidden. Assert the

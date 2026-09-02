@@ -21,7 +21,7 @@ import { describe, expect, it } from "vitest"
  *
  * This runs in the unit suite on purpose. It reads the filesystem and needs no
  * browser, so a new experiment learns about the kit in the seconds after
- * `npm run test:unit` rather than in review.
+ * `pnpm run test:unit` rather than in review.
  */
 
 const EXPERIMENTS = "src/experiments"

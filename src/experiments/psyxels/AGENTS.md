@@ -354,7 +354,7 @@ asset URL.
 
 ## Verifying a change
 
-`npm run build` covers `astro check` and `npm run lint` covers eslint. Neither
+`pnpm run build` covers `astro check` and `pnpm run lint` covers eslint. Neither
 sees anything visual, and for this piece neither sees anything structural either.
 
 **A still of frame one is a still of a field that has never repacked.** Use
@@ -371,11 +371,11 @@ reconsiders its size a handful of times a minute.
   `byDepth`, `smallest` and `largest` say whether the sizes are actually mixed;
   `changes` and `flicks` say whether anything is alive; `drawMs` and `fill` say
   what it costs.
-- **`tests/psyxels.spec.ts` drives the API under `npm test`**, and every test in
+- **`tests/psyxels.spec.ts` drives the API under `pnpm test`**, and every test in
   it is one of the traps above.
 
 **`tests/unit/psyxels/` covers everything that is a function and a number** —
-`npx vitest run psyxels`. The field is unit-testable because `packField` takes a
+`pnpm exec vitest run psyxels`. The field is unit-testable because `packField` takes a
 `Mask` interface rather than a canvas: the tests hand it a synthetic subject with
 an exactly known area, which is how the cover, the pruning and the churn rate are
 checked without a browser.

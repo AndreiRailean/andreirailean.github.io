@@ -7,7 +7,7 @@ import { beforeAll, describe, expect, it } from "vitest"
  * `CONTEXT-MAP.md` and
  * `src/experiments/docs/adr/0001-experiments-inside-the-site-project.md` say an
  * experiment imports nothing from the site. `eslint.config.mjs` enforces it, and
- * this asserts the enforcement rather than the invariant — `npm run lint` over
+ * this asserts the enforcement rather than the invariant — `pnpm run lint` over
  * the real tree already covers the invariant, and would keep passing perfectly
  * if the rule stopped matching anything at all.
  *

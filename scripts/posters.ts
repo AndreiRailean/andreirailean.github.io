@@ -8,13 +8,13 @@ import startDevServer from "../tests/support/dev-server.ts"
 /**
  * Capturing the still that represents each experiment on `/experiments/`.
  *
- * Run by hand — `npm run posters` — not by the build and not by `npm test`.
+ * Run by hand — `pnpm run posters` — not by the build and not by `pnpm test`.
  * Three reasons, in order of how much they mattered:
  *
  * 1. The build stays browserless. Rendering posters during `astro build` would
  *    put a headless Chromium on the deploy path for an image that changes maybe
  *    twice a year, and turn a flaky capture into a broken deploy.
- * 2. `npm test` must not write tracked files. `playwright.config.ts` is explicit
+ * 2. `pnpm test` must not write tracked files. `playwright.config.ts` is explicit
  *    that stills are scratch evidence a human reads, with nothing comparing
  *    them; an asset generator has the opposite contract.
  * 3. "The piece looks right now" is a human judgement. Keeping a person in the
@@ -29,8 +29,8 @@ import startDevServer from "../tests/support/dev-server.ts"
  * the slug filter: name the piece you actually changed, and leave the rest
  * alone.
  *
- *     npm run posters                 every experiment
- *     npm run posters -- dangler      just this one
+ *     pnpm run posters                 every experiment
+ *     pnpm run posters -- dangler      just this one
  */
 
 /** Beside the piece, so an experiment folder stays one self-contained thing. */

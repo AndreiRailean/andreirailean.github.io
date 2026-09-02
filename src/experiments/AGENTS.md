@@ -42,7 +42,7 @@ src/pages/experiments/<slug>/  index.astro (the piece), about.astro (the note)
   Experiment code lives in `src/experiments/<slug>/`; only routes go in `pages`.
 - An experiment page **imports nothing from the rest of the site** — no
   `Layout.astro`, no `globals.css`, no Tailwind. It is a bare document.
-  **`npm run lint` fails this now**, so it is no longer convention: inside
+  **`pnpm run lint` fails this now**, so it is no longer convention: inside
   `src/experiments/` and `src/pages/experiments/`, an `@/` import must start
   `@/experiments/`, and a relative path may not climb into the site's folders.
   Written as an allow-list rather than a list of the site's folders, so the
@@ -97,7 +97,7 @@ public face and still gives it nothing to inherit from, exactly as above.
 Four places outside the experiment's own folder know a slug, and three of them
 fail loudly while the fourth fails by silently leaving the piece out:
 
-- `scripts/posters.ts` — `SLUGS`, or `npm run posters -- <slug>` says the
+- `scripts/posters.ts` — `SLUGS`, or `pnpm run posters -- <slug>` says the
   experiment does not exist.
 - `tests/kit.spec.ts` — `PIECES`, which runs the whole chrome suite against it.
 - `tests/experiments-index.spec.ts` — `EXPECTED`, which pins the index's
@@ -116,7 +116,7 @@ frontmatter. `/experiments/` is generated from it.
 
 - **Restart the dev server after adding or renaming an `about.md`.** Astro builds
   its content store at startup, so a new file 500s the about page and silently
-  renders the index's empty state until you do. `npm run build` is unaffected.
+  renders the index's empty state until you do. `pnpm run build` is unaffected.
 - Keep `updated` current when changing an experiment; they are evergreen, not
   dated posts.
 
@@ -131,9 +131,9 @@ src/experiments/<slug>/poster.ts     the recipe: which moment is worth shooting
 src/experiments/<slug>/poster.webp   the result, referenced from about.md
 ```
 
-- **`npm run posters` captures them; nothing else does.** Not the build, which
-  stays browserless, and not `npm test`, which must never write tracked files.
-  Name a slug — `npm run posters -- dangler` — to leave the others alone.
+- **`pnpm run posters` captures them; nothing else does.** Not the build, which
+  stays browserless, and not `pnpm test`, which must never write tracked files.
+  Name a slug — `pnpm run posters -- dangler` — to leave the others alone.
 - **A recipe is per-piece knowledge and stays with the piece.** Which preset,
   what has to happen before the shutter, how long to wait. Dangler loads a
   seeded preset and calls `settle()` twice, because a frame caught mid-relaxation
@@ -199,7 +199,7 @@ evaluate JS at all, give the API a query-string trigger (`?panel=1`) rather than
 leaving the state unreachable.
 
 Route external input through one validator shared with the query string, so the
-API cannot produce a state a URL could not. `npm test` drives these APIs
+API cannot produce a state a URL could not. `pnpm test` drives these APIs
 directly; see **Verifying** below.
 
 Expose a `stats()`-style read of internal counts too. Without one there is no
@@ -207,7 +207,7 @@ way to tell whether a transition converged or a population was rebuilt, and a
 screenshot cannot show it — one real regression here was invisible until the
 counts were readable.
 
-`webcheck` cannot evaluate JS. Reaching the API headlessly is what `npm test` is
+`webcheck` cannot evaluate JS. Reaching the API headlessly is what `pnpm test` is
 for: `tests/support/experiment.ts` opens a piece, waits for `window.experiment`
 and hands back a typed handle on it, so nothing needs to hand-roll a CDP harness
 any more. Note that headless runs without a GPU, so absolute frame times are
@@ -215,32 +215,32 @@ pessimistic — trust the ratios between configurations, not the numbers.
 
 ## Verifying
 
-`npm run build` covers `astro check` and the link check below, `npm run lint`
+`pnpm run build` covers `astro check` and the link check below, `pnpm run lint`
 covers eslint, and none of them sees anything visual.
 
-- **`npm test` is two runners, and `tests/AGENTS.md` is the contract.** Vitest
+- **`pnpm test` is two runners, and `tests/AGENTS.md` is the contract.** Vitest
   over `tests/unit/**/*.test.ts` for anything that is a function and a number;
   Playwright over `tests/*.spec.ts` for anything needing a real page. Both assert
   on _numbers_ rather than comparing pixels — almost every bug in this section was
   invisible in a screenshot. Stills land in `.scratch/shots/` for a human to look
   at and nothing diffs them.
-- **Reach for the unit runner while working.** `npx vitest rope` answers in
+- **Reach for the unit runner while working.** `pnpm exec vitest rope` answers in
   milliseconds where the browser suite needs seconds and a dev server.
 - **Do not give the browser suite a fixed port, or one derived per worktree.**
   Both fail, the first silently — see the dev-server section of
   `tests/AGENTS.md`.
 - Use `/root/bin/webcheck` (see the machine's global notes) to sweep many pages
   at once for console errors and stills. It cannot evaluate JS; that is the one
-  thing `npm test` adds.
+  thing `pnpm test` adds.
 - **A 200 proves nothing about content.** Grep the response for text you expect;
   an empty collection renders a perfectly valid blank page.
-- **`npm run build` ends by checking that the built site answers its own
+- **`pnpm run build` ends by checking that the built site answers its own
   addresses.** `scripts/check-links.mts` walks `dist/`, resolves every local
   `href`, `src`, `srcset`, `data-*` and `url()` against what was actually
   written, and fails the build on anything dangling. It is on the deploy path
   too — `withastro/action` builds by running the same script — because the bug
   it was written for reached production through it. Run it alone with
-  `npm run check:links` against an existing `dist/`.
+  `pnpm run check:links` against an existing `dist/`.
 - Both runners resolve the `@/` alias, so a test imports a module by the path the
   piece itself uses. Reaching for bare `node --experimental-strip-types` on a
   module still does not — that is what the runners are for.

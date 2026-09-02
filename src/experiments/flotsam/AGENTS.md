@@ -388,7 +388,7 @@ linear and both are untouched.
 
 ## Verifying a change
 
-`npm run build` covers `astro check` and `npm run lint` covers eslint. Neither
+`pnpm run build` covers `astro check` and `pnpm run lint` covers eslint. Neither
 sees anything visual, and for this piece neither sees anything physical either.
 
 **A still of frame one is a still of the piece before it has done anything.**
@@ -406,12 +406,12 @@ it.
   says whether the sea has folded (0 or below), and `orbit` against `transport`
   is the piece's whole argument in two numbers — how far it swings against how
   fast it is actually going anywhere.
-- **`tests/flotsam.spec.ts` drives the API under `npm test`**, and every test in
+- **`tests/flotsam.spec.ts` drives the API under `pnpm test`**, and every test in
   it is one of the traps above. Add to it rather than reaching for `webcheck`,
   which cannot evaluate JS.
 
 **`tests/unit/flotsam/` covers the physics, and you should run it after touching
-any of it** — `npx vitest run flotsam` for all of it, `npx vitest waves` while
+any of it** — `pnpm exec vitest run flotsam` for all of it, `pnpm exec vitest waves` while
 editing the sea. One file per module, and every assertion is a property no
 screenshot could show: a float that comes back after exactly one period, a sea
 that has not folded, an eddy field with no divergence in it, a raft that ignores

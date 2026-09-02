@@ -22,7 +22,7 @@ const experiments = defineCollection({
       updated: z.date(),
       tags: z.array(z.string()).default([]),
       /**
-       * The still shown on the index, captured by `npm run posters` and living
+       * The still shown on the index, captured by `pnpm run posters` and living
        * beside the piece it is of.
        *
        * Optional: a piece is allowed to exist before anyone has decided what it
