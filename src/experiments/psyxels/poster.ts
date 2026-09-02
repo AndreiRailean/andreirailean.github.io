@@ -24,7 +24,7 @@ import type { ExperimentApi } from "@/experiments/psyxels/api"
  * frame is caught at whatever point the breathing has reached, and the breath is
  * read off the same clock. Two captures differ by a shade rather than by a
  * picture, and both churn the file — which is what the slug filter on
- * `npm run posters` is for.
+ * `pnpm run posters` is for.
  */
 const poster: PosterRecipe<ExperimentApi> = {
   prepare: ({ api }) => api.run(90),

@@ -240,7 +240,7 @@ substitute and is not worth keeping: it moved the worst joint turn from 174° to
 
 ## Verifying a change
 
-`npm run build` covers `astro check` and `npm run lint` covers eslint. Neither
+`pnpm run build` covers `astro check` and `pnpm run lint` covers eslint. Neither
 sees anything visual, and for this piece neither sees anything physical either.
 
 **Screenshots lie about this piece unless you settle it first.** A still taken
@@ -253,13 +253,13 @@ anything above about 1e-2 means the strands are stretching or crumpling.
   visible, a broken frame, a broken constraint and a broken projection all look
   identical; this is the difference between debugging and guessing.
 - `?panel=1` and `?idle=0` as elsewhere in the section.
-- **`tests/dangler.spec.ts` drives the API under `npm test`**, and every test in
+- **`tests/dangler.spec.ts` drives the API under `pnpm test`**, and every test in
   it is one of the traps above. Add to it rather than reaching for `webcheck`,
   which cannot evaluate JS. It asserts the settled constraint error rather than
   trusting a still, so the rule above is enforced there rather than remembered.
 
 **`tests/unit/dangler/` covers the physics, and you should run it after touching
-any of it** — `npx vitest run` for all of it, `npx vitest rope` while editing the
+any of it** — `pnpm exec vitest run` for all of it, `pnpm exec vitest rope` while editing the
 solver. One file per module, and every assertion in them is a bug that actually
 happened: anchor `i` moving when the strand count changed, strands stretching, a
 stiff strand hanging as limp as a chain, frames flipping through an inflection, a

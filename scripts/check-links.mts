@@ -5,7 +5,7 @@ import { join, posix, relative, resolve } from "node:path"
  * Checking that every address the built site points at is a thing the built
  * site contains.
  *
- * Runs as the last step of `npm run build`, which puts it on both gates that
+ * Runs as the last step of `pnpm run build`, which puts it on both gates that
  * matter: the pull-request check, and the deploy — `withastro/action` builds by
  * running that same script.
  *

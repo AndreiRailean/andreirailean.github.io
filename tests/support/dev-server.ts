@@ -36,7 +36,7 @@ import { promisify } from "node:util"
  *
  * The server is left running on purpose. Repeat runs then skip a cold start,
  * which for this repo means not recompiling an experiment's module on first
- * request. `npx astro dev stop` ends it and `npx astro dev logs` reads it.
+ * request. `pnpm exec astro dev stop` ends it and `pnpm exec astro dev logs` reads it.
  */
 
 const run = promisify(execFile)
@@ -72,7 +72,12 @@ export default async function startDevServer(): Promise<string> {
   const adopted = await adoptable()
   if (adopted) return publish(adopted)
 
-  await run("npm", ["run", "dev", "--", "--port", String(PREFERRED_PORT), "--background"])
+  // No `--` separator. npm strips one before handing the script its arguments and
+  // pnpm forwards it, so `pnpm run dev -- --port <n>` reaches astro as a literal
+  // `--` and it rejects the command outright. It can also fail *soft*: astro
+  // ignores what follows the `--` and comes up on astro.config.mjs's 4354 — the
+  // port a human's own server uses — while reporting success.
+  await run("pnpm", ["run", "dev", "--port", String(PREFERRED_PORT), "--background"])
 
   const deadline = Date.now() + START_TIMEOUT_MS
   while (Date.now() < deadline) {
@@ -83,7 +88,7 @@ export default async function startDevServer(): Promise<string> {
 
   throw new Error(
     `No dev server answered for this checkout within ${START_TIMEOUT_MS / 1000}s. ` +
-      `Try \`npx astro dev logs\`, or \`npx astro dev stop\` and run again.`,
+      `Try \`pnpm exec astro dev logs\`, or \`pnpm exec astro dev stop\` and run again.`,
   )
 }
 

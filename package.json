@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
-    "build": "astro check && astro build && npm run check:links",
+    "build": "astro check && astro build && pnpm run check:links",
     "check:links": "node scripts/check-links.mts",
     "preview": "astro preview",
     "posters": "node scripts/posters.ts",
@@ -15,7 +15,7 @@
     "lint": "eslint . ",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:unit && npm run test:browser",
+    "test": "pnpm run test:unit && pnpm run test:browser",
     "test:unit": "vitest run",
     "test:watch": "vitest",
     "test:browser": "playwright test",
@@ -68,8 +68,5 @@
     "typescript-eslint": "^8.53.1",
     "vitest": "^4.1.11"
   },
-  "packageManager": "npm@11.17.0",
-  "allowScripts": {
-    "esbuild": true
-  }
+  "packageManager": "pnpm@11.25.0"
 }

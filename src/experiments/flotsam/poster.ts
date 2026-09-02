@@ -28,7 +28,7 @@ import type { PosterRecipe } from "@/experiments/poster"
  * sprites do not: their gradients are dithered with `Math.random` to break the
  * banding an eight-bit ramp would otherwise show, which moves every alpha by up
  * to half a level. Invisible to a person, and enough to churn the file, which is
- * what the slug filter on `npm run posters` is for.
+ * what the slug filter on `pnpm run posters` is for.
  */
 const poster: PosterRecipe<ExperimentApi> = {
   prepare: ({ api }) => api.run(40),

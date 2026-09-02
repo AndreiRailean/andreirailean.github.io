@@ -2,17 +2,17 @@
 
 Two runners, split by **what a check needs** rather than by how fast it is.
 
-| Runner     | Files                     | Command                | For                                          |
-| ---------- | ------------------------- | ---------------------- | -------------------------------------------- |
-| Vitest     | `tests/unit/**/*.test.ts` | `npm run test:unit`    | A function and a number. No DOM.             |
-| Playwright | `tests/*.spec.ts`         | `npm run test:browser` | A real page: canvas, layout, the console API |
+| Runner     | Files                     | Command                 | For                                          |
+| ---------- | ------------------------- | ----------------------- | -------------------------------------------- |
+| Vitest     | `tests/unit/**/*.test.ts` | `pnpm run test:unit`    | A function and a number. No DOM.             |
+| Playwright | `tests/*.spec.ts`         | `pnpm run test:browser` | A real page: canvas, layout, the console API |
 
-`npm test` runs both. The extensions are load-bearing — each runner is
+`pnpm test` runs both. The extensions are load-bearing — each runner is
 configured to collect only its own, or they collect each other's files and fail
 on the other's imports.
 
-Mid-change, run one module: `npx vitest rope`, `npx vitest run settings`, or
-`npx vitest` to watch. That is the whole reason the unit runner exists; the
+Mid-change, run one module: `pnpm exec vitest rope`, `pnpm exec vitest run settings`, or
+`pnpm exec vitest` to watch. That is the whole reason the unit runner exists; the
 browser suite takes seconds and a cold dev server, and answering "did I break the
 solver" should not.
 

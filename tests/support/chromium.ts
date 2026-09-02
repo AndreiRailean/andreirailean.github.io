@@ -11,7 +11,7 @@ import { existsSync } from "node:fs"
  * The machine's own Chromium in preference to Playwright's download. One is
  * installed everywhere this repo gets worked on, and nothing the harness does
  * needs a patched build. Falling through to `undefined` is deliberate: on a
- * machine where `npm install` ran normally, Playwright's own browser is present
+ * machine where `pnpm install` ran normally, Playwright's own browser is present
  * and its "run npx playwright install" message is better than anything invented
  * here.
  */

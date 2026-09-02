@@ -15,19 +15,38 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+
+      # pnpm/setup replaces actions/setup-node outright: it installs pnpm from a
+      # self-contained binary and then installs the runtime itself. pnpm/action-setup
+      # is its predecessor and is not for pnpm 11.
+      #
+      # It has no equivalent of setup-node's `node-version-file`, so `.node-version`
+      # is read into an output and passed through — the same read deploy.yml already
+      # does, and it keeps that file the single source of truth rather than adding a
+      # second one in `devEngines`. The pnpm version comes from `packageManager`.
+      #
+      # `install: false` because the action's own install cannot be made frozen on
+      # the released v2: `require-lockfile` exists on the action's main branch but
+      # not in the tag, where it is rejected as an unexpected input — a warning
+      # annotation, and an install that silently is not `npm ci`. Doing it in a
+      # named step is both valid and explicit about which install this is.
+      - name: Read the Node version
+        id: node
+        run: echo "version=$(cat .node-version)" >> "$GITHUB_OUTPUT"
+      - uses: pnpm/setup@v2
         with:
-          node-version-file: ".node-version"
-          cache: "npm"
+          runtime: node@${{ steps.node.outputs.version }}
+          install: false
+          cache: true
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Lint all code
-        run: npm run prettier && npm run lint
+        run: pnpm run prettier && pnpm run lint
 
       - name: Typecheck all code
-        run: npm run typecheck
+        run: pnpm run typecheck
 
       - name: Test build
-        run: npm run build
+        run: pnpm run build

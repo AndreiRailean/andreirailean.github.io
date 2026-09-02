@@ -8,7 +8,7 @@ import { defineConfig } from "vitest/config"
  * Two runners, deliberately. Playwright drives a real page and is the only thing
  * that can reach `window.experiment` (see `playwright.config.ts`); this one
  * imports a module directly and answers in milliseconds, which is what makes it
- * usable mid-change — `npx vitest rope` while editing the solver.
+ * usable mid-change — `pnpm exec vitest rope` while editing the solver.
  *
  * `.mts` because this file uses `import.meta.url` and the project is CommonJS
  * by default; Vite's native config loader warns otherwise.
