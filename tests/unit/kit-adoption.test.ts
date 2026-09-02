@@ -160,14 +160,74 @@ describe.each(slugs)("%s", (slug) => {
       if (source.includes(OPT_OUT)) continue
       for (const symbol of definitions(source)) {
         const where = kitSymbols.get(symbol)
-        if (where) clashes.push(`${slug}/${file} defines \`${symbol}\`, which ${where} already does`)
+        // The label carries the folder, because the two shared layers are not
+        // interchangeable and the message used to send every reader to `kit/`.
+        // A clash with `random.ts` or `poster.ts` is a clash with a *section
+        // level* module, deliberately not in the kit —
+        // `docs/adr/20260829-a-third-copy-of-the-generators-moves-to-the-section.md`
+        // exists to draw that line, and the hint was rubbing it out.
+        if (where) {
+          const from = `@/experiments/${where.replace(/\.ts$/, "")}`
+          clashes.push(`${slug}/${file} defines \`${symbol}\`, which ${where} already does — import it from ${from}`)
+        }
       }
     }
     expect(
       clashes,
-      `${clashes.join("; ")}. Import it from @/experiments/kit/, or say why not with a ` +
+      `${clashes.join("; ")}. Import it, or say why not with a ` +
         `"${OPT_OUT} <reason>" comment in that file.`,
     ).toEqual([])
+  })
+
+  /**
+   * The console API's chrome half, which the kit now supplies.
+   *
+   * This is the check that was missing when four pieces each wrote `get`, `set`,
+   * `preset`, `presets`, `panel`, `pause`, `idle`, `url`, `fullscreen` and
+   * `awake` out by hand, byte-identically. The symbol-clash check above could
+   * not see any of it: those are methods on an object literal, not `export`ed
+   * definitions, so there was nothing for it to clash with — and #85 was a
+   * divergence inside that invisible region, which cost a real assertion.
+   *
+   * Written as **a piece must not reach into the chrome from its `api.ts`**
+   * rather than as a search for the ten method names, because the names are
+   * ordinary words and the calls are not. `controls.apply`, `controls.setIdle`,
+   * `controls.setPanelOpen` and `wakeLock.held` appear nowhere else in a piece
+   * once `createBaseApi` is composed, and each one is the kit's own handle being
+   * driven by hand.
+   *
+   * Scoped to `api.ts` deliberately. A piece's `reroll.ts` legitimately calls
+   * `controls.apply` — it is applying a patch through the piece's own validator,
+   * which is a different act from re-implementing the handle.
+   *
+   * Offered, not imposed, like everything else here: a piece needing a different
+   * console handle writes one and says so in a line.
+   */
+  const CHROME_REACHES = ["controls.apply(", "controls.setPanelOpen(", "controls.setIdle(", "wakeLock.held("]
+
+  it("takes the console API's chrome half from the kit", () => {
+    const api = read(`${EXPERIMENTS}/${slug}/api.ts`)
+    if (api === null || api.includes(OPT_OUT)) return
+
+    const reaches = CHROME_REACHES.filter((call) => api.includes(call))
+    expect(
+      reaches,
+      `${slug}/api.ts drives the chrome by hand (${reaches.join(", ")}), which kit/api.ts's ` +
+        `createBaseApi already does. Four pieces wrote this out identically before it was ` +
+        `hoisted, and #85 was a divergence inside it. Spread createBaseApi instead, or say why ` +
+        `not with a "${OPT_OUT} <reason>" comment in that file.`,
+    ).toEqual([])
+
+    // The **call**, not the identifier. Checking for the bare name passed on a
+    // piece that had been gutted back to hand-written methods and still carried
+    // the import — caught by breaking this check deliberately, which is the
+    // only reason it is written this way.
+    expect(
+      api.includes("createBaseApi("),
+      `${slug}/api.ts exposes a console API without calling the kit's base handle. Spread ` +
+        `createBaseApi from @/experiments/kit/api, or say why not with a ` +
+        `"${OPT_OUT} <reason>" comment in that file.`,
+    ).toBe(true)
   })
 
   it("imports the kit stylesheet if it renders the kit's chrome", () => {
