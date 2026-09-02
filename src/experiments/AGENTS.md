@@ -165,6 +165,21 @@ the first thing other than a test to drive a piece through this handle: a swipe
 through the scenes has to say what it landed on, and a tap has to hold the piece.
 `tests/support/experiment.ts` carries the same list as `BaseApi`.
 
+**The chrome half of it comes from the kit — spread `createBaseApi`.**
+`kit/api.ts` supplies `get`, `set`, `preset`, `presets`, `panel`, `pause`,
+`idle`, `url`, `fullscreen` and `awake`, given the piece's `PRESETS`, its
+`normalizeSettings` and a scene with a `setPaused`. It was hoisted on the
+third-copy rule at the fourth copy: all four pieces had written those ten
+methods out, byte-identically, and Starry Night's differed from the other three
+by one identifier. **`set()` in particular is a trap worth not re-deriving** —
+`Controls.apply` is the raw setter and does not normalize, so a hand-written
+`set` that forgets is how the API reaches a state a URL could not.
+
+What stays the piece's, because these differ for reasons: `controls()`,
+`stats()`, `debug()`, the console banner, and the piece's own verbs like
+`settle()` and `run()`. `tests/unit/kit-adoption.test.ts` fails a piece that
+drives the chrome by hand from its `api.ts` instead — unless it says why.
+
 **`controls()` reports one entry per settings key, and every key must be real.**
 Flatten over the kit's `keysOf(control)`: a range owns two settings and has
 `keys` rather than a `key`, so a piece mapping `control.key` straight through
@@ -218,6 +233,13 @@ pessimistic — trust the ratios between configurations, not the numbers.
 `pnpm run build` covers `astro check` and the link check below, `pnpm run lint`
 covers eslint, and none of them sees anything visual.
 
+**`pnpm run lint` is not what CI's lint job runs.** The job is
+`pnpm run prettier && pnpm run lint`, and `pnpm run prettier` is
+`prettier . --check`. So a formatting-only difference passes every local command
+in this list and turns the branch red anyway — which has happened, on a comment
+block that eslint was perfectly happy with. Run `pnpm run prettier` too, or
+`pnpm exec prettier <file> --write` on what you touched.
+
 - **`pnpm test` is two runners, and `tests/AGENTS.md` is the contract.** Vitest
   over `tests/unit/**/*.test.ts` for anything that is a function and a number;
   Playwright over `tests/*.spec.ts` for anything needing a real page. Both assert
@@ -260,7 +282,8 @@ shared layers is **who is spared the relearning**.
   sheet, and chooses nothing else. It does not get to move the exit, because a
   visitor should not have to find it twice.
 - **`kit/` is offered, and it is the control surface only.** The panel, the bar,
-  their stylesheet, and what those need to work — `copy.ts`, `fullscreen.ts`,
+  their stylesheet, the chrome half of the console handle (`api.ts`), and what
+  those need to work — `copy.ts`, `fullscreen.ts`,
   `wakelock.ts`. Compose them because they are already learned; ignore them if
   the piece needs a different control structure. The art ends at the console API,
   so controls sit outside that boundary. Using the kit is never a reason to
@@ -286,6 +309,14 @@ exercised in both directions:
 
 - `wakelock.ts` moved in when Flotsam was about to make it a third byte-identical
   copy — `docs/adr/20260829-the-third-copy-moves-to-the-kit.md`.
+- The **console API's chrome half** moved in at the _fourth_ copy, as
+  `kit/api.ts`: ten methods written out identically in every piece. It went to
+  `kit/` rather than the section level because every line of it drives the
+  `Controls` handle `createControls` returns — a piece cannot take it without
+  taking the chrome, which is the test. The delay is itself worth noting: the
+  copies were methods on an object literal, so the adoption check could not see
+  them, and #85 was a divergence inside that blind spot which cost a real
+  assertion. The check can see it now.
 - The **generators** — `hashSeed`, `makeRng`, `gaussian` — waited for a third
   piece and were hoisted with Psyxels, whose every psyx draws from
   `makeRng(hashSeed(seed, depth, column, row))`. They went to the **section
@@ -451,9 +482,19 @@ code outranks getting the piece made — the section exists for the pieces.
 
 `tests/unit/kit-adoption.test.ts` enforces the first of those and runs in the
 unit suite, so it answers in milliseconds: no piece may carry its own copy of a
-kit module, redeclare a selector `controls.css` owns, or build the kit's chrome
-without importing its stylesheet — unless it has said why. It cannot require
+kit module, redeclare a selector `controls.css` owns, build the kit's chrome
+without importing its stylesheet, or drive that chrome by hand from its `api.ts`
+instead of spreading `createBaseApi` — unless it has said why. It cannot require
 adoption, because the kit is offered; it requires that not adopting be legible.
+
+**Its blind spot is worth knowing, because it is where the last two faults
+lived.** The symbol check compares what a piece `export`s against what the
+shared layers export, so anything that is not a top-level `export` is invisible
+to it — a method on an object literal most of all. That is exactly how ten
+duplicated console-API methods sat in four pieces unremarked, and #85 was a
+divergence among them. The `api.ts` rule above is written as "do not reach into
+`controls` from here" rather than as a search for those method names, because
+the names are ordinary words and the calls into the handle are not.
 
 The class names are the kit's namespace — `.bar`, `.panel`, `.group`, `.row`,
 `.label`, `.value`, `.span`, `.modes`, `.mode`, `.preset`, `.toggle`, `.copy`,
