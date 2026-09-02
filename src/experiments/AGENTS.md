@@ -233,6 +233,13 @@ pessimistic — trust the ratios between configurations, not the numbers.
 `npm run build` covers `astro check` and the link check below, `npm run lint`
 covers eslint, and none of them sees anything visual.
 
+**`npm run lint` is not what CI's lint job runs.** The job is
+`npm run prettier && npm run lint`, and `npm run prettier` is
+`prettier . --check`. So a formatting-only difference passes every local command
+in this list and turns the branch red anyway — which has happened, on a comment
+block that eslint was perfectly happy with. Run `npm run prettier` too, or
+`npx prettier <file> --write` on what you touched.
+
 - **`npm test` is two runners, and `tests/AGENTS.md` is the contract.** Vitest
   over `tests/unit/**/*.test.ts` for anything that is a function and a number;
   Playwright over `tests/*.spec.ts` for anything needing a real page. Both assert
