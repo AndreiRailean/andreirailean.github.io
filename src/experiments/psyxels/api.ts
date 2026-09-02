@@ -1,5 +1,5 @@
+import { createBaseApi, type BaseApi } from "@/experiments/kit/api"
 import { keysOf, type Controls } from "@/experiments/kit/controls"
-import { setFullscreen, toggleFullscreen } from "@/experiments/kit/fullscreen"
 import type { WakeLock } from "@/experiments/kit/wakelock"
 import type { Psyxels, PsyxelsStats } from "@/experiments/psyxels/psyxels"
 import { reroll } from "@/experiments/psyxels/reroll"
@@ -18,15 +18,7 @@ import { CONTROLS, normalizeSettings, PRESETS, type Settings } from "@/experimen
  * still of frame one is a still of a field that has never changed size, which is
  * the one thing the piece is about.
  */
-export type ExperimentApi = {
-  /** Current settings. */
-  get: () => Settings
-  /** Merge a partial change; returns what was actually applied after clamping. */
-  set: (patch: Partial<Settings>) => Settings
-  /** Load a preset by 1-based number or by name. */
-  preset: (which: number | string) => Settings
-  /** Preset names, in keyboard order. */
-  presets: () => string[]
+export type ExperimentApi = BaseApi<Settings> & {
   /** Every control with its group, bounds and blurb. One entry per setting. */
   controls: () => { key: string; group: string; label: string; min: number; max: number; hint: string }[]
   /** A fresh packing of the same picture. Omit for a random seed; returns the seed used. */
@@ -35,27 +27,6 @@ export type ExperimentApi = {
   run: (seconds: number) => void
   /** Draw the squares the packing chose. */
   debug: (on: boolean) => void
-  /** Open or close the settings panel; omit to toggle. Returns the new state. */
-  panel: (open?: boolean) => boolean
-  /**
-   * Hold the piece where it is, or let it run on. Omit to toggle; returns
-   * whether it is now held.
-   *
-   * Part of the section's minimum surface since the interactive view arrived: a
-   * tap on a phone holds the piece, and there is nothing else on the screen for
-   * that to go through. Distinct from the scene's own `stop()`, which is
-   * teardown — it drops listeners and, in two pieces, visibly moves the scene on
-   * the way back.
-   */
-  pause: (held?: boolean) => boolean
-  /** Pin idle on or off — hiding the cursor and chrome. Omit to resume auto. */
-  idle: (force?: boolean | null) => void
-  /** The shareable URL for the current scene. */
-  url: () => string
-  /** Enter or leave fullscreen; omit to toggle. Resolves to whether it is on. */
-  fullscreen: (on?: boolean) => Promise<boolean>
-  /** Whether the screen is currently being held awake. */
-  awake: () => boolean
   /** What the field is made of, how well it matches the subject, and what it costs. */
   stats: () => PsyxelsStats
 }
@@ -89,30 +60,12 @@ export function announceApi(): void {
 }
 
 export function createApi(controls: Controls<Settings>, wakeLock: WakeLock, scene: Psyxels): ExperimentApi {
-  // Held here rather than read back off the scene: whether a piece is paused is
-  // a fact about how it is being looked at, not about what it is drawing.
-  let paused = false
-
   return {
-    get: () => controls.getSettings(),
-
-    set(patch) {
-      const next = normalizeSettings(patch, controls.getSettings())
-      controls.apply(next)
-      return next
-    },
-
-    preset(which) {
-      const found = typeof which === "number" ? PRESETS[which - 1] : PRESETS.find(({ label }) => label === which)
-      if (!found) {
-        throw new Error(`No such preset: ${JSON.stringify(which)}. Try ${PRESETS.map((p) => p.label).join(", ")}.`)
-      }
-      const next = normalizeSettings(found.settings)
-      controls.apply(next)
-      return next
-    },
-
-    presets: () => PRESETS.map(({ label }) => label),
+    // The chrome half — get, set, preset, presets, panel, pause, idle, url,
+    // fullscreen, awake — comes from the kit. It was written out here, and
+    // identically in three other pieces, until the fourth copy; see
+    // src/experiments/kit/api.ts.
+    ...createBaseApi({ controls, wakeLock, scene, presets: PRESETS, normalize: normalizeSettings }),
 
     // A choice row reports the same shape as a slider, with the bounds it does
     // not have left at zero. The browser suite checks every setting has a
@@ -135,28 +88,6 @@ export function createApi(controls: Controls<Settings>, wakeLock: WakeLock, scen
     run: (seconds) => scene.run(seconds),
 
     debug: (on) => scene.setDebug(on),
-
-    panel(open) {
-      const next = open ?? !controls.isPanelOpen()
-      controls.setPanelOpen(next)
-      return next
-    },
-
-    pause(held) {
-      paused = held ?? !paused
-      scene.setPaused(paused)
-      return paused
-    },
-
-    idle(force = null) {
-      controls.setIdle(force)
-    },
-
-    url: () => window.location.href,
-
-    fullscreen: (on) => (on === undefined ? toggleFullscreen() : setFullscreen(on)),
-
-    awake: () => wakeLock.held(),
 
     stats: () => scene.stats(),
   }

@@ -359,10 +359,17 @@ test("bloom and overlap fill the ground around a large psyx without repacking", 
  *
  * Both halves are visible only on the canvas: `stats()` counts psyxels and the
  * glow adds no psyxels at all. The afterglow is the harder one — it is light
- * that is still there after the psyx that made it has moved — so it is measured
- * as *extra lit area on a moving field*, which is what a trail is.
+ * that is still there after the psyx that made it has moved — and it was
+ * measured here as *extra lit area on a moving field*.
+ *
+ * **That measurement did not hold and its assertion is quarantined below —
+ * #109.** Measured at a single field state the afterglow reduces lit area and
+ * total light rather than adding either, so "extra lit area" was reading the
+ * difference between two field states sampled seven seconds apart. Whether the
+ * trail is real and the instrument was wrong, or the buffer re-blend is losing
+ * light, is a question about what the piece draws.
  */
-test("the glow spills light, and the afterglow leaves it behind", async ({ page }) => {
+test("the glow spills light, and adds no psyxels doing it", async ({ page }) => {
   const experiment = await openPsyxels(page, { idle: true })
 
   const paint = async (patch: Record<string, number>) => {
@@ -380,9 +387,36 @@ test("the glow spills light, and the afterglow leaves it behind", async ({ page 
 
   // Light where there was none: the blur puts some of every mark outside itself.
   expect(lit.lit).toBeGreaterThan(dark.lit * 1.2)
-  // And a field that is repacking leaves more of it behind when the buffer is
-  // faded slowly than when it is faded fast — the trail.
-  expect(trailing.lit).toBeGreaterThan(lit.lit)
+
+  /*
+   * The afterglow assertion is quarantined, not weakened. See #109.
+   *
+   *     expect(trailing.lit).toBeGreaterThan(lit.lit)
+   *
+   * It was passing on an artefact. `paint()` ends with `run(6)`, so the three
+   * readings are taken at clocks of about 7.7s, 14.6s and 21.5s — three
+   * *different* field states, because `churn: 40` repacks throughout. The
+   * margin it measured was under 1.3% and the arrangement-to-arrangement
+   * variation reaches that, so it failed about one local run in five, and on
+   * CI in a PR touching no psyxels code.
+   *
+   * Measured at *one* field state instead — read at `afterglow: 0.95`, then set
+   * `afterglow: 0` and step a single frame, so only the buffer differs — the
+   * afterglow **reduces** lit area every time, by 0.13% to 0.59%, and reduces
+   * total luminance by 2.2% to 2.6%. Ten readings, all negative. Raising
+   * `churn` to 90 removes even the artefact and fails four runs in five.
+   *
+   * So this is not a tolerance question: a tolerance wide enough to pass would
+   * assert the opposite of the test's name. Either the buffer re-blend is
+   * losing light, or dimmer-but-spread is what a phosphor is *for* and a
+   * threshold count is simply blind to it — light spread thin sends as many
+   * pixels down through LIT_THRESHOLD as up. Which of those it is depends on
+   * whether there is a trail on screen, so it is Andrei's call and not a
+   * steward's; #109 carries the data and the two readings.
+   *
+   * Restore this, or replace it with a per-pixel occupancy measure, once that
+   * is decided. Everything else in this test stands and is unmodified.
+   */
 
   // None of it is a psyx: the glow adds light, never population.
   expect(lit.stats.psyxels).toBeGreaterThan(0)
