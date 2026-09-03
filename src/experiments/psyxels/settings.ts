@@ -3,10 +3,14 @@ import {
   FACE_LABELS,
   FACES,
   isFace,
+  isPolarity,
   isSubject,
+  POLARITIES,
+  POLARITY_LABELS,
   SUBJECT_LABELS,
   SUBJECTS,
   type Face,
+  type Polarity,
   type SubjectKind,
 } from "@/experiments/psyxels/subject"
 import { GLYPH_COUNT } from "@/experiments/psyxels/glyphs"
@@ -27,6 +31,7 @@ export type Settings = {
   seed: number
   subject: SubjectKind
   face: Face
+  polarity: Polarity
   fill: number
   coarse: number
   levels: number
@@ -60,12 +65,14 @@ export type Settings = {
   playback: number
 }
 
-export type NumericKey = Exclude<keyof Settings, "subject" | "face">
+export type NumericKey = Exclude<keyof Settings, "subject" | "face" | "polarity">
 
 export type ControlGroup = "subject" | "packing" | "colour" | "life"
 
 /** The panel's row kinds. A bound pair has no use here; a choice does. */
-export type Control = ((SliderControl<NumericKey> | RangeControl<NumericKey>) | ChoiceControl<"subject" | "face">) & {
+export type Control = (
+  (SliderControl<NumericKey> | RangeControl<NumericKey>) | ChoiceControl<"subject" | "face" | "polarity">
+) & {
   group: ControlGroup
 }
 
@@ -93,6 +100,14 @@ export const CONTROLS: Control[] = [
     label: "face",
     options: FACES.map((value) => ({ value, label: FACE_LABELS[value] })),
     hint: "Which letterform the subject is drawn with. It is asked for as a kind of shape rather than a named font, so the machine supplies whatever it has of that kind — and the character is what survives being packed: a grotesque gives even strokes and a hard silhouette, a roman gives thick-and-thin and serifs that break into separate psyxels, a script gives a stroke that changes width as it turns. Ignored by the portrait, which is not typeset.",
+  },
+  {
+    kind: "choice",
+    group: "subject",
+    key: "polarity",
+    label: "polarity",
+    options: POLARITIES.map((value) => ({ value, label: POLARITY_LABELS[value] })),
+    hint: "Which side of the subject the psyxels are made of. On ink they fill the subject and the ground stays bare. On void the picture is turned inside out before the packing ever sees it: the whole frame is psyxels and the subject is the hole left in them, read the way a stencil is read. Nothing downstream knows — the packing still spends its small psyxels along the same contours, only now from the other side of them.",
   },
   {
     kind: "slider",
@@ -474,6 +489,7 @@ export const DEFAULT_SETTINGS: Settings = {
   seed: 8412,
   subject: "A",
   face: "grotesque",
+  polarity: "ink",
   fill: 0.82,
   coarse: 0.125,
   levels: 4,
@@ -531,6 +547,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       seed: 639953,
       subject: "A",
       face: "roman",
+      polarity: "ink",
       fill: 0.74,
       coarse: 0.034,
       levels: 4,
@@ -571,6 +588,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       seed: 639953,
       subject: "A",
       face: "roman",
+      polarity: "ink",
       fill: 0.82,
       coarse: 0.027,
       levels: 2,
@@ -611,6 +629,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       seed: 639953,
       subject: "&",
       face: "script",
+      polarity: "ink",
       fill: 0.79,
       coarse: 0.027,
       levels: 2,
@@ -651,6 +670,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       seed: 639953,
       subject: "A",
       face: "typewriter",
+      polarity: "ink",
       fill: 0.73,
       coarse: 0.037,
       levels: 3,
@@ -691,6 +711,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       seed: 2207,
       subject: "avatar",
       face: "roman",
+      polarity: "ink",
       fill: 0.89,
       coarse: 0.018,
       levels: 3,
@@ -731,6 +752,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       seed: 771,
       subject: "&",
       face: "roman",
+      polarity: "ink",
       fill: 0.8,
       coarse: 0.195,
       levels: 3,
@@ -771,6 +793,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       seed: 639953,
       subject: "L",
       face: "roman",
+      polarity: "ink",
       fill: 0.74,
       coarse: 0.034,
       levels: 4,
@@ -834,6 +857,7 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
     ...merged,
     subject: isSubject(merged.subject) ? merged.subject : base.subject,
     face: isFace(merged.face) ? merged.face : base.face,
+    polarity: isPolarity(merged.polarity) ? merged.polarity : base.polarity,
   }
 
   for (const key of Object.keys(BOUNDS) as NumericKey[]) {
@@ -870,6 +894,9 @@ export function settingsFromQuery(params: URLSearchParams): Settings {
   const face = params.get("face")
   if (isFace(face)) patch.face = face
 
+  const polarity = params.get("polarity")
+  if (isPolarity(polarity)) patch.polarity = polarity
+
   return normalizeSettings(patch)
 }
 
@@ -881,6 +908,7 @@ export function settingsToQuery(settings: Settings): URLSearchParams {
   }
   if (settings.subject !== DEFAULT_SETTINGS.subject) params.set("subject", settings.subject)
   if (settings.face !== DEFAULT_SETTINGS.face) params.set("face", settings.face)
+  if (settings.polarity !== DEFAULT_SETTINGS.polarity) params.set("polarity", settings.polarity)
   return params
 }
 
@@ -903,7 +931,7 @@ export function urlForSettings(settings: Settings, pathname: string): string {
  * only of those is one the piece would read as carrying nothing.
  */
 function namesASetting(params: URLSearchParams): boolean {
-  if (isSubject(params.get("subject")) || isFace(params.get("face"))) return true
+  if (isSubject(params.get("subject")) || isFace(params.get("face")) || isPolarity(params.get("polarity"))) return true
   return (Object.keys(BOUNDS) as NumericKey[]).some((key) => {
     const raw = params.get(key)
     return raw !== null && raw.trim() !== "" && Number.isFinite(Number(raw))
@@ -936,6 +964,7 @@ export function needsPacking(before: Settings, after: Settings): boolean {
     before.seed !== after.seed ||
     before.subject !== after.subject ||
     before.face !== after.face ||
+    before.polarity !== after.polarity ||
     before.fill !== after.fill ||
     before.coarse !== after.coarse ||
     before.levels !== after.levels ||
@@ -950,5 +979,10 @@ export function needsPacking(before: Settings, after: Settings): boolean {
 
 /** Whether a change needs the subject rasterised again. */
 export function needsSubject(before: Settings, after: Settings): boolean {
-  return before.subject !== after.subject || before.face !== after.face || before.fill !== after.fill
+  return (
+    before.subject !== after.subject ||
+    before.face !== after.face ||
+    before.polarity !== after.polarity ||
+    before.fill !== after.fill
+  )
 }

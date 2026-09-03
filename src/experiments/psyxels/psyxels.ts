@@ -214,7 +214,7 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
     stage.width = cols
     stage.height = rows
     stageCtx.setTransform(cols / width, 0, 0, cols / width, 0, 0)
-    paintSubject(stageCtx, width, height, settings.subject, settings.face, settings.fill, avatar)
+    paintSubject(stageCtx, width, height, settings.subject, settings.face, settings.fill, settings.polarity, avatar)
     mask = buildMask(stage, width, height)
     forget()
   }
