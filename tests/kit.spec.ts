@@ -13,7 +13,7 @@ import { expect, openExperiment, test } from "./support/experiment.ts"
  * piece had its own copy of the keyboard handling to drift next.
  */
 
-const PIECES = ["dangler", "flotsam", "psyxels", "starry-night"]
+const PIECES = ["dangler", "flotsam", "psyxels", "starry-night", "walkers"]
 
 for (const slug of PIECES) {
   test(`${slug}: the panel opens above the bar, not below it`, async ({ page }) => {
