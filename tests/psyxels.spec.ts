@@ -362,12 +362,12 @@ test("bloom and overlap fill the ground around a large psyx without repacking", 
  * that is still there after the psyx that made it has moved — and it was
  * measured here as *extra lit area on a moving field*.
  *
- * **That measurement did not hold and its assertion is quarantined below —
- * #109.** Measured at a single field state the afterglow reduces lit area and
- * total light rather than adding either, so "extra lit area" was reading the
- * difference between two field states sampled seven seconds apart. Whether the
- * trail is real and the instrument was wrong, or the buffer re-blend is losing
- * light, is a question about what the piece draws.
+ * **A threshold count is the wrong instrument for the afterglow, and the test
+ * below is where it is measured instead** — #109. Light spread thin sends as
+ * many pixels down through `LIT_THRESHOLD` as up, so a total is blind to a
+ * trail by construction, and the assertion that used to sit here was reading
+ * the difference between two field states sampled seven seconds apart. The
+ * glow's own half — light where there was none — is a count, holds, and stays.
  */
 test("the glow spills light, and adds no psyxels doing it", async ({ page }) => {
   const experiment = await openPsyxels(page, { idle: true })
@@ -389,38 +389,122 @@ test("the glow spills light, and adds no psyxels doing it", async ({ page }) => 
   expect(lit.lit).toBeGreaterThan(dark.lit * 1.2)
 
   /*
-   * The afterglow assertion is quarantined, not weakened. See #109.
-   *
-   *     expect(trailing.lit).toBeGreaterThan(lit.lit)
-   *
-   * It was passing on an artefact. `paint()` ends with `run(6)`, so the three
-   * readings are taken at clocks of about 7.7s, 14.6s and 21.5s — three
+   * The afterglow used to be asserted here, as `trailing.lit > lit.lit`, and it
+   * was passing on an artefact — #109. `paint()` ends with `run(6)`, so the
+   * three readings are taken at clocks of about 7.7s, 14.6s and 21.5s: three
    * *different* field states, because `churn: 40` repacks throughout. The
-   * margin it measured was under 1.3% and the arrangement-to-arrangement
-   * variation reaches that, so it failed about one local run in five, and on
-   * CI in a PR touching no psyxels code.
+   * margin was under 1.3% and the arrangement-to-arrangement variation reaches
+   * that, so it failed about one local run in five, and on CI in a PR touching
+   * no psyxels code.
    *
-   * Measured at *one* field state instead — read at `afterglow: 0.95`, then set
-   * `afterglow: 0` and step a single frame, so only the buffer differs — the
-   * afterglow **reduces** lit area every time, by 0.13% to 0.59%, and reduces
-   * total luminance by 2.2% to 2.6%. Ten readings, all negative. Raising
-   * `churn` to 90 removes even the artefact and fails four runs in five.
-   *
-   * So this is not a tolerance question: a tolerance wide enough to pass would
-   * assert the opposite of the test's name. Either the buffer re-blend is
-   * losing light, or dimmer-but-spread is what a phosphor is *for* and a
-   * threshold count is simply blind to it — light spread thin sends as many
-   * pixels down through LIT_THRESHOLD as up. Which of those it is depends on
-   * whether there is a trail on screen, so it is Andrei's call and not a
-   * steward's; #109 carries the data and the two readings.
-   *
-   * Restore this, or replace it with a per-pixel occupancy measure, once that
-   * is decided. Everything else in this test stands and is unmodified.
+   * It is not restored here, because no total can measure it. It is measured as
+   * a set difference in the next test instead.
    */
 
   // None of it is a psyx: the glow adds light, never population.
   expect(lit.stats.psyxels).toBeGreaterThan(0)
   expect(trailing.stats.byDepth.length).toBe(dark.stats.byDepth.length)
+})
+
+/**
+ * The afterglow, as a **set difference** rather than as a count — #109.
+ *
+ * The claim is light where the psyx no longer is. A threshold count cannot see
+ * it: the trail gains and loses pixels at the cut in comparable numbers, which
+ * is why the assertion this replaces measured 0.5% and drifted either way.
+ * Which *pixels* are lit is a different question, and the answer is not close.
+ *
+ * The reading is taken at **one field state**, with the two masks exactly one
+ * step apart:
+ *
+ * 1. settle a long trail on a repacking field, and read the lit mask;
+ * 2. collapse `afterglow` to 0 and step once, so the field has barely moved and
+ *    only the buffer's memory is different;
+ * 3. count the pixels that are lit in the first and not the second.
+ *
+ * **The null control is the other half of the instrument, not a decoration.**
+ * The same single step with `afterglow` left alone isolates field motion, and
+ * it has to come out near zero or step 3 is measuring the field having moved.
+ * That is the failure the old assertion died of, so it is asserted here.
+ *
+ * Measured on this machine, twelve samples of each: the afterglow's own pixels
+ * are **1.60% to 2.54%** of the lit area, and the control's are **0.000% to
+ * 0.049%**. Bounds are set at 0.8% and 0.25% — a factor of two under the worst
+ * real reading, and five over the worst control one.
+ *
+ * **Broken deliberately before being trusted**, per `tests/AGENTS.md`. Pinning
+ * `life` in `gather()` to its floor — so `afterglow` moves nothing — drops the
+ * measurement to **0.027% to 0.264%**, well under the bound, and lifts the
+ * control into the same range, which is what a dead instrument looks like.
+ *
+ * **Share of lit area, not the ratio between the two directions.** The ratio
+ * `onlyTrailing / onlyBare` was the first form and swings between 1.08 and 4.48
+ * on an unchanged build, because the denominator is small and noisy. The
+ * numerator against the lit area does not.
+ */
+test("the afterglow leaves light where the psyx no longer is", async ({ page }) => {
+  const experiment = await openPsyxels(page, { idle: true })
+
+  /**
+   * Both masks read inside one call, which is what keeps them one step apart.
+   *
+   * `pause(true)` parks the animation frame so nothing but `run()` advances the
+   * field — belt and braces, since a callback that stays synchronous gives no
+   * frame a chance to fire anyway, but it makes that a property of the scene
+   * rather than of how this happens to be written.
+   */
+  const disagreement = (nulled: boolean) =>
+    experiment.api(
+      ({ api, arg }) => {
+        const canvas = document.querySelector("canvas")
+        if (!canvas) throw new Error("no canvas on the page")
+        const context = canvas.getContext("2d")
+        if (!context) throw new Error("no 2d context")
+
+        const mask = () => {
+          const { data } = context.getImageData(0, 0, canvas.width, canvas.height)
+          const out = new Uint8Array(data.length / 4)
+          let count = 0
+          for (let i = 0, pixel = 0; i < data.length; i += 4, pixel++) {
+            if (data[i]! + data[i + 1]! + data[i + 2]! <= arg.threshold) continue
+            out[pixel] = 1
+            count++
+          }
+          return { out, count }
+        }
+
+        api.pause(true)
+        // A long trail on a field that is repacking, given time to settle: the
+        // buffer has to hold several field states for there to be a trail at all.
+        api.set({ glow: 1, afterglow: 0.95, churn: 40, playback: 1 })
+        api.run(6)
+        const trailing = mask()
+
+        // `RUN_HZ` is 30, so this is exactly one step of the field.
+        if (!arg.nulled) api.set({ afterglow: 0 })
+        api.run(1 / 30)
+        const after = mask()
+
+        let onlyTrailing = 0
+        let onlyAfter = 0
+        for (let i = 0; i < trailing.out.length; i++) {
+          if (trailing.out[i] && !after.out[i]) onlyTrailing++
+          else if (!trailing.out[i] && after.out[i]) onlyAfter++
+        }
+        return { onlyTrailing, onlyAfter, lit: trailing.count }
+      },
+      { threshold: LIT_THRESHOLD, nulled },
+    )
+
+  const trail = await disagreement(false)
+  const control = await disagreement(true)
+
+  // Light that is there only because the buffer remembered it.
+  expect(trail.onlyTrailing / trail.lit).toBeGreaterThan(0.008)
+
+  // And it is the memory rather than the field: one step on its own moves
+  // almost no pixel across the threshold, in either direction.
+  expect((control.onlyTrailing + control.onlyAfter) / control.lit).toBeLessThan(0.0025)
 })
 
 /**

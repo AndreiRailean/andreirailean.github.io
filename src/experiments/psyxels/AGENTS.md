@@ -237,6 +237,19 @@ flatten` at first, which looks right on a letter — ink is 1 almost everywhere 
   taste problem on one machine and a bug on another.
 - **The buffer is filled before the glow is composited, never after.** The next
   frame must gather the field, not the field plus its own glow, or it runs away.
+- **A lit-pixel count cannot measure the afterglow, and reads plausibly while
+  failing to.** The trail is dimmer than the frame that made it — a running
+  average over a _moving_ field is averaging in past frames whose light was
+  elsewhere — so it sends about as many pixels down through the test's
+  `LIT_THRESHOLD` as up, and a total comes back within a per cent either way.
+  An assertion built on that total passed for weeks on an artefact and then
+  failed CI on a PR touching no psyxels code; #109 has the numbers.
+  **Measure _which_ pixels instead:** read the lit mask at a settled
+  `afterglow: 0.95`, collapse it to 0, step exactly one field step, and count
+  the pixels lit in the first and not the second. That is 1.6–2.5% of the lit
+  area against a field-motion control of under 0.05%. The test is "the
+  afterglow leaves light where the psyx no longer is" in `tests/psyxels.spec.ts`
+  and it carries both bounds and the deliberate break they were checked against.
 - **The canvas is cleared to nothing and the page supplies the ground.** A
   `#05050a` ground gathered into the buffer frame after frame settles into a grey
   wash over everything. Anything that starts painting a ground on the canvas

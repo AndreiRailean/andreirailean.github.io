@@ -59,6 +59,22 @@ look like a plausible scatter of dots in a screenshot. Read the traps list in
 `src/experiments/dangler/AGENTS.md`: nearly every entry ends with a note that it
 was invisible on screen. Numbers are the only way to tell.
 
+**Comparing two masks of the same run is not comparing pixels, and it is
+sometimes the only instrument that works.** The rule above bans a _baseline_ —
+an image checked in and diffed against, which fails for reasons nobody can read.
+Reading the same canvas twice in one call and counting how many pixels changed
+state is a number like any other, and it sees things a total is blind to: a
+threshold count of an afterglow moves under a per cent, because light spread
+thin crosses the cut in both directions, while the set difference between the
+two masks is 1.6–2.5% of the lit area against a control of under 0.05%. #109 is
+the worked case; "the afterglow leaves light where the psyx no longer is" in
+`tests/psyxels.spec.ts` is the shape. Two things make it safe rather than
+flaky: both reads happen inside **one** `experiment.api` call, so nothing can
+step the piece between them, and it comes with a **null control** — the same
+reading with the thing under test left alone, asserted to come out near zero.
+Without that control it is measuring whatever else moved, which is exactly how
+the assertion it replaced died.
+
 So stills are captured, into `.scratch/shots/`, as evidence for a human to look
 at — and nothing compares them. A baseline over an additively blended canvas
 rendered without a GPU would fail for reasons nobody can read, and we would learn
