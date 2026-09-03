@@ -35,11 +35,19 @@ const NOT_A_PIECE = new Set(["docs", "gallery", "kit"])
  *
  * Filenames were the first rule and were wrong twice over. They missed a copy
  * saved under another name — `controls.ts` to `chrome.ts` and the check was
- * happy — and they were about to produce a false positive the other way:
- * `kit/random.ts` exports `hashSeed`, `makeRng` and `gaussian`, while
+ * happy — and they were about to produce a false positive the other way: the
+ * section's own `random.ts` exports `hashSeed`, `makeRng` and `gaussian`, while
  * `dangler/random.ts` and `flotsam/random.ts` keep placement strategies that
  * share the filename and none of the contents. A placement is a choice about a
  * scale and deliberately did not travel.
+ *
+ * `src/experiments/random.ts`, not `kit/random.ts` — this said the latter, and
+ * `kit/` has never held it. The generators went to the **section level** on
+ * purpose, because the kit is the control surface and they travel alone;
+ * `docs/adr/20260829-a-third-copy-of-the-generators-moves-to-the-section.md`
+ * exists to draw exactly that line, and the clash message forty lines below
+ * says so correctly. A file that contradicts itself about the kit's bound is
+ * the worst place for a reader to learn it.
  *
  * What actually matters is whether a piece has *reimplemented* something the kit
  * already has, and that is a question about definitions.
