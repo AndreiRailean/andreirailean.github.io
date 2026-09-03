@@ -48,12 +48,30 @@ runs a whole afternoon of park in a second. Reach for
 `pnpm exec vitest run tests/unit/walkers` while working; the browser spec is for
 the things a real page adds, and it says which at the top.
 
-**Those unit tests are not cheap.** They simulate several hours of park in
-total and take about two and a half minutes, which is most of the section's unit
-run. They are deliberately at a **1/60 s step** where the piece runs at 1/120,
-because a longer step is the harder case for everything they assert — so passing
-there implies passing at the rate the scene uses, at half the cost. Before adding
-another, ask whether an existing one can be widened.
+**Those unit tests are not cheap**, and they are most of the section's unit run
+— about ninety seconds of it. `tests/AGENTS.md` says so next to its advice about
+filters, because otherwise the next session reads "milliseconds", runs the full
+suite and concludes something is wrong.
+
+Two things already hold the cost down, and both are worth knowing before adding
+a third case:
+
+- They run at a **1/60 s step** where the piece runs at 1/120. A longer step is
+  the harder case for everything they assert, so passing here implies passing at
+  the rate the scene uses, at half the price.
+- They use a **small frame at the real density**. Nearly every claim here is
+  about people per square metre rather than about how many people there are, so
+  a third of the frame is the same physics at a third of the cost. Two cases
+  were spending 79 seconds between them simulating four hundred walkers to
+  measure properties four dozen show.
+
+The exception is worth knowing because it is the one that caught the rule out:
+**lane sorting needs the frame as well as the density.** Files form along a
+walker's path, and at span 10 a crossing takes ten seconds, which is not long
+enough for one to — the test fails there, correctly. Do not shrink that one
+below 13.
+
+Before adding another case, ask whether an existing one can be widened.
 
 ## Traps, every one of which cost something
 

@@ -55,7 +55,7 @@ describe("nobody walks through anybody", () => {
    * would register as most of half a metre.
    */
   it("never lets anybody get more than a tenth of a body inside anybody", { timeout: 90_000 }, () => {
-    const { crowd } = park({ density: 70, flow: "through", span: 16, settling: 0.05 }, 25)
+    const { crowd } = park({ density: 70, flow: "through", span: 10, settling: 0.05 }, 25)
 
     let worst = 0
     for (let step = 0; step < 40 / STEP; step++) {
@@ -63,12 +63,12 @@ describe("nobody walks through anybody", () => {
       worst = Math.max(worst, crowd.stats().overlap)
     }
 
-    expect(crowd.stats().walkers).toBeGreaterThan(80)
+    expect(crowd.stats().walkers).toBeGreaterThan(30)
     expect(worst).toBeLessThan(0.045)
   })
 
   it("holds even when everybody is running", { timeout: 60_000 }, () => {
-    const { crowd } = park({ density: 40, runners: 0.6, flow: "through", span: 16, settling: 0 }, 25)
+    const { crowd } = park({ density: 40, runners: 0.6, flow: "through", span: 10, settling: 0 }, 25)
 
     let worst = 0
     for (let step = 0; step < 60 / STEP; step++) {
@@ -129,7 +129,7 @@ describe("the population", () => {
     let counted = 0
 
     for (const seed of [1, 2, 3, 4]) {
-      const { crowd, view } = park({ density: 20, flow: "wander", settling: 0.3, span: 16, seed }, 100)
+      const { crowd, view } = park({ density: 30, flow: "wander", settling: 0.3, span: 11, seed }, 90)
       for (const walker of crowd.walkers) {
         if (Math.abs(walker.x) > view.halfWidth || Math.abs(walker.y) > view.halfHeight) continue
         quadrants[(walker.x < 0 ? 0 : 1) + (walker.y < 0 ? 0 : 2)]!++
@@ -157,7 +157,7 @@ describe("the population", () => {
 
 describe("who is out there", () => {
   it("makes about as many children as asked for", { timeout: 60_000 }, () => {
-    const { crowd } = park({ density: 30, children: 0.35, span: 16 }, 70)
+    const { crowd } = park({ density: 40, children: 0.35, span: 10 }, 60)
     const stats = crowd.stats()
     // Children arrive attached to adults, so the fraction is approached rather
     // than hit: a group of two adults and one child cannot be 35% child.
@@ -166,7 +166,7 @@ describe("who is out there", () => {
   })
 
   it("makes no children at all when asked for none", { timeout: 60_000 }, () => {
-    const { crowd } = park({ density: 30, children: 0, span: 16 }, 50)
+    const { crowd } = park({ density: 40, children: 0, span: 10 }, 40)
     expect(crowd.stats().children).toBe(0)
   })
 
@@ -194,7 +194,12 @@ describe("who is out there", () => {
     // speed of zero, and in a sparse frame two of them move the mean further
     // than the whole of the avoidance does. The claim under test is about
     // people getting in each other's way.
-    const plain = { flow: "through", span: 16, settling: 0, children: 0, play: 0, runners: 0 } as const
+    // A **small frame** at the same densities. The claim is about people per
+    // square metre, not about how many people there are, so the frame can be a
+    // third of the size and the physics is identical — at a third of the cost.
+    // At span 16 this one case was 44 of the file's 165 seconds, all of it spent
+    // simulating four hundred walkers to measure a property four dozen show.
+    const plain = { flow: "through", span: 9, settling: 0, children: 0, play: 0, runners: 0 } as const
     // 100 per 100 m² is one per square metre. The published fundamental
     // diagrams put a crowd there at about four fifths of its free speed, and
     // have it barely slowed at all below 40 — which is why the first version of
@@ -346,7 +351,13 @@ describe("lanes", () => {
    * old has not.
    */
   it("sorts a head-on counterflow into files, and a wandering crowd not at all", { timeout: 120_000 }, () => {
-    const plain = { density: 60, span: 16, settling: 0, grouping: 0.05, children: 0, play: 0 } as const
+    // A smaller frame than the file's other crowded cases, but **not as small**.
+    // Sorting is unlike the other properties here in that the frame's size is
+    // part of it: files form along a walker's path, and at span 10 a crossing
+    // takes ten seconds, which is not long enough for one to. It failed there,
+    // correctly. 13 is where the effect survives and the run still costs a third
+    // of what it did.
+    const plain = { density: 60, span: 13, settling: 0, grouping: 0.05, children: 0, play: 0 } as const
     const early = park({ ...plain, flow: "through" }, 12)
     const settled = park({ ...plain, flow: "through" }, 150)
 

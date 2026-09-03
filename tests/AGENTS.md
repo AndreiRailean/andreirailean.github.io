@@ -16,6 +16,16 @@ Mid-change, run one module: `pnpm exec vitest rope`, `pnpm exec vitest run setti
 browser suite takes seconds and a cold dev server, and answering "did I break the
 solver" should not.
 
+**A full `pnpm run test:unit` no longer answers in milliseconds, and one module
+is why.** `tests/unit/walkers/` simulates hours of crowd to assert things no
+screenshot and no shorter run can — a counterflow sorting into files, a
+population holding without arriving in waves — and it is around ninety seconds
+of the run on its own. Everything else in the suite is still instant, and the
+filter is how you get it: `pnpm exec vitest walkers` for that piece,
+`pnpm exec vitest <yours>` for anything else. Reach for the filter mid-change and
+the full run before you push. Nothing is wrong when the full run takes a minute
+and a half.
+
 ## The dev server the browser suite drives
 
 **Do not give it a fixed port, and do not make it insist on one.** Both are
