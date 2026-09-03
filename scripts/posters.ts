@@ -1,4 +1,5 @@
 import { mkdirSync } from "node:fs"
+import { pathToFileURL } from "node:url"
 import { chromium, type Page } from "playwright"
 import sharp from "sharp"
 import type { PosterRecipe } from "../src/experiments/poster.ts"
@@ -30,7 +31,7 @@ import startDevServer from "../tests/support/dev-server.ts"
  * alone.
  *
  *     pnpm run posters                 every experiment
- *     pnpm run posters -- dangler      just this one
+ *     pnpm run posters dangler         just this one
  */
 
 /** Beside the piece, so an experiment folder stays one self-contained thing. */
@@ -65,15 +66,39 @@ const SIZE_BUDGET_BYTES = 400_000
  * recipe is a placeholder, and the failure mode — a poster nobody chose, shipped
  * to the index — is worse than the chore.
  */
-const SLUGS = ["dangler", "flotsam", "psyxels", "starry-night"]
+export const SLUGS = ["dangler", "flotsam", "psyxels", "starry-night"]
 
-async function main(): Promise<void> {
-  const wanted = process.argv.slice(2)
+/**
+ * Which pieces a run was asked for, from `process.argv.slice(2)`.
+ *
+ * **A `--` argument is dropped, because pnpm forwards it and npm did not.**
+ * `npm run posters -- dangler` swallowed the separator; pnpm hands it to the
+ * script, where it arrives as an unknown slug and the run dies before it
+ * captures anything — #114, found by the session adding a piece, which is
+ * exactly who follows these instructions.
+ *
+ * The migration converted the *prefix* everywhere an agent reads an
+ * instruction, and the `--` came through untouched because it had always been
+ * invisible. Both spellings are accepted rather than one: the npm form is in
+ * muscle memory, in every other project, and in this repo's own ADRs, which are
+ * append-only and were deliberately not rewritten —
+ * `docs/adr/20260902-pnpm-is-the-package-manager.md`. `--` is never a slug, so
+ * ignoring it cannot mask a typo.
+ *
+ * Extracted from `main` so it can be tested at all. Everything else in this
+ * file needs a browser and a dev server; this is a function and a list.
+ */
+export function slugsFrom(argv: string[]): string[] {
+  const wanted = argv.filter((arg) => arg !== "--")
   const unknown = wanted.filter((slug) => !SLUGS.includes(slug))
   if (unknown.length > 0) {
     throw new Error(`No such experiment: ${unknown.join(", ")}. Known: ${SLUGS.join(", ")}.`)
   }
-  const slugs = wanted.length > 0 ? wanted : SLUGS
+  return wanted.length > 0 ? wanted : SLUGS
+}
+
+async function main(): Promise<void> {
+  const slugs = slugsFrom(process.argv.slice(2))
 
   const baseUrl = await startDevServer()
 
@@ -199,4 +224,14 @@ async function run<T>(page: Page, fn: (handle: { api: unknown; arg?: unknown }) 
   }
 }
 
-await main()
+/**
+ * Run only when this file is the thing that was executed.
+ *
+ * It used to be a bare top-level `await main()`, which makes *importing* the
+ * module capture: a dev server, a Chromium, and an overwrite of every tracked
+ * `poster.webp`. Nothing imported it, so nothing had gone wrong — but the
+ * docblock at the top of this file says `pnpm test` must never write tracked
+ * files, and the unit test on `slugsFrom` is an import. The check that keeps
+ * #114 fixed would have been the thing that broke that rule.
+ */
+if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) await main()
