@@ -97,7 +97,7 @@ public face and still gives it nothing to inherit from, exactly as above.
 Four places outside the experiment's own folder know a slug, and three of them
 fail loudly while the fourth fails by silently leaving the piece out:
 
-- `scripts/posters.ts` — `SLUGS`, or `pnpm run posters -- <slug>` says the
+- `scripts/posters.ts` — `SLUGS`, or `pnpm run posters <slug>` says the
   experiment does not exist.
 - `tests/kit.spec.ts` — `PIECES`, which runs the whole chrome suite against it.
 - `tests/experiments-index.spec.ts` — `EXPECTED`, which pins the index's
@@ -133,7 +133,11 @@ src/experiments/<slug>/poster.webp   the result, referenced from about.md
 
 - **`pnpm run posters` captures them; nothing else does.** Not the build, which
   stays browserless, and not `pnpm test`, which must never write tracked files.
-  Name a slug — `pnpm run posters -- dangler` — to leave the others alone.
+  Name a slug — `pnpm run posters dangler` — to leave the others alone. **No
+  `--` before it.** npm swallowed that separator and pnpm forwards it, so the
+  form these instructions carried until #114 arrived as an unknown slug and
+  killed the run. The script now ignores a `--` too, so a command copied out of
+  an older ADR still works.
 - **A recipe is per-piece knowledge and stays with the piece.** Which preset,
   what has to happen before the shutter, how long to wait. Dangler loads a
   seeded preset and calls `settle()` twice, because a frame caught mid-relaxation
