@@ -62,10 +62,51 @@ const SHOULDER = 0.82
 /** Below this radius in pixels a head is shaded with two flat ellipses. */
 const GRADIENT_FLOOR = 6
 
+/**
+ * How much of a head's real front-to-back elongation is drawn.
+ *
+ * A head is genuinely a quarter longer than it is wide — that is the cephalic
+ * index, and `body.ts` keeps it, because the shadow is drawn from the real
+ * thing. What is drawn on the *head* is a fraction of it, for two reasons.
+ *
+ * The optical one: what you can resolve of a head from above is dominated by
+ * hair, which is rounder than the skull under it, and below about eight pixels
+ * across you cannot resolve either. The oval was doing more work than the
+ * picture supports.
+ *
+ * The one that actually decided it: at small sizes a field of little ovals, each
+ * pointing its own way and weaving as it goes, does not read as people. It reads
+ * as something swimming. Which way somebody's head is pointing is a real cue and
+ * a lovely one at close range; it is a liability at four pixels, where the
+ * direction they are *travelling* already says everything.
+ */
+const ELONGATION = 0.35
+
+/** Pixels across, below which a head is drawn as a plain round point of light. */
+const POINT_BELOW = 4
+
+/** And above which it gets all of the shaping it is entitled to. */
+const SHAPED_ABOVE = 9
+
 export type Layers = {
   ground: HTMLCanvasElement | null
   shadow: HTMLCanvasElement | null
+  /** Where people have been, fading. Null until anybody asks for it. */
+  trail: HTMLCanvasElement | null
 }
+
+/**
+ * How much of a mark a walker leaves per second, before it starts to fade.
+ *
+ * Low, and the marks are narrower than the feet that make them. A trace that
+ * reaches full strength in a stride is a ribbon rather than a trace, and it
+ * takes the picture over from the people making it — which is the wrong way
+ * round for a piece about the people.
+ */
+const DEPOSIT = 2.2
+
+/** The trail buffer's resolution, as a fraction of the frame. */
+const TRAIL_SCALE = 2
 
 /**
  * The ground, rendered once and blitted after that.
@@ -121,6 +162,71 @@ export function paintGround(
   context.globalAlpha = 1
 
   return buffer
+}
+
+/**
+ * Where people have been.
+ *
+ * A layer of its own between the ground and the shadows, holding a mark laid
+ * down at each walker's feet every frame and fading everywhere at a stated rate.
+ * The fading is the whole idea rather than a concession: without it the frame
+ * silts up to a flat wash within a minute and the picture is over. With it, what
+ * is on the ground is the last half-minute of the crowd — the paths that are
+ * used stay dark because they keep being renewed, and the ones that are not
+ * disappear. Nobody draws a desire line; it is what is left when everything else
+ * has faded.
+ *
+ * Fading is done by erasing rather than by painting the ground colour over the
+ * top, so the layer stays transparent and can sit over ground of any colour.
+ * `destination-out` at an alpha derived from the elapsed time makes the decay
+ * exponential and frame-rate independent — painting a fixed alpha per frame
+ * would make the trail's length depend on how fast the machine is.
+ */
+export function makeTrailBuffer(width: number, height: number): HTMLCanvasElement {
+  const buffer = document.createElement("canvas")
+  buffer.width = Math.max(1, Math.round(width / TRAIL_SCALE))
+  buffer.height = Math.max(1, Math.round(height / TRAIL_SCALE))
+  return buffer
+}
+
+export function paintTrails(
+  buffer: HTMLCanvasElement,
+  walkers: readonly Walker[],
+  view: View,
+  settings: Settings,
+  elapsed: number,
+): void {
+  const context = buffer.getContext("2d")
+  if (!context) return
+
+  const scale = 1 / TRAIL_SCALE
+  context.setTransform(1, 0, 0, 1, 0, 0)
+
+  // Everything decays toward nothing with a time constant of `traces` seconds.
+  context.globalCompositeOperation = "destination-out"
+  context.fillStyle = `rgba(0, 0, 0, ${Math.min(1, 1 - Math.exp(-elapsed / settings.traces))})`
+  context.fillRect(0, 0, buffer.width, buffer.height)
+
+  context.globalCompositeOperation = "source-over"
+  context.setTransform(scale, 0, 0, scale, 0, 0)
+  context.globalAlpha = Math.min(0.25, elapsed * DEPOSIT)
+
+  for (const walker of walkers) {
+    // At the feet, not under the head: a trace is where somebody trod, and at a
+    // low camera the head is half a metre from where its owner is standing.
+    context.beginPath()
+    context.arc(
+      screenX(view, walker.x),
+      screenY(view, walker.y),
+      Math.max(0.7, walker.body.radius * 0.45 * view.pxPerMetre),
+      0,
+      Math.PI * 2,
+    )
+    context.fillStyle = walker.tones.edge
+    context.fill()
+  }
+
+  context.globalAlpha = 1
 }
 
 /** The buffer the shadows are drawn into, at a third of the frame's size. */
@@ -231,6 +337,8 @@ type Placed = {
   /** Semi-axes in pixels: along the head's facing, and across it. */
   along: number
   across: number
+  /** 0 for a head too small to shape, 1 for one big enough for every cue. */
+  shaping: number
   /** How high the head is, which is also the paint order. */
   z: number
 }
@@ -265,12 +373,21 @@ export function placeHeads(walkers: readonly Walker[], view: View, settings: Set
     const foreshorten = 0.34 + 0.66 * Math.cos(walker.pitch)
     const scale = magnify * view.pxPerMetre
 
+    const across = (walker.body.headBreadth / 2) * scale
+    // How much shaping this head has earned, from how big it is on the glass.
+    // A round point below four pixels across, everything above nine, and a ramp
+    // between — which is not a compromise but the optics: the cues below fade
+    // out exactly where they stop being resolvable.
+    const shaping = Math.max(0, Math.min(1, (across * 2 - POINT_BELOW) / (SHAPED_ABOVE - POINT_BELOW)))
+    const stretch = 1 + (walker.body.headLength / walker.body.headBreadth - 1) * ELONGATION * shaping
+
     placed.push({
       walker,
       sx,
       sy,
-      along: (walker.body.headLength / 2) * scale * foreshorten,
-      across: (walker.body.headBreadth / 2) * scale,
+      along: across * stretch * foreshorten,
+      across,
+      shaping,
       z,
     })
   }
@@ -292,8 +409,34 @@ export function placeHeads(walkers: readonly Walker[], view: View, settings: Set
  * up, down or level — at eight pixels across.
  */
 export function drawHead(context: CanvasRenderingContext2D, item: Placed, sun: Sun): void {
-  const { walker, sx, sy, along, across } = item
+  const { walker, sx, sy, along, across, shaping } = item
   const tones = walker.tones
+
+  /**
+   * A head too small to be shaped is two plain circles, drawn where they are.
+   *
+   * No `save`, no `translate`, no `rotate`, no `ellipse`, no `restore` — six
+   * calls per head replaced by two, and `arc` on an untransformed context is
+   * markedly cheaper than `ellipse` on a rotated one. At three hundred walkers
+   * the heads were a third of the frame and this is most of it back.
+   *
+   * It costs nothing, because everything the transform was carrying is already
+   * gone at this size: `shaping` has taken the elongation to a circle, the face
+   * to nothing and the highlight to the centre. Rotating a circle by its owner's
+   * heading is work with no output.
+   */
+  if (shaping <= 0.001) {
+    context.beginPath()
+    context.arc(sx, sy, across, 0, Math.PI * 2)
+    context.fillStyle = tones.shade
+    context.fill()
+
+    context.beginPath()
+    context.arc(sx, sy, across * 0.72, 0, Math.PI * 2)
+    context.fillStyle = tones.lit
+    context.fill()
+    return
+  }
 
   // Canvas y runs down, world y runs up, so a world angle is negated here.
   const rotation = -walker.yaw
@@ -315,7 +458,9 @@ export function drawHead(context: CanvasRenderingContext2D, item: Placed, sun: S
   const sunLocalY = -sin * sunScreenX + cos * sunScreenY
 
   // The face, drawn first so the crown covers all but the part that is showing.
-  const reveal = Math.max(0, Math.sin(walker.pitch))
+  // Only on a head big enough to have one: at four pixels it is a stray warm
+  // pixel on one side, which says "this thing has a front" and nothing else.
+  const reveal = Math.max(0, Math.sin(walker.pitch)) * shaping
   if (reveal > 0.02) {
     context.save()
     context.beginPath()
@@ -329,25 +474,40 @@ export function drawHead(context: CanvasRenderingContext2D, item: Placed, sun: S
   context.ellipse(0, 0, along, across, 0, 0, Math.PI * 2)
 
   if (across >= GRADIENT_FLOOR) {
+    // Offset toward the sun, but far less than a real sphere would be. The
+    // highlight is what says "ball" rather than "disc", and pushed to where the
+    // physics puts it every head also reads as *pointing* — one bright side and
+    // one dark one, on a shape that is already an oval. Half that offset keeps
+    // the roundness and drops the arrow.
     const gradient = context.createRadialGradient(
-      sunLocalX * along * 0.55,
-      sunLocalY * across * 0.55,
-      across * 0.08,
+      sunLocalX * along * 0.28,
+      sunLocalY * across * 0.28,
+      across * 0.1,
       0,
       0,
-      Math.max(along, across) * 1.25,
+      Math.max(along, across) * 1.35,
     )
     gradient.addColorStop(0, tones.lit)
-    gradient.addColorStop(0.62, tones.shade)
+    gradient.addColorStop(0.68, tones.shade)
     gradient.addColorStop(1, tones.edge)
     context.fillStyle = gradient
     context.fill()
   } else {
     // Under six pixels a gradient is invisible and a second flat ellipse is not.
+    // Concentric below the point size: a lit crescent on a four-pixel dot is
+    // the single strongest "this is swimming" cue there is.
     context.fillStyle = tones.shade
     context.fill()
     context.beginPath()
-    context.ellipse(sunLocalX * along * 0.24, sunLocalY * across * 0.24, along * 0.74, across * 0.74, 0, 0, Math.PI * 2)
+    context.ellipse(
+      sunLocalX * along * 0.16 * shaping,
+      sunLocalY * across * 0.16 * shaping,
+      along * 0.72,
+      across * 0.72,
+      0,
+      0,
+      Math.PI * 2,
+    )
     context.fillStyle = tones.lit
     context.fill()
   }
@@ -378,11 +538,13 @@ export function drawFrame(
     ground: Ground
     layers: Layers
     clock: number
+    /** Seconds of piece time since the last frame was drawn. */
+    elapsed: number
     width: number
     height: number
   },
 ): number {
-  const { walkers, view, sun, settings, ground, layers, clock, width, height } = options
+  const { walkers, view, sun, settings, ground, layers, clock, elapsed, width, height } = options
 
   if (layers.ground) context.drawImage(layers.ground, 0, 0, width, height)
   else {
@@ -390,10 +552,17 @@ export function drawFrame(
     context.fillRect(0, 0, width, height)
   }
 
+  if (settings.traces > 0 && layers.trail) {
+    paintTrails(layers.trail, walkers, view, settings, Math.max(1 / 240, elapsed))
+    context.drawImage(layers.trail, 0, 0, width, height)
+  }
+
   if (layers.shadow) {
     paintShadows(layers.shadow, walkers, view, sun, settings, ground)
     blitShadows(context, layers.shadow, width, height, ground)
   }
+
+  if (!settings.heads) return 0
 
   const placed = placeHeads(walkers, view, settings, clock)
   for (const item of placed) drawHead(context, item, sun)

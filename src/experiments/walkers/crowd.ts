@@ -32,7 +32,7 @@
 import { cadence, gaitOffset, makeBody, posturalSway, rngFor, type Body } from "@/experiments/walkers/body"
 import { clearGrid, createGrid, forNear, insert, type Grid } from "@/experiments/walkers/grid"
 import { skinOf, tonesFor, type Tones } from "@/experiments/walkers/palette"
-import type { Settings } from "@/experiments/walkers/settings"
+import type { Flow, Settings } from "@/experiments/walkers/settings"
 import {
   avoidance,
   overlapOf,
@@ -40,6 +40,7 @@ import {
   personalSpace,
   seek,
   SIDE_PREFERENCE,
+  timeToCollision,
   weightBehind,
   type Disc,
   type Force,
@@ -61,26 +62,130 @@ const ABREAST = 0.78
 /** How far a child may get from their adult before being called back, in metres. */
 const LEASH = 3.4
 
+/**
+ * How far anyone looks for somebody to avoid, in metres, and the grid cell that
+ * search is bucketed into.
+ *
+ * The cell is **exactly half the reach**, and that is not a rounding. `forNear`
+ * visits a square of `ceil(reach / cell)` cells either way, so a cell of 2.2
+ * against a reach of 4.5 needs three — a 7×7 block covering 237 m² to answer a
+ * question about 64. At half the reach it is 2, a 5×5 block covering 126, and
+ * the piece visits half as many candidates for exactly the same answer. It was
+ * the cheapest frame in the file to find and worth about 40 per cent of the
+ * simulation at festival density.
+ */
+const REACH = 4.5
+const CELL = REACH / 2
+
 /** Radians per second a head can comfortably turn. */
 const NECK_RATE = 4.5
 
 /** Radians. Past this the body turns instead of the head. */
 const NECK_LIMIT = 1.15
 
+/**
+ * How far a person's pace wanders around the speed they prefer, and how slowly.
+ *
+ * Measured intra-individual speed variability over a single walk runs at a
+ * coefficient of variation of five to ten per cent; two out-of-phase sines at
+ * this amplitude give about eight. The periods are tens of seconds and
+ * irrationally related, so nobody's pace ever repeats and no two people's agree.
+ *
+ * It is the cheapest of the three things in this file that break the glide, and
+ * on its own it is not enough — a crowd all drifting gently is still a crowd all
+ * doing the same thing. The other two are `Urge` and yielding.
+ */
+const PACE_DRIFT = 0.12
+
+/** How much of their pace a dawdling group keeps, and a hurrying one adds. */
+const DAWDLE = 0.42
+const HURRY = 1.45
+
+/**
+ * Seconds of imminent collision below which somebody might stop and let the
+ * other person go, rather than steering around them.
+ *
+ * Steering is what the avoidance already does, and it is most of what people do.
+ * But not all: at very short notice, and where the other person is crossing
+ * rather than coming head-on, the human answer is often to stop dead for a
+ * second. It is the most legible single behaviour in the piece from directly
+ * above — everything else is a gradual change of course, and this is a full
+ * stop.
+ */
+const YIELD_HORIZON = 0.9
+
+/** Rate per second of deciding to yield while an imminent crossing lasts. */
+const MAY_YIELD = 1.4
+
+/**
+ * How far a group's heading wanders off the line to its goal, in radians, and
+ * how often it changes its mind about the goal entirely — both by `flow`.
+ *
+ * A walker who holds one bearing for their whole visit reads as being *on a
+ * mission*, and a whole crowd doing it reads as traffic however well they avoid
+ * each other. Real paths curve, and real people turn round.
+ *
+ * Scaled by `flow` because that setting already means exactly this: `through`
+ * *is* a crowd on a mission — people crossing a concourse do walk in straight
+ * lines, and blurring that would cost the setting its point. `wander` is
+ * somebody with an afternoon.
+ *
+ * Two separate things, because they read differently. The meander is a gentle
+ * curve nobody would name; the change of mind is a decision you can watch
+ * somebody make.
+ */
+const MEANDER: Record<Flow, number> = { through: 0.07, wander: 0.5, gather: 0.28 }
+
+/**
+ * Roughly how long somebody who stops stays, in seconds — the mean of the two
+ * ranges the dwell timers draw from. Used only to convert `settling` from a
+ * fraction of the crowd into a fraction of arrivals; see `stoppingChance`.
+ */
+const MEAN_DWELL = 120
+
+/** Rate per second at which a crossing group reconsiders where it is going. */
+const RECONSIDER: Record<Flow, number> = { through: 0.002, wander: 0.03, gather: 0.02 }
+
+/** And how often that change of mind is "actually, let us stop here". */
+const STOPS_INSTEAD = 0.4
+
 /** Seconds the in-frame count is averaged over before the loop reads it. */
 const SMOOTHING_SECONDS = 6
 
 /**
  * Seconds ahead the population controller looks when counting who is on their
- * way in. A little longer than the walk in from the edge of the world.
+ * way in — derived from the margin rather than fixed.
+ *
+ * It has to be a little longer than the walk in from the edge of the world, and
+ * how long that walk is depends entirely on the span: at a wide view the margin
+ * is a few seconds of the frame, and at a narrow one it is four times the frame
+ * itself. A fixed twenty-five seconds is right for the first and hopeless for
+ * the second — it credits everybody in a margin that big at nearly full weight,
+ * the loop concludes the frame is full, and the picture holds three people
+ * against a target of fourteen.
  */
-const ARRIVAL_HORIZON = 25
+const arrivalHorizon = (margin: number) => Math.max(4, Math.min(25, margin / 1.2))
 
-/** People per second per person of target the frame is allowed to fill at. */
-const FILL_RATE = 0.05
+/**
+ * How much faster than the steady state the frame is allowed to fill.
+ *
+ * The arrival rate that holds N people in shot is N over how long each one
+ * stays — Little's law, and `maintain` works it out from the frame and the
+ * crowd's own measured pace rather than guessing. This is the headroom on top,
+ * so an empty frame recovers rather than merely holding.
+ *
+ * It cannot be large. Every arrival is ordered several seconds before it can be
+ * seen, so the rate times that delay is the overshoot, and a rate far above the
+ * steady state turns the on/off gate into a limit cycle: order flat out, arrive
+ * all at once, drain, repeat. Both failures have been measured here — a cap
+ * *below* the steady state left the frame at three people against a target of
+ * fourteen with the loop running flat out for ever, and a cap at five times it
+ * put the crossing scene 58 per cent over and swinging.
+ */
+const FILL_HEADROOM = 1.6
 
-/** A floor on the arrival rate, so a nearly empty frame does not crawl. */
-const MAX_ARRIVALS = 3
+/** A floor, so a nearly empty frame does not crawl. */
+const MAX_ARRIVALS = 2
 
 export type Activity =
   "walking" | "running" | "standing" | "sitting" | "crouching" | "chasing" | "fleeing" | "darting" | "fallen"
@@ -139,8 +244,25 @@ export type Walker = {
   tones: Tones
   /** Who they are chasing, in a game of tag. */
   quarry: Walker | null
+  /**
+   * Stopped dead until this time, to let somebody cross in front of them.
+   *
+   * Individual rather than the group's, and brief. See `MAY_YIELD`.
+   */
+  yieldUntil: number
   /** Metres per second, cached for the gait and the stats. */
   speed: number
+  /**
+   * False once they have left and been culled.
+   *
+   * A flag rather than an `includes` on the population. Two places hold a
+   * reference to another walker — who somebody is chasing, and who they are
+   * looking at — and both have to know whether that person is still here. Asking
+   * the array was a linear scan **per walker per frame**: at fourteen hundred
+   * walkers that is two million comparisons a frame for a boolean, and it was
+   * most of what the piece was doing at the top of the density slider.
+   */
+  present: boolean
   rng: Rng
 }
 
@@ -165,7 +287,32 @@ export type Group = {
   talkUntil: number
   hue: number
   team: number
+  /**
+   * What the group has decided about its pace just now, and until when.
+   *
+   * A **group's** property rather than a person's, because that is how it works:
+   * people stop to look at something together and hurry to catch a train
+   * together. One member dawdling while the others walk on is not a crowd
+   * behaviour, it is a formation bug — the slot force would drag them along
+   * anyway and the result reads as a rubber band.
+   */
+  urge: Urge
+  urgeUntil: number
+  /** Whether this hurry is a run rather than a brisk walk. */
+  sprinting: boolean
 }
+
+/**
+ * What somebody has decided about their own pace.
+ *
+ * The gap this fills is the one thing that gives the whole piece away at a
+ * distance: a walker drew a preferred speed when they arrived and held it
+ * exactly, for ever. Real people are never doing that. They drift, they dawdle
+ * at something worth looking at, they decide they are late — and at small sizes
+ * a field of dots each gliding at its own fixed rate does not read as people at
+ * all, it reads as something swimming.
+ */
+export type Urge = "steady" | "dawdle" | "hurry"
 
 export type CrowdStats = {
   walkers: number
@@ -185,6 +332,10 @@ export type CrowdStats = {
   sitting: number
   /** How many are running rather than walking. */
   runners: number
+  /** How many have stopped dead to let somebody cross in front of them. */
+  yielding: number
+  /** How many are dawdling or hurrying rather than walking at their own pace. */
+  unsteady: number
   playing: number
   /** Mean ground speed, m/s. Falls as the crowd thickens, which is the point. */
   meanSpeed: number
@@ -262,6 +413,8 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
   let owed = 0
   /** The smoothed count of who is in shot or about to be, which the loop reads. */
   let inFrameAverage = 0
+  /** The crowd's own mean walking pace, measured rather than assumed. */
+  let paceSeen = 1.3
 
   // Reused so a frame of steering allocates nothing.
   const force: Force = { x: 0, y: 0 }
@@ -443,18 +596,46 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
       // that `kin` can hand the one hue to every member.
       hue: 0,
       team: stream() < 0.5 ? -1 : 1,
+      urge: "steady",
+      urgeUntil: 0,
+      sprinting: false,
     }
+  }
+
+  /**
+   * The chance an arrival is somebody who stops, rather than somebody crossing.
+   *
+   * **Not `settling` itself**, and the difference is a factor of six. `settling`
+   * promises "the fraction who stop somewhere in frame rather than crossing it",
+   * which anybody reading it takes to be a fraction of the crowd they can see —
+   * but applied to *arrivals* it is not, because the people who stop stay far
+   * longer than the people who cross. A dweller sits for two minutes and a
+   * crosser is gone in twenty seconds, so at a setting of 0.3 three quarters of
+   * everybody in shot was stationary. The park looked asleep and the number
+   * looked right.
+   *
+   * Little's law both ways round: to hold a fraction `f` of the *population*
+   * stationary when they stay `r` times as long, the arrivals have to be
+   * `f / (f + r(1 − f))`. At 0.3 with r ≈ 6 that is 7 per cent of arrivals — and
+   * 30 per cent of the crowd, which is what the control says.
+   */
+  function stoppingChance(): number {
+    const wanted = settings.settling
+    if (wanted <= 0) return 0
+    if (wanted >= 1) return 1
+
+    // A crossing is about the frame's own size at whatever pace the band gives.
+    const pace = Math.max(0.4, (settings.paceLow + settings.paceHigh) / 2)
+    const crossing = Math.max(4, (view.halfWidth + view.halfHeight) / pace)
+    const ratio = Math.max(1, MEAN_DWELL / crossing)
+
+    return wanted / (wanted + ratio * (1 - wanted))
   }
 
   function spawnGroup(placeInside: boolean): void {
     const size = groupSize()
-    const errand: Errand = placeInside
-      ? stream() < settings.settling
-        ? "resident"
-        : "cross"
-      : stream() < settings.settling
-        ? "visit"
-        : "cross"
+    const stops = stream() < stoppingChance()
+    const errand: Errand = placeInside ? (stops ? "resident" : "cross") : stops ? "visit" : "cross"
 
     const group = makeGroup(errand)
     const skinRng = rngFor(settings.seed, group.id)
@@ -577,6 +758,7 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
 
     if (!placed) {
       group.members.length = 0
+      for (const walker of arriving) walker.present = false
       return
     }
 
@@ -667,7 +849,9 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
       skin,
       tones: tonesFor(settings, skin, sun),
       quarry: null,
+      yieldUntil: 0,
       speed: 0,
+      present: true,
       rng,
     }
   }
@@ -736,7 +920,7 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
 
   // ── Behaviour ───────────────────────────────────────────────────────────
 
-  function updateGroup(group: Group): void {
+  function updateGroup(group: Group, dt: number): void {
     const size = group.members.length
     if (size === 0) return
 
@@ -773,6 +957,59 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
       group.goalY = group.exitY
       for (const member of group.members) {
         if (member.activity === "sitting" || member.activity === "standing") member.activity = "walking"
+      }
+    }
+
+    // Where they are going, which is not settled for the whole visit. A group
+    // crossing the park can decide to leave by a different side, or to stop
+    // here after all — which is the same decision anybody makes about an
+    // afternoon, and the only thing in the piece that produces a deliberate
+    // turn rather than a curve.
+    if (group.errand === "cross" && group.state === "arriving") {
+      if (stream() < 1 - Math.exp(-RECONSIDER[settings.flow] * dt)) {
+        if (stream() < STOPS_INSTEAD * stoppingChance()) {
+          const spot = freeSpot(size)
+          group.errand = "visit"
+          group.goalX = spot.x
+          group.goalY = spot.y
+          const away = edgePoint(pickEdge(), AWAY)
+          group.exitX = away.x
+          group.exitY = away.y
+          group.sits = stream() < (group.members.some((m) => m.body.age === "child") ? 0.22 : 0.62)
+        } else {
+          const away = edgePoint(pickEdge(), AWAY)
+          group.goalX = away.x
+          group.goalY = away.y
+          group.exitX = away.x
+          group.exitY = away.y
+        }
+      }
+    }
+
+    // What the group has decided about its pace. Not every crowd dawdles: a
+    // concourse of people going somewhere does far less of it than a park, and
+    // `settling` is already the setting that says which this is, so it scales
+    // the rates rather than a control of its own.
+    if (clock > group.urgeUntil) {
+      const appetite = 0.35 + settings.settling
+      const draw = stream()
+
+      if (group.urge !== "steady") {
+        group.urge = "steady"
+        group.sprinting = false
+        group.urgeUntil = clock + 6 + stream() * 25
+      } else if (draw < 0.3 * appetite) {
+        // Something worth slowing down for. Short, and it happens often.
+        group.urge = "dawdle"
+        group.urgeUntil = clock + 2 + stream() * 7
+      } else if (draw < 0.45 * appetite) {
+        // Late, or catching somebody up. A third of the time it is a real run,
+        // which is how somebody who was walking a moment ago starts running.
+        group.urge = "hurry"
+        group.sprinting = stream() < 0.35
+        group.urgeUntil = clock + 4 + stream() * 12
+      } else {
+        group.urgeUntil = clock + 3 + stream() * 12
       }
     }
 
@@ -932,8 +1169,9 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
         return
       }
       case "chasing": {
+        if (clock < walker.yieldUntil) return
         const quarry = walker.quarry
-        if (!quarry || !walkers.includes(quarry)) {
+        if (!quarry || !quarry.present) {
           walker.activity = "walking"
           walker.quarry = null
           return
@@ -971,7 +1209,7 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
           return
         }
         const chaser = walker.quarry
-        if (!chaser || !walkers.includes(chaser)) {
+        if (!chaser || !chaser.present) {
           walker.activity = "walking"
           walker.quarry = null
           return
@@ -1019,8 +1257,18 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
     const towardX = group.goalX - centreX
     const towardY = group.goalY - centreY
     const distance = Math.hypot(towardX, towardY) || 1
-    const dirX = towardX / distance
-    const dirY = towardY / distance
+
+    // The group's own slow wander off the straight line. Keyed on the group
+    // rather than the person, so a family curves as a family; two sines at an
+    // irrational ratio, so nobody's path ever repeats and no two agree.
+    const wander =
+      MEANDER[settings.flow] *
+      (0.65 * Math.sin(clock * 0.07 + group.id) + 0.35 * Math.sin(clock * 0.031 + group.id * 1.9))
+    const turn = Math.cos(wander)
+    const lean = Math.sin(wander)
+
+    const dirX = (towardX * turn - towardY * lean) / distance
+    const dirY = (towardX * lean + towardY * turn) / distance
 
     const { lateral, forward } = slotOffset(size, walker.slot, crowding)
     // Rotate the slot into the direction of travel: lateral is across it.
@@ -1029,8 +1277,17 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
 
     // Nobody in a group outwalks the group. On their own, `group.pace` is their
     // own preferred speed and this does nothing.
-    const speed =
-      walker.activity === "running" ? walker.body.runSpeed : Math.min(walker.body.preferredSpeed, group.pace)
+    const base = walker.activity === "running" ? walker.body.runSpeed : Math.min(walker.body.preferredSpeed, group.pace)
+    const speed = base * paceScale(walker)
+
+    if (speed < 0.05) {
+      // Stopped on purpose, which is not the same as having nowhere to go: they
+      // still hold their place against being shoved, and `advanceGait` will
+      // give them the postural sway of somebody standing.
+      out.x = 0
+      out.y = 0
+      return
+    }
 
     const toSlotX = slotX - walker.x
     const toSlotY = slotY - walker.y
@@ -1045,6 +1302,31 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
     if (size2 > speed) {
       out.x = (out.x / size2) * speed
       out.y = (out.y / size2) * speed
+    }
+  }
+
+  /**
+   * How fast this person wants to walk *right now*, as a multiple of the speed
+   * they prefer.
+   *
+   * Three things multiply together, and they are three different timescales:
+   * a slow personal drift that never repeats, whatever their group has decided
+   * about its pace, and a full stop while they are giving way to somebody.
+   */
+  function paceScale(walker: Walker): number {
+    if (clock < walker.yieldUntil) return 0
+
+    const drift =
+      1 +
+      PACE_DRIFT * (0.6 * Math.sin(clock * 0.11 + walker.phase) + 0.4 * Math.sin(clock * 0.043 + walker.phase * 2.7))
+
+    switch (walker.group.urge) {
+      case "dawdle":
+        return drift * DAWDLE
+      case "hurry":
+        return drift * HURRY
+      default:
+        return drift
     }
   }
 
@@ -1073,7 +1355,7 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
 
     const group = walker.group
 
-    if (walker.looking && (clock > walker.lookUntil || !walkers.includes(walker.looking))) {
+    if (walker.looking && (clock > walker.lookUntil || !walker.looking.present)) {
       walker.looking = null
     }
 
@@ -1166,7 +1448,7 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
     const spanX = outerX() + 2
     const spanY = outerY() + 2
     if (grid.minX !== -spanX || grid.minY !== -spanY || grid.cols * grid.cell < spanX * 2) {
-      grid = createGrid(-spanX, -spanY, spanX, spanY, 2.2)
+      grid = createGrid(-spanX, -spanY, spanX, spanY, CELL)
     }
     clearGrid(grid)
     for (let index = 0; index < walkers.length; index++) {
@@ -1180,7 +1462,7 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
     maintain(dt)
     rebuildGrid()
 
-    for (const group of groups) updateGroup(group)
+    for (const group of groups) updateGroup(group, dt)
     for (const walker of walkers) updatePlay(walker)
 
     overlapPeak = 0
@@ -1200,10 +1482,15 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
       // How hemmed in they are, which flattens the group's formation.
       let neighbours = 0
 
+      // The most imminent *crossing* encounter, which is the one they might
+      // stop for. Tracked through the loop and acted on after it, so a walker
+      // makes one decision per frame rather than one per neighbour.
+      let soonest = Infinity
+
       let ax = 0
       let ay = 0
 
-      forNear(grid, walker.x, walker.y, 4.5, (candidateIndex) => {
+      forNear(grid, walker.x, walker.y, REACH, (candidateIndex) => {
         if (candidateIndex === index) return
         const candidate = walkers[candidateIndex]
         if (!candidate) return
@@ -1211,7 +1498,7 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
         const dx = candidate.x - walker.x
         const dy = candidate.y - walker.y
         const distance = Math.hypot(dx, dy)
-        if (distance > 4.5) return
+        if (distance > REACH) return
         if (distance < 1.6) neighbours++
 
         other.x = candidate.x
@@ -1221,6 +1508,17 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
         other.r = candidate.body.radius
 
         const visibility = weightBehind(self, dx, dy)
+
+        // Somebody crossing my path, rather than coming at me or going my way.
+        // Head-on is resolved by stepping aside and overtaking needs no
+        // decision; it is the crossing that people stop for.
+        if (!stationary && walker.speed > 0.3 && candidate.speed > 0.3) {
+          const alignment = (walker.vx * candidate.vx + walker.vy * candidate.vy) / (walker.speed * candidate.speed)
+          if (Math.abs(alignment) < 0.55) {
+            const tau = timeToCollision(self, other)
+            if (tau < soonest) soonest = tau
+          }
+        }
 
         avoidance(self, other, force)
         ax += force.x * visibility
@@ -1256,6 +1554,12 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
         personalSpace(self, obstacle, push)
         ax += push.x
         ay += push.y
+      }
+
+      // Stop and let them go. Once the decision is made it stands for its own
+      // duration, so nobody flickers between yielding and not.
+      if (soonest < YIELD_HORIZON && clock > walker.yieldUntil && stream() < 1 - Math.exp(-MAY_YIELD * dt)) {
+        walker.yieldUntil = clock + 0.4 + stream() * 1.2
       }
 
       if (!stationary) {
@@ -1400,8 +1704,14 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
 
     // Running is something somebody is out doing, not a speed they have
     // reached. See `runs` on `Walker` for what conflating the two cost.
+    //
+    // Two ways to be out running: it is what you came out to do, or your group
+    // has just decided it is late. The second is read rather than written into
+    // `runs`, so it ends when the urge does — writing it would make every
+    // hurry permanent, one walker at a time.
     if (walker.activity === "walking" || walker.activity === "running") {
-      walker.activity = walker.runs ? "running" : "walking"
+      const running = walker.runs || (walker.group.sprinting && walker.body.age === "adult")
+      walker.activity = running ? "running" : "walking"
     }
 
     let base: number
@@ -1451,8 +1761,14 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
    */
   function committed(): number {
     let total = 0
+    paceSeen = 0
+    let moving = 0
 
     for (const walker of walkers) {
+      if (walker.speed > 0.25) {
+        paceSeen += walker.speed
+        moving++
+      }
       const outX = Math.max(0, Math.abs(walker.x) - view.halfWidth)
       const outY = Math.max(0, Math.abs(walker.y) - view.halfHeight)
       if (outX === 0 && outY === 0) {
@@ -1464,9 +1780,10 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
       if (walker.vx * -walker.x + walker.vy * -walker.y <= 0) continue
 
       const eta = Math.hypot(outX, outY) / walker.speed
-      total += Math.max(0, 1 - eta / ARRIVAL_HORIZON)
+      total += Math.max(0, 1 - eta / arrivalHorizon(view.margin))
     }
 
+    paceSeen = moving > 0 ? paceSeen / moving : (settings.paceLow + settings.paceHigh) / 2
     return total
   }
 
@@ -1501,7 +1818,13 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
     inFrameAverage += (committed() - inFrameAverage) * (1 - Math.exp(-dt / SMOOTHING_SECONDS))
     if (inFrameAverage >= wanted) return
 
-    owed += Math.min(FILL_RATE * wanted, Math.max(MAX_ARRIVALS, wanted / 20)) * dt
+    // Little's law, forwards: to hold `wanted` people in a frame each of them
+    // crosses in `stay` seconds, the arrivals have to come at `wanted / stay`.
+    // Measured from the crowd's own pace rather than the pace band, because a
+    // dense crowd walks at half what it drew and would otherwise be ordered at
+    // twice the rate it can absorb.
+    const stay = Math.max(3, (view.halfWidth + view.halfHeight) / Math.max(0.35, paceSeen))
+    owed += Math.max(MAX_ARRIVALS, (wanted / stay) * FILL_HEADROOM) * dt
     if (owed < 1) return
 
     // **A big shortfall is filled from inside, a small one from the edges.**
@@ -1522,16 +1845,23 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
   function cull(): void {
     const limitX = outerX() + 3
     const limitY = outerY() + 3
+    let culled = false
 
     for (let index = groups.length - 1; index >= 0; index--) {
       const group = groups[index]!
       const gone = group.members.every((member) => Math.abs(member.x) > limitX || Math.abs(member.y) > limitY)
       if (!gone) continue
-      for (const member of group.members) {
-        const at = walkers.indexOf(member)
-        if (at >= 0) walkers.splice(at, 1)
-      }
+      for (const member of group.members) member.present = false
       groups.splice(index, 1)
+      culled = true
+    }
+
+    // One filter for the whole frame rather than a splice per person, which is
+    // a memory move of the tail of the array each time.
+    if (culled) {
+      let kept = 0
+      for (const walker of walkers) if (walker.present) walkers[kept++] = walker
+      walkers.length = kept
     }
   }
 
@@ -1574,6 +1904,7 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
   }
 
   function fill(): void {
+    for (const walker of walkers) walker.present = false
     walkers.length = 0
     groups.length = 0
     stream = makeRng(settings.seed | 0)
@@ -1632,12 +1963,16 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
       let children = 0
       let sitting = 0
       let runners = 0
+      let yielding = 0
+      let unsteady = 0
       let playing = 0
       let speed = 0
       for (const walker of walkers) {
         if (walker.body.age === "child") children++
         if (walker.activity === "sitting") sitting++
         if (walker.activity === "running") runners++
+        if (clock < walker.yieldUntil) yielding++
+        if (walker.group.urge !== "steady") unsteady++
         if (
           walker.activity === "chasing" ||
           walker.activity === "fleeing" ||
@@ -1657,6 +1992,8 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
         children,
         sitting,
         runners,
+        yielding,
+        unsteady,
         playing,
         meanSpeed: walkers.length > 0 ? speed / walkers.length : 0,
         overlap: overlapPeak,

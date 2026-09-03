@@ -49,7 +49,7 @@ runs a whole afternoon of park in a second. Reach for
 the things a real page adds, and it says which at the top.
 
 **Those unit tests are not cheap**, and they are most of the section's unit run
-— about ninety seconds of it. `tests/AGENTS.md` says so next to its advice about
+— about two minutes of it. `tests/AGENTS.md` says so next to its advice about
 filters, because otherwise the next session reads "milliseconds", runs the full
 suite and concludes something is wrong.
 
@@ -63,7 +63,11 @@ a third case:
   about people per square metre rather than about how many people there are, so
   a third of the frame is the same physics at a third of the cost. Two cases
   were spending 79 seconds between them simulating four hundred walkers to
-  measure properties four dozen show.
+  measure properties four dozen show. The preset loop uses a small _window_ for
+  the same reason — the viewport is not part of a preset.
+- Where an effect is small and the seed-to-seed scatter is comparable, read the
+  **same run twice** rather than comparing two runs. The lane-sorting case did
+  the latter and was comparing its seeds as much as its subject.
 
 The exception is worth knowing because it is the one that caught the rule out:
 **lane sorting needs the frame as well as the density.** Files form along a
@@ -151,6 +155,42 @@ the whole reason the numbers in `stats()` exist.
 - **The head's highlight is in world space, not head space.** Rotate the light
   with the head and every face in the crowd lights on the same side of itself,
   and the picture stops having a sun in it.
+- **A walker who holds one speed for ever reads as a microbe, not a person.**
+  Constant-velocity gliding is the single strongest tell at small sizes, and it
+  is not fixed by any amount of avoidance quality. Three timescales answer it —
+  a drifting personal pace, a group `Urge`, and yielding — and all three are in
+  `crowd.ts` rather than in the renderer, because the problem is the motion.
+- **The same is true of holding one heading.** `MEANDER` and the change of mind
+  in `updateGroup` are scaled by `flow`, and `through` deliberately gets almost
+  none of either: a crowd crossing a concourse _is_ on a mission, and blurring
+  that costs the setting its point.
+- **The side preference must be a fraction of the avoidance** — see the entry
+  above, and note that everything added since has _weakened_ lane sorting.
+  Sorting now rises by a few hundredths over three minutes rather than by a
+  fifth. That is the model rather than a regression: files form out of people
+  agreeing about which side to pass on, and a drifting pace, a group deciding it
+  is late and somebody stopping dead are all disagreements. Do not tune the
+  variability down to make the number look better.
+- **`settling` is a fraction of the _crowd_, not of the arrivals.** The two
+  differ by a factor of six, because somebody who stops stays about six times as
+  long as somebody crossing. Applied to arrivals, a setting of 0.3 left three
+  quarters of everybody in shot stationary and the park looked asleep.
+  `stoppingChance` converts it; the conversion is Little's law run backwards.
+- **The fill rate is a rate, and it is Little's law forwards.** Holding N people
+  in shot needs N arrivals per however long each one stays. Both a cap below
+  that figure and a cap far above it have been shipped here, and both were
+  visible: below it, the frame settled at three people against a target of
+  fourteen with the loop running flat out; far above it, the crossing scene sat
+  58 per cent over and swung.
+- **`walkers.includes(someone)` is a linear scan, and two places wanted it every
+  frame.** Who somebody is chasing and who they are looking at both need to know
+  whether that person is still here. At fourteen hundred walkers that was two
+  million comparisons a frame for a boolean. `Walker.present` is the flag.
+- **Drawing is the whole cost; the simulation is nearly free.** Measured at 330
+  walkers: everything off, 60 fps; shadows only, 37; heads only, 34; both, 27.
+  So the heads are about 11 ms and the shadows about 10, and the crowd itself
+  does not show up. Optimise the renderer, not the model. A `Path2D` batch of
+  the shadow strokes was tried and was _slower_ — measure before keeping.
 
 ## Invariants
 
@@ -180,8 +220,14 @@ goes stale in the window after a `set()`, and comes back as an ordinary
 plausible number.
 
 - Filled in **while drawing**: `heads`, `fps`.
+- `clock` is the seconds of park simulated, and it is the only exact read of
+  whether time is passing. It exists because `settle` was once capped at an
+  eighth of a second and nothing else in `stats()` could tell: every other
+  number is a property of a crowd, and a crowd that has not moved looks exactly
+  like one that has.
 - Computed in **`stats()`**: `walkers`, `inFrame`, `groups`, `children`,
-  `sitting`, `runners`, `playing`, `meanSpeed`, `sorting`, `area`, `running`.
+  `sitting`, `runners`, `yielding`, `unsteady`, `playing`, `meanSpeed`,
+  `sorting`, `area`, `running`.
 - Written during **integration**: `overlap` and `contacts`, which are the
   previous step's. Prefer `settle()` to a frame wait for those, per the third
   case in `tests/AGENTS.md`.

@@ -30,6 +30,12 @@ import type { Sun } from "@/experiments/walkers/view"
 /** The hue the crowd's own colours scatter around. */
 export const crowdCentre = (settings: Settings): number => (settings.hue + 160) % 360
 
+/**
+ * The ground lightness past which the crowd is drawn darker than it rather than
+ * lighter. Just above where grass sits, so no green scene is near the switch.
+ */
+const PALE_GROUND = 62
+
 /** Where a team's two colours sit, either side of the centre. A third apart. */
 const TEAM_SEPARATION = 60
 
@@ -85,15 +91,24 @@ export function skinOf(
   // version put pastel heads at around 70% lightness on a ground that was also
   // around 70%, and at eight pixels across a head that differs from the grass
   // only in hue is not visible at all — the picture came out as a field of
-  // shadows with nobody casting them. So the band sits a fixed distance above
-  // whatever the ground is doing, which also means dragging the ground darker
-  // does not quietly erase the crowd.
-  // The gap over the ground is wider at dusk. Not a fudge: at last light the
-  // ground has gone and people are still catching a low sun, so the *contrast*
-  // between a person and the grass is at its highest of the day even though
-  // everything in the frame is darker than it was at noon.
-  const base = clamp(groundLightness(settings) + (settings.dusk ? 34 : 20) + settings.pastel * 8, 38, 88)
-  const lightness = clamp(base + (rng() - 0.5) * 26, 22, 95)
+  // shadows with nobody casting them.
+  //
+  // And pitched to **whichever side has room**. On grass or paving people are
+  // the lighter thing; on sand or bleached paving they are the darker one, which
+  // is what dark hair on a pale ground actually looks like from above. Without
+  // this the ground could not be allowed to get light at all, because the crowd
+  // would climb into the clamp at the top and disappear into it.
+  //
+  // The gap is wider at dusk. Not a fudge: at last light the ground has gone and
+  // people are still catching a low sun, so the *contrast* between a person and
+  // the grass is at its highest of the day even though everything in the frame
+  // is darker than it was at noon.
+  const ground = groundLightness(settings)
+  const below = !settings.dusk && ground > PALE_GROUND
+  const base = below
+    ? clamp(ground - 30 - settings.pastel * 6, 10, 58)
+    : clamp(ground + (settings.dusk ? 34 : 20) + settings.pastel * 8, 38, 88)
+  const lightness = clamp(base + (rng() - 0.5) * (below ? 20 : 26), 8, 95)
   const saturation = clamp((64 - settings.pastel * 36) * saturationScale, 3, 80)
 
   return { hue: wrapHue(hue), lightness, saturation }
@@ -161,16 +176,23 @@ export type Ground = {
 /**
  * How light the ground is.
  *
- * Its own function because the crowd's colours are pitched against it — see
- * `skinOf`. Mid-dark by day rather than pale: grass, gravel and wet paving all
- * sit around half, and a ground painted at three-quarters is a photograph of
- * snow with a crowd that cannot be seen on it.
+ * One axis rather than two, running from bleached paper at 0 to full grass at 1
+ * — pale and colourless at one end, dark and stated at the other, because that
+ * is the pairing real ground comes in. Sand, gravel, dry grass and wet paving
+ * all sit somewhere along it and none of them is a saturated near-white.
+ *
+ * The range used to stop at 59, which is a mid grey, on the reasoning that a
+ * pale ground makes the crowd invisible. That was true of the version where the
+ * crowd's lightness was an absolute value; it is not true now that `skinOf`
+ * pitches them against this and will put them *below* it when there is more room
+ * underneath. Extending it is what gives the piece a light scheme at all, and
+ * the shadows-only scene needs one — a silhouette wants paper to be on.
  */
 export const groundLightness = (settings: Settings): number =>
-  settings.dusk ? 24 + settings.tint * 7 : 46 + (1 - settings.tint) * 13
+  settings.dusk ? 24 + settings.tint * 7 : 44 + (1 - settings.tint) * 40
 
 export function groundOf(settings: Settings, sun: Sun): Ground {
-  const saturation = clamp(settings.tint * 46, 0, 46)
+  const saturation = clamp(settings.tint * 38, 0, 38)
   const lightness = groundLightness(settings)
 
   return {
@@ -181,8 +203,11 @@ export function groundOf(settings: Settings, sun: Sun): Ground {
     // ground came out looking like a sheet of faint pressed coins.
     mottleOut: hsla(settings.hue + 12, saturation * 1.2, lightness + (settings.dusk ? 5 : -6), 0),
     // A shadow is not black: it is the ground lit by the sky instead of the sun,
-    // which on a clear day means it is bluer as well as darker.
-    shadow: hsl(settings.hue + 26, clamp(saturation + 14, 8, 60), Math.max(4, lightness * 0.6)),
+    // which on a clear day means it is bluer as well as darker. A *ratio* of the
+    // ground's own lightness rather than a fixed step below it, because that is
+    // what "lit by less" means — and it is what lets a pale ground keep a dark
+    // shadow rather than a grey one.
+    shadow: hsl(settings.hue + 26, clamp(saturation + 14, 8, 60), Math.max(4, lightness * 0.45)),
     // Deliberately below what a bright day gives. Only the head is drawn, so a
     // shadow at full strength is three times the width of the person it belongs
     // to and twice the contrast, and the eye reads the picture as a field of

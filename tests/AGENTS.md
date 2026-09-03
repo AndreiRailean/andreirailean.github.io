@@ -19,12 +19,12 @@ solver" should not.
 **A full `pnpm run test:unit` no longer answers in milliseconds, and one module
 is why.** `tests/unit/walkers/` simulates hours of crowd to assert things no
 screenshot and no shorter run can — a counterflow sorting into files, a
-population holding without arriving in waves — and it is around ninety seconds
-of the run on its own. Everything else in the suite is still instant, and the
-filter is how you get it: `pnpm exec vitest walkers` for that piece,
-`pnpm exec vitest <yours>` for anything else. Reach for the filter mid-change and
-the full run before you push. Nothing is wrong when the full run takes a minute
-and a half.
+population holding without arriving in waves, a pace that wanders as somebody
+walks — and it is around two minutes of the run on its own. Everything else in
+the suite is still instant, and the filter is how you get it:
+`pnpm exec vitest walkers` for that piece, `pnpm exec vitest <yours>` for
+anything else. Reach for the filter mid-change and the full run before you push.
+Nothing is wrong when the full run takes two and a half minutes.
 
 ## The dev server the browser suite drives
 

@@ -22,7 +22,7 @@ reaches another dot, steps a foot to one side and then resumes its line is a
 person. Almost everything in this piece is an attempt to find which of those
 small movements are the load-bearing ones.
 
-It turns out there are about five.
+It turns out there are about seven.
 
 **People avoid each other early.** The obvious way to keep dots apart is a force
 that grows as they get close, and it looks wrong immediately: everybody walks
@@ -50,12 +50,17 @@ The step rate is not a setting. It comes out of leg length and speed, which is
 why children step faster than the adults they are with without anything in the
 piece saying so.
 
-**A head is an oval, not a circle.** Seen from above a head is about a quarter
-longer front to back than it is wide, so which way somebody is pointing is
-legible at eight pixels across. Add a face that comes into view as the chin
-lifts and you can tell, at that size, whether a person is looking down at the
-path, level at whoever is talking, or up at something. Nothing else in the piece
-gives so much for so little.
+**A head is very slightly an oval.** Seen from above a head is about a quarter
+longer front to back than it is wide, and a face comes into view as the chin
+lifts — so at close range you can tell whether somebody is looking down at the
+path, level at whoever is talking, or up at something.
+
+Only at close range, though. Both cues fade out as the head gets smaller and are
+gone by four pixels across, which is optics rather than restraint: what you can
+resolve of a head at that size is a round blob of hair. It is also a lesson.
+Little ovals each pointing their own way, weaving as they go, do not read as
+people at any distance — they read as something swimming. Which way somebody is
+_travelling_ already says everything, and it says it for free.
 
 **Groups have a shape.** Pairs and threes walk abreast. Four and more bend into
 a shallow arc with the middle lagging, which is the arrangement in which
@@ -63,6 +68,24 @@ everyone can see everyone else's face. Both flatten out when it gets crowded,
 because a wide group cannot get through a gap. And within a group the turn to
 talk passes around, and the listeners' heads follow it — which is most of what
 says that these particular people are together rather than merely adjacent.
+
+**Nobody holds one speed.** This is the single thing that gave the whole piece
+away at a distance, and it took a while to see. A walker drew a preferred speed
+when they arrived and held it exactly, for ever — and a field of dots each
+gliding at its own fixed rate is unmistakably not people. Three things fix it,
+on three timescales: a personal pace that drifts by a few per cent and never
+repeats, a group that decides to dawdle at something or that it is late (and
+sometimes breaks into a run), and somebody stopping dead for a second to let a
+stranger cross in front of them. That last one is the most legible behaviour
+here from above — everything else is a gradual change of course, and it is a
+full stop.
+
+**And nobody holds one heading.** Paths curve, and people turn round. A group
+wanders slowly off the line to wherever it is going, and occasionally changes its
+mind about where that is — leaving by a different side, or deciding to stop here
+after all. How firmly a heading is held is what the _going_ control is really
+setting: a concourse of people crossing really does walk in straight lines, and
+somebody with an afternoon does not.
 
 **Children are not small adults.** They are attached to somebody, on a leash of
 about three metres, and they spend that leash: darting off and being called
@@ -114,6 +137,20 @@ because it is the setting under which the files form.
 After that, **height** is the most underrated control in the piece and **bob**
 is the most illustrative: turn it past two and you can see the mechanism you
 were not supposed to notice.
+
+Two of them change what the piece _is_ rather than how it looks. **Traces** lets
+the ground remember: paths that keep being used stay dark because they keep
+being renewed, and paths that do not simply fade. Nobody draws a desire line — it
+is what is left when everything else has gone. And **heads** can be turned off
+entirely, which leaves the shadows walking about with nobody attached to them.
+On pale ground with a bright sun that is the whole piece as a black-and-white
+plan, and it turns out to lose surprisingly little: the shadow was carrying most
+of the information anyway.
+
+Between them the eight scenes are meant to be far apart. Two of them were found
+rather than designed — **bacteria** is what the crowd looks like from far enough
+up that people are motile specks, which is not what anyone set out to build, and
+**desire lines** is the ground remembering an hour of it.
 
 ## What it does not do yet
 

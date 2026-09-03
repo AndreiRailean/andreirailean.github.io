@@ -31,12 +31,28 @@
  */
 
 import { createCrowd, type Crowd, type CrowdStats } from "@/experiments/walkers/crowd"
-import { drawDebug, drawFrame, makeShadowBuffer, paintGround, type Layers } from "@/experiments/walkers/draw"
+import {
+  drawDebug,
+  drawFrame,
+  makeShadowBuffer,
+  makeTrailBuffer,
+  paintGround,
+  type Layers,
+} from "@/experiments/walkers/draw"
 import { groundOf, type Ground } from "@/experiments/walkers/palette"
 import { needsRecast, needsRemeasure, type Settings } from "@/experiments/walkers/settings"
 import { makeSun, makeView, type Sun, type View } from "@/experiments/walkers/view"
 
 export type WalkersStats = CrowdStats & {
+  /**
+   * Seconds of park that have been simulated.
+   *
+   * The only exact read of whether time is passing, and the reason it is here:
+   * `settle` was once silently capped at an eighth of a second and *nothing*
+   * could tell. Every other number in this object is a property of a crowd, and
+   * a crowd that has not moved looks exactly like one that has.
+   */
+  clock: number
   /** Heads actually drawn last frame. */
   heads: number
   /** Square metres of ground in frame. Density is quoted against this. */
@@ -94,7 +110,10 @@ export function createWalkers(canvas: HTMLCanvasElement, initial: Settings): Wal
   let sun: Sun = makeSun(settings.sunAzimuth, settings.sun)
   let ground: Ground = groundOf(settings, sun)
 
-  const layers: Layers = { ground: null, shadow: null }
+  const layers: Layers = { ground: null, shadow: null, trail: null }
+
+  /** Where the clock was when the last frame was drawn, for the trail's decay. */
+  let drawnAt = 0
 
   /**
    * Built here, but **not populated here.**
@@ -135,6 +154,7 @@ export function createWalkers(canvas: HTMLCanvasElement, initial: Settings): Wal
     remeasure()
     layers.ground = null
     layers.shadow = makeShadowBuffer(width, height)
+    layers.trail = makeTrailBuffer(width, height)
   }
 
   function remeasure(): void {
@@ -160,9 +180,17 @@ export function createWalkers(canvas: HTMLCanvasElement, initial: Settings): Wal
       ground,
       layers,
       clock: crowd.clock,
+      // Capped. A `settle` advances the crowd without drawing, so the next
+      // frame's gap is however many minutes were asked for — and the ground's
+      // memory would be wiped by its own decay in one step. Capping it means a
+      // settled scene simply starts its traces from now, which is honest: the
+      // ground has not seen anybody walk over it yet.
+      elapsed: Math.max(0, Math.min(0.5, crowd.clock - drawnAt)),
       width,
       height,
     })
+
+    drawnAt = crowd.clock
 
     if (debug) drawDebug(context, crowd.walkers, crowd.groups, view)
   }
@@ -290,6 +318,9 @@ export function createWalkers(canvas: HTMLCanvasElement, initial: Settings): Wal
         crowd = createCrowd({ view, settings, sun })
         remeasure()
         crowd.fill()
+        // A new cast has not walked anywhere yet, so the ground should not
+        // remember the old one having done so.
+        if (layers.trail) layers.trail = makeTrailBuffer(width, height)
       } else if (needsRemeasure(before, settings)) {
         remeasure()
       } else {
@@ -317,6 +348,7 @@ export function createWalkers(canvas: HTMLCanvasElement, initial: Settings): Wal
     stats() {
       return {
         ...crowd.stats(),
+        clock: crowd.clock,
         heads,
         area: view.area,
         fps,
