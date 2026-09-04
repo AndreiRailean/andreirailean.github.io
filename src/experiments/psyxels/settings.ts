@@ -53,6 +53,7 @@ export type Settings = {
   glow: number
   afterglow: number
   wander: number
+  spin: number
   weight: number
   glyphs: GlyphName[]
   morph: number
@@ -342,6 +343,17 @@ export const CONTROLS: Control[] = [
   {
     kind: "slider",
     group: "packing",
+    key: "spin",
+    label: "spin",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    format: (value) => (value === 0 ? "upright" : value >= 1 ? "any" : `±${Math.round(value * 180)}°`),
+    hint: "How far a mark may be turned from upright. Its own bearing, drawn once and held for its life, so the field is scattered rather than spinning — and both halves of a change of frame read it, so a psyx keeps its bearing while it changes what it is showing. Only the drawn marks turn. The nine built from strokes and a ring use their orientation as meaning: a minus turned a quarter is a bar, a plus turned an eighth is a cross, and both of those are already somewhere else in the vocabulary.",
+  },
+  {
+    kind: "slider",
+    group: "packing",
     key: "weight",
     label: "weight",
     min: 0.03,
@@ -569,6 +581,7 @@ export const DEFAULT_SETTINGS: Settings = {
   glow: 0,
   afterglow: 0,
   wander: 0.15,
+  spin: 0,
   weight: 0.15,
   glyphs: ["minus", "plus", "circled-minus", "circled-plus"],
   morph: 0.55,
@@ -627,6 +640,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       glow: 0.25,
       afterglow: 0.06,
       wander: 0.6,
+      spin: 0,
       weight: 0.11,
       glyphs: ["minus", "plus", "circled-minus", "circled-plus", "ring"],
       morph: 0.34,
@@ -668,6 +682,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       glow: 0.35,
       afterglow: 0.4,
       wander: 0.6,
+      spin: 0,
       weight: 0.145,
       glyphs: ["minus", "plus", "circled-minus"],
       morph: 0.83,
@@ -709,6 +724,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       glow: 0.24,
       afterglow: 0.12,
       wander: 0.6,
+      spin: 0,
       weight: 0.145,
       glyphs: ["minus", "plus", "circled-minus", "circled-plus", "ring", "dot"],
       morph: 0.5,
@@ -750,6 +766,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       glow: 0.35,
       afterglow: 0.4,
       wander: 0.47,
+      spin: 0,
       weight: 0.06,
       glyphs: ["minus", "plus", "circled-minus"],
       morph: 0.83,
@@ -791,6 +808,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       glow: 0.61,
       afterglow: 0,
       wander: 0.6,
+      spin: 0,
       weight: 0.08,
       glyphs: ["minus", "plus", "circled-minus", "circled-plus", "ring", "dot", "cross", "circled-cross", "bar"],
       morph: 0.5,
@@ -832,6 +850,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       glow: 0.35,
       afterglow: 0.4,
       wander: 0.47,
+      spin: 0,
       weight: 0.15,
       glyphs: ["minus", "plus"],
       morph: 0.83,
@@ -873,6 +892,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       glow: 0.51,
       afterglow: 0.11,
       wander: 0.6,
+      spin: 0,
       weight: 0.145,
       glyphs: ["moon", "star", "heart", "leaf"],
       morph: 0.36,

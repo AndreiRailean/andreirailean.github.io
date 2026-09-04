@@ -831,6 +831,47 @@ test("the glyph row picks marks by name, and refuses to go below two", async ({ 
   expect(await row.locator('button[data-locked="true"]').count()).toBe(0)
 })
 
+/**
+ * **Turning a decomposed mark does not scatter the field, it says something the
+ * field did not mean.** A minus turned a quarter is a bar; a plus turned an
+ * eighth is a cross. Both are separate entries in the vocabulary, so a `spin`
+ * that reached them would quietly replace one mark with another the scene never
+ * chose.
+ *
+ * Asked of the canvas rather than of `paintGlyph`, and through the console API
+ * rather than by importing the piece's internals — what matters is whether the
+ * picture moved, and the boundary is the API.
+ */
+test("spin turns the drawn marks and leaves the built ones alone", async ({ page }) => {
+  const experiment = await openPsyxels(page)
+
+  /**
+   * The scene with every clock stopped, so two draws of the same settings are
+   * the same pixels: nothing breathing, nothing repacking, nothing changing
+   * frame, and no buffer gathering light between frames.
+   */
+  const still = { pulse: 0, churn: 0, flicker: 0, glow: 0, afterglow: 0, spin: 0 }
+
+  const shot = async (patch: Partial<Settings>) =>
+    experiment.api(({ api, arg }) => {
+      api.set(arg as Partial<Settings>)
+      api.run(3)
+      return (document.getElementById("stage") as HTMLCanvasElement).toDataURL()
+    }, patch)
+
+  // A field of marks that spend their orientation on meaning cannot be turned.
+  const built: Partial<Settings> = { ...still, glyphs: ["plus", "cross", "minus", "bar"] }
+  expect(await shot({ ...built, spin: 1 })).toBe(await shot(built))
+
+  // A field of drawn marks can.
+  const drawn: Partial<Settings> = { ...still, glyphs: ["moon", "leaf"] }
+  const upright = await shot(drawn)
+  expect(await shot({ ...drawn, spin: 1 })).not.toBe(upright)
+
+  // And winding it back returns the scene it left, rather than a new roll.
+  expect(await shot(drawn)).toBe(upright)
+})
+
 test("the settings panel opens with a row for every control", async ({ page }) => {
   const experiment = await openPsyxels(page, { idle: false })
   await experiment.api(({ api }) => api.panel(true))

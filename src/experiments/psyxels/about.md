@@ -127,6 +127,14 @@ a plus and the diagonals at once, because that is what it is, the same four poin
 with the waist pulled in; a leaf is given the moon's ring and a diagonal, because
 it is that curve turned. No vector describes its shape. Every one places it.
 
+Being drawn buys them one more thing: they can be **turned**. A mark takes its
+own bearing when it is born and holds it for life, so the field is scattered
+rather than spinning, and it keeps that bearing while it cross-fades into the
+next frame. Only the drawn marks turn. The nine spend their orientation on
+meaning — a minus turned a quarter is the bar, a plus turned an eighth is the
+cross — so turning one would not scatter the field, it would quietly swap in a
+mark the scene never chose.
+
 They come last on purpose, and new ones are appended rather than slotted in. A
 scene names its marks, so its meaning does not turn on the order — but a link
 written before the change carries a count instead, read as the first N of the

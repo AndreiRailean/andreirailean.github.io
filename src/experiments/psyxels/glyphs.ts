@@ -358,6 +358,7 @@ export function paintGlyph(
   cy: number,
   extent: number,
   lineWidth: number,
+  turn = 0,
 ): void {
   const shape = GLYPHS[Math.max(0, Math.min(GLYPH_COUNT - 1, glyph))]!
   const full = extent * 0.82
@@ -368,6 +369,11 @@ export function paintGlyph(
     ctx.lineWidth = lineWidth
     ctx.save()
     ctx.translate(cx, cy)
+    // **`turn` reaches the drawn marks and no others.** The nine built from
+    // strokes and a ring spend their orientation on meaning — a minus turned a
+    // quarter is the bar, a plus turned an eighth is the cross — so turning one
+    // does not scatter the field, it says something the field did not mean.
+    if (turn !== 0) ctx.rotate(turn)
     ctx.beginPath()
     shape.paint(ctx, full, lineWidth)
     ctx.stroke()

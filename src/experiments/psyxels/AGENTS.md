@@ -124,6 +124,16 @@ flatten` at first, which looks right on a letter — ink is 1 almost everywhere 
   `../docs/adr/20260904-a-mark-need-not-be-decomposable.md`, which also holds
   why a vendored icon pack was rejected — outlined fills cannot answer to
   `weight`, and fattening them with a stroke costs 4.7× the painter.
+- **Orientation is meaning for the nine, so `spin` must not reach them.** A
+  minus turned a quarter _is_ the bar; a plus turned an eighth _is_ the cross —
+  `armsOf` builds the second of each pair from the first on purpose. Turning
+  them does not scatter the field, it silently swaps in a mark the scene may
+  never have chosen, and the swap is invisible because both marks are legal.
+  `paintGlyph` applies `turn` only where `shape.paint` exists, and
+  `tests/psyxels.spec.ts` pins it by asking the canvas rather than the painter:
+  a field of built marks must be pixel-identical at `spin: 0` and `spin: 1`.
+  A psyx's bearing is its own and is held for its life — both halves of a
+  cross-fade read it, or a mark jumps as it morphs.
 - **A drawn mark answers to `weight` itself, and the specimen sheet is what
   catches it.** Stroke width comes free for the decomposed nine. It does not for
   a mark whose form is an offset: the moon's bite, held at a fixed fraction of

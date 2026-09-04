@@ -97,6 +97,16 @@ export type Psyx = {
   /** Where its mark sits inside its own square, as a fraction of the square, −1 to 1. */
   offsetX: number
   offsetY: number
+  /**
+   * Its own bearing, 0 to 1, spent by `spin`.
+   *
+   * Drawn once and held for the psyx's life, like the offsets above and for the
+   * same reason: a mark that took a new angle every frame would spin, and a
+   * mark that took one per *frame change* would jump each time it morphed. Both
+   * marks of a cross-fade read it, so a psyx keeps its bearing while it changes
+   * what it is showing.
+   */
+  turn: number
 }
 
 type Node = Psyx & {
@@ -201,6 +211,7 @@ function breatheLife(node: Node, time: number, allowed: readonly number[]): void
   node.luck = rng()
   node.offsetX = rng() * 2 - 1
   node.offsetY = rng() * 2 - 1
+  node.turn = rng()
   node.born = time
   node.flicked = time
   node.flickRoll = rng()
@@ -242,6 +253,7 @@ function makeNode(
     b: stats.b,
     born: time,
     glyph: 0,
+    turn: 0,
     from: 0,
     gap: 1,
     edge: Math.min(1, stats.dev / 0.36),
@@ -369,6 +381,7 @@ function mourn(node: Node, time: number, into: Ghost[]): void {
     swing: node.swing,
     offsetX: node.offsetX,
     offsetY: node.offsetY,
+    turn: node.turn,
     died: time,
   })
 }
