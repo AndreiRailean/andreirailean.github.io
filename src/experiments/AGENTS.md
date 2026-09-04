@@ -83,9 +83,10 @@ move only when the meaning of a control moves.
 bare address lands on it and the page rewrites the URL to that scene's full
 query, so a visitor leaves with a link to _that scene_ rather than to whatever is
 featured next month. Three other surfaces read it too: the poster captured for
-the index — three of the four recipes name no preset precisely because a bare URL
+the index — four of the five recipes name no preset precisely because a bare URL
 lands here — and both the backdrop a note runs behind its sheet and the hue its
-furniture is tinted from. Promoting a preset to first therefore moves all of
+furniture is tinted from, which walkers reads for whether that furniture is
+light or dark as well. Promoting a preset to first therefore moves all of
 them together, which is the point of the arrangement. See `CONTEXT.md` on
 _primary_, and `tests/unit/experiments-presets.test.ts` for the mechanical half.
 
@@ -138,6 +139,33 @@ src/experiments/<slug>/poster.webp   the result, referenced from about.md
   form these instructions carried until #114 arrived as an unknown slug and
   killed the run. The script now ignores a `--` too, so a command copied out of
   an older ADR still works.
+- **A picture that accumulates has to be _drawn_ into, not just advanced to.**
+  Stepping a piece forward settles its state; it does not necessarily fill a
+  buffer that is built up frame by frame, because that buffer is a rendering
+  artefact rather than simulation state. Psyxels hit this first: `run()` draws
+  its last twenty steps on purpose, because the glow is gathered _between_
+  frames and a fast-forward that draws only its final one leaves the buffer
+  holding a single frame — a poster with no glow on a scene that has plenty.
+  **The three surfaces that read the primary are the three that fall into it**
+  together: the captured poster, the backdrop a note runs behind its sheet, and
+  the reduced-motion still, all of which ask the piece to arrive somewhere
+  without watching it get there. A piece whose picture _is_ the accumulation has
+  no scene at all until enough frames have been drawn, so its recipe has to say
+  how many.
+- **A recaptured poster does not reach a browser that has already seen it, and
+  the dev server is why.** Astro's dev `<Image>` endpoint serves
+  `/_image?href=<path>&w=…&f=webp` with `cache-control: public,
+max-age=31536000` — a year — on a URL keyed by **file path with no content
+  hash**. So a recapture changes the bytes and cannot change the address, and
+  any browser that has loaded the index once keeps the old poster. Confirmed on
+  a running server: the endpoint returned the correct new image while the
+  reviewer was still being shown the previous one. **Restart the dev server
+  after a recapture _and_ tell whoever is reviewing to hard-reload**, because
+  restarting alone does nothing for their cache. Production is unaffected — a
+  static build emits content-hashed `_astro/poster.<hash>.webp` — which is
+  exactly what makes this expensive: it only ever bites during review, where
+  the reviewer's own eyes say the change did not land. Its sibling, a stale
+  content store changing the wall's order, is in `tests/AGENTS.md`.
 - **A recipe is per-piece knowledge and stays with the piece.** Which preset,
   what has to happen before the shutter, how long to wait. Dangler loads a
   seeded preset and calls `settle()` twice, because a frame caught mid-relaxation

@@ -66,7 +66,7 @@ const SIZE_BUDGET_BYTES = 400_000
  * recipe is a placeholder, and the failure mode — a poster nobody chose, shipped
  * to the index — is worse than the chore.
  */
-export const SLUGS = ["dangler", "flotsam", "psyxels", "starry-night"]
+export const SLUGS = ["dangler", "flotsam", "psyxels", "starry-night", "walkers"]
 
 /**
  * Which pieces a run was asked for, from `process.argv.slice(2)`.

@@ -401,8 +401,16 @@ test("the size mix thins the large pieces without emptying the water or narrowin
   const settings = { dots: 4000, smallest: 0.004, largest: 0.4, span: 8, steepness: 0, drift: 0, eddies: 0, stokes: 0 }
   const experiment = await openFlotsam(page, { settings: { ...settings, sizeMix: 0.9 }, idle: true })
 
+  // `light` is summed while drawing, so both readings wait a frame — the rule
+  // in `tests/AGENTS.md`, and the same one the exposure test above follows. This
+  // test was written without it and passed for weeks on luck: the scene is
+  // deliberately still, so a stale frame comes back byte-identical rather than
+  // obviously old. It failed in CI on a documentation-only PR, reading
+  // `fine.light` of 6.455 against a `coarse.light` of exactly 6.455.
+  await painted(page)
   const coarse = await experiment.api(({ api }) => api.stats())
   await experiment.api(({ api }) => api.set({ sizeMix: 0.2 }))
+  await painted(page)
   const fine = await experiment.api(({ api }) => api.stats())
 
   expect(fine.light).toBeLessThan(coarse.light / 2)
@@ -585,10 +593,31 @@ test("a bare URL lands on the featured scene and says so in the address bar", as
   const experiment = await openFlotsam(page)
 
   expect(await experiment.api(({ api }) => api.get())).toEqual(PRESETS[0]!.settings)
-  // The defaults *are* the first preset here, so the address stays bare — which
-  // is the case that would break if the two were ever allowed to drift apart.
-  expect(new URL(await experiment.api(({ api }) => api.url())).search).toBe("")
-  expect(PRESETS[0]!.settings).toEqual(DEFAULT_SETTINGS)
+
+  /*
+   * **The address is rewritten to the primary's full query, and that is the
+   * point of landing.** A visitor leaves with a link to *this* scene rather than
+   * to whatever is featured next month — `src/experiments/AGENTS.md`.
+   *
+   * This used to assert the opposite: that the address stays bare, because the
+   * defaults *were* the first preset here and the query therefore measured
+   * empty. It said in as many words that it would break if the two were ever
+   * allowed to drift apart, and it did, on the change that recorded `offing` as
+   * a scene of its own. Flotsam was the exception; the rewrite is the rule.
+   */
+  const landed = new URL(await experiment.api(({ api }) => api.url()))
+  expect(landed.search).not.toBe("")
+
+  // And the link is the scene: what the address carries reloads to what is on
+  // screen. A rewrite that named a scene nobody could get back to would satisfy
+  // the line above and be worth nothing.
+  await page.goto(landed.toString())
+  await page.waitForFunction(() => Boolean(window.experiment))
+  expect(await experiment.api(({ api }) => api.get())).toEqual(PRESETS[0]!.settings)
+
+  // The primary is a recorded scene, not the baseline it starts from. Pinned
+  // because the identity is what the assertion above was quietly resting on.
+  expect(PRESETS[0]!.settings).not.toEqual(DEFAULT_SETTINGS)
 })
 
 test("re-rolling changes the water and keeps the settings", async ({ page }) => {
@@ -612,6 +641,13 @@ test("raising the count adds flotsam beside what is there rather than restirring
   const lit = await litPixels(page)
 
   await experiment.api(({ api }) => api.set({ dots: 5000 }))
+  // `dispersion` is measured while drawing, and this test's whole claim is that
+  // it has *not* moved — which is exactly what reading the previous frame would
+  // guarantee. Without the wait the assertion cannot tell a gathering that
+  // stayed put from the same frame measured twice, which is #109's fault in a
+  // different piece. Waited, it still passes: 0.9518 against 0.9740, well inside
+  // the bound.
+  await painted(page)
   const after = await experiment.api(({ api }) => api.stats())
 
   expect(after.dots).toBe(5000)

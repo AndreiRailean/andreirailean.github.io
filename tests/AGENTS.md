@@ -16,6 +16,16 @@ Mid-change, run one module: `pnpm exec vitest rope`, `pnpm exec vitest run setti
 browser suite takes seconds and a cold dev server, and answering "did I break the
 solver" should not.
 
+**A full `pnpm run test:unit` no longer answers in milliseconds, and one module
+is why.** `tests/unit/walkers/` simulates hours of crowd to assert things no
+screenshot and no shorter run can — a counterflow sorting into files, a
+population holding without arriving in waves, a pace that wanders as somebody
+walks — and it is around two minutes of the run on its own. Everything else in
+the suite is still instant, and the filter is how you get it:
+`pnpm exec vitest walkers` for that piece, `pnpm exec vitest <yours>` for
+anything else. Reach for the filter mid-change and the full run before you push.
+Nothing is wrong when the full run takes two and a half minutes.
+
 ## The dev server the browser suite drives
 
 **Do not give it a fixed port, and do not make it insist on one.** Both are
@@ -43,6 +53,39 @@ Two things bite anyone who changes this:
 `BASE_URL` is therefore not a constant. The port is unknown until `globalSetup`
 has run, so it is published as an environment variable that workers read through
 `use.baseURL`. `PW_PORT` still overrides the port to _ask_ for.
+
+**A long-running dev server serves a stale content store, and that changes which
+piece some tests drive.** Astro builds the store at startup, so an `about.md`
+edited afterwards is not seen — which `src/experiments/AGENTS.md` says for
+_adding_ a note, and is worth knowing for editing one too, because
+`gallery/order.ts` sorts the wall by `updated` descending. Any test whose subject
+comes from `wall(page)` — most of `reel.spec.ts` — therefore drives whichever
+piece the **server's** store thinks is newest, not whichever the working tree
+does. Bumping `updated` on one note reorders the wall and silently changes the
+subject of a dozen checks.
+
+That cost real time while diagnosing #119: a run against a server started before
+an `updated` bump drove psyxels, the same run against a fresh one drove flotsam,
+and the two have different preset counts and different scenes. **Restart the dev
+server before trusting a measurement that depends on the wall order**, and read
+the order off the page rather than from `EXPECTED` in
+`tests/experiments-index.spec.ts` — that list pins the index's _contents_ and is
+written in a fixed order which is **not** the order the page renders.
+
+**Its sibling is a recaptured poster that does not reach the browser**, for a
+different reason with the same shape — Astro's dev `<Image>` endpoint caches by
+file path with no content hash, so the bytes change and the address cannot. The
+mechanism is in `src/experiments/AGENTS.md`, under Posters, because that is what
+somebody running a recapture reads. What belongs here is the diagnosis, since
+this is the section you land in when a measurement disagrees with the tree:
+**restarting the dev server fixes the content store and does nothing for the
+reviewer's cache**, so the two look identical from here and are not.
+
+Walkers, 2026-09-04: a poster recaptured from a daylight park to a night scene
+was reported as still green, and the endpoint was serving the correct image at
+the time — mean RGB 35, 33, 33, matching the file on disk. **When a report
+contradicts something already verified, compare the served bytes against the
+file before doubting the code.** Half a morning went the other way.
 
 The suite also serves the Astro dev toolbar's module empty, since it is part of
 the dev server rather than the site and injects four extra `h1`s into every page.

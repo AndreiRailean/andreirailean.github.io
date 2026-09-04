@@ -1,0 +1,85 @@
+---
+import { getCollection } from "astro:content"
+import Note, { type NoteTheme } from "@/experiments/gallery/Note.astro"
+import { PRESETS } from "@/experiments/walkers/settings"
+
+// The note's furniture is the gallery's; only the paint is this piece's. See
+// docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.
+const entry = (await getCollection("experiments")).find(({ data }) => data.slug === "walkers")
+if (!entry) throw new Error("Walkers: missing about.md")
+
+// Taken from the primary rather than written down, so promoting another preset
+// to first moves the poster, the landing scene and this page's colour together.
+// See CONTEXT.md on *primary*.
+const primary = PRESETS[0]!.settings
+
+// And it follows the primary into the evening. A light sheet over a night scene
+// is a grey-brown wash with a paragraph on it: the backdrop is at 42 per cent,
+// so the two are not independent choices however much they look like it. Which
+// way round is therefore a property of position one rather than of this file,
+// and it moves on its own if a daylight scene is ever promoted back.
+const theme: NoteTheme = primary.dusk
+  ? {
+      bg: `hsl(${primary.hue}, 12%, 8%)`,
+      sheet: `hsl(${primary.hue}, 14%, 12% / 72%)`,
+      fg: `hsl(${primary.hue}, 8%, 84%)`,
+      bright: `hsl(${primary.hue}, 10%, 97%)`,
+      muted: `hsl(${primary.hue}, 6%, 56%)`,
+      edge: `hsl(${primary.hue}, 8%, 84% / 16%)`,
+      accent: `hsl(${primary.hue - 6}, 42%, 70%)`,
+    }
+  : {
+      bg: `hsl(${primary.hue}, 16%, 92%)`,
+      sheet: `hsl(${primary.hue}, 18%, 96% / 78%)`,
+      fg: `hsl(${primary.hue}, 14%, 22%)`,
+      bright: `hsl(${primary.hue}, 20%, 12%)`,
+      muted: `hsl(${primary.hue}, 10%, 44%)`,
+      edge: `hsl(${primary.hue}, 14%, 22% / 14%)`,
+      accent: `hsl(${primary.hue - 6}, 38%, 34%)`,
+    }
+---
+
+<Note entry={entry} theme={theme} backdrop={0.42}>
+  <script>
+    import { createWalkers } from "@/experiments/walkers/walkers"
+    import { normalizeSettings, PRESETS } from "@/experiments/walkers/settings"
+
+    const canvas = document.getElementById("backdrop")
+    if (canvas instanceof HTMLCanvasElement) {
+      // **The primary, turned down** — not a scene assembled here.
+      //
+      // It used to be its own settings with only the ground's hue held to the
+      // primary, on the reasoning that everything else was a deliberate
+      // turning-down and taking the whole preset would undo it. That was true
+      // while a preset was mostly a light and a crowd. It stopped being true
+      // when the primary became a scene defined by what it *draws* — no heads,
+      // no light, a dark ground and nothing in the frame but traces — and the
+      // backdrop went on quietly rendering the old daylight park, which is not
+      // what a note about this piece should be sitting on.
+      //
+      // So the turning-down is now only the two things that decide whether it
+      // competes with the prose: fewer people, and a slower clock. Everything
+      // that decides what it *looks* like comes from position one and moves
+      // when position one moves, which is the whole point of the arrangement.
+      const park = createWalkers(
+        canvas,
+        normalizeSettings({
+          ...PRESETS[0]!.settings,
+          density: 9,
+          playback: 0.55,
+        }),
+      )
+      park.start()
+      // A note should open onto a park rather than onto an empty field: people
+      // arrive at a rate, and the first half-minute of one is mostly grass.
+      //
+      // **Thirty rather than ninety**, because a settle is not free and this one
+      // is on the main thread of a page somebody came to read. Ninety seconds of
+      // park is tens of seconds of arithmetic — the note took visibly long to
+      // appear, which is a poor trade for a backdrop at 42 per cent. Thirty gets
+      // the population to its target and the ground its memory, and whatever is
+      // still arriving arrives while the reader is on the first paragraph.
+      park.settle(30)
+    }
+  </script>
+</Note>

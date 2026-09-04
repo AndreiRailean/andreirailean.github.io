@@ -25,6 +25,28 @@ export default defineConfig({
     // Nothing here touches a DOM. A piece's own modules are written for a
     // browser but the ones under test take numbers and return numbers.
     environment: "node",
+    /**
+     * Sized for the statistical checks, rather than left on vitest's 5s default.
+     *
+     * Most of this suite answers in single-digit milliseconds, which is the
+     * point of it. A handful do not: a claim about how long a psyx *lives*
+     * needs samples, so `tests/unit/psyxels/field.test.ts` steps a fully-inked
+     * mask for hundreds of updates and its slowest test took **4865ms** on an
+     * idle machine — 135ms inside the default. It duly failed in a full run
+     * with prettier and eslint just before it, and a vitest timeout is reported
+     * as an ordinary test failure, so it read as flakiness rather than as a
+     * limit. #122.
+     *
+     * The result cannot vary with load — every clock in those tests is
+     * simulated, the seeds are stated, and there is no `Math.random` anywhere
+     * beneath them — so this only ever decides whether a test is allowed to
+     * finish, never what it concludes. Retries would have hidden the difference;
+     * see #119 for why this repo does not take them.
+     *
+     * Raise this rather than trimming a sample count, which would weaken the
+     * claim the samples are for.
+     */
+    testTimeout: 30_000,
   },
   resolve: {
     // The same `@/` the bundler resolves, so a test imports a module by the path

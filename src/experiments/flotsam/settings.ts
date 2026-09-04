@@ -495,20 +495,42 @@ export const DEFAULT_SETTINGS: Settings = {
  * the scene they found; inheriting the defaults would let it drift silently the
  * next time one of those is retuned.
  */
-/**
- * kit-opt-out: the landing scene *is* `DEFAULT_SETTINGS` here, deliberately —
- * both are one recorded scene, and `settingsForLanding` is the indirection that
- * lets the featured scene change later without invalidating a link. Every other
- * preset is written out in full, which is the rule in
- * `../docs/adr/20260830-a-preset-inherits-from-nothing.md`. Worth revisiting: the
- * identity means retuning the defaults edits a recorded scene, which is exactly
- * what cost Psyxels four of its six.
- */
 export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
   {
     label: "offing",
-    hint: "Open water at night, a gusting sea running diagonally, a slow current crossing it.",
-    settings: { ...DEFAULT_SETTINGS },
+    hint: "Open water at night, a gusting sea running diagonally, a slow current crossing it — close enough in to read the shape of each wave rather than the pattern they make.",
+    settings: {
+      seed: 41,
+      dots: 8500,
+      smallest: 0.005,
+      largest: 0.09,
+      sizeMix: 0.5,
+      hue: 202,
+      hueSpread: 15,
+      variance: 0.62,
+      trains: 8,
+      shortest: 3,
+      longest: 11,
+      steepness: 0.9,
+      peak: 0.85,
+      gusts: 0.5,
+      heading: 155,
+      spread: 59,
+      drift: 0.06,
+      bearing: 248,
+      eddies: 0.1,
+      gyre: 30,
+      stokes: 0.6,
+      exposure: 1,
+      glint: 0.8,
+      azimuth: 124,
+      elevation: 52,
+      shade: 0.38,
+      gleam: 3,
+      softness: 0,
+      span: 6.21,
+      playback: 0.2,
+    },
   },
   {
     label: "windrows",

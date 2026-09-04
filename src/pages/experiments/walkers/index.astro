@@ -1,0 +1,212 @@
+---
+import "@/experiments/kit/controls.css"
+
+import Reel from "@/experiments/gallery/Reel.astro"
+
+// A deliberately bare document: no Layout, no globals.css, no Tailwind. The
+// experiment owns the whole viewport and shares no chrome with the rest of the
+// site.
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Walkers</title>
+    <style is:global>
+      /* The ground is pale by day and dark at dusk, so the chrome has to be
+         both ways round. Two sets of tokens, swapped by one attribute, exactly
+         as Starry Night does for its inverted sky. */
+      html {
+        /* Overridden from JS; the fallback keeps the page sane without script. */
+        --hue: 104;
+        --accent: hsl(var(--hue), 34%, 34%);
+        --ground: #9db98a;
+        --ui-text: rgb(18 24 16 / 82%);
+        --ui-label: rgb(18 24 16 / 56%);
+        --ui-heading: rgb(18 24 16 / 46%);
+        --ui-panel: rgb(255 255 255 / 84%);
+        --ui-chip: rgb(255 255 255 / 76%);
+        --ui-edge: rgb(18 24 16 / 14%);
+        --ui-edge-hover: rgb(18 24 16 / 34%);
+        --ui-on-bg: hsl(var(--hue), 30%, 74%);
+        --ui-on-text: hsl(var(--hue), 42%, 16%);
+        --ui-on-edge: rgb(18 24 16 / 32%);
+        --track: rgb(18 24 16 / 15%);
+        --ui-fade: 0.35s;
+
+        /* Twenty-three rows, several of them long-named, so the label column is
+           wider than Starry Night's and the panel is taller. */
+        --ui-label-col: 5.5rem;
+        --ui-value-col: 5.25rem;
+        --ui-panel-min: 21rem;
+        --ui-row-gap: 0.36rem;
+      }
+
+      html[data-dusk="true"] {
+        --accent: hsl(var(--hue), 30%, 66%);
+        --ground: #1d2418;
+        --ui-text: rgb(255 255 255 / 74%);
+        --ui-label: rgb(255 255 255 / 52%);
+        --ui-heading: rgb(255 255 255 / 44%);
+        --ui-panel: rgb(14 18 12 / 82%);
+        --ui-chip: rgb(16 20 14 / 74%);
+        --ui-edge: rgb(255 255 255 / 13%);
+        --ui-edge-hover: rgb(255 255 255 / 32%);
+        --ui-on-bg: hsl(var(--hue), 26%, 40%);
+        --ui-on-text: hsl(var(--hue), 45%, 93%);
+        --ui-on-edge: rgb(255 255 255 / 36%);
+        --track: rgb(255 255 255 / 16%);
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: var(--ground);
+      }
+
+      body {
+        overflow: hidden;
+      }
+
+      canvas {
+        position: fixed;
+        inset: 0;
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="park"></canvas>
+    {
+      /* The interactive view: full-bleed piece, two axes of swipe, on a touch device.
+        Between the canvas and `#ui` because DOM order is the whole stacking
+        arrangement here — see the note in Reel.astro. */
+    }
+    <Reel slug="walkers" />
+    <div id="ui"></div>
+
+    <script>
+      import { createWalkers } from "@/experiments/walkers/walkers"
+      import { createControls } from "@/experiments/kit/controls"
+      import { isReel } from "@/experiments/gallery/reel"
+      import {
+        CONTROLS,
+        GROUPS,
+        PRESETS,
+        normalizeSettings,
+        reconcile,
+        settingsForLanding,
+        urlForSettings,
+      } from "@/experiments/walkers/settings"
+      import { announceApi, createApi } from "@/experiments/walkers/api"
+      import { reroll } from "@/experiments/walkers/reroll"
+      import { keepAwake } from "@/experiments/kit/wakelock"
+
+      function requireElement<T extends Element>(id: string, type: new () => T): T {
+        const element = document.getElementById(id)
+        if (!(element instanceof type)) {
+          throw new Error(`Walkers: missing #${id}`)
+        }
+        return element
+      }
+
+      const canvas = requireElement("park", HTMLCanvasElement)
+      const ui = requireElement("ui", HTMLDivElement)
+
+      // Read once and reused below. The escape hatches are pulled from the same
+      // object rather than from `window.location.search`, because the landing
+      // rewrite at the end of this script changes what that says.
+      const params = new URLSearchParams(window.location.search)
+
+      // A bare address lands on the primary rather than on `DEFAULT_SETTINGS`;
+      // see `settingsForLanding`.
+      const { settings, featured } = settingsForLanding(params)
+
+      /**
+       * The page owns document-level theming; the panel owns its own state.
+       * The ground's hue reaches the CSS as a custom property so the chrome is
+       * tinted from the same colour the grass is without duplicating the
+       * palette in script.
+       */
+      function applyTheme(next: { dusk: boolean; hue: number }) {
+        const root = document.documentElement
+        root.dataset.dusk = String(next.dusk)
+        root.style.setProperty("--hue", String(next.hue))
+      }
+
+      applyTheme(settings)
+
+      const park = createWalkers(canvas, settings)
+      park.start()
+
+      // The chrome comes from the kit — offered, not imposed; see
+      // src/experiments/docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.
+      // Everything below is this piece's own: which rows exist, how they are
+      // filed, and the one validator every input goes through.
+      const controls = createControls({
+        root: ui,
+        // Headless on a touch device: the kit keeps the settings, the validator
+        // and the URL sync, and draws no bar.
+        chrome: !isReel(),
+        aboutHref: "/experiments/walkers/about/",
+        settings,
+        controls: CONTROLS,
+        groups: GROUPS,
+        presets: PRESETS,
+        actions: [
+          {
+            label: "another crowd",
+            hint: "A different set of people at the same settings (r)",
+            shortcut: "r",
+            run: (handle) => {
+              reroll(handle)
+            },
+          },
+        ],
+        // `reconcile` before the clamp, and only for the key actually moved: it
+        // is what stops the bottom of the pace band being dragged past the top.
+        normalize: (next, changed) => normalizeSettings(changed ? reconcile(next, changed) : next),
+        url: (next) => urlForSettings(next, window.location.pathname),
+        onChange: (next) => {
+          applyTheme(next)
+          park.setSettings(next)
+        },
+      })
+
+      // Left running deliberately, so hold the display on.
+      const wakeLock = keepAwake()
+
+      // Console handle. See src/experiments/AGENTS.md. Held locally as well as
+      // on `window`, which is typed `unknown` so the experiments stay
+      // independent of one another — see src/experiments/window.d.ts.
+      const api = createApi(controls, wakeLock, park)
+      window.experiment = api
+      announceApi()
+
+      // Escape hatches for tools that cannot evaluate JS: ?panel=1 opens the
+      // settings panel on load, ?idle=0 stops the chrome hiding itself, and
+      // ?settle=90 lands on a park that has been going for ninety seconds
+      // rather than on a field people have only just started walking into.
+      // None of them is a setting, so none belongs in the shareable query
+      // string.
+      if (params.get("panel") === "1") api.panel(true)
+      const idleParam = params.get("idle")
+      if (idleParam !== null) api.idle(idleParam !== "0")
+      if (params.get("debug") === "1") api.debug(true)
+      const settleParam = Number(params.get("settle"))
+      if (Number.isFinite(settleParam) && settleParam > 0) api.settle(settleParam)
+
+      // Last, so the escape hatches above are read from the address as opened.
+      // It now describes the park on screen, which means a link copied without
+      // touching anything keeps working when the featured preset changes.
+      if (featured) {
+        window.history.replaceState(null, "", urlForSettings(settings, window.location.pathname))
+      }
+    </script>
+  </body>
+</html>
