@@ -17,11 +17,14 @@ const PLUS = 1
 const CIRCLED_MINUS = 2
 const CROSS = 6
 
+/** Every mark, as the walk wants them: an index list rather than a count. */
+const ALL = Array.from({ length: GLYPH_COUNT }, (_, i) => i)
+
 /** How often each frame follows `from`, over a long seeded walk. */
-function follows(from: number, count: number, draws = 20000): number[] {
+function follows(from: number, allowed: readonly number[], draws = 20000): number[] {
   const rng = makeRng(2024)
   const tally = new Array<number>(GLYPH_COUNT).fill(0)
-  for (let i = 0; i < draws; i++) tally[nextGlyph(from, count, rng())]!++
+  for (let i = 0; i < draws; i++) tally[nextGlyph(from, allowed, rng())]!++
   return tally
 }
 
@@ -86,26 +89,43 @@ describe("the vocabulary", () => {
 })
 
 describe("nextGlyph", () => {
-  it("always changes something, and stays inside the vocabulary", () => {
+  it("always changes something, and stays inside the chosen set", () => {
     const rng = makeRng(7)
     for (let count = 1; count <= GLYPH_COUNT; count++) {
-      for (let current = 0; current < count; current++) {
+      const allowed = ALL.slice(0, count)
+      for (const current of allowed) {
         for (let i = 0; i < 200; i++) {
-          const next = nextGlyph(current, count, rng())
-          expect(next).toBeLessThan(count)
-          expect(next).toBeGreaterThanOrEqual(0)
+          const next = nextGlyph(current, allowed, rng())
+          expect(allowed).toContain(next)
           if (count > 1) expect(next).not.toBe(current)
         }
       }
     }
   })
 
-  it("has nowhere to go in a vocabulary of one", () => {
-    expect(nextGlyph(0, 1, 0.99)).toBe(0)
+  /**
+   * The set a scene chooses is arbitrary, not a prefix — which is the whole
+   * point of naming marks rather than counting them.
+   */
+  it("walks a scattered set as readily as a contiguous one", () => {
+    const rng = makeRng(11)
+    const allowed = [0, 4, 9, 10]
+    for (const current of [...allowed, 3, 7]) {
+      for (let i = 0; i < 200; i++) {
+        const next = nextGlyph(current, allowed, rng())
+        expect(allowed).toContain(next)
+        if (allowed.includes(current)) expect(next).not.toBe(current)
+      }
+    }
+  })
+
+  it("has nowhere to go in a set of one", () => {
+    expect(nextGlyph(0, [0], 0.99)).toBe(0)
+    expect(nextGlyph(3, [7], 0.99)).toBe(7)
   })
 
   it("prefers a frame one feature away to one two away", () => {
-    const tally = follows(MINUS, GLYPH_COUNT)
+    const tally = follows(MINUS, ALL)
     // A plus adds a stroke; a circled minus adds a ring; a cross replaces the
     // stroke *and* is a different kind of mark.
     expect(tally[PLUS]!).toBeGreaterThan(tally[CROSS]! * 2)
@@ -113,15 +133,15 @@ describe("nextGlyph", () => {
   })
 
   it("still reaches the far half of the vocabulary rather than orbiting one frame", () => {
-    const tally = follows(MINUS, GLYPH_COUNT)
+    const tally = follows(MINUS, ALL)
     for (let glyph = 0; glyph < GLYPH_COUNT; glyph++) {
       if (glyph === MINUS) continue
       expect(tally[glyph]!).toBeGreaterThan(0)
     }
   })
 
-  it("brings a psyx back inside a vocabulary that has shrunk under it", () => {
-    for (let i = 0; i < 50; i++) expect(nextGlyph(8, 3, i / 50)).toBeLessThan(3)
+  it("brings a psyx back inside a set it is no longer part of", () => {
+    for (let i = 0; i < 50; i++) expect([0, 1, 2]).toContain(nextGlyph(8, [0, 1, 2], i / 50))
   })
 })
 

@@ -7,6 +7,7 @@ import {
   GROUP_ORDER,
   needsPacking,
   needsSubject,
+  isTrackedControl,
   normalizeSettings,
   PRESETS,
   settingsForLanding,
@@ -15,12 +16,13 @@ import {
   urlForSettings,
   type NumericKey,
 } from "@/experiments/psyxels/settings"
+import type { GlyphName } from "@/experiments/psyxels/glyphs"
 
 describe("bounds", () => {
   it("has a bound for every numeric setting, so nothing arrives unclamped", () => {
     for (const key of Object.keys(DEFAULT_SETTINGS) as NumericKey[]) {
-      // The three choices, which have options rather than a track.
-      if ((["subject", "face", "polarity"] as string[]).includes(key)) continue
+      // The choices and the glyph set, which have options rather than a track.
+      if ((["subject", "face", "polarity", "glyphs"] as string[]).includes(key)) continue
       expect(BOUNDS[key], key).toBeDefined()
     }
   })
@@ -37,7 +39,7 @@ describe("bounds", () => {
 
   it("gives every logarithmic control a positive minimum, which the mapping requires", () => {
     for (const control of CONTROLS) {
-      if (control.kind !== "choice" && control.scale === "log") expect(control.min, control.label).toBeGreaterThan(0)
+      if (isTrackedControl(control) && control.scale === "log") expect(control.min, control.label).toBeGreaterThan(0)
     }
   })
 
@@ -50,11 +52,10 @@ describe("bounds", () => {
 
 describe("normalising", () => {
   it("clamps out of range and rounds what must be whole", () => {
-    const settings = normalizeSettings({ wildness: 4, levels: 2.6, coarse: -30, vocabulary: 400 })
+    const settings = normalizeSettings({ wildness: 4, levels: 2.6, coarse: -30 })
     expect(settings.wildness).toBe(BOUNDS.wildness.max)
     expect(settings.levels).toBe(3)
     expect(settings.coarse).toBe(BOUNDS.coarse.min)
-    expect(settings.vocabulary).toBe(BOUNDS.vocabulary.max)
   })
 
   it("keeps the base's subject, face and polarity when handed ones that do not exist", () => {
@@ -65,6 +66,33 @@ describe("normalising", () => {
     expect(normalizeSettings({ face: "script" }).face).toBe("script")
     expect(normalizeSettings({ polarity: "inverse" as never }).polarity).toBe(DEFAULT_SETTINGS.polarity)
     expect(normalizeSettings({ polarity: "void" }).polarity).toBe("void")
+  })
+
+  /**
+   * The set is a set: `ring,dot` and `dot,ring` are one scene, so it is sorted
+   * into the vocabulary's own order. One scene then has one address, and
+   * `settingsToQuery` cannot emit two spellings of it.
+   */
+  it("puts the chosen marks in the vocabulary's order, once each", () => {
+    const settings = normalizeSettings({ glyphs: ["star", "plus", "star", "ring"] as GlyphName[] })
+    expect(settings.glyphs).toEqual(["plus", "ring", "star"])
+  })
+
+  it("drops a mark it does not know rather than defaulting the whole set", () => {
+    const settings = normalizeSettings({ glyphs: ["ring", "sunburst", "moon"] as GlyphName[] })
+    expect(settings.glyphs).toEqual(["ring", "moon"])
+  })
+
+  /**
+   * A psyx never repeats the frame it is showing, so a set of one leaves the
+   * walk nowhere to go and the moving half of the piece silently stops. The
+   * control refuses it; so must every other way in.
+   */
+  it("keeps the base's marks when fewer than two survive", () => {
+    const base = normalizeSettings({ glyphs: ["ring", "dot", "moon"] as GlyphName[] })
+    expect(normalizeSettings({ glyphs: ["star"] as GlyphName[] }, base).glyphs).toEqual(base.glyphs)
+    expect(normalizeSettings({ glyphs: [] }, base).glyphs).toEqual(base.glyphs)
+    expect(normalizeSettings({ glyphs: "ring,moon" as never }, base).glyphs).toEqual(base.glyphs)
   })
 
   it("fills gaps from the base rather than from the defaults when given one", () => {
@@ -100,6 +128,24 @@ describe("the query string", () => {
     expect([...settingsToQuery(DEFAULT_SETTINGS).keys()].sort()).toEqual(keys)
     expect([...settingsToQuery(PRESETS[2]!.settings).keys()].sort()).toEqual(keys)
     expect(urlForSettings(DEFAULT_SETTINGS, "/experiments/psyxels/")).toContain("?")
+  })
+
+  it("carries the chosen marks by name", () => {
+    const scene = normalizeSettings({ glyphs: ["ring", "moon", "star"] as GlyphName[] })
+    expect(settingsToQuery(scene).get("glyphs")).toBe("ring,moon,star")
+    expect(settingsFromQuery(new URLSearchParams("glyphs=moon,ring")).glyphs).toEqual(["ring", "moon"])
+    expect(settingsForLanding(new URLSearchParams("glyphs=ring,moon")).featured).toBe(false)
+  })
+
+  /**
+   * **`vocabulary=N` is still read**, because links carrying it exist and a
+   * shared address should keep meaning what it meant: the first N of the list.
+   */
+  it("still reads the count a link was written with, and prefers the names", () => {
+    expect(settingsFromQuery(new URLSearchParams("vocabulary=3")).glyphs).toEqual(["minus", "plus", "circled-minus"])
+    expect(settingsFromQuery(new URLSearchParams("vocabulary=9&glyphs=ring,moon")).glyphs).toEqual(["ring", "moon"])
+    // Junk in `glyphs` falls through to the count rather than to the default.
+    expect(settingsFromQuery(new URLSearchParams("vocabulary=2&glyphs=nonsense")).glyphs).toEqual(["minus", "plus"])
   })
 
   /**
@@ -197,7 +243,6 @@ describe("what a change costs", () => {
       "wave",
       "flicker",
       "churn",
-      "vocabulary",
       "weight",
       "inset",
       "threshold",
@@ -207,6 +252,12 @@ describe("what a change costs", () => {
       const next = normalizeSettings({ ...DEFAULT_SETTINGS, [key]: DEFAULT_SETTINGS[key] / 2 })
       expect(needsPacking(DEFAULT_SETTINGS, next), key).toBe(false)
     }
+
+    // The marks are read live like the rest of the life half, so choosing a
+    // different set must leave every psyx exactly where it is.
+    const swapped = normalizeSettings({ ...DEFAULT_SETTINGS, glyphs: ["ring", "dot", "moon"] })
+    expect(swapped.glyphs).not.toEqual(DEFAULT_SETTINGS.glyphs)
+    expect(needsPacking(DEFAULT_SETTINGS, swapped)).toBe(false)
   })
 
   it("rasterises the subject again only when the subject, its face, its polarity or its size changed", () => {

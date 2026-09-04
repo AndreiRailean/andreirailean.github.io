@@ -1,5 +1,6 @@
 import type { ExperimentApi } from "@/experiments/psyxels/api"
 import { DEFAULT_SETTINGS, PRESETS, settingsToQuery, type Settings } from "@/experiments/psyxels/settings"
+import { GLYPH_NAMES } from "@/experiments/psyxels/glyphs"
 import { expect, openExperiment, test } from "./support/experiment"
 
 /**
@@ -165,7 +166,19 @@ test("winding the life controls anywhere leaves the packing exactly as it was", 
       tempo: 3,
       wave: 1,
       flicker: 9,
-      vocabulary: 9,
+      glyphs: [
+        "minus",
+        "plus",
+        "circled-minus",
+        "circled-plus",
+        "ring",
+        "dot",
+        "cross",
+        "circled-cross",
+        "bar",
+        "moon",
+        "star",
+      ],
       morph: 1,
       ease: 4,
       weight: 0.3,
@@ -781,6 +794,41 @@ test("reduced motion holds the field still, with everything still on the canvas"
   // Frozen, not blank: the piece still draws its first frame.
   const { lit } = await light(page)
   expect(lit).toBeGreaterThan(2000)
+})
+
+/**
+ * The vocabulary is picked rather than counted, and the floor is the part worth
+ * pinning: a set of one leaves `nextGlyph` nowhere to go, so the moving half of
+ * the piece would stop with nothing on screen to say why.
+ */
+test("the glyph row picks marks by name, and refuses to go below two", async ({ page }) => {
+  const experiment = await openPsyxels(page, { idle: false })
+  await experiment.api(({ api }) => api.panel(true))
+
+  const row = page.locator(".panel .row", { has: page.locator(".modes.set") })
+  const buttons = row.locator("button")
+  const chosen = () => experiment.api(({ api }) => api.get().glyphs)
+
+  // One button per mark, and the lit ones are exactly the chosen ones.
+  await experiment.api(({ api }) => api.set({ glyphs: ["ring", "moon", "star"] }))
+  expect(await buttons.count()).toBe(GLYPH_NAMES.length)
+  expect(await row.locator('button[data-active="true"]').count()).toBe(3)
+  expect(await chosen()).toEqual(["ring", "moon", "star"])
+
+  // A click removes one, and the address says so rather than carrying a count.
+  await buttons.nth(GLYPH_NAMES.indexOf("star")).click()
+  expect(await chosen()).toEqual(["ring", "moon"])
+  expect(new URL(page.url()).searchParams.get("glyphs")).toBe("ring,moon")
+
+  // At the floor the survivors are marked, and clicking one does nothing.
+  expect(await row.locator('button[data-locked="true"]').count()).toBe(2)
+  await buttons.nth(GLYPH_NAMES.indexOf("ring")).click()
+  expect(await chosen()).toEqual(["ring", "moon"])
+
+  // Adding is never refused, and the set comes back in the vocabulary's order.
+  await buttons.nth(GLYPH_NAMES.indexOf("plus")).click()
+  expect(await chosen()).toEqual(["plus", "ring", "moon"])
+  expect(await row.locator('button[data-locked="true"]').count()).toBe(0)
 })
 
 test("the settings panel opens with a row for every control", async ({ page }) => {

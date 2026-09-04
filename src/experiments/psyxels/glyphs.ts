@@ -105,6 +105,36 @@ export const GLYPHS: Feature[] = [
 
 export const GLYPH_COUNT = GLYPHS.length
 
+/**
+ * What each mark is called, in the same order.
+ *
+ * Names rather than a count, because a scene names its marks in the URL and an
+ * address is the piece's honest state — `glyphs=ring,dot,moon` says what it
+ * will show, where a bitmask or an index list says nothing a reader can check.
+ * They cost more characters than they save, which is the trade this piece keeps
+ * making on purpose.
+ */
+export const GLYPH_NAMES = [
+  "minus",
+  "plus",
+  "circled-minus",
+  "circled-plus",
+  "ring",
+  "dot",
+  "cross",
+  "circled-cross",
+  "bar",
+  "moon",
+  "star",
+] as const
+
+export type GlyphName = (typeof GLYPH_NAMES)[number]
+
+export const isGlyphName = (value: unknown): value is GlyphName =>
+  typeof value === "string" && (GLYPH_NAMES as readonly string[]).includes(value)
+
+export const indexOfGlyph = (name: GlyphName): number => GLYPH_NAMES.indexOf(name)
+
 /** How many features two frames disagree on. */
 function distance(a: Feature, b: Feature): number {
   let d = 0
@@ -128,32 +158,39 @@ function distance(a: Feature, b: Feature): number {
  */
 const KINSHIP = 0.35
 
-/** Precomputed transition weights, since the vocabulary is fixed at nine. */
+/** Precomputed transition weights: the whole vocabulary against itself. */
 const WEIGHTS: number[][] = GLYPHS.map((from, i) =>
   GLYPHS.map((to, j) => (i === j ? 0 : KINSHIP ** (distance(from, to) - 1))),
 )
 
 /**
- * The frame after this one, drawn from the first `count` of the vocabulary.
+ * The frame after this one, drawn from the marks a scene has chosen.
+ *
+ * `allowed` is an arbitrary subset rather than a prefix, because a scene picks
+ * its marks by name. Nothing here assumes they are contiguous or in order, and
+ * a `current` the set no longer contains is fine — every weight then counts,
+ * which is exactly the walk a psyx should take on its way back in.
  *
  * `roll` is a number in [0, 1) from the psyx's own generator, so the choice is
  * reproducible from the seed and the psyx's identity.
  */
-export function nextGlyph(current: number, count: number, roll: number): number {
-  const limit = Math.max(1, Math.min(GLYPH_COUNT, Math.round(count)))
-  if (limit === 1) return 0
+export function nextGlyph(current: number, allowed: readonly number[], roll: number): number {
+  if (allowed.length === 0) return 0
+  if (allowed.length === 1) return allowed[0]!
 
-  const row = WEIGHTS[Math.min(current, GLYPH_COUNT - 1)]!
+  // `WEIGHTS` is zero on the diagonal, so a psyx cannot draw the frame it is
+  // already showing without the fallback below.
+  const row = WEIGHTS[Math.max(0, Math.min(GLYPH_COUNT - 1, current))]!
   let total = 0
-  for (let i = 0; i < limit; i++) total += row[i]!
-  if (total <= 0) return (current + 1) % limit
+  for (const glyph of allowed) total += row[glyph]!
+  if (total <= 0) return allowed[0]!
 
   let target = roll * total
-  for (let i = 0; i < limit; i++) {
-    target -= row[i]!
-    if (target <= 0) return i
+  for (const glyph of allowed) {
+    target -= row[glyph]!
+    if (target <= 0) return glyph
   }
-  return limit - 1
+  return allowed[allowed.length - 1]!
 }
 
 const TURN = Math.PI * 2
