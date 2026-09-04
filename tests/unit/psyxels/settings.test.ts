@@ -89,11 +89,17 @@ describe("the query string", () => {
     expect(settingsFromQuery(settingsToQuery(scene))).toEqual(scene)
   })
 
-  it("carries only what differs from the defaults, so a link stays readable", () => {
-    expect(settingsToQuery(DEFAULT_SETTINGS).toString()).toBe("")
-    expect(urlForSettings(DEFAULT_SETTINGS, "/experiments/psyxels/")).toBe("/experiments/psyxels/")
-    const query = settingsToQuery({ ...DEFAULT_SETTINGS, spread: 12 })
-    expect([...query.keys()]).toEqual(["spread"])
+  /**
+   * **A link that rests on a default is a link whose scene moves when the
+   * default does** — the same trap the presets are written out in full to
+   * avoid, one layer down. Shorter addresses are not worth a shared scene that
+   * quietly becomes a different one.
+   */
+  it("names every setting, so no address rests on a default", () => {
+    const keys = Object.keys(DEFAULT_SETTINGS).sort()
+    expect([...settingsToQuery(DEFAULT_SETTINGS).keys()].sort()).toEqual(keys)
+    expect([...settingsToQuery(PRESETS[2]!.settings).keys()].sort()).toEqual(keys)
+    expect(urlForSettings(DEFAULT_SETTINGS, "/experiments/psyxels/")).toContain("?")
   })
 
   /**
