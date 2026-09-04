@@ -89,10 +89,17 @@ is correct and worth knowing.
 
 ## A psyx is a small animation
 
-The vocabulary is eleven frames, and the first four are the ones the piece was
+The vocabulary is fifteen frames, and the first four are the ones the piece was
 described from: minus, plus, circled minus, circled plus. After those come a bare
-ring, a dot, a cross, a circled cross, and a single upright bar. Last of all, a
-moon and a four-pointed star.
+ring, a dot, a cross, a circled cross, and a single upright bar. Last of all, six
+that are drawn rather than built: a moon, a four-pointed star, a diamond, an eye,
+a heart and a leaf.
+
+A scene does not take a number of them. It names the ones it wants, and the
+panel offers them as a row of their own drawings — so a mark can be dropped
+without dropping everything after it, which is what a count forced. Two is the
+floor, because a psyx never repeats the frame it is showing and a set of one
+leaves it nowhere to go.
 
 The first nine are not pictures. Each is a set of features — a horizontal stroke,
 a vertical one, a diagonal pair, a ring, a fill — and the distance between two
@@ -107,7 +114,7 @@ The diagonals are not a third pair of strokes, either: a cross is a plus rotated
 by an eighth of a turn, and saying so in the geometry is what keeps the two the
 same size and the same weight without anyone maintaining it by hand.
 
-**The last two are drawn, and that is a rule the piece used to keep and has let
+**The last six are drawn, and that is a rule the piece used to keep and has let
 go.** The features once described the transition as well as the shape — a stroke
 grew out of the middle, a ring drew itself round — and a frame that could not be
 decomposed had no way to arrive. That was tried and taken out: a large plus
@@ -117,10 +124,14 @@ something the piece no longer does, and a mark drawn as itself can join on one
 condition — that it can still say who its neighbours are. A moon is given a ring
 and an upright, because a bare ring is what it should sit beside; a star is given
 a plus and the diagonals at once, because that is what it is, the same four points
-with the waist pulled in. Neither vector describes the shape. Both place it.
+with the waist pulled in; a leaf is given the moon's ring and a diagonal, because
+it is that curve turned. No vector describes its shape. Every one places it.
 
-They come last on purpose. `vocabulary` takes frames from the front of the list,
-so every scene written before them means exactly the frames it always did.
+They come last on purpose, and new ones are appended rather than slotted in. A
+scene names its marks, so its meaning does not turn on the order — but a link
+written before the change carries a count instead, read as the first N of the
+list, and inserting a mark anywhere would quietly rewrite every address ever
+shared.
 
 How long any of it takes is **ease**, which is the piece's other clock. Every
 transition — a psyx arriving, one going, a frame turning into the next — is a

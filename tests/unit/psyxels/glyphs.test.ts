@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest"
 import { makeRng } from "@/experiments/random"
-import { armsOf, GLYPH_COUNT, GLYPHS, nextGlyph } from "@/experiments/psyxels/glyphs"
+import {
+  armsOf,
+  GLYPH_COUNT,
+  GLYPH_NAMES,
+  GLYPHS,
+  indexOfGlyph,
+  nextGlyph,
+  type GlyphName,
+} from "@/experiments/psyxels/glyphs"
 
 /**
  * The vocabulary and the walk through it.
@@ -27,9 +35,6 @@ function follows(from: number, allowed: readonly number[], draws = 20000): numbe
   for (let i = 0; i < draws; i++) tally[nextGlyph(from, allowed, rng())]!++
   return tally
 }
-
-const MOON = 9
-const STAR = 10
 
 /** How many features two frames disagree on — `glyphs.ts` owns the same sum. */
 const apart = (a: number, b: number) =>
@@ -68,9 +73,14 @@ describe("the vocabulary", () => {
    */
   it("keeps the drawn marks last, behind the nine that were decomposed", () => {
     expect(GLYPHS.slice(0, 9).every((glyph) => glyph.paint === undefined)).toBe(true)
-    expect(GLYPHS[MOON]!.paint).toBeTypeOf("function")
-    expect(GLYPHS[STAR]!.paint).toBeTypeOf("function")
-    expect(GLYPH_COUNT).toBe(11)
+    expect(GLYPHS.slice(9).every((glyph) => typeof glyph.paint === "function")).toBe(true)
+    expect(GLYPH_COUNT).toBe(GLYPH_NAMES.length)
+  })
+
+  it("names every mark, in the order they are drawn in", () => {
+    expect(GLYPH_NAMES.length).toBe(GLYPH_COUNT)
+    expect(new Set(GLYPH_NAMES).size).toBe(GLYPH_COUNT)
+    for (const name of GLYPH_NAMES) expect(GLYPH_NAMES[indexOfGlyph(name)]).toBe(name)
   })
 
   /**
@@ -78,12 +88,21 @@ describe("the vocabulary", () => {
    * ring, and a star beside the plus whose four points it pulls the waist in on.
    */
   it("puts each drawn mark one step from the sign it belongs beside", () => {
-    const RING = 4
-    expect(apart(MOON, RING)).toBe(1)
-    expect(apart(STAR, PLUS)).toBe(1)
-    for (let other = 0; other < GLYPH_COUNT; other++) {
-      if (other !== MOON) expect(apart(MOON, other), `moon vs ${other}`).toBeGreaterThanOrEqual(1)
-      if (other !== STAR) expect(apart(STAR, other), `star vs ${other}`).toBeGreaterThanOrEqual(1)
+    const beside: [GlyphName, GlyphName][] = [
+      // A crescent is a bare ring with a bite taken out of it.
+      ["moon", "ring"],
+      // A star is a plus with the waist pulled in, and a diamond is that star
+      // with the waist let out again.
+      ["star", "plus"],
+      ["diamond", "cross"],
+      // Both are round and solid; one has a pupil, the other a dimple.
+      ["eye", "dot"],
+      ["heart", "dot"],
+      // A leaf is the moon's curve, turned onto the diagonal.
+      ["leaf", "moon"],
+    ]
+    for (const [drawn, kin] of beside) {
+      expect(apart(indexOfGlyph(drawn), indexOfGlyph(kin)), `${drawn} beside ${kin}`).toBe(1)
     }
   })
 })

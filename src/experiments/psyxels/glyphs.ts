@@ -22,8 +22,8 @@
  * `paintPsyxel` cross-fades two whole marks instead. So the rule that a frame
  * must be decomposable was paying for something the piece no longer does, and a
  * mark that cannot be decomposed is free to join as long as it can say who its
- * neighbours are. The moon and the star are those: drawn, with a feature vector
- * that is a claim about kinship rather than a description of the shape.
+ * neighbours are. The last six are those: drawn, each with a feature vector that
+ * is a claim about kinship rather than a description of its shape.
  *
  * They are drawn rather than typeset, in units of their own cell, because a
  * psyx here is anywhere between three and two hundred psyxels across and a font
@@ -71,7 +71,8 @@ const figure = (
   v: boolean,
   diagonal: boolean,
   ring: boolean,
-): Feature => ({ h, v, diagonal, ring, fill: false, paint })
+  fill = false,
+): Feature => ({ h, v, diagonal, ring, fill, paint })
 
 /**
  * The vocabulary, in the order a growing `vocabulary` setting admits them.
@@ -81,9 +82,10 @@ const figure = (
  * is already the thing. What follows adds ways to be quiet (a bare ring, a dot)
  * and ways to be loud (the diagonals) without changing the family.
  *
- * **The two drawn marks come last, and that is what keeps every scene that
- * existed before them.** A preset naming `vocabulary: 4` means the same four
- * frames it always did; only a scene that asks for the whole set sees a moon.
+ * **The drawn marks come last, and new ones are appended rather than slotted
+ * in.** A scene names the marks it wants, so its meaning does not depend on the
+ * order — but `vocabulary=N` in an old link does, and that is read as the first
+ * N. Inserting a mark would quietly rewrite every address ever shared.
  */
 export const GLYPHS: Feature[] = [
   frame(true, false, false, false), // minus
@@ -101,6 +103,17 @@ export const GLYPHS: Feature[] = [
   // A plus and the diagonals at once: one step from a plus, which is what it is
   // — the same four points with the waist pulled in.
   figure(starFour, true, true, true, false), // star
+  // A stroke and the diagonals: one step from a cross, from a minus and from a
+  // star, which is where a square stood on its point belongs.
+  figure(diamond, true, false, true, false), // diamond
+  // A circled stroke that has grown a pupil: one step from a circled minus and
+  // one from a dot.
+  figure(eye, true, false, false, true, true), // eye
+  // Round and solid like a dot, bitten like a moon, and one step from each.
+  figure(heart, false, true, false, true, true), // heart
+  // A moon's curve on the diagonal: one step from the moon and from a circled
+  // cross.
+  figure(leaf, false, true, true, true), // leaf
 ]
 
 export const GLYPH_COUNT = GLYPHS.length
@@ -126,6 +139,10 @@ export const GLYPH_NAMES = [
   "bar",
   "moon",
   "star",
+  "diamond",
+  "eye",
+  "heart",
+  "leaf",
 ] as const
 
 export type GlyphName = (typeof GLYPH_NAMES)[number]
@@ -240,6 +257,60 @@ function starFour(ctx: CanvasRenderingContext2D, r: number): void {
   ctx.quadraticCurveTo(-waist, -waist, 0, -r)
   ctx.quadraticCurveTo(waist, -waist, r, 0)
   ctx.closePath()
+}
+
+/** The star's four points joined straight: a square stood on its corner. */
+function diamond(ctx: CanvasRenderingContext2D, r: number): void {
+  ctx.moveTo(0, -r)
+  ctx.lineTo(r, 0)
+  ctx.lineTo(0, r)
+  ctx.lineTo(-r, 0)
+  ctx.closePath()
+}
+
+/**
+ * A lens and a pupil.
+ *
+ * The control points sit at twice the lid's height because a quadratic reaches
+ * only halfway to its control: asking for the apex directly gives a shape half
+ * as open as it reads on the page, and the eye comes out a slit.
+ */
+function eye(ctx: CanvasRenderingContext2D, r: number): void {
+  const lid = r * 0.64
+  ctx.moveTo(-r, 0)
+  ctx.quadraticCurveTo(0, -lid * 2, r, 0)
+  ctx.quadraticCurveTo(0, lid * 2, -r, 0)
+  ctx.closePath()
+
+  const pupil = r * 0.3
+  ctx.moveTo(pupil, 0)
+  ctx.arc(0, 0, pupil, 0, TURN)
+}
+
+/** Two lobes and a point, drawn as one closed curve from the point and back. */
+function heart(ctx: CanvasRenderingContext2D, r: number): void {
+  ctx.moveTo(0, r * 0.78)
+  ctx.bezierCurveTo(-r * 1.15, -r * 0.05, -r * 0.6, -r * 0.95, 0, -r * 0.3)
+  ctx.bezierCurveTo(r * 0.6, -r * 0.95, r * 1.15, -r * 0.05, 0, r * 0.78)
+  ctx.closePath()
+}
+
+/**
+ * A pointed oval on the diagonal, with the midrib running out past it as a stem.
+ *
+ * **The vein is not decoration.** Without it the outline is a lens, which is an
+ * eye that has lost its pupil — and the two would be a pair of marks the field
+ * cannot tell apart at the sizes this piece mostly works at.
+ */
+function leaf(ctx: CanvasRenderingContext2D, r: number): void {
+  const tip = r * 0.76
+  ctx.moveTo(-tip, tip)
+  ctx.quadraticCurveTo(-tip, -tip, tip, -tip)
+  ctx.quadraticCurveTo(tip, tip, -tip, tip)
+  ctx.closePath()
+
+  ctx.moveTo(-r * 0.95, r * 0.95)
+  ctx.lineTo(tip * 0.45, -tip * 0.45)
 }
 
 /**
