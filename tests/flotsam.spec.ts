@@ -641,6 +641,13 @@ test("raising the count adds flotsam beside what is there rather than restirring
   const lit = await litPixels(page)
 
   await experiment.api(({ api }) => api.set({ dots: 5000 }))
+  // `dispersion` is measured while drawing, and this test's whole claim is that
+  // it has *not* moved — which is exactly what reading the previous frame would
+  // guarantee. Without the wait the assertion cannot tell a gathering that
+  // stayed put from the same frame measured twice, which is #109's fault in a
+  // different piece. Waited, it still passes: 0.9518 against 0.9740, well inside
+  // the bound.
+  await painted(page)
   const after = await experiment.api(({ api }) => api.stats())
 
   expect(after.dots).toBe(5000)
