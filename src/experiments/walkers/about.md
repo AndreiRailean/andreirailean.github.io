@@ -3,7 +3,7 @@ slug: walkers
 title: Walkers
 summary: A crowd from directly above, where a person is a dot and everything you can tell about them you tell from how they move.
 started: 2026-09-03
-updated: 2026-09-03
+updated: 2026-09-04
 poster: ./poster.webp
 tags:
   - canvas
