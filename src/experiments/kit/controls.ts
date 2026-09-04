@@ -22,7 +22,8 @@ import { toggleFullscreen } from "@/experiments/kit/fullscreen"
  *
  * **It renders DOM, not appearance.** The class names below are the contract
  * with a piece's own stylesheet: `.bar`, `.panel`, `.group`, `.row`, `.label`,
- * `.value`, `.span`, `.modes`, `.mode`, `.preset`, `.toggle`, `.copy`, `.about`.
+ * `.value`, `.span`, `.modes`, `.modes.set`, `.mode`, `.mode.glyph`, `.preset`,
+ * `.toggle`, `.copy`, `.about` — plus `data-active` and `data-locked` on a mode.
  * A piece that uses a control kind it has no CSS for will render it unstyled and
  * nothing will say so — that has happened here twice now, and
  * `tests/kit.spec.ts` checks the range row's layout because of the second time.
@@ -100,9 +101,50 @@ export type ToggleControl<K> = Shared & {
   labels: [string, string]
 }
 
-export type Control<K> = SliderControl<K> | RangeControl<K> | ChoiceControl<K> | ToggleControl<K>
+/**
+ * Several of a fixed set at once, as a row of buttons that each toggle.
+ *
+ * A choice with more than one answer, and the difference that matters is
+ * `least`: a set that may empty is a set the piece has to have an opinion about
+ * being empty, everywhere it is read. Refusing the last removal in the control
+ * is one rule in one place instead.
+ *
+ * **The rule is shown, not just enforced.** When exactly `least` remain, those
+ * buttons carry `data-locked` so a piece's stylesheet can say why the click did
+ * nothing. A control that silently ignores a click reads as broken.
+ *
+ * An option may bring an `icon` when its own shape is the label — the kit
+ * appends whatever node the piece hands back and knows nothing about it. The
+ * `label` is still required, as the accessible name and as the fallback.
+ */
+export type SetControl<K> = Shared & {
+  kind: "set"
+  key: K
+  options: { value: string; label: string; icon?: () => Node }[]
+  /** Fewest that may be selected at once. Below two, prefer a row of toggles. */
+  least: number
+}
+
+export type Control<K> = SliderControl<K> | RangeControl<K> | ChoiceControl<K> | ToggleControl<K> | SetControl<K>
 
 export const keysOf = <K>(control: Control<K>): K[] => (control.kind === "range" ? control.keys : [control.key])
+
+/**
+ * Whether two settings values are the same scene's worth of the same thing.
+ *
+ * **`===` is not enough once a setting can be a set.** A validator hands back a
+ * fresh array every time it runs, so a scene loaded straight from a preset
+ * compared unequal to that preset on identity alone — and the whole preset bar
+ * went dark, the arrow keys lost their place, and `[data-preset]` stopped being
+ * set for a scene that *was* the preset.
+ *
+ * One level deep, deliberately: a setting is a primitive or a list of them, and
+ * a general deep compare here would be answering a question nothing asks.
+ */
+const sameValue = (a: unknown, b: unknown): boolean =>
+  Array.isArray(a) || Array.isArray(b)
+    ? Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((item, i) => item === b[i])
+    : a === b
 
 /**
  * Positions a log track is divided into.
@@ -305,6 +347,13 @@ export function createControls<S extends object>(options: Options<S>): Controls<
   const valueLabels = new Map<string, HTMLElement>()
   const choiceButtons = new Map<string, Map<string, HTMLButtonElement>>()
   const toggleButtons = new Map<string, HTMLButtonElement>()
+  const setButtons = new Map<string, Map<string, HTMLButtonElement>>()
+
+  /** What a set control currently holds, tolerating a setting that is not one. */
+  const chosenOf = (key: string & keyof S): string[] => {
+    const held = current[key]
+    return Array.isArray(held) ? held.map(String) : []
+  }
 
   /**
    * Rows are grouped under headings when a piece asks for it.
@@ -356,6 +405,38 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     const label = document.createElement("span")
     label.className = "label"
     label.textContent = control.label
+
+    if (control.kind === "set") {
+      const group = document.createElement("div")
+      group.className = "modes set"
+      const byValue = new Map<string, HTMLButtonElement>()
+
+      for (const option of control.options) {
+        const element = button(option.icon ? "" : option.label, option.icon ? "mode glyph" : "mode")
+        if (option.icon) {
+          element.append(option.icon())
+          // The shape is the label, so the name has to reach a screen reader
+          // some other way.
+          element.setAttribute("aria-label", option.label)
+        }
+        element.addEventListener("click", () => {
+          const held = new Set(chosenOf(control.key))
+          if (held.has(option.value)) held.delete(option.value)
+          else held.add(option.value)
+          // The refusal lives here and nowhere else: everything downstream may
+          // assume the set is never smaller than `least`.
+          if (held.size < control.least) return
+          const next = control.options.filter((o) => held.has(o.value)).map((o) => o.value)
+          apply(normalize({ ...current, [control.key]: next }, control.key))
+        })
+        byValue.set(option.value, element)
+        group.append(element)
+      }
+
+      setButtons.set(control.key, byValue)
+      row.append(label, group)
+      return row
+    }
 
     if (control.kind === "choice" || control.kind === "toggle") {
       const group = document.createElement("div")
@@ -428,6 +509,22 @@ export function createControls<S extends object>(options: Options<S>): Controls<
         continue
       }
 
+      if (control.kind === "set") {
+        const byValue = setButtons.get(control.key)
+        if (byValue) {
+          const held = new Set(chosenOf(control.key))
+          // Locked, not disabled: the button still takes focus and still has a
+          // tooltip, it simply cannot be the one that empties the set.
+          const cornered = held.size <= control.least
+          for (const [value, element] of byValue) {
+            const on = held.has(value)
+            element.dataset.active = String(on)
+            element.dataset.locked = String(on && cornered)
+          }
+        }
+        continue
+      }
+
       if (control.kind === "toggle") {
         const element = toggleButtons.get(control.key)
         if (element) {
@@ -469,7 +566,7 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     }
 
     matching = presets.findIndex((preset) =>
-      (Object.keys(preset.settings) as (keyof S)[]).every((key) => preset.settings[key] === current[key]),
+      (Object.keys(preset.settings) as (keyof S)[]).every((key) => sameValue(preset.settings[key], current[key])),
     )
 
     presetButtons.forEach((element, index) => {

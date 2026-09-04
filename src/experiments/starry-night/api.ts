@@ -68,7 +68,7 @@ export function announceApi(): void {
  */
 export type ControlReport =
   | { kind: "slider" | "range"; key: string; label: string; hint: string; min: number; max: number }
-  | { kind: "choice"; key: string; label: string; hint: string; options: string[] }
+  | { kind: "choice" | "set"; key: string; label: string; hint: string; options: string[] }
   | { kind: "toggle"; key: string; label: string; hint: string }
 
 export function createApi(controls: Controls<Settings>, wakeLock: WakeLock, sky: Starfield): ExperimentApi {
@@ -93,6 +93,10 @@ export function createApi(controls: Controls<Settings>, wakeLock: WakeLock, sky:
               return { kind: "choice", ...shared, options: control.options.map(({ value }) => value) }
             case "toggle":
               return { kind: "toggle", ...shared }
+            // Nothing here uses a set yet. It reports like a choice because
+            // that is what it is — several answers from a fixed list.
+            case "set":
+              return { kind: "set", ...shared, options: control.options.map(({ value }) => value) }
             default:
               return { kind: control.kind, ...shared, min: control.min, max: control.max }
           }

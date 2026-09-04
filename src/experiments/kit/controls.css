@@ -177,6 +177,54 @@ html[data-idle="true"] #ui {
   gap: 0.3rem;
 }
 
+/* A set can hold more options than a choice ever does — a vocabulary rather
+   than a mode — so it wraps instead of forcing the panel wider. */
+#ui .modes.set {
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+/* An option whose own shape is its label: a square sized to the icon rather
+   than to a word.
+
+   **The size is stated rather than left to the content, and it has to be.** A
+   button holding nothing but a canvas collapses to its own padding — measured
+   at 8px around an 18px icon, with the marks spilling over each other into one
+   smear — and it does so whether the button lays out as grid, block or
+   inline-block, and whether or not it may shrink. Stating the box is also what
+   keeps eleven of them on one grid instead of eleven slightly different
+   widths. */
+#ui .mode.glyph {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  line-height: 0;
+}
+
+#ui .mode.glyph canvas {
+  display: block;
+  /* Dimmed rather than hidden when unchosen: the row is the whole vocabulary,
+     and which marks are *not* in a scene is half of what it says. */
+  opacity: 0.35;
+}
+
+#ui .mode.glyph[data-active="true"] canvas {
+  opacity: 1;
+}
+
+/* The last ones standing. `least` refuses the click, and saying nothing at all
+   reads as a broken button. */
+#ui .mode[data-locked="true"] {
+  cursor: default;
+}
+
+#ui .mode.glyph[data-locked="true"] canvas {
+  opacity: 0.75;
+}
+
 #ui .row.copy {
   grid-template-columns: 1fr;
   margin-top: 0.6rem;
