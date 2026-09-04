@@ -871,7 +871,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
   },
   {
     label: "luna",
-    hint: "The word as a hole again, and everything around it held: one grain everywhere rather than a range of them, and every psyx keeping the mark and the colour it was dealt. Made of the four that are drawn rather than built — a moon, a star, a heart and a leaf — so the field reads as things rather than as signs, and nothing moves in it but the breath.",
+    hint: "The word as a hole again, and everything around it held: one grain everywhere rather than a range of them, and every psyx keeping the mark and the colour it was dealt. Made of the four that are drawn rather than built — a moon, a star, a heart and a leaf — each facing whichever way it was born facing, so the field reads as things strewn about rather than as signs stamped in rows — and nothing moves in it but the breath.",
     settings: {
       seed: 639953,
       subject: "Luna",
@@ -892,7 +892,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       glow: 0.51,
       afterglow: 0.11,
       wander: 0.6,
-      spin: 0,
+      spin: 1,
       weight: 0.145,
       glyphs: ["moon", "star", "heart", "leaf"],
       morph: 0.36,
