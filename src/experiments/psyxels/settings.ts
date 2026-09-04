@@ -1,4 +1,10 @@
-import { keysOf, type ChoiceControl, type RangeControl, type SliderControl } from "@/experiments/kit/controls"
+import {
+  keysOf,
+  type ChoiceControl,
+  type RangeControl,
+  type SetControl,
+  type SliderControl,
+} from "@/experiments/kit/controls"
 import {
   FACE_LABELS,
   FACES,
@@ -13,7 +19,7 @@ import {
   type Polarity,
   type SubjectKind,
 } from "@/experiments/psyxels/subject"
-import { GLYPH_COUNT } from "@/experiments/psyxels/glyphs"
+import { GLYPH_NAMES, indexOfGlyph, isGlyphName, paintGlyph, type GlyphName } from "@/experiments/psyxels/glyphs"
 
 /**
  * Everything tunable, in one place, shared by the engine, the panel and the URL.
@@ -47,8 +53,9 @@ export type Settings = {
   glow: number
   afterglow: number
   wander: number
+  spin: number
   weight: number
-  vocabulary: number
+  glyphs: GlyphName[]
   morph: number
   ease: number
   churn: number
@@ -65,16 +72,33 @@ export type Settings = {
   playback: number
 }
 
-export type NumericKey = Exclude<keyof Settings, "subject" | "face" | "polarity">
+export type NumericKey = Exclude<keyof Settings, "subject" | "face" | "polarity" | "glyphs">
 
 export type ControlGroup = "subject" | "packing" | "colour" | "life"
 
-/** The panel's row kinds. A bound pair has no use here; a choice does. */
+/** The panel's row kinds. A bound pair has no use here; a choice and a set do. */
 export type Control = (
-  (SliderControl<NumericKey> | RangeControl<NumericKey>) | ChoiceControl<"subject" | "face" | "polarity">
+  | SliderControl<NumericKey>
+  | RangeControl<NumericKey>
+  | ChoiceControl<"subject" | "face" | "polarity">
+  | SetControl<"glyphs">
 ) & {
   group: ControlGroup
 }
+
+type TrackedControl = (SliderControl<NumericKey> | RangeControl<NumericKey>) & { group: ControlGroup }
+
+/**
+ * Whether a control has a track, and therefore bounds.
+ *
+ * A **positive** test, because the negative one — "anything that is not a
+ * choice" — was quietly wrong the moment a third kind without a track arrived,
+ * and it was wrong in the two places that matter most: the bounds the validator
+ * clamps against, and the bounds the console API reports. Starry Night had
+ * already written this predicate for the same reason.
+ */
+export const isTrackedControl = (control: Control): control is TrackedControl =>
+  control.kind === "slider" || control.kind === "range"
 
 export const GROUP_ORDER: ControlGroup[] = ["subject", "packing", "colour", "life"]
 
@@ -83,6 +107,49 @@ export const SEED_BOUNDS = { min: 0, max: 999_999 }
 
 const percent = (value: number) => `${Math.round(value * 100)}%`
 const degrees = (value: number) => `${Math.round(value)}°`
+
+/**
+ * Fewest marks a scene may be made of.
+ *
+ * **Two, because one is not a vocabulary.** A psyx is a mini-animation that
+ * holds a frame and then picks another, and it never repeats the frame it is
+ * showing — so a set of one leaves `nextGlyph` with nowhere to go and the whole
+ * moving half of the piece silently stops. The old count could be dragged to 1
+ * and did exactly that.
+ */
+export const LEAST_GLYPHS = 2
+
+/**
+ * A mark, drawn small, for its own button in the panel.
+ *
+ * Painted with `paintGlyph` rather than drawn again as an SVG or a font, so the
+ * picker cannot come to disagree with the field about what a mark looks like.
+ * White because the kit's chrome is white on dark and a button says which way
+ * it is with its background, not with its ink.
+ *
+ * Only ever called from the panel, which is why a module the unit tests import
+ * in Node may reach for a canvas at all.
+ */
+function glyphIcon(name: GlyphName): Node {
+  const side = 18
+  const ratio = Math.min(2, window.devicePixelRatio || 1)
+  const canvas = document.createElement("canvas")
+  canvas.width = side * ratio
+  canvas.height = side * ratio
+  canvas.style.width = `${side}px`
+  canvas.style.height = `${side}px`
+
+  const ctx = canvas.getContext("2d")
+  if (ctx) {
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0)
+    ctx.lineCap = "round"
+    ctx.lineJoin = "round"
+    ctx.strokeStyle = "#fff"
+    ctx.fillStyle = "#fff"
+    paintGlyph(ctx, indexOfGlyph(name), side / 2, side / 2, side * 0.36, 1.4)
+  }
+  return canvas
+}
 
 export const CONTROLS: Control[] = [
   {
@@ -100,6 +167,18 @@ export const CONTROLS: Control[] = [
     label: "face",
     options: FACES.map((value) => ({ value, label: FACE_LABELS[value] })),
     hint: "Which letterform the subject is drawn with. It is asked for as a kind of shape rather than a named font, so the machine supplies whatever it has of that kind — and the character is what survives being packed: a grotesque gives even strokes and a hard silhouette, a roman gives thick-and-thin and serifs that break into separate psyxels, a script gives a stroke that changes width as it turns. Ignored by the portrait, which is not typeset.",
+  },
+  {
+    kind: "set",
+    group: "subject",
+    key: "glyphs",
+    label: "glyphs",
+    least: LEAST_GLYPHS,
+    // Two rows. Fifteen on one line made the panel half again as wide as
+    // everything else in it needed.
+    columns: Math.ceil(GLYPH_NAMES.length / 2),
+    options: GLYPH_NAMES.map((value) => ({ value, label: value.replace("-", " "), icon: () => glyphIcon(value) })),
+    hint: "Which marks a psyx may show. It was a count before — how many to take from the front of the list — so the only way to be rid of one mark was to be rid of everything after it as well. Two is the floor: at one there is nothing to change to, and a psyx that cannot change is not what this piece is made of. A small set is a field with a strong accent and you read the changes; a large one is closer to texture than to signs.",
   },
   {
     kind: "choice",
@@ -267,6 +346,17 @@ export const CONTROLS: Control[] = [
   {
     kind: "slider",
     group: "packing",
+    key: "spin",
+    label: "spin",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    format: (value) => (value === 0 ? "upright" : value >= 1 ? "any" : `±${Math.round(value * 180)}°`),
+    hint: "How far a mark may be turned from upright. Its own bearing, drawn once and held for its life, so the field is scattered rather than spinning — and both halves of a change of frame read it, so a psyx keeps its bearing while it changes what it is showing. Only the drawn marks turn. The nine built from strokes and a ring use their orientation as meaning: a minus turned a quarter is a bar, a plus turned an eighth is a cross, and both of those are already somewhere else in the vocabulary.",
+  },
+  {
+    kind: "slider",
+    group: "packing",
     key: "weight",
     label: "weight",
     min: 0.03,
@@ -274,17 +364,6 @@ export const CONTROLS: Control[] = [
     step: 0.005,
     format: (value) => `${(value * 100).toFixed(1)}%`,
     hint: "Stroke thickness, as a fraction of a psyx's own size — so a three-psyx mark and a two-hundred-psyx one are the same drawing at different scales. Heavy, the small psyxels clot into solid blobs and the field reads as tone; light, everything reads as line work.",
-  },
-  {
-    kind: "slider",
-    group: "life",
-    key: "vocabulary",
-    label: "vocabulary",
-    min: 1,
-    max: GLYPH_COUNT,
-    step: 1,
-    format: (value) => `${Math.round(value)} of ${GLYPH_COUNT}`,
-    hint: "How many frames a psyx may show, taken from the front of the list: minus, plus, circled minus, circled plus, ring, dot, cross, circled cross, bar. Small is a field with a strong accent — everything is a plus or a minus and you read the changes. Large is richer and, past about six, closer to texture than to signs.",
   },
   {
     kind: "slider",
@@ -505,8 +584,9 @@ export const DEFAULT_SETTINGS: Settings = {
   glow: 0,
   afterglow: 0,
   wander: 0.15,
+  spin: 0,
   weight: 0.15,
-  vocabulary: 4,
+  glyphs: ["minus", "plus", "circled-minus", "circled-plus"],
   morph: 0.55,
   ease: 1,
   churn: 9,
@@ -563,8 +643,9 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       glow: 0.25,
       afterglow: 0.06,
       wander: 0.6,
+      spin: 0,
       weight: 0.11,
-      vocabulary: 5,
+      glyphs: ["minus", "plus", "circled-minus", "circled-plus", "ring"],
       morph: 0.34,
       ease: 0.37,
       churn: 55.5,
@@ -604,8 +685,9 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       glow: 0.35,
       afterglow: 0.4,
       wander: 0.6,
+      spin: 0,
       weight: 0.145,
-      vocabulary: 3,
+      glyphs: ["minus", "plus", "circled-minus"],
       morph: 0.83,
       ease: 1,
       churn: 58.5,
@@ -645,8 +727,9 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       glow: 0.24,
       afterglow: 0.12,
       wander: 0.6,
+      spin: 0,
       weight: 0.145,
-      vocabulary: 6,
+      glyphs: ["minus", "plus", "circled-minus", "circled-plus", "ring", "dot"],
       morph: 0.5,
       ease: 1,
       churn: 59,
@@ -686,8 +769,9 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       glow: 0.35,
       afterglow: 0.4,
       wander: 0.47,
+      spin: 0,
       weight: 0.06,
-      vocabulary: 3,
+      glyphs: ["minus", "plus", "circled-minus"],
       morph: 0.83,
       ease: 1,
       churn: 5,
@@ -727,8 +811,9 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       glow: 0.61,
       afterglow: 0,
       wander: 0.6,
+      spin: 0,
       weight: 0.08,
-      vocabulary: 9,
+      glyphs: ["minus", "plus", "circled-minus", "circled-plus", "ring", "dot", "cross", "circled-cross", "bar"],
       morph: 0.5,
       ease: 1.25,
       churn: 13.5,
@@ -768,8 +853,9 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       glow: 0.35,
       afterglow: 0.4,
       wander: 0.47,
+      spin: 0,
       weight: 0.15,
-      vocabulary: 2,
+      glyphs: ["minus", "plus"],
       morph: 0.83,
       ease: 1,
       churn: 16,
@@ -788,50 +874,51 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
   },
   {
     label: "luna",
-    hint: "Neon's scene turned inside out: the whole frame is psyxels and the word is the gap in them, lit at the edges of a hole rather than the edges of a stroke.",
+    hint: "The word as a hole again, and everything around it held: one grain everywhere rather than a range of them, and every psyx keeping the mark and the colour it was dealt. Made of the four that are drawn rather than built — a moon, a star, a heart and a leaf — each facing whichever way it was born facing, so the field reads as things strewn about rather than as signs stamped in rows — and nothing moves in it but the breath.",
     settings: {
       seed: 639953,
       subject: "Luna",
       face: "roman",
       polarity: "void",
-      fill: 0.82,
-      coarse: 0.027,
-      levels: 2,
-      detail: 0.49,
-      variety: 0.45,
+      fill: 0.88,
+      coarse: 0.018,
+      levels: 0,
+      detail: 0.25,
+      variety: 0.01,
       threshold: 0.71,
-      fuzz: 0.6,
+      fuzz: 0.96,
       flatten: 0.31,
       inset: -0.12,
-      bloom: 0.2,
-      solid: 0.37,
-      layers: 0.45,
-      glow: 0.35,
-      afterglow: 0.4,
+      bloom: 0,
+      solid: 0.14,
+      layers: 0.06,
+      glow: 0.51,
+      afterglow: 0.11,
       wander: 0.6,
+      spin: 1,
       weight: 0.145,
-      vocabulary: 3,
-      morph: 0.83,
-      ease: 1,
-      churn: 58.5,
-      flicker: 10,
+      glyphs: ["moon", "star", "heart", "leaf"],
+      morph: 0.36,
+      ease: 1.12,
+      churn: 0,
+      flicker: 0,
       pulse: 1,
-      tempo: 1.94,
-      wave: 0.35,
-      hue: 355,
+      tempo: 1.44,
+      wave: 0.6,
+      hue: 171,
       spread: 180,
-      edge: 0.12,
-      edgeHue: 125,
-      wildness: 0.61,
-      saturation: 1,
-      playback: 0.26,
+      edge: 0,
+      edgeHue: -109,
+      wildness: 0.63,
+      saturation: 0.75,
+      playback: 0.14,
     },
   },
 ]
 
 export const BOUNDS: Record<NumericKey, { min: number; max: number }> = {
   ...(Object.fromEntries(
-    CONTROLS.filter((control) => control.kind !== "choice").flatMap((control) =>
+    CONTROLS.filter(isTrackedControl).flatMap((control) =>
       keysOf(control).map((key) => [key, { min: control.min, max: control.max }]),
     ),
   ) as Record<NumericKey, { min: number; max: number }>),
@@ -841,8 +928,28 @@ export const BOUNDS: Record<NumericKey, { min: number; max: number }> = {
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
+/**
+ * The marks a scene may show: known, unrepeated, in the vocabulary's own order,
+ * and never fewer than two.
+ *
+ * **Order is imposed rather than kept.** The set is a set — `ring,dot` and
+ * `dot,ring` are the same scene — so sorting means one scene has one address,
+ * and `settingsToQuery` cannot emit two spellings of it. Anything unreadable is
+ * dropped rather than defaulted, so a URL naming eight marks and one typo is
+ * still the eight.
+ *
+ * Falling back to the base when too few survive is the one place the floor is
+ * enforced outside the control: the console API and a hand-written URL both
+ * arrive here, and a field made of one mark cannot change frame at all.
+ */
+function normalizeGlyphs(value: unknown, base: GlyphName[]): GlyphName[] {
+  const named = Array.isArray(value) ? value.filter(isGlyphName) : []
+  const kept = GLYPH_NAMES.filter((name) => named.includes(name))
+  return kept.length >= LEAST_GLYPHS ? [...kept] : [...base]
+}
+
 /** Settings that must hold whole numbers. A psyx cannot be quartered 2.4 times. */
-const INTEGER_KEYS: NumericKey[] = ["seed", "levels", "vocabulary"]
+const INTEGER_KEYS: NumericKey[] = ["seed", "levels"]
 
 /**
  * Fills gaps from `base` and forces every value into legal bounds.
@@ -858,6 +965,7 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
     subject: isSubject(merged.subject) ? merged.subject : base.subject,
     face: isFace(merged.face) ? merged.face : base.face,
     polarity: isPolarity(merged.polarity) ? merged.polarity : base.polarity,
+    glyphs: normalizeGlyphs(merged.glyphs, base.glyphs),
   }
 
   for (const key of Object.keys(BOUNDS) as NumericKey[]) {
@@ -897,18 +1005,52 @@ export function settingsFromQuery(params: URLSearchParams): Settings {
   const polarity = params.get("polarity")
   if (isPolarity(polarity)) patch.polarity = polarity
 
+  const glyphs = glyphsFromQuery(params)
+  if (glyphs) patch.glyphs = glyphs
+
   return normalizeSettings(patch)
 }
 
-/** Only values that differ from the defaults, so shared URLs stay readable. */
+/**
+ * The marks an address names, or nothing if it names none legibly.
+ *
+ * **`vocabulary=N` is still read**, because links carrying it exist and a
+ * shared address should keep meaning what it meant. It meant "the first N of
+ * the list", so that is what it becomes. `glyphs` wins where both appear.
+ */
+function glyphsFromQuery(params: URLSearchParams): GlyphName[] | null {
+  const named = params.get("glyphs")
+  if (named !== null && named.trim() !== "") {
+    const parts = named.split(",").map((part) => part.trim())
+    const kept = parts.filter(isGlyphName)
+    if (kept.length > 0) return kept
+  }
+
+  const count = Number(params.get("vocabulary"))
+  if (Number.isFinite(count) && count >= 1) return [...GLYPH_NAMES.slice(0, Math.round(count))]
+
+  return null
+}
+
+/**
+ * The whole scene, every setting named.
+ *
+ * It carried only what differed from `DEFAULT_SETTINGS` at first, for a shorter
+ * link — and that is the trap the presets above are written out in full to
+ * avoid, one layer down. **A link resting on a default is a link whose scene
+ * changes the day the default does**, silently, in somebody else's bookmark.
+ *
+ * Defaults still have a job, and it is the other direction: filling an address
+ * that never named a setting at all. That address is an old bookmark, and an old
+ * bookmark was never promised its picture back.
+ */
 export function settingsToQuery(settings: Settings): URLSearchParams {
   const params = new URLSearchParams()
-  for (const key of Object.keys(BOUNDS) as NumericKey[]) {
-    if (settings[key] !== DEFAULT_SETTINGS[key]) params.set(key, String(settings[key]))
-  }
-  if (settings.subject !== DEFAULT_SETTINGS.subject) params.set("subject", settings.subject)
-  if (settings.face !== DEFAULT_SETTINGS.face) params.set("face", settings.face)
-  if (settings.polarity !== DEFAULT_SETTINGS.polarity) params.set("polarity", settings.polarity)
+  for (const key of Object.keys(BOUNDS) as NumericKey[]) params.set(key, String(settings[key]))
+  params.set("subject", settings.subject)
+  params.set("face", settings.face)
+  params.set("polarity", settings.polarity)
+  params.set("glyphs", settings.glyphs.join(","))
   return params
 }
 
@@ -932,6 +1074,7 @@ export function urlForSettings(settings: Settings, pathname: string): string {
  */
 function namesASetting(params: URLSearchParams): boolean {
   if (isSubject(params.get("subject")) || isFace(params.get("face")) || isPolarity(params.get("polarity"))) return true
+  if (glyphsFromQuery(params)) return true
   return (Object.keys(BOUNDS) as NumericKey[]).some((key) => {
     const raw = params.get(key)
     return raw !== null && raw.trim() !== "" && Number.isFinite(Number(raw))

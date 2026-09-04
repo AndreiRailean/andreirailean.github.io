@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest"
 import { makeRng } from "@/experiments/random"
-import { armsOf, GLYPH_COUNT, GLYPHS, nextGlyph } from "@/experiments/psyxels/glyphs"
+import {
+  armsOf,
+  GLYPH_COUNT,
+  GLYPH_NAMES,
+  GLYPHS,
+  indexOfGlyph,
+  nextGlyph,
+  type GlyphName,
+} from "@/experiments/psyxels/glyphs"
 
 /**
  * The vocabulary and the walk through it.
@@ -17,13 +25,20 @@ const PLUS = 1
 const CIRCLED_MINUS = 2
 const CROSS = 6
 
+/** Every mark, as the walk wants them: an index list rather than a count. */
+const ALL = Array.from({ length: GLYPH_COUNT }, (_, i) => i)
+
 /** How often each frame follows `from`, over a long seeded walk. */
-function follows(from: number, count: number, draws = 20000): number[] {
+function follows(from: number, allowed: readonly number[], draws = 20000): number[] {
   const rng = makeRng(2024)
   const tally = new Array<number>(GLYPH_COUNT).fill(0)
-  for (let i = 0; i < draws; i++) tally[nextGlyph(from, count, rng())]!++
+  for (let i = 0; i < draws; i++) tally[nextGlyph(from, allowed, rng())]!++
   return tally
 }
+
+/** How many features two frames disagree on — `glyphs.ts` owns the same sum. */
+const apart = (a: number, b: number) =>
+  (["h", "v", "diagonal", "ring", "fill"] as const).filter((key) => GLYPHS[a]![key] !== GLYPHS[b]![key]).length
 
 describe("the vocabulary", () => {
   it("opens with the four signs the piece was described from", () => {
@@ -34,29 +49,102 @@ describe("the vocabulary", () => {
       [true, true, true],
     ])
   })
+
+  /**
+   * **Two marks at distance zero would make the walk between them meaningless.**
+   *
+   * A drawn mark's features are a claim about kinship rather than a description
+   * of its shape, so nothing about the geometry stops one being given a vector
+   * another already holds — and the transition weights are `KINSHIP ** (d - 1)`,
+   * which at `d === 0` comes out *larger* than a one-feature step. The pair
+   * would then follow each other almost to the exclusion of the rest.
+   */
+  it("gives every mark a vector no other mark holds", () => {
+    for (let a = 0; a < GLYPH_COUNT; a++) {
+      for (let b = a + 1; b < GLYPH_COUNT; b++) {
+        expect(apart(a, b), `${a} vs ${b}`).toBeGreaterThan(0)
+      }
+    }
+  })
+
+  /**
+   * The drawn marks are appended, so a preset naming a smaller vocabulary means
+   * exactly the frames it always did.
+   */
+  it("keeps the drawn marks last, behind the nine that were decomposed", () => {
+    expect(GLYPHS.slice(0, 9).every((glyph) => glyph.paint === undefined)).toBe(true)
+    expect(GLYPHS.slice(9).every((glyph) => typeof glyph.paint === "function")).toBe(true)
+    expect(GLYPH_COUNT).toBe(GLYPH_NAMES.length)
+  })
+
+  it("names every mark, in the order they are drawn in", () => {
+    expect(GLYPH_NAMES.length).toBe(GLYPH_COUNT)
+    expect(new Set(GLYPH_NAMES).size).toBe(GLYPH_COUNT)
+    for (const name of GLYPH_NAMES) expect(GLYPH_NAMES[indexOfGlyph(name)]).toBe(name)
+  })
+
+  /**
+   * What a drawn mark's vector is *for*: a crescent should sit beside a bare
+   * ring, and a star beside the plus whose four points it pulls the waist in on.
+   */
+  it("puts each drawn mark one step from the sign it belongs beside", () => {
+    const beside: [GlyphName, GlyphName][] = [
+      // A crescent is a bare ring with a bite taken out of it.
+      ["moon", "ring"],
+      // A star is a plus with the waist pulled in, and a diamond is that star
+      // with the waist let out again.
+      ["star", "plus"],
+      ["diamond", "cross"],
+      // Both are round and solid; one has a pupil, the other a dimple.
+      ["eye", "dot"],
+      ["heart", "dot"],
+      // A leaf is the moon's curve, turned onto the diagonal.
+      ["leaf", "moon"],
+    ]
+    for (const [drawn, kin] of beside) {
+      expect(apart(indexOfGlyph(drawn), indexOfGlyph(kin)), `${drawn} beside ${kin}`).toBe(1)
+    }
+  })
 })
 
 describe("nextGlyph", () => {
-  it("always changes something, and stays inside the vocabulary", () => {
+  it("always changes something, and stays inside the chosen set", () => {
     const rng = makeRng(7)
     for (let count = 1; count <= GLYPH_COUNT; count++) {
-      for (let current = 0; current < count; current++) {
+      const allowed = ALL.slice(0, count)
+      for (const current of allowed) {
         for (let i = 0; i < 200; i++) {
-          const next = nextGlyph(current, count, rng())
-          expect(next).toBeLessThan(count)
-          expect(next).toBeGreaterThanOrEqual(0)
+          const next = nextGlyph(current, allowed, rng())
+          expect(allowed).toContain(next)
           if (count > 1) expect(next).not.toBe(current)
         }
       }
     }
   })
 
-  it("has nowhere to go in a vocabulary of one", () => {
-    expect(nextGlyph(0, 1, 0.99)).toBe(0)
+  /**
+   * The set a scene chooses is arbitrary, not a prefix — which is the whole
+   * point of naming marks rather than counting them.
+   */
+  it("walks a scattered set as readily as a contiguous one", () => {
+    const rng = makeRng(11)
+    const allowed = [0, 4, 9, 10]
+    for (const current of [...allowed, 3, 7]) {
+      for (let i = 0; i < 200; i++) {
+        const next = nextGlyph(current, allowed, rng())
+        expect(allowed).toContain(next)
+        if (allowed.includes(current)) expect(next).not.toBe(current)
+      }
+    }
+  })
+
+  it("has nowhere to go in a set of one", () => {
+    expect(nextGlyph(0, [0], 0.99)).toBe(0)
+    expect(nextGlyph(3, [7], 0.99)).toBe(7)
   })
 
   it("prefers a frame one feature away to one two away", () => {
-    const tally = follows(MINUS, GLYPH_COUNT)
+    const tally = follows(MINUS, ALL)
     // A plus adds a stroke; a circled minus adds a ring; a cross replaces the
     // stroke *and* is a different kind of mark.
     expect(tally[PLUS]!).toBeGreaterThan(tally[CROSS]! * 2)
@@ -64,15 +152,15 @@ describe("nextGlyph", () => {
   })
 
   it("still reaches the far half of the vocabulary rather than orbiting one frame", () => {
-    const tally = follows(MINUS, GLYPH_COUNT)
+    const tally = follows(MINUS, ALL)
     for (let glyph = 0; glyph < GLYPH_COUNT; glyph++) {
       if (glyph === MINUS) continue
       expect(tally[glyph]!).toBeGreaterThan(0)
     }
   })
 
-  it("brings a psyx back inside a vocabulary that has shrunk under it", () => {
-    for (let i = 0; i < 50; i++) expect(nextGlyph(8, 3, i / 50)).toBeLessThan(3)
+  it("brings a psyx back inside a set it is no longer part of", () => {
+    for (let i = 0; i < 50; i++) expect([0, 1, 2]).toContain(nextGlyph(8, [0, 1, 2], i / 50))
   })
 })
 

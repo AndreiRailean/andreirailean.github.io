@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { packField, type Field } from "@/experiments/psyxels/field"
+import { GLYPH_NAMES, indexOfGlyph, type GlyphName } from "@/experiments/psyxels/glyphs"
 import type { CellStats, Mask } from "@/experiments/psyxels/mask"
 import { DEFAULT_SETTINGS, type Settings } from "@/experiments/psyxels/settings"
 
@@ -210,19 +211,27 @@ describe("life", () => {
   })
 
   /**
-   * The vocabulary is read live, so a psyx can be left showing a frame that no
-   * longer exists. It was, until this was caught: the field kept drawing rings
-   * and crosses after the control said four.
+   * The set is read live, so a psyx can be left showing a mark the scene no
+   * longer contains. It was, until this was caught: the field kept drawing
+   * rings and crosses after the control said four.
+   *
+   * The new set is deliberately **not** a prefix — it keeps the last mark in
+   * the list and drops everything in the middle. While this was a count, "no
+   * longer chosen" and "past the end" were the same test, and the code said
+   * `glyph >= vocabulary`; picking marks by name makes those two different
+   * questions and only one of them is the right one.
    */
-  it("brings a psyx back into a vocabulary that has shrunk under it", () => {
-    const wide = { ...PLAIN, flicker: 3, vocabulary: 9 }
+  it("brings a psyx back into a set that no longer holds its mark", () => {
+    const wide = { ...PLAIN, flicker: 3, glyphs: [...GLYPH_NAMES] }
     const field = packField(FLOOD, wide, 0)
     for (let t = 0; t < 10; t += 1 / 30) field.update(t, wide)
-    expect(Math.max(...field.psyxels().map((psyx) => psyx.glyph))).toBeGreaterThan(3)
+    expect(new Set(field.psyxels().map((psyx) => psyx.glyph)).size).toBeGreaterThan(3)
 
-    const narrow = { ...wide, vocabulary: 2 }
+    const kept: GlyphName[] = ["minus", "star"]
+    const narrow = { ...wide, glyphs: kept }
     field.update(10, narrow)
-    for (const psyx of field.psyxels()) expect(psyx.glyph).toBeLessThan(2)
+    const allowed = kept.map(indexOfGlyph)
+    for (const psyx of field.psyxels()) expect(allowed).toContain(psyx.glyph)
   })
 })
 

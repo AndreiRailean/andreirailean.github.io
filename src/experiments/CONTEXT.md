@@ -67,7 +67,10 @@ its clock up from the moment it is let go.
 
 **Settings** — the complete tunable state of a piece. Round-trips through the
 query string, which makes a URL the unit of sharing: any state worth keeping can
-be copied, sent, or handed back to be saved as a preset.
+be copied, sent, or handed back to be saved as a preset. A setting is a value or
+a **list** of them — Psyxels' vocabulary is the marks themselves rather than a
+count of them — so anything comparing two settings uses the kit's `sameValue`
+rather than `===`.
 
 **Preset** — a named, complete settings bundle, loadable from a number key.
 Presets are recorded from exploration rather than designed up front; they are

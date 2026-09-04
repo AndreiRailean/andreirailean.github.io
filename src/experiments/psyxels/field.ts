@@ -1,5 +1,5 @@
 import { gaussian, hashSeed, makeRng, type Rng } from "@/experiments/random"
-import { GLYPH_COUNT, nextGlyph } from "@/experiments/psyxels/glyphs"
+import { indexOfGlyph, nextGlyph, type GlyphName } from "@/experiments/psyxels/glyphs"
 // The arrival ease's own length. This file decides when a psyx was born and
 // `pulse.ts` decides what being newly born looks like, so the constant lives
 // with the second of those and is read here.
@@ -97,6 +97,16 @@ export type Psyx = {
   /** Where its mark sits inside its own square, as a fraction of the square, −1 to 1. */
   offsetX: number
   offsetY: number
+  /**
+   * Its own bearing, 0 to 1, spent by `spin`.
+   *
+   * Drawn once and held for the psyx's life, like the offsets above and for the
+   * same reason: a mark that took a new angle every frame would spin, and a
+   * mark that took one per *frame change* would jump each time it morphed. Both
+   * marks of a cross-fade read it, so a psyx keeps its bearing while it changes
+   * what it is showing.
+   */
+  turn: number
 }
 
 type Node = Psyx & {
@@ -185,9 +195,9 @@ export type Field = {
 }
 
 /** A psyx's own draws, in a fixed order so adding one does not restir the field. */
-function breatheLife(node: Node, time: number, vocabulary: number): void {
+function breatheLife(node: Node, time: number, allowed: readonly number[]): void {
   const rng = node.rng
-  node.glyph = Math.floor(rng() * Math.max(1, Math.min(GLYPH_COUNT, vocabulary)))
+  node.glyph = allowed[Math.min(allowed.length - 1, Math.floor(rng() * allowed.length))] ?? 0
   // A newborn is not mid-transition: it arrives showing the frame it holds.
   node.from = node.glyph
   node.rate = 0.35 + 1.9 * rng() ** 1.6
@@ -201,6 +211,7 @@ function breatheLife(node: Node, time: number, vocabulary: number): void {
   node.luck = rng()
   node.offsetX = rng() * 2 - 1
   node.offsetY = rng() * 2 - 1
+  node.turn = rng()
   node.born = time
   node.flicked = time
   node.flickRoll = rng()
@@ -242,6 +253,7 @@ function makeNode(
     b: stats.b,
     born: time,
     glyph: 0,
+    turn: 0,
     from: 0,
     gap: 1,
     edge: Math.min(1, stats.dev / 0.36),
@@ -275,7 +287,7 @@ function makeNode(
   // and the grain shows through the parts of it that are not ink. A node that
   // was born divided had no mark at all before this, so raising the control lit
   // up half the tree with whatever glyph zero happened to be.
-  breatheLife(node, time, settings.vocabulary)
+  breatheLife(node, time, glyphsOf(settings))
   if (decideSplit(node, settings)) grow(context, node)
 
   return node
@@ -369,6 +381,7 @@ function mourn(node: Node, time: number, into: Ghost[]): void {
     swing: node.swing,
     offsetX: node.offsetX,
     offsetY: node.offsetY,
+    turn: node.turn,
     died: time,
   })
 }
@@ -413,7 +426,7 @@ function grow(context: Context, node: Node): void {
     // Only reachable when the picture has ink too faint for any child to see.
     node.split = false
     node.kids = null
-    breatheLife(node, context.time, context.settings.vocabulary)
+    breatheLife(node, context.time, glyphsOf(context.settings))
     return
   }
 
@@ -422,11 +435,11 @@ function grow(context: Context, node: Node): void {
 }
 
 /** Collapses a square back to one psyx, which arrives new. The grain underneath is kept. */
-function collapse(node: Node, time: number, vocabulary: number): void {
+function collapse(node: Node, time: number, allowed: readonly number[]): void {
   node.split = false
   node.spare = node.kids
   node.kids = null
-  breatheLife(node, time, vocabulary)
+  breatheLife(node, time, allowed)
 }
 
 /** Restarts a subtree's clocks, and plays its arrival again. */
@@ -501,6 +514,27 @@ const changeGap = (churn: number, roll: number, depth: number) =>
 /** The gap before a psyx next picks a frame. Divided by its own rate: some psyxels are quick. */
 const flickGap = (flicker: number, roll: number, rate: number) =>
   flicker <= 0 ? Infinity : (0.35 + 1.6 * roll) / flicker / rate
+
+/**
+ * The chosen marks as indices, memoised on the array they came from.
+ *
+ * A scene names its marks, and the walk needs numbers. Translating them where
+ * they are read would mean a `map` per psyx per frame — several thousand
+ * throwaway arrays a frame on the finer scenes — for an answer that changes
+ * only when somebody touches the control. `normalizeSettings` hands back a
+ * fresh array whenever it runs, so the array's own identity is the cache key
+ * and no version counter is needed.
+ */
+let namedGlyphs: readonly GlyphName[] | null = null
+let numberedGlyphs: readonly number[] = []
+
+function glyphsOf(settings: Settings): readonly number[] {
+  if (settings.glyphs !== namedGlyphs) {
+    namedGlyphs = settings.glyphs
+    numberedGlyphs = settings.glyphs.map(indexOfGlyph)
+  }
+  return numberedGlyphs
+}
 
 /**
  * Packs a subject into psyxels.
@@ -596,7 +630,7 @@ export function packField(mask: Mask, settings: Settings, time: number): Field {
         // What is there now goes on fading while its replacement arrives.
         mourn(node, time, departed)
         if (wanted) grow(context, node)
-        else collapse(node, time, settings.vocabulary)
+        else collapse(node, time, glyphsOf(settings))
         changes++
         stale = true
       }
@@ -607,13 +641,15 @@ export function packField(mask: Mask, settings: Settings, time: number): Field {
       return
     }
 
-    const vocabulary = Math.max(1, Math.min(GLYPH_COUNT, Math.round(settings.vocabulary)))
-    // A shrinking vocabulary can leave a psyx showing a frame that no longer
-    // exists, so that is a change due now rather than at the next tick.
-    const due = node.glyph >= vocabulary || time - node.flicked >= flickGap(settings.flicker, node.flickRoll, node.rate)
+    const allowed = glyphsOf(settings)
+    // Deselecting a mark leaves every psyx showing it stranded on a frame the
+    // scene no longer contains, so that is a change due now rather than at the
+    // next tick. It was `glyph >= vocabulary` while the set was a prefix.
+    const due =
+      !allowed.includes(node.glyph) || time - node.flicked >= flickGap(settings.flicker, node.flickRoll, node.rate)
     if (!due) return
     node.from = node.glyph
-    node.glyph = nextGlyph(node.glyph, vocabulary, node.rng())
+    node.glyph = nextGlyph(node.glyph, allowed, node.rng())
     // **Colour is redrawn with the frame, not on a clock of its own.** A psyx
     // changing what it shows and what colour it is in the same instant is what
     // makes a frame change read as one event; drifting the hue separately gives

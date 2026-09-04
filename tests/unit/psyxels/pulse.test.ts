@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { Psyx } from "@/experiments/psyxels/field"
-import { arrivalOf, BIRTH_S, breathOf, levelOf, MORPH_MAX, morphOf, spanOf } from "@/experiments/psyxels/pulse"
+import { arrivalOf, BIRTH_S, breathOf, levelOf, MORPH_MAX, morphOf, spanOf, spinOf } from "@/experiments/psyxels/pulse"
 import { DEFAULT_SETTINGS, type Settings } from "@/experiments/psyxels/settings"
 
 /**
@@ -28,6 +28,7 @@ const psyx = (over: Partial<Psyx> = {}): Psyx => ({
   edge: 0,
   luck: 0,
   offsetX: 0,
+  turn: 0,
   offsetY: 0,
   rate: 1,
   hue: 0,
@@ -234,5 +235,37 @@ describe("ease", () => {
     expect(morphOf(waiting, { ...scene, ease: 1 }, MORPH_MAX + 0.01)).toBe(1)
     // Stretched, it runs on.
     expect(morphOf(waiting, { ...scene, ease: 4 }, MORPH_MAX + 0.01)).toBeLessThan(1)
+  })
+})
+
+/**
+ * A bearing is a *property of the psyx*, not of the frame it is showing, which
+ * is what keeps a mark from jumping as it morphs into the next one.
+ */
+describe("spinOf", () => {
+  const settings = (spin: number): Settings => ({ ...DEFAULT_SETTINGS, spin })
+
+  it("leaves every mark upright at zero, whatever the psyx rolled", () => {
+    for (const turn of [0, 0.13, 0.5, 0.99]) expect(spinOf(psyx({ turn }), settings(0))).toBe(0)
+  })
+
+  it("opens a spread around upright rather than walking the field round the circle", () => {
+    // The middle roll is the one that stays put; the ends go opposite ways by
+    // the same amount, so winding the control up does not rotate the scene.
+    expect(spinOf(psyx({ turn: 0.5 }), settings(1))).toBe(0)
+    expect(spinOf(psyx({ turn: 0 }), settings(1))).toBeCloseTo(-Math.PI, 10)
+    expect(spinOf(psyx({ turn: 1 }), settings(1))).toBeCloseTo(Math.PI, 10)
+  })
+
+  it("scales with the control, so a low setting is a tilt and a high one is a bearing", () => {
+    const far = psyx({ turn: 1 })
+    expect(spinOf(far, settings(0.1))).toBeCloseTo(Math.PI * 0.1, 10)
+    expect(Math.abs(spinOf(far, settings(0.1)))).toBeLessThan(Math.abs(spinOf(far, settings(0.5))))
+  })
+
+  it("does not move while a psyx is mid-change, because it is the psyx's and not the frame's", () => {
+    const mid = psyx({ turn: 0.2, glyph: 4, from: 9 })
+    const after = { ...mid, glyph: 9, from: 4 }
+    expect(spinOf(after, settings(0.6))).toBe(spinOf(mid, settings(0.6)))
   })
 })

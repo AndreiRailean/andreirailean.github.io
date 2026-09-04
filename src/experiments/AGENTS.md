@@ -212,6 +212,20 @@ What stays the piece's, because these differ for reasons: `controls()`,
 `settle()` and `run()`. `tests/unit/kit-adoption.test.ts` fails a piece that
 drives the chrome by hand from its `api.ts` instead — unless it says why.
 
+**A setting may be a value or a list, and `===` no longer compares two of
+them.** Every piece made settings a bag of primitives until Psyxels' vocabulary
+became the marks themselves rather than a count of them, so identity comparison
+was right for months and then quietly was not: `normalizeSettings` hands back a
+fresh array every run, so a scene loaded straight from a preset stopped equalling
+that preset. Use the kit's `sameValue`, which compares one level deep. **Three
+readers depend on that one comparison, and only two of them are the kit's** —
+the preset bar's active state, the arrow keys stepping through presets, and
+`data-preset` on `<html>`. The third is the interactive view's: `gallery/reel.ts`
+reads that attribute through a mutation observer and has no other way to know
+which scene is on screen, since `gallery/` may not import a piece. So an identity
+compare in the kit costs the reel its placard and its dots, which is a gallery
+failure arriving from a kit line.
+
 **`controls()` reports one entry per settings key, and every key must be real.**
 Flatten over the kit's `keysOf(control)`: a range owns two settings and has
 `keys` rather than a `key`, so a piece mapping `control.key` straight through

@@ -37,7 +37,7 @@ export type ExperimentApi = BaseApi<Settings> & {
 
 export type ControlReport =
   | { kind: "slider" | "range"; key: string; label: string; hint: string; group?: string; min: number; max: number }
-  | { kind: "choice"; key: string; label: string; hint: string; group?: string; options: string[] }
+  | { kind: "choice" | "set"; key: string; label: string; hint: string; group?: string; options: string[] }
   | { kind: "toggle"; key: string; label: string; hint: string; group?: string }
 
 /**
@@ -95,6 +95,12 @@ export function createApi(controls: Controls<Settings>, wakeLock: WakeLock, park
               return { kind: "choice", ...shared, options: control.options.map(({ value }) => value) }
             case "toggle":
               return { kind: "toggle", ...shared }
+            // Nothing here uses a set yet. It reports like a choice because
+            // that is what it is — several answers from a fixed list — and the
+            // `default:` below would otherwise read `min` and `max` off a
+            // control that has neither.
+            case "set":
+              return { kind: "set", ...shared, options: control.options.map(({ value }) => value) }
             default:
               return { kind: control.kind, ...shared, min: control.min, max: control.max }
           }

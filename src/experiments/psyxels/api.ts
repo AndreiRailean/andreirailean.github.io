@@ -3,7 +3,7 @@ import { keysOf, type Controls } from "@/experiments/kit/controls"
 import type { WakeLock } from "@/experiments/kit/wakelock"
 import type { Psyxels, PsyxelsStats } from "@/experiments/psyxels/psyxels"
 import { reroll } from "@/experiments/psyxels/reroll"
-import { CONTROLS, normalizeSettings, PRESETS, type Settings } from "@/experiments/psyxels/settings"
+import { CONTROLS, isTrackedControl, normalizeSettings, PRESETS, type Settings } from "@/experiments/psyxels/settings"
 
 /**
  * A console handle on the piece, at `window.experiment`.
@@ -67,8 +67,8 @@ export function createApi(controls: Controls<Settings>, wakeLock: WakeLock, scen
     // src/experiments/kit/api.ts.
     ...createBaseApi({ controls, wakeLock, scene, presets: PRESETS, normalize: normalizeSettings }),
 
-    // A choice row reports the same shape as a slider, with the bounds it does
-    // not have left at zero. The browser suite checks every setting has a
+    // A choice or set row reports the same shape as a slider, with the bounds it
+    // does not have left at zero. The browser suite checks every setting has a
     // control this way, and a row that reported nothing would look like a
     // missing one.
     controls: () =>
@@ -77,8 +77,8 @@ export function createApi(controls: Controls<Settings>, wakeLock: WakeLock, scen
           key,
           group: control.group,
           label: control.label,
-          min: control.kind === "choice" ? 0 : control.min,
-          max: control.kind === "choice" ? 0 : control.max,
+          min: isTrackedControl(control) ? control.min : 0,
+          max: isTrackedControl(control) ? control.max : 0,
           hint: control.hint,
         })),
       ),

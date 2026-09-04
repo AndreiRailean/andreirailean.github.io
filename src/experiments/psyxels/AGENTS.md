@@ -110,6 +110,37 @@ flatten` at first, which looks right on a letter — ink is 1 almost everywhere 
 - **A vocabulary that shrinks leaves psyxels showing frames that no longer
   exist.** It is read live, so nothing rebuilds when it moves; `visit` treats
   `glyph >= vocabulary` as a change due now.
+- **A mark need not be decomposable, but its feature vector must be unique, and
+  a drawn one goes last.** The features are a kinship metric now and nothing
+  else — the rule that every frame be a subset of them was still being kept for
+  the interpolated transition two entries up, which no longer exists. A glyph
+  may bring its own `paint`, and its vector then claims where it belongs in the
+  walk rather than describing its shape. Two marks sharing a vector sit at
+  distance zero, and `KINSHIP ** (distance - 1)` makes that weigh _more_ than a
+  one-feature step, so the pair would follow each other and starve the rest;
+  nothing in the geometry prevents it, so a test does. Append rather than
+  insert, because `vocabulary` counts from the front and every recorded scene
+  depends on what the first N are. See
+  `../docs/adr/20260904-a-mark-need-not-be-decomposable.md`, which also holds
+  why a vendored icon pack was rejected — outlined fills cannot answer to
+  `weight`, and fattening them with a stroke costs 4.7× the painter.
+- **Orientation is meaning for the nine, so `spin` must not reach them.** A
+  minus turned a quarter _is_ the bar; a plus turned an eighth _is_ the cross —
+  `armsOf` builds the second of each pair from the first on purpose. Turning
+  them does not scatter the field, it silently swaps in a mark the scene may
+  never have chosen, and the swap is invisible because both marks are legal.
+  `paintGlyph` applies `turn` only where `shape.paint` exists, and
+  `tests/psyxels.spec.ts` pins it by asking the canvas rather than the painter:
+  a field of built marks must be pixel-identical at `spin: 0` and `spin: 1`.
+  A psyx's bearing is its own and is held for its life — both halves of a
+  cross-fade read it, or a mark jumps as it morphs.
+- **A drawn mark answers to `weight` itself, and the specimen sheet is what
+  catches it.** Stroke width comes free for the decomposed nine. It does not for
+  a mark whose form is an offset: the moon's bite, held at a fixed fraction of
+  the radius, is closed from both sides at once by a heavy stroke and the
+  crescent comes out a bean. Draw every new mark at four weights, alone, before
+  trusting a field — among thousands of marks a bean reads as texture and the
+  failure is invisible.
 - **`match` does not fall as the threshold rises, and a test that assumed it did
   failed against correct behaviour.** It peaks in the middle. Wide open, the
   letter wears a fringe of squares that are mostly empty — they add to the union

@@ -2,7 +2,7 @@ import { packField, type Field, type Psyx } from "@/experiments/psyxels/field"
 import { paintGlyph } from "@/experiments/psyxels/glyphs"
 import { buildMask, maskSize, type Mask } from "@/experiments/psyxels/mask"
 import { createPalette, GROUND, type Palette } from "@/experiments/psyxels/palette"
-import { arrivalOf, breathOf, levelOf, morphOf, spanOf } from "@/experiments/psyxels/pulse"
+import { arrivalOf, breathOf, levelOf, morphOf, spanOf, spinOf } from "@/experiments/psyxels/pulse"
 import { needsPacking, needsSubject, type Settings } from "@/experiments/psyxels/settings"
 import { paintSubject } from "@/experiments/psyxels/subject"
 
@@ -344,6 +344,11 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
      */
     const morph = morphOf(psyx, settings, time)
 
+    // Read once and handed to every pass below. The bloom, the knockout and
+    // both halves of a cross-fade have to agree about which way the mark faces,
+    // or the hole a solid tile cuts is not the shape sitting in it.
+    const turn = spinOf(psyx, settings)
+
     /**
      * **A large mark sits in a hole, and the hole is the problem.**
      *
@@ -368,7 +373,7 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
       if (level >= ALPHA_FLOOR) {
         setStroke(palette.colour(psyx, settings, morph < 0.5 ? psyx.hueFrom : psyx.hue))
         ctx.globalAlpha = level
-        paintGlyph(ctx, morph < 0.5 ? psyx.from : psyx.glyph, cx, cy, extent, weight * (1 + BLOOM_WIDTH * bloom))
+        paintGlyph(ctx, morph < 0.5 ? psyx.from : psyx.glyph, cx, cy, extent, weight * (1 + BLOOM_WIDTH * bloom), turn)
       }
     }
 
@@ -414,7 +419,7 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
           // the same field drawn as marks, which is the opposite of what this
           // is for.
           const cut = Math.min(weight * 2, psyx.size * 0.13)
-          paintGlyph(ctx, morph < 0.5 ? psyx.from : psyx.glyph, cx, cy, extent, cut)
+          paintGlyph(ctx, morph < 0.5 ? psyx.from : psyx.glyph, cx, cy, extent, cut, turn)
         }
       }
     }
@@ -430,7 +435,7 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
         setStroke(colour)
         setFill(colour)
         ctx.globalAlpha = leaving
-        paintGlyph(ctx, psyx.from, cx, cy, extent * scale, weight * scale)
+        paintGlyph(ctx, psyx.from, cx, cy, extent * scale, weight * scale, turn)
       }
     }
 
@@ -441,7 +446,7 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
       setStroke(colour)
       setFill(colour)
       ctx.globalAlpha = arriving
-      paintGlyph(ctx, psyx.glyph, cx, cy, extent * scale, weight * scale)
+      paintGlyph(ctx, psyx.glyph, cx, cy, extent * scale, weight * scale, turn)
     }
 
     return extent * extent * 4

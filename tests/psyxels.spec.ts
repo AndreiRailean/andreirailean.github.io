@@ -1,5 +1,6 @@
 import type { ExperimentApi } from "@/experiments/psyxels/api"
 import { DEFAULT_SETTINGS, PRESETS, settingsToQuery, type Settings } from "@/experiments/psyxels/settings"
+import { GLYPH_NAMES } from "@/experiments/psyxels/glyphs"
 import { expect, openExperiment, test } from "./support/experiment"
 
 /**
@@ -165,7 +166,19 @@ test("winding the life controls anywhere leaves the packing exactly as it was", 
       tempo: 3,
       wave: 1,
       flicker: 9,
-      vocabulary: 9,
+      glyphs: [
+        "minus",
+        "plus",
+        "circled-minus",
+        "circled-plus",
+        "ring",
+        "dot",
+        "cross",
+        "circled-cross",
+        "bar",
+        "moon",
+        "star",
+      ],
       morph: 1,
       ease: 4,
       weight: 0.3,
@@ -781,6 +794,104 @@ test("reduced motion holds the field still, with everything still on the canvas"
   // Frozen, not blank: the piece still draws its first frame.
   const { lit } = await light(page)
   expect(lit).toBeGreaterThan(2000)
+})
+
+/**
+ * The vocabulary is picked rather than counted, and the floor is the part worth
+ * pinning: a set of one leaves `nextGlyph` nowhere to go, so the moving half of
+ * the piece would stop with nothing on screen to say why.
+ */
+test("the glyph row picks marks by name, and refuses to go below two", async ({ page }) => {
+  const experiment = await openPsyxels(page, { idle: false })
+  await experiment.api(({ api }) => api.panel(true))
+
+  const row = page.locator(".panel .row", { has: page.locator(".modes.set") })
+  const buttons = row.locator("button")
+  const chosen = () => experiment.api(({ api }) => api.get().glyphs)
+
+  // One button per mark, and the lit ones are exactly the chosen ones.
+  await experiment.api(({ api }) => api.set({ glyphs: ["ring", "moon", "star"] }))
+  expect(await buttons.count()).toBe(GLYPH_NAMES.length)
+  expect(await row.locator('button[data-active="true"]').count()).toBe(3)
+  expect(await chosen()).toEqual(["ring", "moon", "star"])
+
+  // A click removes one, and the address says so rather than carrying a count.
+  await buttons.nth(GLYPH_NAMES.indexOf("star")).click()
+  expect(await chosen()).toEqual(["ring", "moon"])
+  expect(new URL(page.url()).searchParams.get("glyphs")).toBe("ring,moon")
+
+  // At the floor the survivors are marked, and clicking one does nothing.
+  expect(await row.locator('button[data-locked="true"]').count()).toBe(2)
+  await buttons.nth(GLYPH_NAMES.indexOf("ring")).click()
+  expect(await chosen()).toEqual(["ring", "moon"])
+
+  /**
+   * **The panel has no width of its own — it is as wide as its widest row.** So
+   * a set of fifteen on one line does not merely look untidy, it widens every
+   * other control in the panel; it was 583px against the 446px the rest of the
+   * rows wanted. Wrapping alone would not have fixed it: the row would take the
+   * width if offered, and it is the offer that has to be withdrawn.
+   */
+  const shape = await page.evaluate(() => {
+    const panel = document.querySelector<HTMLElement>("#ui .panel")!
+    const set = document.querySelector<HTMLElement>("#ui .modes.set")!
+    const marks = [...set.querySelectorAll("button")]
+    const top = (b: Element) => Math.round(b.getBoundingClientRect().top)
+    const withRow = panel.getBoundingClientRect().width
+    const row = set.closest(".row") as HTMLElement
+    row.style.display = "none"
+    const withoutRow = panel.getBoundingClientRect().width
+    row.style.display = ""
+    return { withRow, withoutRow, lines: new Set(marks.map(top)).size }
+  })
+  expect(shape.lines).toBe(2)
+  expect(shape.withRow).toBe(shape.withoutRow)
+
+  // Adding is never refused, and the set comes back in the vocabulary's order.
+  await buttons.nth(GLYPH_NAMES.indexOf("plus")).click()
+  expect(await chosen()).toEqual(["plus", "ring", "moon"])
+  expect(await row.locator('button[data-locked="true"]').count()).toBe(0)
+})
+
+/**
+ * **Turning a decomposed mark does not scatter the field, it says something the
+ * field did not mean.** A minus turned a quarter is a bar; a plus turned an
+ * eighth is a cross. Both are separate entries in the vocabulary, so a `spin`
+ * that reached them would quietly replace one mark with another the scene never
+ * chose.
+ *
+ * Asked of the canvas rather than of `paintGlyph`, and through the console API
+ * rather than by importing the piece's internals — what matters is whether the
+ * picture moved, and the boundary is the API.
+ */
+test("spin turns the drawn marks and leaves the built ones alone", async ({ page }) => {
+  const experiment = await openPsyxels(page)
+
+  /**
+   * The scene with every clock stopped, so two draws of the same settings are
+   * the same pixels: nothing breathing, nothing repacking, nothing changing
+   * frame, and no buffer gathering light between frames.
+   */
+  const still = { pulse: 0, churn: 0, flicker: 0, glow: 0, afterglow: 0, spin: 0 }
+
+  const shot = async (patch: Partial<Settings>) =>
+    experiment.api(({ api, arg }) => {
+      api.set(arg as Partial<Settings>)
+      api.run(3)
+      return (document.getElementById("stage") as HTMLCanvasElement).toDataURL()
+    }, patch)
+
+  // A field of marks that spend their orientation on meaning cannot be turned.
+  const built: Partial<Settings> = { ...still, glyphs: ["plus", "cross", "minus", "bar"] }
+  expect(await shot({ ...built, spin: 1 })).toBe(await shot(built))
+
+  // A field of drawn marks can.
+  const drawn: Partial<Settings> = { ...still, glyphs: ["moon", "leaf"] }
+  const upright = await shot(drawn)
+  expect(await shot({ ...drawn, spin: 1 })).not.toBe(upright)
+
+  // And winding it back returns the scene it left, rather than a new roll.
+  expect(await shot(drawn)).toBe(upright)
 })
 
 test("the settings panel opens with a row for every control", async ({ page }) => {

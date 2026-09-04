@@ -112,6 +112,22 @@ export function breathOf(psyx: Psyx, settings: Settings, time: number, spatial: 
   return 1 - depth + depth * swing
 }
 
+/**
+ * Which way a psyx's mark faces, in radians.
+ *
+ * **Only the drawn marks may turn, and `paintGlyph` is what enforces it** — the
+ * decomposed nine use orientation as *meaning*, so a minus turned a quarter is
+ * a bar and a plus turned an eighth is a cross, both of which are separate
+ * entries in the vocabulary. This returns an angle for every psyx and lets the
+ * painter ignore it where it would collapse a distinction.
+ *
+ * Centred on upright rather than running one way from it, so winding `spin` up
+ * opens a spread around the mark's own bearing instead of walking every mark
+ * round the circle together. At 1 the bearing is anybody's.
+ */
+export const spinOf = (psyx: Psyx, settings: Settings): number =>
+  settings.spin <= 0 ? 0 : (psyx.turn - 0.5) * TAU * settings.spin
+
 /** How long a newly packed psyx of the finest grain takes to be fully here. */
 export const BIRTH_S = 0.5
 
