@@ -145,13 +145,19 @@ puts the whole short half in the first two per cent of the travel. And **heads**
 can be turned off entirely, leaving nothing in the frame but where people have
 been.
 
-Between them the scenes are meant to be far apart, and most of them were found
-rather than designed. **Chalky** is the piece reduced to its own handwriting:
-night, the people turned off, and nothing in the frame but what they wrote on
-the way through. **Bacteria** is what the crowd looks like from far enough up
-that people are motile specks, which is not what anyone set out to build, and
-**busy** is that from lower down with everybody on their own errand. **Desire
-lines** is the ground remembering a whole turnover of the crowd.
+There are three scenes and all of them were found with the sliders rather than
+designed. **Chalky** is the piece reduced to its own handwriting: night, the
+people turned off, and nothing in the frame but what they wrote on the way
+through. **Bacteria** is what the crowd looks like from far enough up that
+people are motile specks, which is not what anyone set out to build. **Busy** is
+that from lower down, everybody on their own errand and all of them going the
+same way.
+
+There were eight. The five that have gone were daylight parks — a Sunday
+afternoon, a crossing, a match day, a playground — and they were the piece as it
+was first built, back when a person was a head with a shadow next to it. Pale
+dots on a bright ground is the one thing this piece does not do well, and
+keeping five scenes that showed it off was arguing with the finding.
 
 ## What it does not do yet
 

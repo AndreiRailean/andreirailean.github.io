@@ -194,7 +194,16 @@ export function createWalkers(canvas: HTMLCanvasElement, initial: Settings): Wal
     // so it sets how long somebody spends walking in. A share of the span, since
     // that is what decides how far "out of shot" has to be — it used to carry a
     // term for the longest shadow, which is what set it while there was a sun.
-    const margin = 3 + settings.camera * 0.02 + settings.span * 0.3
+    //
+    // **A twelfth of the span, not a third.** The margin is a border around the
+    // frame, so its cost is quadratic in itself: at span 14 a third took the
+    // world from 4.2 m of margin to 7.6, which is four times the ground and four
+    // times the people simulated to show the same picture — the opening cast is
+    // scattered across the whole world, not the frame. The browser spec's
+    // densest case went from comfortable to 56 seconds against a 60-second
+    // timeout, which is how it was noticed. A twelfth lands within a metre of
+    // what the old rule gave a scene with an ordinary sun in it.
+    const margin = 3 + settings.camera * 0.02 + settings.span * 0.12
     view = makeView(settings.span, settings.camera, width || 1, height || 1, margin)
     crowd.remeasure(view, settings)
   }
