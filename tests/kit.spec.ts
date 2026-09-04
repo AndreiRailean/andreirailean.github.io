@@ -212,6 +212,60 @@ for (const slug of PIECES) {
     ).toEqual([])
   })
 
+  /**
+   * **A bound it reports has to be a number.** Leaving it out is fine.
+   *
+   * This is #85's shape for the third time. A piece builds its report with a
+   * `switch` on the control's kind and a `default:` for the rest — and the day
+   * the kit gains a kind that has no track, the default hands back
+   * `min: control.min` off a control with no `min`. The property is *present*
+   * and `undefined`, the type says `number`, and every consumer that trusts it
+   * gets `NaN` out of its own arithmetic. `tests/dangler.spec.ts` and
+   * `tests/starry-night.spec.ts` both compute `min + (max - min) * 0.37` to
+   * sweep every control, so the value written is `NaN` and the assertion after
+   * it passes, having moved nothing. That is exactly how #85 was missed.
+   *
+   * **Absence is the correct answer, not a lesser one.** Starry Night's
+   * `ControlReport` is a discriminated union — `slider | range` carry the
+   * bounds, `choice` carries `options`, `toggle` carries neither — and its spec
+   * switches on `kind` before reading. Walkers does the same for its four
+   * trackless controls. They are the shape to copy; the flat
+   * `{ key, group, label, min, max, hint }` the other three declare is what
+   * *forces* a trackless control to invent a bound.
+   *
+   * So this asserts the narrow thing and nothing more: report a bound or do
+   * not, but do not report one that is not a number.
+   *
+   * **What it cannot catch, said here so nobody reads it as wider than it is.**
+   * A piece forced to fill the field can put a *plausible* number there rather
+   * than an absent one, and this passes it. Psyxels does exactly that today: its
+   * `glyphs` set reports `min: 0, max: 0` for a setting whose value is a list of
+   * five names. That is not a number problem — it is the flat report type having
+   * nowhere to say "no track" — so tightening this assertion would not reach it.
+   * See #130.
+   */
+  test(`${slug}: reports a real bound, or none at all`, async ({ page }) => {
+    const experiment = await openExperiment<BaseApi & { controls: () => Record<string, unknown>[] }>(page, slug, {
+      idle: false,
+    })
+
+    const entries = await experiment.api(({ api }) => api.controls())
+    expect(entries.length, `${slug} reports no controls`).toBeGreaterThan(0)
+
+    const invented = entries.filter(
+      (entry) => ("min" in entry && !Number.isFinite(entry.min)) || ("max" in entry && !Number.isFinite(entry.max)),
+    )
+
+    expect(
+      invented.map((entry) => JSON.stringify(entry)),
+      `${slug}: a controls() entry reports a \`min\` or \`max\` that is not a number. A control ` +
+        `with no track should leave them out — starry-night and walkers do — rather than have a ` +
+        `\`default:\` branch read them off a control that has neither. Present-and-undefined is ` +
+        `the signature: the type says number, and a spec sweeping the controls writes NaN and ` +
+        `then passes, having moved nothing. See #85.`,
+    ).toEqual([])
+  })
+
   test(`${slug}: the panel is reachable by keyboard and its rows are labelled`, async ({ page }) => {
     const experiment = await openExperiment<BaseApi>(page, slug, { idle: false })
     await experiment.api(({ api }) => api.panel(true))
