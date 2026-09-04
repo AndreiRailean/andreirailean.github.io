@@ -148,7 +148,26 @@ test("the kit publishes which preset is on screen, and forgets when it is nobody
   expect(await sceneIndex(page)).toBeUndefined()
 })
 
-test("swiping across moves through the scenes, and stops at both ends", async ({ page }) => {
+/*
+ * **Two tests rather than one, because a gesture costs about two seconds.**
+ *
+ * These were a single test making both claims, which needed eleven swipes and
+ * ran at 38s against this suite's `timeout: 60_000` with `retries: 0` — 63% of
+ * its budget, the slowest check here by a wide margin, and it duly failed once
+ * under full-suite load while passing alone. #119.
+ *
+ * The cost is the *number* of gestures and almost nothing else: measured at
+ * 2.18s per swipe at the 12 mouse steps `swipe()` uses, and still 1.06s at
+ * three, so `steps` is not the lever and lowering it would only risk the axis
+ * failing to lock. Split, each half states one claim and has the whole budget.
+ *
+ * Retries were the other option and are deliberately not taken: this repo has
+ * had genuinely intermittent product bugs — the flotsam exposure race in #65
+ * passed three CI runs before failing the fourth — and a retry would have hidden
+ * exactly that.
+ */
+
+test("swiping across moves through the scenes, and back", async ({ page }) => {
   const slugs = await wall(page)
   const experiment = await openExperiment<ReelApi>(page, slugs[0], { query: { reel: "1" }, idle: false })
   const names = await experiment.api(({ api }) => api.presets())
@@ -163,12 +182,36 @@ test("swiping across moves through the scenes, and stops at both ends", async ({
 
   await swipe(page, 140, 0)
   expect(await sceneIndex(page)).toBe("0")
+})
+
+test("neither end of the scenes wraps", async ({ page }) => {
+  /*
+   * **The only test here whose cost grows with the section**, so the only one
+   * given its own budget rather than the suite's.
+   *
+   * It walks every scene of the widest piece, and a gesture costs about two
+   * seconds however few mouse steps it is given, so this is linear in preset
+   * count: 32.6s at eight scenes against a default of 60. The split above got it
+   * off the edge for now and would put it straight back the day a piece reaches
+   * a dozen scenes — a limit that has to be re-earned as the work grows is the
+   * kind that fails on someone else's branch.
+   */
+  test.setTimeout(120_000)
+
+  const slugs = await wall(page)
+  const experiment = await openExperiment<ReelApi>(page, slugs[0], { query: { reel: "1" }, idle: false })
+  const names = await experiment.api(({ api }) => api.presets())
 
   // The primary has nothing before it. Neither axis wraps: the collection has a
   // top and a bottom, and the way out is the X.
+  expect(await sceneIndex(page)).toBe("0")
   await swipe(page, 140, 0)
   expect(await sceneIndex(page)).toBe("0")
 
+  // Walked rather than jumped with `preset()`, which would be far cheaper and
+  // would stop checking the thing this asserts — that every step across works,
+  // not only the first and the last. One swipe more than there are scenes, so
+  // the last one is the one that has to do nothing.
   for (let step = 0; step < names.length; step++) await swipe(page, -140, 0)
   expect(await sceneIndex(page)).toBe(String(names.length - 1))
 })

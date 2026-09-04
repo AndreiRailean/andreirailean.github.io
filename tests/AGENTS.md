@@ -44,6 +44,24 @@ Two things bite anyone who changes this:
 has run, so it is published as an environment variable that workers read through
 `use.baseURL`. `PW_PORT` still overrides the port to _ask_ for.
 
+**A long-running dev server serves a stale content store, and that changes which
+piece some tests drive.** Astro builds the store at startup, so an `about.md`
+edited afterwards is not seen — which `src/experiments/AGENTS.md` says for
+_adding_ a note, and is worth knowing for editing one too, because
+`gallery/order.ts` sorts the wall by `updated` descending. Any test whose subject
+comes from `wall(page)` — most of `reel.spec.ts` — therefore drives whichever
+piece the **server's** store thinks is newest, not whichever the working tree
+does. Bumping `updated` on one note reorders the wall and silently changes the
+subject of a dozen checks.
+
+That cost real time while diagnosing #119: a run against a server started before
+an `updated` bump drove psyxels, the same run against a fresh one drove flotsam,
+and the two have different preset counts and different scenes. **Restart the dev
+server before trusting a measurement that depends on the wall order**, and read
+the order off the page rather than from `EXPECTED` in
+`tests/experiments-index.spec.ts` — that list pins the index's _contents_ and is
+written in a fixed order which is **not** the order the page renders.
+
 The suite also serves the Astro dev toolbar's module empty, since it is part of
 the dev server rather than the site and injects four extra `h1`s into every page.
 `tests/harness.spec.ts` checks that suppression still works.
