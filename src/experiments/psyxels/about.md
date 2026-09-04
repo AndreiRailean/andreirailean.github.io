@@ -3,7 +3,7 @@ slug: psyxels
 title: Psyxels
 summary: A still picture packed out of psyxels of every size, each one a small animation with a mind of its own.
 started: 2026-08-29
-updated: 2026-08-30
+updated: 2026-09-03
 poster: ./poster.webp
 tags:
   - canvas
@@ -11,12 +11,12 @@ tags:
   - typography
 ---
 
-A letter A, white on black. Look closer and it is not drawn — it is packed, out
-of squares of wildly different sizes, and every square is showing a sign: a
-minus, a plus, a plus in a circle. Keep watching. The signs change. The colours
-change. Every so often a square decides it would rather be four squares, or four
-decide they would rather be one, and the letter is rebuilt out of different
-parts while you are looking at it.
+A word, white on black. Look closer and it is not drawn — it is packed, out of
+squares of wildly different sizes, and every square is showing a sign: a minus,
+a plus, a plus in a circle. Keep watching. The signs change. The colours change.
+Every so often a square decides it would rather be four squares, or four decide
+they would rather be one, and the word is rebuilt out of different parts while
+you are looking at it.
 
 Those parts want a name, and _pixel_ is taken — everything here is measured in
 screen pixels and a psyx is anywhere between three and two hundred of them
@@ -288,6 +288,22 @@ break into separate psyxels, a script gives a stroke that changes width as it
 turns. Two machines therefore show different letters, which is the same bargain
 the piece already makes with a viewer's monitor.
 
+## A word rather than a letter
+
+Two of the subjects are words, and that is not the same thing as a bigger
+letter. A single glyph is fitted to the frame's shorter side and arrives at the
+packing as one thick shape with a handful of joins. A word is fitted to the
+frame's _width_, so the same fill spends that width on four or five shapes and on
+the counters and sidebearings between them.
+
+There is a number for it. On a 1280×800 frame the median horizontal run of ink is
+143 pixels for the roman A the piece used to open on, and 70 for the word
+_Alive_ at a slightly larger fill — about half the stroke to pack, from a subject
+that looks bigger. So a word needs a finer grid than a letter to survive: at the
+grain a letter reads at, a word's counters fill in and `li` closes into one bar.
+That is the frontier the match figure measures, met from the other side, and it
+is why the word scenes sit a notch finer than the letter ones.
+
 ## The portrait
 
 The second subject is a photograph, and it goes through the same machinery
@@ -306,6 +322,34 @@ subjects genuinely disagree. A letter wants its surviving psyxels at full
 strength, flat and hard-edged. A face wants them shaded, because the shading is
 the picture. **Flatten** is the dial between those, and the presets sit at
 opposite ends of it.
+
+## The negative
+
+**Polarity** turns the picture inside out before the packing ever sees it: the
+whole frame becomes psyxels and the subject is the hole left in them, read the
+way a stencil is read. Nothing downstream knows. The packing still spends its
+small psyxels along the same contours and its large ones across the same flat
+runs; it is simply on the other side of them, so what used to be a lit stroke on
+bare ground is bare ground inside a lit field.
+
+It is one composite over the frame — `difference` against white, which leaves
+`1 - alpha × colour` everywhere and is exactly the quantity read as ink. Doing it
+that way rather than by cutting the letter out of a filled rectangle is what
+makes it work for the photograph too: a photograph's _shape_ is a rectangle and
+only its tones say where the subject is, so punching its silhouette out would
+punch out a rectangle. Inverted, it comes back as its own negative.
+
+Two things follow from covering the frame. Threshold now eats the hole outwards
+rather than the stroke inwards, so a high threshold makes the gap _wider_ than
+the letter was drawn — the same control, met from the other side.
+
+And it costs. Flipping polarity on one scene and changing nothing else takes the
+field from 2,267 psyxels lighting a quarter of the frame to 6,462 lighting nine
+tenths of it, and a frame from 25ms to 79ms in the test browser. Three times the
+marks and three and a half times the work, for a picture whose subject is the
+same size. What it does _not_ do is grow with the monitor: the coarsest psyx is a
+share of the frame either way, so a wider window is the same field over more
+pixels rather than more field.
 
 ## The same picture in every window
 

@@ -1,5 +1,5 @@
 import type { ExperimentApi } from "@/experiments/psyxels/api"
-import { DEFAULT_SETTINGS, PRESETS, settingsToQuery } from "@/experiments/psyxels/settings"
+import { DEFAULT_SETTINGS, PRESETS, settingsToQuery, type Settings } from "@/experiments/psyxels/settings"
 import { expect, openExperiment, test } from "./support/experiment"
 
 /**
@@ -56,6 +56,41 @@ async function light(page: Parameters<typeof openExperiment>[0]) {
       else right++
     }
     return { lit, left, right, total: canvas.width * canvas.height }
+  }, LIT_THRESHOLD)
+}
+
+/**
+ * The lit share of the four corner squares of the frame.
+ *
+ * The subject is centred and takes `fill` of the shorter side, so at any fill
+ * below 1 no subject reaches a corner. That makes the corners the one region
+ * whose answer is decided by polarity alone and by nothing else in the piece.
+ */
+async function cornerLight(page: Parameters<typeof openExperiment>[0]) {
+  return page.evaluate((threshold) => {
+    const canvas = document.querySelector("canvas")
+    if (!canvas) throw new Error("no canvas on the page")
+    const context = canvas.getContext("2d")
+    if (!context) throw new Error("no 2d context")
+
+    const side = Math.round(Math.min(canvas.width, canvas.height) * 0.12)
+    const origins = [
+      [0, 0],
+      [canvas.width - side, 0],
+      [0, canvas.height - side],
+      [canvas.width - side, canvas.height - side],
+    ] as const
+
+    let lit = 0
+    let seen = 0
+    for (const [x0, y0] of origins) {
+      const { data } = context.getImageData(x0, y0, side, side)
+      for (let i = 0; i < data.length; i += 4) {
+        seen++
+        if (data[i]! + data[i + 1]! + data[i + 2]! > threshold) lit++
+      }
+    }
+    return lit / seen
   }, LIT_THRESHOLD)
 }
 
@@ -236,6 +271,60 @@ test("fuzz softens the boundary rather than trimming the subject", async ({ page
   expect(soft.match).toBeGreaterThan(0.7)
 })
 
+/**
+ * The negative, as a test.
+ *
+ * `polarity` is the one setting that changes what the picture *is* rather than
+ * how it is read, and the claim is a strict swap rather than a second look at
+ * the same field: the psyxels go where the subject is not. So both polarities
+ * are measured the same way and asked to disagree — on how much of the frame is
+ * packed, and on the corners, which no subject reaches at this fill and which
+ * therefore answer to polarity and to nothing else.
+ *
+ * Everything else about the scene is held flat and hard-edged on purpose. A
+ * fringe, a fade or a glow would put light in a corner for reasons that have
+ * nothing to do with which way round the picture is.
+ */
+test("void polarity packs the whole frame and leaves the subject as the gap", async ({ page }) => {
+  const experiment = await openPsyxels(page)
+
+  const at = (polarity: "ink" | "void") =>
+    experiment.api(({ api, arg }) => {
+      api.set({
+        subject: "A",
+        face: "grotesque",
+        fill: 0.82,
+        coarse: 0.06,
+        levels: 3,
+        threshold: 0.4,
+        fuzz: 0,
+        flatten: 1,
+        churn: 0,
+        polarity: arg,
+      })
+      api.run(6)
+      return api.stats()
+    }, polarity)
+
+  const ink = await at("ink")
+  const inkFrame = await light(page)
+  const inkCorners = await cornerLight(page)
+
+  const negative = await at("void")
+  const voidFrame = await light(page)
+  const voidCorners = await cornerLight(page)
+
+  // The whole frame is packed rather than the letter's share of it, so there
+  // are several times as many psyxels and most of the canvas is lit.
+  expect(negative.psyxels).toBeGreaterThan(ink.psyxels * 2)
+  expect(voidFrame.lit / voidFrame.total).toBeGreaterThan(0.6)
+  expect(inkFrame.lit / inkFrame.total).toBeLessThan(0.33)
+
+  // And the swap is a swap: the corners are bare in one and full in the other.
+  expect(inkCorners).toBeLessThan(0.02)
+  expect(voidCorners).toBeGreaterThan(0.6)
+})
+
 test("the edge accent is colour and only colour", async ({ page }) => {
   const experiment = await openPsyxels(page)
 
@@ -279,7 +368,7 @@ test("bloom and overlap fill the ground around a large psyx without repacking", 
    * issue #65 on another piece, which hid for weeks because a still scene's
    * stale frame is byte-identical. `run()` draws synchronously.
    */
-  const paint = async (patch: Record<string, number>) => {
+  const paint = async (patch: Partial<Settings>) => {
     await experiment.api(({ api, arg }) => {
       api.set(arg)
       api.run(2)
@@ -298,8 +387,19 @@ test("bloom and overlap fill the ground around a large psyx without repacking", 
    *
    * So: coarse squares, centred marks, real gaps between them, and every effect
    * that spreads ink turned off.
+   *
+   * **The subject is part of the stated scene, and leaving it out cost a
+   * failure.** These are ratios of lit area against a baseline, and how much
+   * ground a bloom has to fill depends on the shape underneath it: at this
+   * coarseness a single letter's strokes are several psyxels wide and a word's
+   * are barely one, so the same bloom is worth 1.45× on one and 1.14× on the
+   * other. The scene inherited the featured preset's subject, which is a word
+   * now, and the test failed against a piece behaving correctly.
    */
-  const PLAIN = {
+  const PLAIN: Partial<Settings> = {
+    subject: "A",
+    face: "grotesque",
+    polarity: "ink",
     fill: 0.8,
     coarse: 0.125,
     levels: 3,

@@ -8,20 +8,61 @@
  * off whatever was drawn here and never asks which it was.
  */
 
-/** What can be pixellated. Every one of them is a still image by the time the field sees it. */
-export const SUBJECTS = ["A", "L", "&", "avatar"] as const
+/**
+ * What can be pixellated. Every one of them is a still image by the time the
+ * field sees it.
+ *
+ * **A word is not a bigger letter.** A single glyph is fitted to the frame's
+ * shorter side and arrives at the packing as one thick shape with a handful of
+ * joins; a word is fitted to the frame's *width*, so the same fill spends that
+ * width on four or five shapes and on the counters and sidebearings between
+ * them. Measured on a 1280×800 frame, the median horizontal run of ink is 143
+ * CSS pixels for a roman A at fill 0.74 and 70 for the word *Alive* at 0.85 —
+ * about half the stroke to pack, from a subject that looks larger.
+ *
+ * So a word wants a finer grid than a letter does to stay readable, which is why
+ * it is a different subject rather than a different setting.
+ */
+export const SUBJECTS = ["A", "Alive", "L", "Luna", "&", "avatar"] as const
 
 export type SubjectKind = (typeof SUBJECTS)[number]
 
 export const SUBJECT_LABELS: Record<SubjectKind, string> = {
   A: "A",
+  Alive: "Alive",
   L: "L",
+  Luna: "Luna",
   "&": "&",
   avatar: "portrait",
 }
 
 export const isSubject = (value: unknown): value is SubjectKind =>
   typeof value === "string" && (SUBJECTS as readonly string[]).includes(value)
+
+/**
+ * Which side of the subject the psyxels are made of.
+ *
+ * `"ink"` is the piece as it was: psyxels where the subject is, bare ground
+ * everywhere else. `"void"` swaps the two, so the whole frame is packed and the
+ * subject is the hole left in it — the word is read the way a stencil is read,
+ * off the shape of what is missing.
+ *
+ * It belongs here and not in the packing because it is a fact about the
+ * *picture*: everything downstream asks the mask how much ink is under a square
+ * and is told, and neither the mask nor the field ever learns that the answer
+ * was turned inside out.
+ */
+export const POLARITIES = ["ink", "void"] as const
+
+export type Polarity = (typeof POLARITIES)[number]
+
+export const POLARITY_LABELS: Record<Polarity, string> = {
+  ink: "ink",
+  void: "void",
+}
+
+export const isPolarity = (value: unknown): value is Polarity =>
+  typeof value === "string" && (POLARITIES as readonly string[]).includes(value)
 
 /**
  * The letterforms on offer, as generic families rather than named faces.
@@ -114,6 +155,7 @@ export function paintSubject(
   kind: SubjectKind,
   face: Face,
   fill: number,
+  polarity: Polarity,
   avatar: HTMLImageElement | null,
 ): Drawn {
   ctx.clearRect(0, 0, width, height)
@@ -125,6 +167,7 @@ export function paintSubject(
     const w = avatar.naturalWidth * scale
     const h = avatar.naturalHeight * scale
     ctx.drawImage(avatar, (width - w) / 2, (height - h) / 2, w, h)
+    invert(ctx, width, height, polarity)
     return { ok: true }
   }
 
@@ -136,5 +179,29 @@ export function paintSubject(
   fitText(ctx, kind, face, width * fill, box)
   ctx.fillText(kind, 0, 0)
   ctx.restore()
+  invert(ctx, width, height, polarity)
   return { ok: true }
+}
+
+/**
+ * Turns the painted picture inside out, in one composite over the whole frame.
+ *
+ * `difference` against white leaves `1 - alpha × colour` at every psyxel with
+ * the frame fully opaque, which is exactly the quantity `mask.ts` reads as ink —
+ * so a white letter comes back as a black hole in a white field, its antialiased
+ * edge inverted along with it, and a photograph comes back as its own negative.
+ *
+ * Doing it as a composite rather than by cutting the glyph out of a filled
+ * rectangle is what makes it work for the portrait too: `destination-out` would
+ * punch the photograph's opaque bounding box out and leave a rectangle, because
+ * a photograph's *shape* is a rectangle and only its tones say where the subject
+ * is.
+ */
+function invert(ctx: CanvasRenderingContext2D, width: number, height: number, polarity: Polarity): void {
+  if (polarity !== "void") return
+  ctx.save()
+  ctx.globalCompositeOperation = "difference"
+  ctx.fillStyle = "#fff"
+  ctx.fillRect(0, 0, width, height)
+  ctx.restore()
 }

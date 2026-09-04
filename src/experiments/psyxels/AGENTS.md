@@ -17,7 +17,7 @@ things about _this_ piece that will get broken by accident.
 
 - **The packing** — `mask.ts` and `field.ts` — is a still question asked of a
   still picture. It decides where each psyx is and how big. It runs when the
-  subject, the frame, or one of the seven settings in `needsPacking` changes, and
+  subject, the frame, or one of the eight settings in `needsPacking` changes, and
   at no other time.
 - **The life** — `glyphs.ts`, `pulse.ts`, `palette.ts` — is read live, every
   frame, from settings that are never copied into the field. It decides what a
@@ -73,6 +73,14 @@ one up does not cover for the other being off.
   measures the subject's own white point — ignoring the top half per cent,
   because one specular highlight would otherwise undo the stretch — and scales to
   it. A letter is unaffected: its white point _is_ white.
+- **The negative is a composite over the frame, not a hole cut in a rectangle.**
+  `destination-out` with the subject drawn over a filled frame is the obvious way
+  to invert, and it is right for a letter and silently wrong for the portrait: a
+  photograph's _shape_ is its bounding rectangle and only its tones say where the
+  subject is, so it punches out a rectangle. `invert` in `subject.ts` fills the
+  frame with white under `difference`, which leaves `1 - alpha × colour` at every
+  psyxel — exactly the quantity `buildMask` reads as ink — and inverts a letter's
+  antialiased edge and a photograph's tones by the same arithmetic.
 - **The tone map has to be a curve, not a lift.** It was `ink + (1 - ink) ×
 flatten` at first, which looks right on a letter — ink is 1 almost everywhere —
   and gives a photograph a hard cut with no shading above it. Every surviving
@@ -345,7 +353,7 @@ its name and range alone.
 | File          | Holds                                                                        |
 | ------------- | ---------------------------------------------------------------------------- |
 | `settings.ts` | `Settings`, the `CONTROLS` spec, presets, query parsing, what a change costs |
-| `subject.ts`  | the only place that knows what the picture is: a letter, or the portrait     |
+| `subject.ts`  | the only place that knows what the picture is, and which way round           |
 | `mask.ts`     | the subject as coverage: summed-area tables, variance, the white point       |
 | `glyphs.ts`   | the vocabulary, the walk between frames, the blend between them, the drawing |
 | `field.ts`    | the quadtree: splitting, merging, churn, and a psyx's own life               |

@@ -19,7 +19,8 @@ import {
 describe("bounds", () => {
   it("has a bound for every numeric setting, so nothing arrives unclamped", () => {
     for (const key of Object.keys(DEFAULT_SETTINGS) as NumericKey[]) {
-      if (key === ("subject" as NumericKey) || key === ("face" as NumericKey)) continue
+      // The three choices, which have options rather than a track.
+      if ((["subject", "face", "polarity"] as string[]).includes(key)) continue
       expect(BOUNDS[key], key).toBeDefined()
     }
   })
@@ -56,11 +57,14 @@ describe("normalising", () => {
     expect(settings.vocabulary).toBe(BOUNDS.vocabulary.max)
   })
 
-  it("keeps the base's subject and face when handed ones that do not exist", () => {
+  it("keeps the base's subject, face and polarity when handed ones that do not exist", () => {
     expect(normalizeSettings({ subject: "portrait" as never }).subject).toBe(DEFAULT_SETTINGS.subject)
     expect(normalizeSettings({ subject: "avatar" }).subject).toBe("avatar")
+    expect(normalizeSettings({ subject: "Alive" }).subject).toBe("Alive")
     expect(normalizeSettings({ face: "comic" as never }).face).toBe(DEFAULT_SETTINGS.face)
     expect(normalizeSettings({ face: "script" }).face).toBe("script")
+    expect(normalizeSettings({ polarity: "inverse" as never }).polarity).toBe(DEFAULT_SETTINGS.polarity)
+    expect(normalizeSettings({ polarity: "void" }).polarity).toBe("void")
   })
 
   it("fills gaps from the base rather than from the defaults when given one", () => {
@@ -77,6 +81,7 @@ describe("the query string", () => {
       ...DEFAULT_SETTINGS,
       subject: "avatar",
       face: "roman",
+      polarity: "void",
       hue: 41,
       levels: 2,
       churn: 22,
@@ -111,6 +116,7 @@ describe("the query string", () => {
     expect(settingsForLanding(new URLSearchParams("hue=200")).featured).toBe(false)
     expect(settingsForLanding(new URLSearchParams("subject=avatar")).featured).toBe(false)
     expect(settingsForLanding(new URLSearchParams("face=script")).featured).toBe(false)
+    expect(settingsForLanding(new URLSearchParams("polarity=void")).featured).toBe(false)
     // The same rule the parser applies: a URL made only of junk carries nothing.
     expect(settingsForLanding(new URLSearchParams("tempo=fast")).featured).toBe(true)
   })
@@ -151,8 +157,26 @@ describe("what a change costs", () => {
    * psyx moving.
    */
   it("repacks for the packing controls and for nothing else", () => {
-    for (const key of ["seed", "subject", "face", "fill", "coarse", "levels", "detail", "variety", "fuzz"] as const) {
-      const value = key === "subject" ? "&" : key === "face" ? "script" : Number(DEFAULT_SETTINGS[key]) / 2
+    for (const key of [
+      "seed",
+      "subject",
+      "face",
+      "polarity",
+      "fill",
+      "coarse",
+      "levels",
+      "detail",
+      "variety",
+      "fuzz",
+    ] as const) {
+      const value =
+        key === "subject"
+          ? "&"
+          : key === "face"
+            ? "script"
+            : key === "polarity"
+              ? "void"
+              : Number(DEFAULT_SETTINGS[key]) / 2
       const next = normalizeSettings({ [key]: value })
       expect(needsPacking(DEFAULT_SETTINGS, next), key).toBe(true)
     }
@@ -179,9 +203,10 @@ describe("what a change costs", () => {
     }
   })
 
-  it("rasterises the subject again only when the subject, its face or its size changed", () => {
+  it("rasterises the subject again only when the subject, its face, its polarity or its size changed", () => {
     expect(needsSubject(DEFAULT_SETTINGS, { ...DEFAULT_SETTINGS, subject: "avatar" })).toBe(true)
     expect(needsSubject(DEFAULT_SETTINGS, { ...DEFAULT_SETTINGS, face: "script" })).toBe(true)
+    expect(needsSubject(DEFAULT_SETTINGS, { ...DEFAULT_SETTINGS, polarity: "void" })).toBe(true)
     expect(needsSubject(DEFAULT_SETTINGS, { ...DEFAULT_SETTINGS, fill: 0.5 })).toBe(true)
     expect(needsSubject(DEFAULT_SETTINGS, { ...DEFAULT_SETTINGS, coarse: 40 })).toBe(false)
   })
