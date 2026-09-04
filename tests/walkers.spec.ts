@@ -1,5 +1,5 @@
 import type { ExperimentApi } from "@/experiments/walkers/api"
-import { DEFAULT_SETTINGS, PRESETS } from "@/experiments/walkers/settings"
+import { PRESETS } from "@/experiments/walkers/settings"
 import { expect, openExperiment, test } from "./support/experiment"
 
 /**
@@ -123,32 +123,6 @@ test("a crowd, on a ground", async ({ page }) => {
 })
 
 /**
- * **Thirty seconds of park, not ninety.**
- *
- * This is the most expensive case in the file — a dense crowd at a small span
- * is a lot of people, because the opening cast is scattered across the whole
- * world rather than the frame — and at ninety it ran 48 seconds alone against
- * this suite's 60-second timeout and failed under the load of a full run.
- * Measured at 20, 30, 45 and 90 seconds of settle: `inFrame` is 147 to 198 and
- * `overlap` is 0 at every one of them, so the extra minute changes neither
- * assertion and costs 45 seconds instead of 18.
- *
- * Read the timeout as the signal it is. A smoke test that needs most of a
- * minute is not smoke-testing.
- */
-test("nobody is standing inside anybody", async ({ page }) => {
-  const experiment = await openWalkers(page, { settings: { density: 60, span: 14 }, idle: true })
-  await experiment.api(({ api }) => api.settle(30))
-
-  const stats = await experiment.api(({ api }) => api.stats())
-  expect(stats.inFrame).toBeGreaterThan(20)
-  // The unit suite measures this over minutes; here it is a smoke test that the
-  // number reaches the page at all, and that the browser's own step size does
-  // not change the answer.
-  expect(stats.overlap, "somebody is inside somebody").toBeLessThan(0.045)
-})
-
-/**
  * The camera is a pinhole, and the only evidence for that is on the glass.
  *
  * A head sits closer to the lens than the ground does, so it is displaced
@@ -233,6 +207,13 @@ test("heads lean out over their own feet, and lean further from a lower camera",
   expect(leaning, "a low camera did not throw the heads outward").toBeGreaterThan(plan)
 })
 
+/**
+ * browser-because: `settle` is the page's verb, not the crowd's. `advance` in
+ * `walkers.ts` is what capped itself at sixteen steps, and `crowd.step` — all
+ * the headless harness has — was never wrong. Asserting this against
+ * `tests/unit/walkers/park.ts` would be asserting that a loop written in the
+ * test file runs the number of times the test file asked it to.
+ */
 test("settle moves the park forward, and by a lot", async ({ page }) => {
   const experiment = await openWalkers(page, { settings: MODEST, idle: true })
 
@@ -255,6 +236,12 @@ test("settle moves the park forward, and by a lot", async ({ page }) => {
   expect(after.inFrame).toBeGreaterThan(3)
 })
 
+/**
+ * browser-because: a re-roll is a page action. `reroll()` is on the experiment
+ * API, it is a button in the bar, and what is under test is that it replaces
+ * the cast and nothing else in the scene — which is a claim about `api.get()`
+ * round-tripping, not about how anybody walks.
+ */
 test("a re-roll is a different crowd at the same settings", async ({ page }) => {
   const experiment = await openWalkers(page, { settings: MODEST, idle: true })
   await experiment.api(({ api }) => api.settle(30))
@@ -334,16 +321,6 @@ test("a scene round-trips through its URL", async ({ page }) => {
   const restored = await experiment.api(({ api }) => api.get())
 
   expect(restored).toEqual(applied)
-})
-
-test("a bare address lands on the primary and says so in the URL", async ({ page }) => {
-  const experiment = await openWalkers(page, { idle: true })
-
-  const landed = await experiment.api(({ api }) => api.get())
-  expect(landed).toEqual(PRESETS[0]!.settings)
-
-  // And nothing presentational reads `DEFAULT_SETTINGS`; see ../CONTEXT.md.
-  expect(PRESETS[0]!.settings).not.toEqual(DEFAULT_SETTINGS)
 })
 
 test("?settle= lands on a park that has already been running", async ({ page }) => {

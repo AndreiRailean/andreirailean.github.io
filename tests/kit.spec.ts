@@ -129,6 +129,59 @@ for (const slug of PIECES) {
    * distinction is the whole reason the attribute can be trusted — a piece
    * someone has dragged a slider on must not keep claiming to be preset 0.
    */
+  /**
+   * The landing contract, which was written once and checked once.
+   *
+   * Four pieces implement `settingsForLanding` and the rewrite that goes with
+   * it, and until this loop it was asserted for **walkers only** — the piece
+   * that happened to be written last. The section's cost of each piece being
+   * standalone shows up here not as duplication but as a hole: dangler,
+   * flotsam and psyxels have the same behaviour and nothing checked any of
+   * them. It settles nothing, so covering five pieces costs about what covering
+   * one did.
+   *
+   * Asserted through the API rather than by importing each piece's `PRESETS`,
+   * so this stays a claim about behaviour and needs to know nothing about where
+   * a piece keeps its scenes.
+   */
+  test(`${slug}: a bare address lands on the primary`, async ({ page }) => {
+    const experiment = await openExperiment<BaseApi>(page, slug, { idle: true })
+
+    const landed = await experiment.api(({ api }) => api.get())
+    // **`preset(1)`, not `preset(0)`.** The number is the keyboard digit rather
+    // than an index, so the primary is 1 — `preset(0)` throws, which is how this
+    // test found out.
+    const primary = await experiment.api(({ api }) => {
+      api.preset(1)
+      return api.get()
+    })
+
+    expect(landed, `${slug}: a bare address did not land on the first preset`).toEqual(primary)
+  })
+
+  /**
+   * And it leaves with a link to *that scene*.
+   *
+   * The indirection is the point: a visitor's link describes the park in front
+   * of them rather than standing for "whatever is featured this month", so
+   * promoting a preset cannot invalidate a link anybody has already sent. See
+   * `src/experiments/CONTEXT.md` on *primary*.
+   */
+  test(`${slug}: a bare address is rewritten to the scene it landed on`, async ({ page }) => {
+    test.skip(slug === "starry-night", "starry-night predates settingsForLanding and has no rewrite; see #128")
+    const experiment = await openExperiment<BaseApi>(page, slug, { idle: true })
+
+    const landed = await experiment.api(({ api }) => api.get())
+    const address = page.url()
+    expect(address, `${slug}: a bare address was left bare`).toMatch(/\?.+=/)
+
+    await page.goto(address)
+    await page.waitForFunction(() => Boolean(window.experiment))
+    const restored = await experiment.api(({ api }) => api.get())
+
+    expect(restored, `${slug}: its own address did not restore its own scene`).toEqual(landed)
+  })
+
   test(`${slug}: publishes which preset is on screen, and stops when it is nobody's`, async ({ page }) => {
     const experiment = await openExperiment<BaseApi>(page, slug, { idle: false })
     const html = page.locator("html")
