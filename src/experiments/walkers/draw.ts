@@ -125,18 +125,22 @@ export function paintGround(
 /**
  * The smallest erase a decay pass is allowed to be, in 255ths.
  *
- * A canvas holds eight bits of alpha, and `destination-out` at alpha `a`
- * leaves `round(dst * (1 - a))`. So a pixel stops moving as soon as
- * `dst * a` falls below half a level, whatever the arithmetic says — the
- * decay has a **floor at `127.5 / a` levels**, and everything below it is
- * permanent.
+ * A canvas holds eight bits of alpha, and the erase alpha is quantised to
+ * eight bits **before** it is applied: `destination-out` leaves
+ * `round(dst * (1 - round(255a) / 255))`. So a pixel stops moving as soon as
+ * `dst * round(255a)` falls below half a level, and the decay has a **floor
+ * at `127.5 / round(255a)` levels** with everything below it permanent. The
+ * inner rounding is the half that is easy to miss and it dominates down here,
+ * where `255a` is a small number of levels and rounding it moves the floor by
+ * a factor of two. Measured against a real canvas across the range: it
+ * reproduces every stall exactly, and dropping it does not.
  *
  * This is not a rounding detail, it is most of the range. Fading a 6-second
- * trail one frame at a time asks for `a` of about 0.7/255, which puts the
- * floor at 127 — the bright mark fades to a mid grey and then stays there for
- * ever, and the ground silts up to exactly the flat wash the fade exists to
- * prevent. At 60 fps under a slowed clock the per-frame alpha rounds to zero
- * and nothing fades at all. Measured, both of them.
+ * trail one frame at a time asks for a `255a` of about 0.7, which rounds to 1
+ * and puts the floor at 127 — the bright mark fades to a mid grey and then
+ * stays there for ever, and the ground silts up to exactly the flat wash the
+ * fade exists to prevent. At 60 fps under a slowed clock `255a` is 0.46, which
+ * rounds to nothing, and nothing fades at all.
  *
  * The way out is to make each erase big enough to survive the rounding, which
  * means erasing each pixel rarely rather than every pixel every frame. At 24
@@ -273,8 +277,8 @@ function retile(trail: Trail, tile: number): void {
  * in 255ths and the tile in use now.
  *
  * `tile * tile` pixels means each one is erased that many frames apart and by
- * that much more, so the applied erase is `perFrame * tile * tile` and the
- * residue it leaves behind is `127.5` divided by it. The band is a factor of
+ * that much more, so the applied erase is `perFrame * tile * tile` levels and
+ * the residue it leaves behind is `127.5` divided by that, rounded. The band is a factor of
  * four wide because the tile can only double: anywhere inside it the residue
  * is a couple of levels and the step is a fraction the blit can hide.
  *

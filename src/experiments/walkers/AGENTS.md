@@ -220,14 +220,18 @@ the whole reason the numbers in `stats()` exist.
   frame.** Who somebody is chasing and who they are looking at both need to know
   whether that person is still here. At fourteen hundred walkers that was two
   million comparisons a frame for a boolean. `Walker.present` is the flag.
-- **An exponential fade in eight bits does not reach zero.** `destination-out`
-  at alpha `a` leaves `round(dst * (1 - a))`, so a pixel stops moving as soon as
-  `dst * a` is under half a level: the decay has a **floor at `127.5 / a`**, and
-  fading a six-second trail one frame at a time asks for an `a` of 0.7/255,
-  which puts that floor at 127. The bright mark faded to a mid grey and then
+- **An exponential fade in eight bits does not reach zero.** Write the erase
+  alpha as `L = 255a`, in levels rather than as a fraction, because the canvas
+  quantises it to eight bits before applying it: `destination-out` leaves
+  `round(dst * (1 - round(L) / 255))`. A pixel therefore stops moving as soon as
+  `dst * round(L)` is under half a level, and the decay has a **floor at
+  `127.5 / round(L)` levels**. Both roundings matter and the inner one is the
+  one that gets dropped — it is worth a factor of two down here, and a floor
+  quoted without it does not reproduce. Fading a six-second trail one frame at a
+  time asks for an `L` of 0.7, which rounds to 1 and puts that floor at 127. The bright mark faded to a mid grey and then
   stayed there for ever, every path anybody had ever taken silted up, and the
   frame came out as the flat wash the fade exists to prevent — at a slowed
-  clock the per-frame alpha rounded to zero outright and nothing faded at all.
+  clock `L` was 0.46, which rounds to nothing, and nothing faded at all.
   Nothing errored and the trail still looked like a trail for the first few
   seconds. Mean luminance of the frame between 45 s and 150 s is what says it:
   58 → 107 for the naive fade, 32 → 31 for the one in the file. The fix is to

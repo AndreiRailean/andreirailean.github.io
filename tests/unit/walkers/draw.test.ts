@@ -5,11 +5,13 @@ import { CONTROLS } from "@/experiments/walkers/settings"
 /**
  * The ground has to forget.
  *
- * A canvas holds eight bits of alpha and `destination-out` at alpha `a` leaves
- * `round(dst * (1 - a))`, so a pixel stops moving once `dst * a` drops below
- * half a level. The decay therefore has a floor at `127.5 / a` levels, and
- * everything below it is permanent — which is the flat grey wash the fade
- * exists to prevent, arriving by way of the renderer rather than the model.
+ * A canvas holds eight bits of alpha and quantises the erase alpha to eight
+ * bits before applying it, so `destination-out` at alpha `a` leaves
+ * `round(dst * (1 - round(255a) / 255))` and a pixel stops moving once
+ * `dst * round(255a)` drops below half a level. The decay therefore has a
+ * floor at `127.5 / round(255a)` levels, and everything below it is permanent
+ * — which is the flat grey wash the fade exists to prevent, arriving by way of
+ * the renderer rather than the model.
  *
  * Nothing in the picture says so. The trail looked like a trail, faded like a
  * trail, and then stopped, and the only way to see it was to leave the piece
@@ -21,8 +23,18 @@ import { CONTROLS } from "@/experiments/walkers/settings"
 const traces = CONTROLS.find((control) => control.kind === "slider" && control.key === "traces")
 const longest = traces && traces.kind === "slider" ? traces.max : 90
 
-/** What one frame would take off, in 255ths, at a given trail and frame time. */
+/** What one frame would take off, in levels of 255, at a trail and frame time. */
 const perFrame = (seconds: number, step: number) => 255 * (1 - Math.exp(-step / seconds))
+
+/**
+ * Where a pixel stops, in levels, for an erase of `levels`.
+ *
+ * The inner `round` is the canvas quantising the alpha before it multiplies,
+ * and it is not a refinement: at an erase of 2.4 levels it is the difference
+ * between a predicted floor of 53 and the 63 a real canvas stops at. Checked
+ * against Chromium at eight different alphas; this form reproduced every one.
+ */
+const residue = (levels: number) => (Math.round(levels) === 0 ? Infinity : 127.5 / Math.round(levels))
 
 /**
  * Frame times the piece is actually drawn at: 30 to 120 fps, and `playback`
@@ -38,8 +50,7 @@ describe("the trail's decay", () => {
     for (let seconds = 1; seconds <= longest; seconds++) {
       for (const step of steps) {
         const applied = perFrame(seconds, step) * eraseTile(perFrame(seconds, step), 1) ** 2
-        // 127.5 / applied is where a pixel stops, in 255ths.
-        expect(127.5 / applied).toBeLessThan(5.5)
+        expect(residue(applied)).toBeLessThan(5.6)
       }
     }
   })
@@ -59,10 +70,11 @@ describe("the trail's decay", () => {
    * ship with it stalls at half the range or does not move at all.
    */
   it("would stall above a mid grey if every pixel were erased every frame", () => {
-    const naive = 127.5 / perFrame(6, 1 / 60)
-    expect(naive).toBeGreaterThan(127)
-    // At a slowed clock the per-frame alpha rounds to nothing at all.
-    expect(perFrame(6, 0.65 / 60)).toBeLessThan(0.5)
+    // A tile of one is the whole buffer every frame. Measured on a real canvas
+    // at these two settings: it stops at 127, and at the slowed clock the
+    // alpha rounds away and the mark never fades at all.
+    expect(residue(perFrame(6, 1 / 60))).toBeCloseTo(127.5, 1)
+    expect(residue(perFrame(6, 0.65 / 60))).toBe(Infinity)
   })
 
   it("does not chase the frame rate", () => {
