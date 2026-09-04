@@ -38,6 +38,21 @@ it cannot name another branch's server, and it reports whichever port Astro
 actually settled on. A server already up — a human's included — is adopted rather
 than fought for.
 
+**The suite leaves one running, and "stop the dev server when you are done" does
+not cover it.** `globalSetup` starts a server and deliberately does not stop it,
+so the next run reuses it instead of paying the startup again. The consequence
+is that **any full `pnpm run test:browser` leaves a server behind whether or not
+the session ever started one on purpose** — about 700MB to 1GB of it, on a box
+several worktrees share.
+
+So a stray server is not evidence anybody forgot anything, and two sessions here
+each mistook the other's for a forgotten one. What tells them apart is
+`.astro/dev.json` in each worktree: it names the pid, `kill -0` says whether that
+pid is alive, and `pnpm exec astro dev stop` acts on that file alone — so it is
+safe to run in your own worktree without checking on anyone else, and is never
+the right way to tidy up someone else's. A `dev.json` naming a dead pid is a
+session that stopped its server cleanly, not a leak.
+
 Two things bite anyone who changes this:
 
 - **Worktrees share a machine.** A fixed port means a run here can find _another
