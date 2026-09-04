@@ -304,3 +304,50 @@ test("swiping past the end of the wall says there is nothing there", async ({ pa
   // And then goes, rather than sitting on the work.
   await expect(page.locator("#reel .word")).toBeHidden({ timeout: 5000 })
 })
+
+/**
+ * **Anything drawn over the piece has to be able to say it is not the piece.**
+ *
+ * The gesture listens on `window`, which is what lets a swipe start anywhere on
+ * the screen — and the cost is that a control mounted over the work has its taps
+ * read as taps on the work. That happened: a button in the corner cycled its own
+ * setting *and* held the piece, so every press did two things and read as a
+ * button that misfires.
+ *
+ * `.out` was already exempt. The general form is one attribute, because
+ * `gallery/` may not import a piece and so cannot know what has been put over
+ * one. Tested with a synthetic element rather than a real control for the same
+ * reason: the rule is about the attribute, not about whatever happens to be
+ * wearing it this month.
+ */
+test("a tap on furniture over the piece is not a tap on the piece", async ({ page }) => {
+  const slugs = await wall(page)
+  await recordMiddle(page)
+  await openExperiment<ReelApi>(page, slugs[0], { query: { reel: "1" }, idle: false })
+
+  const view = page.viewportSize()
+  if (!view) throw new Error("no viewport to tap")
+  const middle = { x: Math.round(view.width / 2), y: Math.round(view.height / 2) }
+
+  await page.evaluate(() => {
+    const probe = document.createElement("button")
+    probe.id = "probe"
+    probe.type = "button"
+    probe.dataset.reelFurniture = ""
+    probe.style.cssText =
+      "position:fixed;top:8px;right:8px;z-index:2147483647;width:64px;height:44px;pointer-events:auto"
+    document.body.append(probe)
+  })
+
+  await page.locator("#probe").click()
+  // Nothing announced, because nothing happened to the piece. Asserted after a
+  // beat, or an assertion that is passing because the mark has not appeared
+  // *yet* is indistinguishable from one passing because it never will.
+  await page.waitForTimeout(400)
+  expect(await middleSaid(page)).not.toContain("mark held|")
+
+  // And the piece itself still holds, so the exemption is scoped rather than a
+  // hold that has quietly stopped working.
+  await page.mouse.click(middle.x, middle.y)
+  await expect.poll(() => middleSaid(page)).toContain("mark held|")
+})
