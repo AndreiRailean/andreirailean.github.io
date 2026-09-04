@@ -825,6 +825,28 @@ test("the glyph row picks marks by name, and refuses to go below two", async ({ 
   await buttons.nth(GLYPH_NAMES.indexOf("ring")).click()
   expect(await chosen()).toEqual(["ring", "moon"])
 
+  /**
+   * **The panel has no width of its own — it is as wide as its widest row.** So
+   * a set of fifteen on one line does not merely look untidy, it widens every
+   * other control in the panel; it was 583px against the 446px the rest of the
+   * rows wanted. Wrapping alone would not have fixed it: the row would take the
+   * width if offered, and it is the offer that has to be withdrawn.
+   */
+  const shape = await page.evaluate(() => {
+    const panel = document.querySelector<HTMLElement>("#ui .panel")!
+    const set = document.querySelector<HTMLElement>("#ui .modes.set")!
+    const marks = [...set.querySelectorAll("button")]
+    const top = (b: Element) => Math.round(b.getBoundingClientRect().top)
+    const withRow = panel.getBoundingClientRect().width
+    const row = set.closest(".row") as HTMLElement
+    row.style.display = "none"
+    const withoutRow = panel.getBoundingClientRect().width
+    row.style.display = ""
+    return { withRow, withoutRow, lines: new Set(marks.map(top)).size }
+  })
+  expect(shape.lines).toBe(2)
+  expect(shape.withRow).toBe(shape.withoutRow)
+
   // Adding is never refused, and the set comes back in the vocabulary's order.
   await buttons.nth(GLYPH_NAMES.indexOf("plus")).click()
   expect(await chosen()).toEqual(["plus", "ring", "moon"])

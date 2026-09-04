@@ -178,9 +178,13 @@ html[data-idle="true"] #ui {
 }
 
 /* A set can hold more options than a choice ever does — a vocabulary rather
-   than a mode — so it wraps instead of forcing the panel wider. */
+   than a mode — so it lays out on a fixed number of columns instead of taking
+   whatever width one line would need. The panel has no width of its own; it is
+   as wide as its widest row, so an unbounded set row widens everything. */
 #ui .modes.set {
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(var(--set-columns, 8), max-content);
+  justify-content: start;
   gap: 0.25rem;
 }
 

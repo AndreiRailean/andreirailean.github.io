@@ -174,6 +174,9 @@ export const CONTROLS: Control[] = [
     key: "glyphs",
     label: "glyphs",
     least: LEAST_GLYPHS,
+    // Two rows. Fifteen on one line made the panel half again as wide as
+    // everything else in it needed.
+    columns: Math.ceil(GLYPH_NAMES.length / 2),
     options: GLYPH_NAMES.map((value) => ({ value, label: value.replace("-", " "), icon: () => glyphIcon(value) })),
     hint: "Which marks a psyx may show. It was a count before — how many to take from the front of the list — so the only way to be rid of one mark was to be rid of everything after it as well. Two is the floor: at one there is nothing to change to, and a psyx that cannot change is not what this piece is made of. A small set is a field with a strong accent and you read the changes; a large one is closer to texture than to signs.",
   },

@@ -123,6 +123,16 @@ export type SetControl<K> = Shared & {
   options: { value: string; label: string; icon?: () => Node }[]
   /** Fewest that may be selected at once. Below two, prefer a row of toggles. */
   least: number
+  /**
+   * Most per row. Omitted, they all sit on one.
+   *
+   * **This is a width control, not a tidiness one.** The panel is a flex column
+   * with no width of its own, so it is as wide as its widest row — and a set of
+   * fifteen on one line made it 583px against the 446px everything else wanted.
+   * Wrapping alone does not fix that: the row would happily take the width if
+   * offered it, and it is the offer that has to be withdrawn.
+   */
+  columns?: number
 }
 
 export type Control<K> = SliderControl<K> | RangeControl<K> | ChoiceControl<K> | ToggleControl<K> | SetControl<K>
@@ -409,6 +419,11 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     if (control.kind === "set") {
       const group = document.createElement("div")
       group.className = "modes set"
+      // A count rather than a media query, and set here rather than left to the
+      // stylesheet, because only the piece knows how many of its own marks read
+      // as a row. The range row hands its stylesheet `--from` and `--to` the
+      // same way.
+      group.style.setProperty("--set-columns", String(control.columns ?? control.options.length))
       const byValue = new Map<string, HTMLButtonElement>()
 
       for (const option of control.options) {
