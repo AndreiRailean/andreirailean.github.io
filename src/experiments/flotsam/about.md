@@ -3,7 +3,7 @@ slug: flotsam
 title: Flotsam
 summary: Specks on dark water, seen from above, shaken by waves that never take them anywhere.
 started: 2026-08-29
-updated: 2026-08-29
+updated: 2026-09-04
 poster: ./poster.webp
 tags:
   - canvas

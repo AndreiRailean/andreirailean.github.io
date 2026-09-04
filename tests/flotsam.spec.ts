@@ -585,10 +585,31 @@ test("a bare URL lands on the featured scene and says so in the address bar", as
   const experiment = await openFlotsam(page)
 
   expect(await experiment.api(({ api }) => api.get())).toEqual(PRESETS[0]!.settings)
-  // The defaults *are* the first preset here, so the address stays bare — which
-  // is the case that would break if the two were ever allowed to drift apart.
-  expect(new URL(await experiment.api(({ api }) => api.url())).search).toBe("")
-  expect(PRESETS[0]!.settings).toEqual(DEFAULT_SETTINGS)
+
+  /*
+   * **The address is rewritten to the primary's full query, and that is the
+   * point of landing.** A visitor leaves with a link to *this* scene rather than
+   * to whatever is featured next month — `src/experiments/AGENTS.md`.
+   *
+   * This used to assert the opposite: that the address stays bare, because the
+   * defaults *were* the first preset here and the query therefore measured
+   * empty. It said in as many words that it would break if the two were ever
+   * allowed to drift apart, and it did, on the change that recorded `offing` as
+   * a scene of its own. Flotsam was the exception; the rewrite is the rule.
+   */
+  const landed = new URL(await experiment.api(({ api }) => api.url()))
+  expect(landed.search).not.toBe("")
+
+  // And the link is the scene: what the address carries reloads to what is on
+  // screen. A rewrite that named a scene nobody could get back to would satisfy
+  // the line above and be worth nothing.
+  await page.goto(landed.toString())
+  await page.waitForFunction(() => Boolean(window.experiment))
+  expect(await experiment.api(({ api }) => api.get())).toEqual(PRESETS[0]!.settings)
+
+  // The primary is a recorded scene, not the baseline it starts from. Pinned
+  // because the identity is what the assertion above was quietly resting on.
+  expect(PRESETS[0]!.settings).not.toEqual(DEFAULT_SETTINGS)
 })
 
 test("re-rolling changes the water and keeps the settings", async ({ page }) => {
