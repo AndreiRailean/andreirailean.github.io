@@ -83,9 +83,10 @@ move only when the meaning of a control moves.
 bare address lands on it and the page rewrites the URL to that scene's full
 query, so a visitor leaves with a link to _that scene_ rather than to whatever is
 featured next month. Three other surfaces read it too: the poster captured for
-the index — three of the four recipes name no preset precisely because a bare URL
+the index — four of the five recipes name no preset precisely because a bare URL
 lands here — and both the backdrop a note runs behind its sheet and the hue its
-furniture is tinted from. Promoting a preset to first therefore moves all of
+furniture is tinted from, which walkers reads for whether that furniture is
+light or dark as well. Promoting a preset to first therefore moves all of
 them together, which is the point of the arrangement. See `CONTEXT.md` on
 _primary_, and `tests/unit/experiments-presets.test.ts` for the mechanical half.
 
