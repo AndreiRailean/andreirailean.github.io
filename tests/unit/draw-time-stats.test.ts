@@ -49,6 +49,32 @@ const WAITED = /\b(painted\s*\(|api\.run\s*\(|api\.settle\s*\(|\.run\s*\(|\.sett
 
 const OPT_OUT = "stale-ok:"
 
+/**
+ * The draw-time fields a particular `stats()` read is actually used for.
+ *
+ * Two shapes, because specs write both. A field taken on the spot —
+ * `(await …stats()).colours` — is answered by the line itself. A read bound to
+ * a name is answered by following that name: `const before = await …stats()`
+ * then `before.light` wherever it appears, to the end of the enclosing test.
+ *
+ * Anything else — a read whose value is passed straight to an assertion, say —
+ * reports nothing, which is the safe direction for a check that would otherwise
+ * guess.
+ */
+function fieldsRead(readLine: string, after: readonly string[]): string[] {
+  const onTheSpot = DRAW_TIME.filter((field) => new RegExp(`\\)\\s*\\)?\\s*\\.${field}\\b`).test(readLine))
+  if (onTheSpot.length > 0) return onTheSpot
+
+  const bound = /(?:const|let)\s+([A-Za-z_$][\w$]*)\s*=/.exec(readLine)?.[1]
+  if (bound === undefined) return []
+
+  // To the end of the test this read sits in; a later test cannot see the name.
+  const end = after.findIndex((line) => /^(test|test\.describe)\s*[(.]/.test(line))
+  const body = after.slice(0, end === -1 ? undefined : end).join("\n")
+  const escaped = bound.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  return DRAW_TIME.filter((field) => new RegExp(`\\b${escaped}\\.${field}\\b`).test(body))
+}
+
 const specs = readdirSync(SPECS).filter((name) => name.endsWith(".spec.ts"))
 
 it("finds the browser specs, so an empty run cannot pass for a clean one", () => {
@@ -76,9 +102,17 @@ describe.each(specs)("%s", (file) => {
       const between = window.slice(0, readAt + 1).join("\n")
       if (WAITED.test(between) || between.includes(OPT_OUT)) return
 
-      // Only a *draw-time* field matters. A count computed inside `stats()` is
-      // fine to read immediately, which is why psyxels added `live`.
-      const uses = DRAW_TIME.filter((field) => new RegExp(`\\.${field}\\b`).test(window.join("\n")))
+      /*
+       * **Which fields that read is used for, rather than which appear nearby.**
+       *
+       * The first version searched the next dozen lines for a draw-time name,
+       * which is wrong in both directions and was wrong in both here: it missed
+       * a stale read whose field was used further down, and — once the window
+       * was widened to compensate — it blamed `portrait`, which only reads
+       * `byDepth`, for a `colours` taken from a different `stats()` call later
+       * in the same test. Tying the field to the variable removes both.
+       */
+      const uses = fieldsRead(window[readAt]!, lines.slice(index + 1 + readAt))
       if (uses.length === 0) return
 
       offences.push(`${file}:${index + 1} reads ${uses.join(", ")} after a set() with no frame between`)
