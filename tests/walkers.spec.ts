@@ -122,9 +122,23 @@ test("a crowd, on a ground", async ({ page }) => {
   await experiment.shot("crowd")
 })
 
+/**
+ * **Thirty seconds of park, not ninety.**
+ *
+ * This is the most expensive case in the file — a dense crowd at a small span
+ * is a lot of people, because the opening cast is scattered across the whole
+ * world rather than the frame — and at ninety it ran 48 seconds alone against
+ * this suite's 60-second timeout and failed under the load of a full run.
+ * Measured at 20, 30, 45 and 90 seconds of settle: `inFrame` is 147 to 198 and
+ * `overlap` is 0 at every one of them, so the extra minute changes neither
+ * assertion and costs 45 seconds instead of 18.
+ *
+ * Read the timeout as the signal it is. A smoke test that needs most of a
+ * minute is not smoke-testing.
+ */
 test("nobody is standing inside anybody", async ({ page }) => {
   const experiment = await openWalkers(page, { settings: { density: 60, span: 14 }, idle: true })
-  await experiment.api(({ api }) => api.settle(90))
+  await experiment.api(({ api }) => api.settle(30))
 
   const stats = await experiment.api(({ api }) => api.stats())
   expect(stats.inFrame).toBeGreaterThan(20)
