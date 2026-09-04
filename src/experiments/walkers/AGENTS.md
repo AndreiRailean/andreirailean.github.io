@@ -220,6 +220,26 @@ the whole reason the numbers in `stats()` exist.
   frame.** Who somebody is chasing and who they are looking at both need to know
   whether that person is still here. At fourteen hundred walkers that was two
   million comparisons a frame for a boolean. `Walker.present` is the flag.
+- **An exponential fade in eight bits does not reach zero.** `destination-out`
+  at alpha `a` leaves `round(dst * (1 - a))`, so a pixel stops moving as soon as
+  `dst * a` is under half a level: the decay has a **floor at `127.5 / a`**, and
+  fading a six-second trail one frame at a time asks for an `a` of 0.7/255,
+  which puts that floor at 127. The bright mark faded to a mid grey and then
+  stayed there for ever, every path anybody had ever taken silted up, and the
+  frame came out as the flat wash the fade exists to prevent — at a slowed
+  clock the per-frame alpha rounded to zero outright and nothing faded at all.
+  Nothing errored and the trail still looked like a trail for the first few
+  seconds. Mean luminance of the frame between 45 s and 150 s is what says it:
+  58 → 107 for the naive fade, 32 → 31 for the one in the file. The fix is to
+  erase **one phase at a time** — one pixel in every tile, taking off everything
+  that phase has owed since its last turn — so each erase is big enough to land.
+  The residue that leaves is a couple of levels; it cannot be zero, and
+  `ERASE_FLOOR` is where the trade between that residue and the grain is made.
+- **The phase count must not chase the frame rate.** Changing it starts every
+  phase's clock again, so a count that flips between two values with the frame
+  time resets the clocks faster than they can run and the decay stops dead —
+  the same bug wearing the fix's clothes. Hence the smoothed frame time and the
+  factor-of-four band in `eraseTile`.
 - **Drawing is the whole cost; the simulation is nearly free.** Measured at 330
   walkers: everything off, 60 fps; shadows only, 37; heads only, 34; both, 27.
   So the heads are about 11 ms and the shadows about 10, and the crowd itself

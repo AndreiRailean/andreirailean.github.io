@@ -50,7 +50,7 @@ export type Layers = {
   ground: HTMLCanvasElement | null
   shadow: HTMLCanvasElement | null
   /** Where people have been, fading. Null until anybody asks for it. */
-  trail: HTMLCanvasElement | null
+  trail: Trail | null
 }
 
 /**
@@ -123,6 +123,47 @@ export function paintGround(
 }
 
 /**
+ * The smallest erase a decay pass is allowed to be, in 255ths.
+ *
+ * A canvas holds eight bits of alpha, and `destination-out` at alpha `a`
+ * leaves `round(dst * (1 - a))`. So a pixel stops moving as soon as
+ * `dst * a` falls below half a level, whatever the arithmetic says — the
+ * decay has a **floor at `127.5 / a` levels**, and everything below it is
+ * permanent.
+ *
+ * This is not a rounding detail, it is most of the range. Fading a 6-second
+ * trail one frame at a time asks for `a` of about 0.7/255, which puts the
+ * floor at 127 — the bright mark fades to a mid grey and then stays there for
+ * ever, and the ground silts up to exactly the flat wash the fade exists to
+ * prevent. At 60 fps under a slowed clock the per-frame alpha rounds to zero
+ * and nothing fades at all. Measured, both of them.
+ *
+ * The way out is to make each erase big enough to survive the rounding, which
+ * means erasing each pixel rarely rather than every pixel every frame. At 24
+ * the floor is five levels — under two per cent, uniform, and fainter than the
+ * ground's own mottling.
+ *
+ * It buys that with a step: a pixel waiting its turn is up to a quarter darker
+ * than one just erased, which is the grain the Bayer order and the two-times
+ * blit exist to break up. Raising this floor lowers the residue and coarsens
+ * the grain, and there is no setting that does neither — eight bits will not
+ * hold a smooth fade all the way to nothing.
+ */
+const ERASE_FLOOR = 24
+
+/**
+ * Most phases the decay is spread over, as the edge of a square tile.
+ *
+ * 64 is 4096 phases, which is what the slowest thing the panel can ask for —
+ * a 90-second trail, drawn at 120 fps under a quarter-speed clock — needs to
+ * clear `ERASE_FLOOR`. It is a cap rather than a target: the tile only grows
+ * until the erase is big enough, so it is 8 for a six-second trail and this
+ * only at the far end of the slider. Where the cap binds, the residue creeps
+ * back up.
+ */
+const MAX_TILE = 64
+
+/**
  * Where people have been.
  *
  * A layer of its own between the ground and the shadows, holding a mark laid
@@ -139,32 +180,173 @@ export function paintGround(
  * `destination-out` at an alpha derived from the elapsed time makes the decay
  * exponential and frame-rate independent — painting a fixed alpha per frame
  * would make the trail's length depend on how fast the machine is.
+ *
+ * What it does **not** do is erase the whole buffer every frame; see
+ * `ERASE_FLOOR` for why that leaves a permanent grey. Each frame takes one
+ * phase — one pixel in every tile — and takes off everything that phase has
+ * owed since it was last visited, which is the same exponential over a whole
+ * cycle and a large enough single step to actually land. The phases are walked
+ * in Bayer order so that neighbours are never in step, and the buffer is
+ * blitted up at twice its size, which averages four of them together.
  */
-export function makeTrailBuffer(width: number, height: number): HTMLCanvasElement {
+export type Trail = {
+  buffer: HTMLCanvasElement
+  /** One pixel of a tile, opaque, as the stencil for this frame's erase. */
+  cell: HTMLCanvasElement
+  /** The tile's edge; `tile * tile` is the number of phases. */
+  tile: number
+  /** Phase order, spread by a Bayer matrix: `order[phase]` is a pixel. */
+  order: Uint16Array
+  /** Which phase is erased next. */
+  phase: number
+  /** Piece seconds since the buffer was made. */
+  total: number
+  /** What `total` was when each phase was last erased. */
+  erasedAt: Float64Array
+  /** A smoothed frame time, so the phase count does not chase the frame rate. */
+  step: number
+}
+
+export function makeTrail(width: number, height: number): Trail {
   const buffer = document.createElement("canvas")
   buffer.width = Math.max(1, Math.round(width / TRAIL_SCALE))
   buffer.height = Math.max(1, Math.round(height / TRAIL_SCALE))
-  return buffer
+  const trail: Trail = {
+    buffer,
+    cell: document.createElement("canvas"),
+    tile: 0,
+    order: new Uint16Array(1),
+    phase: 0,
+    total: 0,
+    erasedAt: new Float64Array(1),
+    step: 0,
+  }
+  retile(trail, 1)
+  return trail
+}
+
+/**
+ * The rank of every pixel in a tile, as the recursive Bayer matrix.
+ *
+ * Any order would decay correctly; this one decides what the *disagreement*
+ * between neighbours looks like while they wait their turn. Scanning the tile
+ * in reading order puts a whole row of pixels in step and the next row a full
+ * tile-height behind it, which is banding. Bayer puts the largest gaps between
+ * the closest pixels, so what is left reads as grain at a fraction of a level.
+ */
+function bayerOrder(tile: number): Uint16Array {
+  let matrix = new Uint16Array([0])
+  let size = 1
+  while (size < tile) {
+    const next = new Uint16Array(size * size * 4)
+    const edge = size * 2
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const value = matrix[y * size + x] * 4
+        next[y * edge + x] = value
+        next[y * edge + x + size] = value + 2
+        next[(y + size) * edge + x] = value + 3
+        next[(y + size) * edge + x + size] = value + 1
+      }
+    }
+    matrix = next
+    size = edge
+  }
+
+  // Invert it: the pass wants the pixel for a phase, not the phase for a pixel.
+  const order = new Uint16Array(tile * tile)
+  for (let index = 0; index < matrix.length; index++) order[matrix[index]] = index
+  return order
+}
+
+function retile(trail: Trail, tile: number): void {
+  trail.tile = tile
+  trail.cell.width = tile
+  trail.cell.height = tile
+  trail.order = bayerOrder(tile)
+  trail.erasedAt = new Float64Array(tile * tile).fill(trail.total)
+  trail.phase = 0
+}
+
+/**
+ * The tile to spread the decay over, from what a single frame would take off
+ * in 255ths and the tile in use now.
+ *
+ * `tile * tile` pixels means each one is erased that many frames apart and by
+ * that much more, so the applied erase is `perFrame * tile * tile` and the
+ * residue it leaves behind is `127.5` divided by it. The band is a factor of
+ * four wide because the tile can only double: anywhere inside it the residue
+ * is a couple of levels and the step is a fraction the blit can hide.
+ *
+ * The hysteresis is not decoration. Changing the tile starts every phase's
+ * clock again, so a count that flips between two values with the frame rate
+ * resets the clocks faster than they can run, and the decay stops dead — the
+ * original bug, with more code in front of it.
+ */
+export function eraseTile(perFrame: number, current: number): number {
+  let tile = Math.max(1, current)
+  while (tile < MAX_TILE && perFrame * tile * tile < ERASE_FLOOR) tile *= 2
+  while (tile > 1 && perFrame * tile * tile > ERASE_FLOOR * 4) tile /= 2
+  return tile
+}
+
+/**
+ * One phase's worth of decay: everything that phase has owed since it was last
+ * visited, off the one pixel in every tile that this frame belongs to.
+ *
+ * The frame time is smoothed before it reaches `eraseTile`, so the phase count
+ * follows the machine rather than the last frame.
+ */
+function fade(context: CanvasRenderingContext2D, trail: Trail, seconds: number, elapsed: number): void {
+  trail.step = trail.step === 0 ? elapsed : trail.step + (elapsed - trail.step) * 0.1
+  const tile = eraseTile(255 * (1 - Math.exp(-trail.step / seconds)), trail.tile)
+  if (tile !== trail.tile) retile(trail, tile)
+
+  const phase = trail.phase
+  trail.phase = (phase + 1) % (tile * tile)
+
+  const owed = trail.total - trail.erasedAt[phase]
+  trail.erasedAt[phase] = trail.total
+  const alpha = 1 - Math.exp(-owed / seconds)
+  if (alpha <= 0) return
+
+  const pixel = trail.order[phase]
+  const cell = trail.cell.getContext("2d")
+  if (!cell) return
+  cell.clearRect(0, 0, tile, tile)
+  cell.fillStyle = "#000"
+  cell.fillRect(pixel % tile, Math.floor(pixel / tile), 1, 1)
+  // A pattern is a copy taken when it is made, so this is per frame by
+  // necessity. It is a tile of at most `MAX_TILE` pixels a side.
+  const stencil = context.createPattern(trail.cell, "repeat")
+  if (!stencil) return
+
+  context.setTransform(1, 0, 0, 1, 0, 0)
+  context.globalCompositeOperation = "destination-out"
+  context.globalAlpha = Math.min(1, alpha)
+  context.fillStyle = stencil
+  context.fillRect(0, 0, trail.buffer.width, trail.buffer.height)
+  context.globalAlpha = 1
 }
 
 export function paintTrails(
-  buffer: HTMLCanvasElement,
+  trail: Trail,
   walkers: readonly Walker[],
   view: View,
   settings: Settings,
   elapsed: number,
 ): void {
-  const context = buffer.getContext("2d")
+  const context = trail.buffer.getContext("2d")
   if (!context) return
 
+  // The stencil is a single pixel of a tile and must land on exactly that
+  // pixel.
+  context.imageSmoothingEnabled = false
+
+  trail.total += elapsed
+  fade(context, trail, settings.traces, elapsed)
+
   const scale = 1 / TRAIL_SCALE
-  context.setTransform(1, 0, 0, 1, 0, 0)
-
-  // Everything decays toward nothing with a time constant of `traces` seconds.
-  context.globalCompositeOperation = "destination-out"
-  context.fillStyle = `rgba(0, 0, 0, ${Math.min(1, 1 - Math.exp(-elapsed / settings.traces))})`
-  context.fillRect(0, 0, buffer.width, buffer.height)
-
   context.globalCompositeOperation = "source-over"
   context.setTransform(scale, 0, 0, scale, 0, 0)
   context.globalAlpha = Math.min(0.25, elapsed * DEPOSIT)
@@ -396,7 +578,7 @@ export function drawFrame(
 
   if (settings.traces > 0 && layers.trail) {
     paintTrails(layers.trail, walkers, view, settings, Math.max(1 / 240, elapsed))
-    context.drawImage(layers.trail, 0, 0, width, height)
+    context.drawImage(layers.trail.buffer, 0, 0, width, height)
   }
 
   if (layers.shadow) {

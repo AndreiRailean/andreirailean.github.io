@@ -31,14 +31,7 @@
  */
 
 import { createCrowd, type Crowd, type CrowdStats } from "@/experiments/walkers/crowd"
-import {
-  drawDebug,
-  drawFrame,
-  makeShadowBuffer,
-  makeTrailBuffer,
-  paintGround,
-  type Layers,
-} from "@/experiments/walkers/draw"
+import { drawDebug, drawFrame, makeShadowBuffer, makeTrail, paintGround, type Layers } from "@/experiments/walkers/draw"
 import { groundOf, type Ground } from "@/experiments/walkers/palette"
 import { needsRecast, needsRemeasure, type Settings } from "@/experiments/walkers/settings"
 import { makeSun, makeView, type Sun, type View } from "@/experiments/walkers/view"
@@ -154,7 +147,7 @@ export function createWalkers(canvas: HTMLCanvasElement, initial: Settings): Wal
     remeasure()
     layers.ground = null
     layers.shadow = makeShadowBuffer(width, height)
-    layers.trail = makeTrailBuffer(width, height)
+    layers.trail = makeTrail(width, height)
   }
 
   function remeasure(): void {
@@ -320,7 +313,7 @@ export function createWalkers(canvas: HTMLCanvasElement, initial: Settings): Wal
         crowd.fill()
         // A new cast has not walked anywhere yet, so the ground should not
         // remember the old one having done so.
-        if (layers.trail) layers.trail = makeTrailBuffer(width, height)
+        if (layers.trail) layers.trail = makeTrail(width, height)
       } else if (needsRemeasure(before, settings)) {
         remeasure()
       } else {
