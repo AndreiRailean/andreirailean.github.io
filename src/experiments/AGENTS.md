@@ -138,6 +138,19 @@ src/experiments/<slug>/poster.webp   the result, referenced from about.md
   form these instructions carried until #114 arrived as an unknown slug and
   killed the run. The script now ignores a `--` too, so a command copied out of
   an older ADR still works.
+- **A picture that accumulates has to be _drawn_ into, not just advanced to.**
+  Stepping a piece forward settles its state; it does not necessarily fill a
+  buffer that is built up frame by frame, because that buffer is a rendering
+  artefact rather than simulation state. Psyxels hit this first: `run()` draws
+  its last twenty steps on purpose, because the glow is gathered _between_
+  frames and a fast-forward that draws only its final one leaves the buffer
+  holding a single frame — a poster with no glow on a scene that has plenty.
+  **The three surfaces that read the primary are the three that fall into it**
+  together: the captured poster, the backdrop a note runs behind its sheet, and
+  the reduced-motion still, all of which ask the piece to arrive somewhere
+  without watching it get there. A piece whose picture _is_ the accumulation has
+  no scene at all until enough frames have been drawn, so its recipe has to say
+  how many.
 - **A recipe is per-piece knowledge and stays with the piece.** Which preset,
   what has to happen before the shutter, how long to wait. Dangler loads a
   seeded preset and calls `settle()` twice, because a frame caught mid-relaxation
