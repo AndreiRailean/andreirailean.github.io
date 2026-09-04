@@ -13,7 +13,16 @@ import type { PosterRecipe } from "@/experiments/poster"
  * `settle` is the piece's own verb for exactly this: run the simulation forward
  * without drawing it. Two minutes gets the population to its target, the
  * picnickers onto the ground, and the crowd through one full turnover, which is
- * the state the piece spends the rest of its life in.
+ * the state the piece spends the rest of its life in. The last stretch of it is
+ * walked over the trail as well, so a primary whose whole picture is where
+ * people have been arrives with a ground that has been crossed rather than a
+ * clean one — see `TRACE_WARM` in `walkers.ts`, which exists because of this
+ * recipe.
+ *
+ * **It names no preset**, which is the section's arrangement rather than an
+ * omission: the poster is one of the three surfaces that read the primary, so
+ * promoting a scene to first moves the index card with it. See `../AGENTS.md`
+ * on position one.
  *
  * One shutter, not several. Unlike Starry Night there is nothing transient worth
  * hunting for — the picture is a crowd rather than an event, and every frame two
@@ -22,8 +31,6 @@ import type { PosterRecipe } from "@/experiments/poster"
  * preset carrying a seed, so this recipe is as reproducible as the section gets.
  */
 const poster: PosterRecipe<ExperimentApi> = {
-  preset: "sunday",
-
   prepare: ({ api }) => {
     api.settle(120)
   },

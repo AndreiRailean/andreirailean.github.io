@@ -20,33 +20,19 @@
  * anyone had to write.
  *
  * It is still not a large difference, and that is worth knowing rather than
- * fighting: **the size of a person is carried by their shadow, not their head.**
- * Shadow length and width both go straight with stature, so a 1.75 m adult's
- * shadow is 1.6 times a 1.1 m child's in both directions where their heads
- * differ by a seventh. Whoever next wants children to read as smaller should
- * reach for the light before reaching for the head.
+ * fighting: **very little of a person's size survives the trip up here.** A
+ * seventh between an adult and a small child, once the perspective has had its
+ * say. Whoever next wants children to read as smaller should reach for how they
+ * move — a child's cadence comes out higher because their legs are shorter, and
+ * that is visible at sizes where a diameter is not.
  *
- * It also gives the jump and the fall somewhere to go: a child leaving the
- * ground gets larger, and the shadow underneath them slides away, which is two
- * independent cues from one line of geometry.
- *
- * ## The light
- *
- * A walker is a **circle**, and its shadow is the shadow of a circle: a soft
- * ellipse, stretched along the light and thrown further the lower the sun is.
- *
- * It was the shadow of a whole *person* — three tapered strokes, head and torso
- * and legs — on the reasoning that a bright day from above really does look like
- * a scattering of heads each with a body lying next to it on the grass. That is
- * true and it was the wrong thing to build. The brief here is dots with human
- * motion, not people: the realism belongs in how they move, and drawing the body
- * we had agreed was invisible put it back in the picture through the floor. See
- * `AGENTS.md`.
- *
- * What the light is still for, and why it survived the deletion: a shadow that
- * separates from its dot is the only cue for **height**. A child leaving the
- * ground is magnified and their shadow slides out from under them, and neither
- * of those needs a figure to read.
+ * The lean of the heads outward near the frame edge is the same geometry, and
+ * so is the jump: a child leaving the ground is magnified. That magnification is
+ * now the only cue for height there is. It used to be the smaller half of a
+ * pair — a shadow sliding out from under its owner was the other, and the more
+ * legible — and the light that cast it has been removed along with the sun,
+ * because a piece of dots and the paths they wear has no use for a body lying
+ * on the grass beside every one of them. See `AGENTS.md`.
  */
 
 export type View = {
@@ -66,9 +52,9 @@ export type View = {
    * How far past the frame the world extends, in metres.
    *
    * People arrive from off screen and leave the same way, and both have to
-   * happen where they cannot be seen to pop. It also has to be wider than the
-   * longest shadow, or a person still outside the frame would throw one into it
-   * with nobody attached.
+   * happen where they cannot be seen to pop. It is also what the population
+   * controller counts its pipeline over, so it is a real number rather than
+   * slack: how long somebody spends walking in is set here.
    */
   margin: number
 }
@@ -114,58 +100,3 @@ export const screenY = (view: View, y: number): number => view.height / 2 - y * 
 /** CSS pixels back to world metres, for anything that wants to place by frame. */
 export const worldX = (view: View, sx: number): number => (sx - view.width / 2) / view.pxPerMetre
 export const worldY = (view: View, sy: number): number => (view.height / 2 - sy) / view.pxPerMetre
-
-/** Whether a ground position is inside the frame, with a margin in metres. */
-export const inFrame = (view: View, x: number, y: number, pad = 0): boolean =>
-  Math.abs(x) <= view.halfWidth + pad && Math.abs(y) <= view.halfHeight + pad
-
-export type Sun = {
-  /** Unit vector in world coordinates pointing *toward* the sun, ground plane. */
-  x: number
-  y: number
-  /** Metres of shadow per metre of height. `1/tan(elevation)`. */
-  reach: number
-  /** How diffuse the light is. A low sun is a softer, longer, weaker shadow. */
-  softness: number
-  /**
-   * How far a shadow is stretched along the light.
-   *
-   * The shadow of a sphere on the ground is an ellipse with its short axis the
-   * sphere's radius and its long axis `r / sin(elevation)`. Overhead it is a
-   * disc; near the horizon it is a streak.
-   */
-  stretch: number
-}
-
-/**
- * Where the light is coming from.
- *
- * Azimuth is clockwise from the top of the frame, which is how a person reads a
- * picture rather than how a compass works — the sun at 180° is at the bottom of
- * the screen and the shadows point up.
- *
- * The reach is clamped well below what `1/tan` gives near the horizon: at 5° a
- * shadow is eleven times a person's height and the frame becomes a picture of
- * shadows with some heads in it. 15° is the bottom of the slider and gives 3.7,
- * which is already long.
- */
-export function makeSun(azimuthDegrees: number, elevationDegrees: number): Sun {
-  const azimuth = (azimuthDegrees * Math.PI) / 180
-  const elevation = Math.max(0.12, (elevationDegrees * Math.PI) / 180)
-
-  return {
-    x: Math.sin(azimuth),
-    y: Math.cos(azimuth),
-    reach: Math.min(4, 1 / Math.tan(elevation)),
-    stretch: Math.min(4, 1 / Math.sin(elevation)),
-    // The sun is the same size in the sky whatever its elevation, but its light
-    // travels through more atmosphere low down, so the shadow edge is softer and
-    // the shadow itself weaker. One number for both.
-    softness: 0.35 + 0.65 * (1 - Math.sin(elevation)),
-  }
-}
-
-/** Where the shadow of a point at height `z` above (x, y) lands, in world metres. */
-export function shadowOf(sun: Sun, x: number, y: number, z: number): { x: number; y: number } {
-  return { x: x - sun.x * sun.reach * z, y: y - sun.y * sun.reach * z }
-}

@@ -31,10 +31,10 @@
  */
 
 import { createCrowd, type Crowd, type CrowdStats } from "@/experiments/walkers/crowd"
-import { drawDebug, drawFrame, makeShadowBuffer, makeTrail, paintGround, type Layers } from "@/experiments/walkers/draw"
+import { drawDebug, drawFrame, makeTrail, paintGround, paintTrails, type Layers } from "@/experiments/walkers/draw"
 import { groundOf, type Ground } from "@/experiments/walkers/palette"
 import { needsRecast, needsRemeasure, type Settings } from "@/experiments/walkers/settings"
-import { makeSun, makeView, type Sun, type View } from "@/experiments/walkers/view"
+import { makeView, type View } from "@/experiments/walkers/view"
 
 export type WalkersStats = CrowdStats & {
   /**
@@ -81,6 +81,46 @@ const STEP = 1 / 120
 /** Never catch up on more than this in one frame. */
 const MAX_STEPS = 4
 
+/**
+ * How much of a settle the ground is made to remember, in time constants.
+ *
+ * A `settle` runs the crowd forward without drawing, and the trail is drawn
+ * rather than simulated, so a settled park used to arrive on perfectly clean
+ * ground — which was fine while every preset that mattered had `traces` at
+ * zero, and stopped being fine the moment the primary was a scene with nothing
+ * in it *but* traces. The poster, the note's backdrop and the one frame a
+ * reduced-motion visitor gets are all stills of a settled park, and all three
+ * came out as bare ground with a few one-second stubs on it.
+ *
+ * Four time constants is where a mark is down to under two per cent — the
+ * residue the fade leaves anyway — so warming for longer would add nothing
+ * anyone can see.
+ */
+const TRACE_WARM = 4
+
+/**
+ * Piece seconds between trail passes while warming.
+ *
+ * `DEPOSIT` is a rate, so a coarser pass lays proportionally more and the ink
+ * per second comes out the same either way. What does not survive coarsening
+ * is the *spacing*: a walker covers 5 cm between passes at this rate against a
+ * mark 20 cm across, and a runner 13 cm, so the marks still overlap into a
+ * line. At a quarter of a second they do not, and the trail comes out as
+ * dotted lines nobody drew.
+ */
+const TRACE_PASS = 1 / 24
+
+/**
+ * The most warming any one settle will do, in seconds.
+ *
+ * It is wall-clock the visitor waits for — a landing under reduced motion runs
+ * this before it can paint. A 6-second trail wants 24 and is under the cap; a
+ * 42-second one wants 168, gets 30, and comes out thinner than the same scene
+ * running. Thin is a fair trade for a page that paints; gappy is not, which is
+ * why the cap shortens the window rather than coarsening the pass.
+ */
+const MAX_WARM = 30
+
 /** How long the crowd is run before a reduced-motion still is taken. */
 const STILL_SECONDS = 12
 
@@ -100,10 +140,9 @@ export function createWalkers(canvas: HTMLCanvasElement, initial: Settings): Wal
   let dpr = 1
 
   let view: View = makeView(settings.span, settings.camera, 1, 1)
-  let sun: Sun = makeSun(settings.sunAzimuth, settings.sun)
-  let ground: Ground = groundOf(settings, sun)
+  let ground: Ground = groundOf(settings)
 
-  const layers: Layers = { ground: null, shadow: null, trail: null }
+  const layers: Layers = { ground: null, trail: null }
 
   /** Where the clock was when the last frame was drawn, for the trail's decay. */
   let drawnAt = 0
@@ -118,7 +157,7 @@ export function createWalkers(canvas: HTMLCanvasElement, initial: Settings): Wal
    * was a bug in the order of two lines. `start()` measures first and fills
    * after.
    */
-  let crowd: Crowd = createCrowd({ view, settings, sun })
+  let crowd: Crowd = createCrowd({ view, settings })
 
   let frame = 0
   let running = false
@@ -146,14 +185,16 @@ export function createWalkers(canvas: HTMLCanvasElement, initial: Settings): Wal
 
     remeasure()
     layers.ground = null
-    layers.shadow = makeShadowBuffer(width, height)
     layers.trail = makeTrail(width, height)
   }
 
   function remeasure(): void {
-    // The margin has to clear the longest shadow, or somebody still outside the
-    // frame throws one into it with nobody attached to it.
-    const margin = 3 + settings.camera * 0.02 + sun.reach * 2.2
+    // Far enough out that nobody is seen to appear, and that the population
+    // controller has a pipeline to count: `arrivalHorizon` is derived from this,
+    // so it sets how long somebody spends walking in. A share of the span, since
+    // that is what decides how far "out of shot" has to be — it used to carry a
+    // term for the longest shadow, which is what set it while there was a sun.
+    const margin = 3 + settings.camera * 0.02 + settings.span * 0.3
     view = makeView(settings.span, settings.camera, width || 1, height || 1, margin)
     crowd.remeasure(view, settings)
   }
@@ -168,7 +209,6 @@ export function createWalkers(canvas: HTMLCanvasElement, initial: Settings): Wal
     heads = drawFrame(context, {
       walkers: crowd.walkers,
       view,
-      sun,
       settings,
       ground,
       layers,
@@ -201,8 +241,31 @@ export function createWalkers(canvas: HTMLCanvasElement, initial: Settings): Wal
    * and nothing looked broken; it just was.
    */
   function advance(seconds: number): void {
-    const steps = Math.round(Math.max(0, Math.min(600, seconds)) / STEP)
-    for (let step = 0; step < steps; step++) crowd.step(STEP)
+    const total = Math.max(0, Math.min(600, seconds))
+    const steps = Math.round(total / STEP)
+
+    // The last stretch of it is walked over the trail as well as simulated, so
+    // that a still of a settled park is a still of ground somebody has crossed.
+    // See `TRACE_WARM`. Everything before the window is left undrawn because it
+    // has already faded — the saving is the whole reason there is a window.
+    const warming = layers.trail !== null && settings.traces > 0 && width > 0
+    const warm = warming ? Math.min(total, settings.traces * TRACE_WARM, MAX_WARM) : 0
+    const from = steps - Math.round(warm / STEP)
+    const every = Math.max(1, Math.round(TRACE_PASS / STEP))
+
+    for (let step = 0; step < steps; step++) {
+      crowd.step(STEP)
+      // Counted back from the end, so the final step always lays a mark and the
+      // crowd is standing on its own last footprints.
+      if (layers.trail && step >= from && (steps - 1 - step) % every === 0) {
+        paintTrails(layers.trail, crowd.walkers, view, settings, every * STEP)
+      }
+    }
+
+    // The next frame is a continuation of this, not a jump: without it the draw
+    // loop reads a gap of however long the settle was and fades the ground it
+    // has just been given.
+    drawnAt = crowd.clock
   }
 
   function tick(now: number): void {
@@ -304,11 +367,10 @@ export function createWalkers(canvas: HTMLCanvasElement, initial: Settings): Wal
       const before = settings
       settings = next
 
-      sun = makeSun(settings.sunAzimuth, settings.sun)
-      ground = groundOf(settings, sun)
+      ground = groundOf(settings)
 
       if (needsRecast(before, settings)) {
-        crowd = createCrowd({ view, settings, sun })
+        crowd = createCrowd({ view, settings })
         remeasure()
         crowd.fill()
         // A new cast has not walked anywhere yet, so the ground should not
@@ -320,7 +382,7 @@ export function createWalkers(canvas: HTMLCanvasElement, initial: Settings): Wal
         crowd.remeasure(view, settings)
       }
 
-      crowd.recolour(settings, sun)
+      crowd.recolour(settings)
 
       // The ground bakes its colour and its blotches, so any of those moving
       // means repainting it — and nothing else does.
@@ -328,9 +390,7 @@ export function createWalkers(canvas: HTMLCanvasElement, initial: Settings): Wal
         before.hue !== settings.hue ||
         before.tint !== settings.tint ||
         before.dusk !== settings.dusk ||
-        before.seed !== settings.seed ||
-        before.sun !== settings.sun ||
-        before.shadow !== settings.shadow
+        before.seed !== settings.seed
       ) {
         layers.ground = null
       }

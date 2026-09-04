@@ -1,7 +1,7 @@
 # Walkers — notes for agents
 
-A crowd from directly above. A person is a head and a shadow; everything you can
-tell about them, you tell from how they move.
+A crowd from directly above. A person is a dot; everything you can tell about
+them, you tell from how they move.
 
 `about.md` beside this file is the human-facing note. This is what you need
 before changing anything.
@@ -28,9 +28,14 @@ So:
 
 - **Dots are circles**, lit as spheres, with the highlight the same way for
   everybody so the frame has a light in it rather than a field of arrows.
-- **A shadow is the shadow of a circle** — a soft ellipse stretched along the
-  light. It survives only because it is the sole cue for **height**: a jumper's
-  shadow slides out from under them, and that needs no figure.
+- **There is no light and there are no shadows.** A shadow of a circle survived
+  the first pass on the grounds that it was the sole cue for **height** — a
+  jumper's shadow slides out from under them, and that needs no figure. Andrei
+  removed the sun, the bearing, the shadow control and the whole layer behind
+  them on 2026-09-04, along with the `long shadows` preset. What is left of the
+  jump is the magnification a pinhead gets from coming closer to the lens, which
+  is real and is weaker. **Do not put the shadows back to make a jump read**;
+  that trade has been made deliberately and in full knowledge of what it cost.
 - **Head orientation is simulated and not drawn.** `updateGaze` is real and the
   debug overlay draws its rays, because gaze is what makes a group read as a
   group in the _numbers_. It reaches the picture through nothing.
@@ -68,9 +73,9 @@ body.ts       anatomy and gait. Measured, not chosen. No settings.
 steering.ts   why nobody walks through anybody. Pure functions.
 grid.ts       a uniform grid, so avoidance is not n².
 crowd.ts      who is out there, what they are doing, where they go next.
-view.ts       the camera (a real pinhole) and the sun.
+view.ts       the camera. A real pinhole, at a stated height.
 palette.ts    the ground, the light, and what everybody is wearing.
-draw.ts       ground, shadows, heads. In that order, for stated reasons.
+draw.ts       ground, traces, heads. In that order, for stated reasons.
 walkers.ts    the scene: canvas, clock, resize, stats.
 settings.ts   Settings, CONTROLS, PRESETS, the one validator.
 ```
@@ -167,8 +172,8 @@ the whole reason the numbers in `stats()` exist.
   `mottleOut` for this.
 - **The crowd's lightness is pitched against the ground's**, not at an absolute
   value. Pastel heads at 70% on a ground at 70% are invisible at eight pixels
-  across whatever their hue, and the frame came out as a field of shadows with
-  nobody casting them.
+  across whatever their hue, and the frame came out empty with a faint texture
+  on it.
 - **Two dwelling groups given nearby spots do not sort it out.** Each holds a
   formation around its own centre, so they push into each other and keep pushing
   — a permanent ten-centimetre interpenetration, which is worse than a
@@ -188,7 +193,8 @@ the whole reason the numbers in `stats()` exist.
 - **The highlight must not encode a heading.** Pushed to where a sphere's really
   would be, and offset along each walker's own facing, it turns every dot into a
   little arrow and the crowd into a field of them. It is small, and toward the
-  sun, the same way for everybody.
+  same way for everybody — `LIGHT_X`/`LIGHT_Y`, which is a constant and not a
+  sun.
 - **A walker who holds one speed for ever reads as a microbe, not a person.**
   Constant-velocity gliding is the single strongest tell at small sizes, and it
   is not fixed by any amount of avoidance quality. Three timescales answer it —
@@ -245,10 +251,12 @@ the whole reason the numbers in `stats()` exist.
   the same bug wearing the fix's clothes. Hence the smoothed frame time and the
   factor-of-four band in `eraseTile`.
 - **Drawing is the whole cost; the simulation is nearly free.** Measured at 330
-  walkers: everything off, 60 fps; shadows only, 37; heads only, 34; both, 27.
-  So the heads are about 11 ms and the shadows about 10, and the crowd itself
-  does not show up. Optimise the renderer, not the model. A `Path2D` batch of
-  the shadow strokes was tried and was _slower_ — measure before keeping.
+  walkers, back when there were shadows: everything off, 60 fps; shadows only,
+  37; heads only, 34; both, 27. So the heads were about 11 ms and the shadows
+  about 10, and the crowd itself did not show up. The shadows are gone, which
+  buys back their half of it; the conclusion stands, and it is the renderer to
+  optimise rather than the model. A `Path2D` batch of the shadow strokes was
+  tried and was _slower_ — measure before keeping anything.
 
 ## Invariants
 

@@ -98,7 +98,7 @@ async function inked(page: Parameters<typeof openExperiment>[0]) {
   })
 }
 
-test("a crowd, on a ground, with shadows", async ({ page }) => {
+test("a crowd, on a ground", async ({ page }) => {
   const experiment = await openWalkers(page, { settings: MODEST, idle: true })
   await experiment.api(({ api }) => api.settle(60))
   await painted(page)
@@ -108,11 +108,12 @@ test("a crowd, on a ground, with shadows", async ({ page }) => {
   expect(stats.heads, "heads drawn").toBeGreaterThanOrEqual(stats.inFrame)
 
   const canvas = await inked(page)
-  // At this ground the heads are pitched lighter and the shadows darker, so
-  // both populations have to exist. A picture with only one of them is a
-  // picture with either no people in it or no light on them.
-  expect(canvas.lighter, "no heads brighter than the ground").toBeGreaterThan(200)
-  expect(canvas.darker, "no shadows darker than the ground").toBeGreaterThan(200)
+  // Either side, not a named one. `skinOf` pitches the crowd against the ground
+  // and puts them on **whichever side has room**, so which of these two carries
+  // the count is a property of the ground rather than of the crowd. Asserting
+  // `darker` by name passed only while every scene also had a shadow under
+  // everybody to guarantee it.
+  expect(canvas.lighter + canvas.darker, "nothing on the ground at all").toBeGreaterThan(400)
   // And the crowd is a crowd rather than a covering: most of the frame is still
   // ground, which is what stops this passing on a canvas that has gone wrong in
   // some other way entirely.
@@ -307,7 +308,7 @@ test("a scene round-trips through its URL", async ({ page }) => {
     density: 27,
     children: 0.34,
     span: 17,
-    sun: 41,
+    traces: 3,
     bob: 1.65,
   } as const
 

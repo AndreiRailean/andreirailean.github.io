@@ -52,8 +52,10 @@ const theme: NoteTheme = {
           gaze: 0.9,
           span: 30,
           camera: 60,
-          sun: 66,
-          shadow: 0.32,
+          // Enough for the ground to hold a few seconds of where people went,
+          // which is what the piece looks like now that there is no light and
+          // nothing casting anything. Short, because this is behind prose.
+          traces: 8,
           hue: PRESETS[0]!.settings.hue,
           spread: 24,
           pastel: 0.85,

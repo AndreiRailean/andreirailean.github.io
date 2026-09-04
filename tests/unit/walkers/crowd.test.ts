@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { createCrowd, type Crowd } from "@/experiments/walkers/crowd"
 import { DEFAULT_SETTINGS, normalizeSettings, PRESETS, type Settings } from "@/experiments/walkers/settings"
-import { makeSun, makeView } from "@/experiments/walkers/view"
+import { makeView } from "@/experiments/walkers/view"
 
 /**
  * The crowd, run headless.
@@ -29,8 +29,8 @@ const STEP = 1 / 60
 const LEASH_METRES = 3.4
 
 /**
- * The margin the scene computes is however far the longest shadow reaches; here
- * it is as small as the world can be while still having one.
+ * The margin the scene computes is a share of its span; here it is as small as
+ * the world can be while still having one.
  *
  * It is not part of anything under test, and it is expensive: the opening crowd
  * is scattered across the whole world rather than only the frame, so doubling
@@ -41,8 +41,7 @@ const MARGIN = 4
 function park(patch: Partial<Settings> = {}, seconds = 0) {
   const settings = normalizeSettings(patch)
   const view = makeView(settings.span, settings.camera, 1280, 800, MARGIN)
-  const sun = makeSun(settings.sunAzimuth, settings.sun)
-  const crowd = createCrowd({ view, settings, sun })
+  const crowd = createCrowd({ view, settings })
   crowd.fill()
   run(crowd, seconds)
   return { crowd, view, settings }
@@ -235,7 +234,7 @@ describe("the presets", () => {
       // and `bacteria` at a full 1280×800 is a thousand walkers to check
       // something a few hundred check just as well.
       const view = makeView(settings.span, settings.camera, 720, 450, MARGIN)
-      const crowd = createCrowd({ view, settings, sun: makeSun(settings.sunAzimuth, settings.sun) })
+      const crowd = createCrowd({ view, settings })
       crowd.fill()
 
       let worst = 0

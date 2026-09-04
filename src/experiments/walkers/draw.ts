@@ -31,24 +31,23 @@
 import { headDrift, headHeight, headSway, type Walker } from "@/experiments/walkers/crowd"
 import type { Ground } from "@/experiments/walkers/palette"
 import type { Settings } from "@/experiments/walkers/settings"
-import { lift, screenX, screenY, shadowOf, type Sun, type View } from "@/experiments/walkers/view"
+import { lift, screenX, screenY, type View } from "@/experiments/walkers/view"
 
 /**
- * How much smaller the shadow buffer is than the frame.
+ * Where the light on a head comes from, as a unit vector in screen coordinates.
  *
- * The scaling back up is the blur: it costs nothing, and a shadow is the one
- * thing in the picture that is meant to be indistinct. Three was chosen by
- * looking — at two the edges are still crisp enough to read as geometry, and at
- * four a small child's shadow is four pixels across and flickers as it moves.
+ * Up and a little to the left. There is no sun any more and this is not one: it
+ * exists so that every dot is lit the same way and reads as a ball rather than
+ * a disc, which is the entire job the sun's bearing was doing here by the end.
  */
-const SHADOW_SCALE = 3
+const LIGHT_X = -0.55
+const LIGHT_Y = -0.84
 
 /** Below this radius in pixels a gradient is invisible and a flat fill is not. */
 const GRADIENT_FLOOR = 6
 
 export type Layers = {
   ground: HTMLCanvasElement | null
-  shadow: HTMLCanvasElement | null
   /** Where people have been, fading. Null until anybody asks for it. */
   trail: Trail | null
 }
@@ -373,89 +372,6 @@ export function paintTrails(
   context.globalAlpha = 1
 }
 
-/** The buffer the shadows are drawn into, at a third of the frame's size. */
-export function makeShadowBuffer(width: number, height: number): HTMLCanvasElement {
-  const buffer = document.createElement("canvas")
-  buffer.width = Math.max(1, Math.round(width / SHADOW_SCALE))
-  buffer.height = Math.max(1, Math.round(height / SHADOW_SCALE))
-  return buffer
-}
-
-/**
- * Every walker's shadow, as one composited layer.
- *
- * One soft ellipse each, at the point the light puts it, with the short axis the
- * walker's own size and the long axis stretched along the light — which is what
- * the shadow of a ball is. Overhead it is a disc directly underneath; low down
- * it is a streak thrown a long way off.
- *
- * A jump lifts the dot, so its shadow moves away from it and shrinks. That is
- * the whole reason this layer survives.
- */
-export function paintShadows(
-  buffer: HTMLCanvasElement,
-  walkers: readonly Walker[],
-  view: View,
-  sun: Sun,
-  settings: Settings,
-  ground: Ground,
-): void {
-  const context = buffer.getContext("2d")
-  if (!context) return
-
-  context.setTransform(1, 0, 0, 1, 0, 0)
-  context.clearRect(0, 0, buffer.width, buffer.height)
-  if (settings.shadow <= 0) return
-
-  const scale = 1 / SHADOW_SCALE
-  context.setTransform(scale, 0, 0, scale, 0, 0)
-  // The shadow's own colour, drawn opaque here and composited once, so two
-  // overlapping shadows do not darken where they cross. Outdoors they do not.
-  context.fillStyle = ground.shadow
-
-  // The light's bearing on screen, which every shadow is stretched along.
-  const along = Math.atan2(-sun.y, sun.x)
-
-  for (const walker of walkers) {
-    const z = headHeight(walker, settings.bob)
-    const cast = shadowOf(sun, walker.x, walker.y, z)
-    const radius = walker.body.headBreadth * 0.62 * view.pxPerMetre
-
-    context.beginPath()
-    context.ellipse(
-      screenX(view, cast.x),
-      screenY(view, cast.y),
-      Math.max(0.8, radius * sun.stretch),
-      Math.max(0.8, radius),
-      along,
-      0,
-      Math.PI * 2,
-    )
-    context.fill()
-  }
-}
-
-/** The shadow layer, put back over the ground at one alpha for the whole crowd. */
-export function blitShadows(
-  context: CanvasRenderingContext2D,
-  buffer: HTMLCanvasElement,
-  width: number,
-  height: number,
-  ground: Ground,
-): void {
-  if (ground.shadowAlpha <= 0) return
-  context.save()
-  context.globalAlpha = ground.shadowAlpha
-  // Plain source-over rather than `multiply`. Multiply is the physically
-  // truthful blend and it costs a full-viewport composite every frame at device
-  // resolution, which was measurably the most expensive thing the piece did —
-  // and against a ground this flat the two are indistinguishable, because the
-  // shadow is already the ground's own colour darkened.
-  context.imageSmoothingEnabled = true
-  context.drawImage(buffer, 0, 0, width, height)
-  context.restore()
-}
-
 type Placed = {
   walker: Walker
   /** Screen position of the dot, in CSS pixels. */
@@ -519,17 +435,19 @@ export function placeHeads(walkers: readonly Walker[], view: View, settings: Set
  * What is left is a lit sphere, which is what the other pieces in this section
  * draw and what the brief asked for: dots, circles, points of light. The shading
  * says "ball" rather than "disc" and says nothing about direction — the offset
- * is small and toward the sun, the same way for everybody, so the frame has a
- * light in it rather than a field of little arrows.
+ * is small and the same way for everybody, so the frame has a light in it rather
+ * than a field of little arrows.
  */
-export function drawHead(context: CanvasRenderingContext2D, item: Placed, sun: Sun): void {
+export function drawHead(context: CanvasRenderingContext2D, item: Placed): void {
   const { walker, sx, sy, radius } = item
   const tones = walker.tones
 
-  // Toward the sun, in screen coordinates. The same direction for every dot in
-  // the frame, which is what makes it a light rather than a heading.
-  const towardX = sun.x * radius * 0.26
-  const towardY = -sun.y * radius * 0.26
+  // Up and to the left, which is where a light is unless a picture says
+  // otherwise. It was the sun's bearing when there was a sun to have one, and
+  // a constant is all that direction ever was to this: the same for every dot
+  // in the frame, which is what makes it a light rather than a heading.
+  const towardX = LIGHT_X * radius * 0.26
+  const towardY = LIGHT_Y * radius * 0.26
 
   if (radius >= GRADIENT_FLOOR) {
     const gradient = context.createRadialGradient(sx + towardX, sy + towardY, radius * 0.1, sx, sy, radius * 1.35)
@@ -561,7 +479,6 @@ export function drawFrame(
   options: {
     walkers: readonly Walker[]
     view: View
-    sun: Sun
     settings: Settings
     ground: Ground
     layers: Layers
@@ -572,7 +489,7 @@ export function drawFrame(
     height: number
   },
 ): number {
-  const { walkers, view, sun, settings, ground, layers, clock, elapsed, width, height } = options
+  const { walkers, view, settings, ground, layers, clock, elapsed, width, height } = options
 
   if (layers.ground) context.drawImage(layers.ground, 0, 0, width, height)
   else {
@@ -585,15 +502,10 @@ export function drawFrame(
     context.drawImage(layers.trail.buffer, 0, 0, width, height)
   }
 
-  if (layers.shadow) {
-    paintShadows(layers.shadow, walkers, view, sun, settings, ground)
-    blitShadows(context, layers.shadow, width, height, ground)
-  }
-
   if (!settings.heads) return 0
 
   const placed = placeHeads(walkers, view, settings, clock)
-  for (const item of placed) drawHead(context, item, sun)
+  for (const item of placed) drawHead(context, item)
 
   return placed.length
 }

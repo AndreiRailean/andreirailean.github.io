@@ -45,7 +45,7 @@ import {
   type Disc,
   type Force,
 } from "@/experiments/walkers/steering"
-import type { Sun, View } from "@/experiments/walkers/view"
+import type { View } from "@/experiments/walkers/view"
 import { makeRng, type Rng } from "@/experiments/random"
 
 const TAU = Math.PI * 2
@@ -374,7 +374,7 @@ export type Crowd = {
   /** Bring the crowd up to the population the view and density ask for. */
   fill: () => void
   remeasure: (view: View, settings: Settings) => void
-  recolour: (settings: Settings, sun: Sun) => void
+  recolour: (settings: Settings) => void
   stats: () => CrowdStats
   clock: number
 }
@@ -382,13 +382,11 @@ export type Crowd = {
 type Options = {
   view: View
   settings: Settings
-  sun: Sun
 }
 
-export function createCrowd({ view: initialView, settings: initialSettings, sun: initialSun }: Options): Crowd {
+export function createCrowd({ view: initialView, settings: initialSettings }: Options): Crowd {
   let view = initialView
   let settings = initialSettings
-  let sun = initialSun
 
   /**
    * One stream for the whole crowd rather than a generator per person.
@@ -894,7 +892,7 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
       until: 0,
       slot,
       skin,
-      tones: tonesFor(settings, skin, sun),
+      tones: tonesFor(settings, skin),
       quarry: null,
       yieldUntil: 0,
       speed: 0,
@@ -1997,12 +1995,11 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
       settings = nextSettings
     },
 
-    recolour(nextSettings, nextSun) {
+    recolour(nextSettings) {
       settings = nextSettings
-      sun = nextSun
       for (const walker of walkers) {
         walker.skin = skinOf(settings.palette, settings, walker.rng, walker.group.hue, walker.group.team)
-        walker.tones = tonesFor(settings, walker.skin, sun)
+        walker.tones = tonesFor(settings, walker.skin)
       }
     },
 

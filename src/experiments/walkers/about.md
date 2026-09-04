@@ -1,7 +1,7 @@
 ---
 slug: walkers
 title: Walkers
-summary: A crowd from directly above, where a person is a head and a shadow, and everything you can tell about them you tell from how they move.
+summary: A crowd from directly above, where a person is a dot and everything you can tell about them you tell from how they move.
 started: 2026-09-03
 updated: 2026-09-03
 poster: ./poster.webp
@@ -12,8 +12,8 @@ tags:
 ---
 
 Looking straight down at a piece of ground. People come in from the sides, cross
-it or stop on it, and go. You never see a body — only the top of a head, and the
-shadow it belongs to.
+it or stop on it, and go. You never see a body — only a dot, and whatever the
+crowd has worn into the ground underneath.
 
 ## The idea
 
@@ -108,18 +108,19 @@ the frame, by exactly the same factor. Twenty-four metres up that takes the
 adult to about a seventh larger, and the heads near the edges lean out over
 their own feet; at twelve metres it is nearly a fifth. Bring the camera down and
 both effects grow together, because they are the same effect. It also means a
-child leaving the ground gets visibly larger, which is one of the two things
-that make a jump read.
+child leaving the ground gets visibly larger, which is the only thing here that
+makes a jump read at all.
 
-The other is the shadow. It is the shadow of a _circle_ — a soft ellipse,
-stretched along the light and thrown further the lower the sun is — and it earns
-its place for one reason: it is the only cue for height. When a child jumps,
-their shadow slides out from under them and shrinks.
+There used to be a second: a shadow, thrown further the lower the sun was, which
+slid out from under a child as they left the ground. It was the more legible of
+the two and it has been taken out along with the sun. A piece of dots and the
+paths they wear has no use for a body lying on the grass beside every one of
+them, and the light was only ever there to cast it.
 
 ## What the sliders are for
 
 Roughly: the ones under **crowd** decide who turns up, the ones under **people**
-decide what they are like, and the rest is the camera, the light and the paint.
+decide what they are like, and the rest is the camera and the paint.
 
 The two worth reaching for first are **density** and **going**. Density is
 people per hundred square metres of ground actually in frame, so widening the
@@ -137,15 +138,20 @@ were not supposed to notice.
 Two of them change what the piece _is_ rather than how it looks. **Traces** lets
 the ground remember: paths that keep being used stay dark because they keep
 being renewed, and paths that do not simply fade. Nobody draws a desire line — it
-is what is left when everything else has gone. And **heads** can be turned off
-entirely, leaving nothing in the frame but where people have been.
+is what is left when everything else has gone. Its track is logarithmic, because
+the interesting range runs from a fifth of a second — a glow that keeps up with
+a runner and is gone behind them — to a minute and a half, and a linear slider
+puts the whole short half in the first two per cent of the travel. And **heads**
+can be turned off entirely, leaving nothing in the frame but where people have
+been.
 
-Between them the scenes are meant to be far apart, and three of them were found
-rather than designed. **Bacteria** is what the crowd looks like from far enough
-up that people are motile specks, which is not what anyone set out to build.
-**Desire lines** is the ground remembering the last minute of it. **Chalky** is
-the same thing at night with the people turned off, which is the piece reduced
-to its own handwriting.
+Between them the scenes are meant to be far apart, and most of them were found
+rather than designed. **Chalky** is the piece reduced to its own handwriting:
+night, the people turned off, and nothing in the frame but what they wrote on
+the way through. **Bacteria** is what the crowd looks like from far enough up
+that people are motile specks, which is not what anyone set out to build, and
+**busy** is that from lower down with everybody on their own errand. **Desire
+lines** is the ground remembering a whole turnover of the crowd.
 
 ## What it does not do yet
 

@@ -25,7 +25,6 @@
 
 import { gaussian, type Rng } from "@/experiments/random"
 import type { PaletteName, Settings } from "@/experiments/walkers/settings"
-import type { Sun } from "@/experiments/walkers/view"
 
 /** The hue the crowd's own colours scatter around. */
 export const crowdCentre = (settings: Settings): number => (settings.hue + 160) % 360
@@ -90,8 +89,8 @@ export function skinOf(
   // **Pitched against the ground rather than at an absolute value.** The first
   // version put pastel heads at around 70% lightness on a ground that was also
   // around 70%, and at eight pixels across a head that differs from the grass
-  // only in hue is not visible at all — the picture came out as a field of
-  // shadows with nobody casting them.
+  // only in hue is not visible at all — the picture came out as an empty field
+  // with a faint texture on it.
   //
   // And pitched to **whichever side has room**. On grass or paving people are
   // the lighter thing; on sand or bleached paving they are the darker one, which
@@ -100,9 +99,9 @@ export function skinOf(
   // would climb into the clamp at the top and disappear into it.
   //
   // The gap is wider at dusk. Not a fudge: at last light the ground has gone and
-  // people are still catching a low sun, so the *contrast* between a person and
-  // the grass is at its highest of the day even though everything in the frame
-  // is darker than it was at noon.
+  // people are still catching the last of it, so the *contrast* between a person
+  // and the grass is at its highest of the day even though everything in the
+  // frame is darker than it was at noon.
   const ground = groundLightness(settings)
   const below = !settings.dusk && ground > PALE_GROUND
   const base = below
@@ -125,7 +124,7 @@ export function skinOf(
 export type Tones = {
   /** The head in full light. */
   lit: string
-  /** The head in its own shade, away from the sun. */
+  /** The head in its own shade, away from the light. */
   shade: string
   /** The darker line where the head meets the air. Hair, mostly. */
   edge: string
@@ -152,13 +151,9 @@ export type Tones = {
  * hundred people and four `hsl()` strings each, which is real work to do sixty
  * times a second for something that does not change.
  */
-export function tonesFor(
-  settings: Settings,
-  skin: { hue: number; lightness: number; saturation: number },
-  sun: Sun,
-): Tones {
-  // A low sun is a warmer, weaker light; an overhead one is white and hard.
-  const warmth = settings.dusk ? 14 : 6 * (1 - Math.min(1, sun.reach / 3))
+export function tonesFor(settings: Settings, skin: { hue: number; lightness: number; saturation: number }): Tones {
+  // Evening light is warmer and weaker; daylight is white and hard.
+  const warmth = settings.dusk ? 14 : 6
   const strength = settings.dusk ? 0.55 : 1
   // Only a touch: `skinOf` has already pitched the whole crowd against the
   // ground, and darkening them again on top of a ground that is itself dark
@@ -192,10 +187,6 @@ export type Ground = {
   mottle: string
   /** The same colour at zero alpha, which is what a mottle fades out to. */
   mottleOut: string
-  /** Colour of a cast shadow, at full strength. */
-  shadow: string
-  /** Alpha the shadow layer is composited at. */
-  shadowAlpha: number
 }
 
 /**
@@ -211,12 +202,13 @@ export type Ground = {
  * crowd's lightness was an absolute value; it is not true now that `skinOf`
  * pitches them against this and will put them *below* it when there is more room
  * underneath. Extending it is what gives the piece a light scheme at all, and
- * the shadows-only scene needs one — a silhouette wants paper to be on.
+ * the scenes that draw nothing but traces need one — chalk wants a slate, and
+ * pencil wants paper.
  */
 export const groundLightness = (settings: Settings): number =>
   settings.dusk ? 5 + settings.tint * 26 : 44 + (1 - settings.tint) * 40
 
-export function groundOf(settings: Settings, sun: Sun): Ground {
+export function groundOf(settings: Settings): Ground {
   const saturation = clamp(settings.tint * 38, 0, 38)
   const lightness = groundLightness(settings)
 
@@ -227,19 +219,6 @@ export function groundOf(settings: Settings, sun: Sun): Ground {
     // interpolates through black and rings every blotch with a dark halo. The
     // ground came out looking like a sheet of faint pressed coins.
     mottleOut: hsla(settings.hue + 12, saturation * 1.2, lightness + (settings.dusk ? 5 : -6), 0),
-    // A shadow is not black: it is the ground lit by the sky instead of the sun,
-    // which on a clear day means it is bluer as well as darker. A *ratio* of the
-    // ground's own lightness rather than a fixed step below it, because that is
-    // what "lit by less" means — and it is what lets a pale ground keep a dark
-    // shadow rather than a grey one.
-    shadow: hsl(settings.hue + 26, clamp(saturation + 14, 8, 60), Math.max(4, lightness * 0.45)),
-    // Deliberately below what a bright day gives. Only the head is drawn, so a
-    // shadow at full strength is three times the width of the person it belongs
-    // to and twice the contrast, and the eye reads the picture as a field of
-    // shadows with some markers on it. Turning it down puts the person back as
-    // the subject and costs nothing that matters — the shadow is there to say
-    // there is a body, not to be looked at.
-    shadowAlpha: clamp(settings.shadow * (settings.dusk ? 0.5 : 0.62) * (0.6 + 0.4 * (1 - sun.softness)), 0, 0.8),
   }
 }
 

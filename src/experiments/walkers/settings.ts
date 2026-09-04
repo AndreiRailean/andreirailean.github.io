@@ -23,9 +23,9 @@ export type Settings = {
   flow: Flow
   /** How colour is handed out — by person, by group, by team, or barely at all. */
   palette: PaletteName
-  /** Evening light: a darker ground, a warmer low sun, longer shadows. */
+  /** Evening light: a darker, cooler ground and a warmer crowd on it. */
   dusk: boolean
-  /** Whether the heads are drawn at all. Off leaves only the shadows walking. */
+  /** Whether the heads are drawn at all. Off leaves only what is on the ground. */
   heads: boolean
   /** People per 100 m² of ground actually in frame. */
   density: number
@@ -51,12 +51,6 @@ export type Settings = {
   span: number
   /** How high the camera is, in metres. Low is a strong perspective. */
   camera: number
-  /** Sun elevation in degrees. 90 is directly overhead and casts nothing. */
-  sun: number
-  /** Sun bearing in degrees, clockwise from the top of the frame. */
-  sunAzimuth: number
-  /** How dark the shadows are. */
-  shadow: number
   /** Seconds a footprint stays on the ground. 0 leaves none. */
   traces: number
   /** Hue of the ground, in degrees. */
@@ -128,6 +122,16 @@ export const PALETTE_LABELS: Record<PaletteName, string> = {
 
 /** Headings, in panel order. Twenty-three rows do not read undivided. */
 export const GROUPS = ["crowd", "people", "look", "light", "colour"] as const
+
+/**
+ * The bottom stop of the `traces` track, which stands for none.
+ *
+ * `traces` is a log slider and a log track has no zero. Everything else in the
+ * piece keeps reading `0` as off — presets carry it, URLs carry it, and
+ * `drawFrame` skips the layer on it — so the conversion happens once, in
+ * `normalizeSettings`, and nothing downstream has to know the track has a floor.
+ */
+export const TRACE_OFF = 0.05
 
 export const CONTROLS: Control[] = [
   {
@@ -214,7 +218,7 @@ export const CONTROLS: Control[] = [
     max: 1.5,
     step: 0.05,
     format: (v) => v.toFixed(2),
-    hint: "How much of a child's attention goes on playing rather than on keeping up. Play is darting off and being called back, chasing another child until they are caught and the roles swap, jumping, crouching over something on the ground, and falling over. A fallen child's head stops and their shadow closes right up under them.",
+    hint: "How much of a child's attention goes on playing rather than on keeping up. Play is darting off and being called back, chasing another child until they are caught and the roles swap, jumping, crouching over something on the ground, and falling over. A fallen child's head stops where it fell until somebody comes back for them.",
   },
   {
     kind: "slider",
@@ -264,46 +268,30 @@ export const CONTROLS: Control[] = [
   },
   {
     kind: "slider",
-    key: "sun",
-    label: "sun",
-    group: "light",
-    min: 15,
-    max: 90,
-    step: 1,
-    format: (v) => `${Math.round(v)}°`,
-    hint: "How high the sun is. The shadow is cast from the whole body even though only the head is drawn, which is what a person looks like from above on a bright day. At 90 the sun is straight overhead and there is nothing but a dark patch underfoot; at 20 the shadows are three times a person's height and the ground is mostly them.",
-  },
-  {
-    kind: "slider",
-    key: "sunAzimuth",
-    label: "bearing",
-    group: "light",
-    min: 0,
-    max: 360,
-    step: 1,
-    format: (v) => `${Math.round(v)}°`,
-    hint: "Which way the sun is, clockwise from the top of the frame. It moves the shadows and it moves the highlight on every head, which is the main thing telling you a head is a ball rather than a disc.",
-  },
-  {
-    kind: "slider",
-    key: "shadow",
-    label: "shadow",
-    group: "light",
-    min: 0,
-    max: 1,
-    step: 0.05,
-    format: (v) => v.toFixed(2),
-    hint: "How dark the shadows are — overcast at the bottom of the range, hard noon at the top. A jump is much easier to read with them on: the shadow slides away from the head and shrinks as the child leaves the ground.",
-  },
-  {
-    kind: "slider",
     key: "traces",
     label: "traces",
     group: "light",
-    min: 0,
+    /**
+     * **Log, and the bottom stop is off.**
+     *
+     * The useful range is three and a half decades. A fifth of a second is a
+     * glow that keeps up with a runner and is gone behind them; ninety is a
+     * ground that remembers a whole turnover of the crowd. Laid out linearly
+     * the entire short half lives in the first two per cent of the track and
+     * cannot be reached with a pointer — which is exactly what `scale: "log"`
+     * was added to the kit for.
+     *
+     * A log track cannot hold a zero, so `TRACE_OFF` is the bottom stop and
+     * `normalizeSettings` reads it back as none. A fiftieth of a second is not
+     * a short trail, it is a halo stuck to every dot and a whole layer drawn
+     * every frame to show it, so there is nothing between here and off worth
+     * being able to ask for.
+     */
+    min: TRACE_OFF,
     max: 90,
-    step: 1,
-    format: (v) => (v <= 0 ? "none" : `${Math.round(v)}s`),
+    step: 0.01,
+    scale: "log",
+    format: (v) => (v <= TRACE_OFF ? "none" : v < 1 ? `${v.toFixed(2)}s` : `${v.toFixed(v < 10 ? 1 : 0)}s`),
     hint: "How long the ground remembers somebody walking over it. At 0 it does not. Turned up, the crowd etches itself: paths that keep being used stay dark because they keep being renewed, and paths that do not simply go. Nothing draws a desire line — it is what is left when everything else has faded. Worth pairing with a long span, where the frame fills with the shape of an hour rather than a moment.",
   },
   {
@@ -311,15 +299,15 @@ export const CONTROLS: Control[] = [
     key: "heads",
     label: "heads",
     group: "light",
-    hint: "Whether the people themselves are drawn. Turned off, all that is left is the shadows — which is most of a person's information anyway, and worth seeing on its own at least once: a crowd of silhouettes walking about with nobody attached to them. Pair it with a bright sun, a pale ground and a strong shadow.",
-    labels: ["shadows only", "heads"],
+    hint: "Whether the people themselves are drawn. Turned off, all that is left is what the crowd has written on the ground, which is worth seeing on its own at least once: the paths without the people who wore them. It wants **traces** turned up, or there is nothing in the frame at all.",
+    labels: ["traces only", "heads"],
   },
   {
     kind: "toggle",
     key: "dusk",
     label: "dusk",
     group: "light",
-    hint: "Evening. The ground darkens and cools, the light warms, and the shadows lengthen and soften. Everything else about the crowd is unchanged.",
+    hint: "Evening. The ground darkens and cools and the light on the crowd warms. Everything else about them is unchanged.",
     labels: ["day", "dusk"],
   },
   {
@@ -424,9 +412,6 @@ export const DEFAULT_SETTINGS: Settings = {
   bob: 1,
   span: 11,
   camera: 20,
-  sun: 70,
-  sunAzimuth: 150,
-  shadow: 0.45,
   traces: 0,
   hue: 104,
   tint: 0.62,
@@ -445,166 +430,6 @@ export const DEFAULT_SETTINGS: Settings = {
  * `../docs/adr/20260830-a-preset-inherits-from-nothing.md`.
  */
 export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
-  {
-    label: "sunday",
-    hint: "A park in the afternoon. Families, picnics, and a couple of joggers going through.",
-    settings: {
-      flow: "gather",
-      palette: "kin",
-      dusk: false,
-      heads: true,
-      density: 26,
-      grouping: 0.8,
-      children: 0.3,
-      runners: 0.08,
-      settling: 0.55,
-      paceLow: 0.8,
-      paceHigh: 1.5,
-      play: 1,
-      gaze: 1.1,
-      bob: 1,
-      span: 8.5,
-      camera: 16,
-      sun: 68,
-      sunAzimuth: 145,
-      shadow: 0.42,
-      traces: 0,
-      hue: 104,
-      tint: 0.62,
-      spread: 46,
-      pastel: 0.82,
-      playback: 1,
-      seed: 4821,
-    },
-  },
-  {
-    label: "crossing",
-    hint: "Two streams meeting head-on. Watch the files form and come apart.",
-    settings: {
-      flow: "through",
-      palette: "crowd",
-      dusk: false,
-      heads: true,
-      density: 55,
-      grouping: 0.25,
-      children: 0.06,
-      runners: 0.04,
-      settling: 0.02,
-      paceLow: 1.1,
-      paceHigh: 1.9,
-      play: 0.2,
-      gaze: 0.7,
-      bob: 1,
-      span: 15,
-      camera: 30,
-      sun: 78,
-      sunAzimuth: 200,
-      shadow: 0.3,
-      traces: 0,
-      hue: 212,
-      tint: 0.55,
-      spread: 32,
-      pastel: 0.66,
-      playback: 1,
-      seed: 1307,
-    },
-  },
-  {
-    label: "match day",
-    hint: "Everyone in one of two colours, all going the same way, most of them in knots.",
-    settings: {
-      flow: "through",
-      palette: "teams",
-      dusk: false,
-      heads: true,
-      density: 60,
-      grouping: 0.9,
-      children: 0.12,
-      runners: 0.02,
-      settling: 0.05,
-      paceLow: 0.9,
-      paceHigh: 1.45,
-      play: 0.5,
-      gaze: 1.2,
-      bob: 1,
-      span: 17,
-      camera: 34,
-      sun: 60,
-      sunAzimuth: 120,
-      shadow: 0.5,
-      traces: 0,
-      hue: 32,
-      tint: 0.58,
-      spread: 10,
-      pastel: 0.5,
-      playback: 1,
-      seed: 8802,
-    },
-  },
-  {
-    label: "playground",
-    hint: "Close in, mostly children, and almost nobody going anywhere.",
-    settings: {
-      flow: "gather",
-      palette: "crowd",
-      dusk: false,
-      heads: true,
-      density: 40,
-      grouping: 0.85,
-      children: 0.58,
-      runners: 0.12,
-      settling: 0.85,
-      paceLow: 0.7,
-      paceHigh: 1.35,
-      play: 1.5,
-      gaze: 1.35,
-      bob: 1.2,
-      span: 7,
-      camera: 12,
-      sun: 74,
-      sunAzimuth: 165,
-      shadow: 0.48,
-      traces: 0,
-      hue: 46,
-      tint: 0.66,
-      spread: 70,
-      pastel: 0.85,
-      playback: 1,
-      seed: 271,
-    },
-  },
-  {
-    label: "desire lines",
-    hint: "The ground remembers the last minute. Nobody draws the paths; they are what is left.",
-    settings: {
-      flow: "gather",
-      palette: "crowd",
-      dusk: false,
-      heads: true,
-      density: 20,
-      grouping: 0.55,
-      children: 0.25,
-      runners: 0.1,
-      settling: 0.5,
-      paceLow: 0.9,
-      paceHigh: 1.7,
-      play: 0.9,
-      gaze: 1,
-      bob: 1,
-      span: 24,
-      camera: 60,
-      sun: 70,
-      sunAzimuth: 150,
-      shadow: 0.22,
-      traces: 42,
-      hue: 104,
-      tint: 0.62,
-      spread: 34,
-      pastel: 0.5,
-      playback: 1,
-      seed: 8123,
-    },
-  },
   {
     label: "chalky",
     hint: "Nothing drawn but where people went, in chalk on slate. Andrei's, found with the sliders.",
@@ -625,10 +450,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       bob: 0.9,
       span: 24,
       camera: 60,
-      sun: 15,
-      sunAzimuth: 0,
-      shadow: 0,
-      traces: 42,
+      traces: 6,
       // Given as 360, which is the same colour: the hue every presentation
       // surface reads has to be in [0, 360), and `tests/unit/experiments-presets`
       // holds every piece to it.
@@ -660,9 +482,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       bob: 0.8,
       span: 30,
       camera: 150,
-      sun: 15,
-      sunAzimuth: 0,
-      shadow: 0,
       traces: 0,
       hue: 230,
       tint: 0.74,
@@ -673,35 +492,177 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     },
   },
   {
-    label: "long shadows",
-    hint: "Late, thinning out, and the shadows longer than the people.",
+    label: "busy",
+    hint: "Nobody with anybody, all going the same way, from high enough up that a person is a point of light.",
     settings: {
-      flow: "wander",
+      flow: "through",
       palette: "crowd",
       dusk: true,
       heads: true,
-      density: 9,
-      grouping: 0.5,
-      children: 0.14,
-      runners: 0.22,
-      settling: 0.3,
-      paceLow: 1,
-      paceHigh: 2.1,
-      play: 0.6,
-      gaze: 0.9,
-      bob: 1,
-      span: 10,
-      camera: 19,
-      sun: 26,
-      sunAzimuth: 285,
-      shadow: 0.62,
+      density: 55,
+      grouping: 0,
+      children: 0.6,
+      runners: 0.6,
+      settling: 0.02,
+      paceLow: 1.1,
+      paceHigh: 4.05,
+      play: 1.5,
+      gaze: 0,
+      bob: 2.5,
+      span: 15.5,
+      camera: 150,
       traces: 0,
-      hue: 96,
-      tint: 0.78,
-      spread: 44,
+      hue: 245,
+      tint: 0.18,
+      spread: 120,
+      pastel: 1,
+      playback: 1,
+      seed: 1307,
+    },
+  },
+  {
+    label: "sunday",
+    hint: "A park in the afternoon. Families, picnics, and a couple of joggers going through.",
+    settings: {
+      flow: "gather",
+      palette: "kin",
+      dusk: false,
+      heads: true,
+      density: 26,
+      grouping: 0.8,
+      children: 0.3,
+      runners: 0.08,
+      settling: 0.55,
+      paceLow: 0.8,
+      paceHigh: 1.5,
+      play: 1,
+      gaze: 1.1,
+      bob: 1,
+      span: 8.5,
+      camera: 16,
+      traces: 0,
+      hue: 104,
+      tint: 0.62,
+      spread: 46,
       pastel: 0.82,
       playback: 1,
-      seed: 6644,
+      seed: 4821,
+    },
+  },
+  {
+    label: "crossing",
+    hint: "Two streams meeting head-on. Watch the files form and come apart.",
+    settings: {
+      flow: "through",
+      palette: "crowd",
+      dusk: false,
+      heads: true,
+      density: 55,
+      grouping: 0.25,
+      children: 0.06,
+      runners: 0.04,
+      settling: 0.02,
+      paceLow: 1.1,
+      paceHigh: 1.9,
+      play: 0.2,
+      gaze: 0.7,
+      bob: 1,
+      span: 15,
+      camera: 30,
+      traces: 0,
+      hue: 212,
+      tint: 0.55,
+      spread: 32,
+      pastel: 0.66,
+      playback: 1,
+      seed: 1307,
+    },
+  },
+  {
+    label: "match day",
+    hint: "Everyone in one of two colours, all going the same way, most of them in knots.",
+    settings: {
+      flow: "through",
+      palette: "teams",
+      dusk: false,
+      heads: true,
+      density: 60,
+      grouping: 0.9,
+      children: 0.12,
+      runners: 0.02,
+      settling: 0.05,
+      paceLow: 0.9,
+      paceHigh: 1.45,
+      play: 0.5,
+      gaze: 1.2,
+      bob: 1,
+      span: 17,
+      camera: 34,
+      traces: 0,
+      hue: 32,
+      tint: 0.58,
+      spread: 10,
+      pastel: 0.5,
+      playback: 1,
+      seed: 8802,
+    },
+  },
+  {
+    label: "playground",
+    hint: "Close in, mostly children, and almost nobody going anywhere.",
+    settings: {
+      flow: "gather",
+      palette: "crowd",
+      dusk: false,
+      heads: true,
+      density: 40,
+      grouping: 0.85,
+      children: 0.58,
+      runners: 0.12,
+      settling: 0.85,
+      paceLow: 0.7,
+      paceHigh: 1.35,
+      play: 1.5,
+      gaze: 1.35,
+      bob: 1.2,
+      span: 7,
+      camera: 12,
+      traces: 0,
+      hue: 46,
+      tint: 0.66,
+      spread: 70,
+      pastel: 0.85,
+      playback: 1,
+      seed: 271,
+    },
+  },
+  {
+    label: "desire lines",
+    hint: "The ground remembers the last minute. Nobody draws the paths; they are what is left.",
+    settings: {
+      flow: "gather",
+      palette: "crowd",
+      dusk: false,
+      heads: true,
+      density: 20,
+      grouping: 0.55,
+      children: 0.25,
+      runners: 0.1,
+      settling: 0.5,
+      paceLow: 0.9,
+      paceHigh: 1.7,
+      play: 0.9,
+      gaze: 1,
+      bob: 1,
+      span: 24,
+      camera: 60,
+      traces: 42,
+      hue: 104,
+      tint: 0.62,
+      spread: 34,
+      pastel: 0.5,
+      playback: 1,
+      seed: 8123,
     },
   },
 ]
@@ -741,6 +702,9 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
   }
 
   settings.seed = Math.round(settings.seed)
+
+  // The bottom stop of a log track that has no zero on it; see `TRACE_OFF`.
+  if (settings.traces <= TRACE_OFF) settings.traces = 0
 
   // A pace band that has crossed over would have everyone drawing from an empty
   // interval, which comes out as a crowd all walking at exactly one speed.
@@ -849,7 +813,7 @@ export function urlForSettings(settings: Settings, pathname: string): string {
 /**
  * Settings that decide who is in the crowd, so changing one rebuilds it.
  *
- * Everything else is read per frame. Dragging the sun used to be indexed here
+ * Everything else is read per frame. Dragging the ground's hue was indexed here
  * by accident in an earlier draft and emptied the park on every step of the
  * slider, which is the failure this list exists to prevent: a rebuild is a new
  * cast of people, and no colour or light setting has any business causing one.
