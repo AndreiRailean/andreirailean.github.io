@@ -21,6 +21,19 @@ Nothing in between. One cheap command says whether it even matters:
 git fetch origin && git rev-list --count HEAD..origin/main
 ```
 
+**Typecheck after that merge, not just test.** A merge resolves text, and text is
+not the only thing that can conflict: two changes can touch no common line and
+still contradict. `luna-preset-fix` added a control kind to the kit while
+`experiment-walkers` added a piece whose `controls()` assumed every kind has
+bounds — no shared file between them, no conflict markers, a clean merge and a
+`main` that could not compile. **All 545 unit tests passed.** They typecheck
+nothing, so nothing said a word.
+
+CI does run `pnpm run typecheck`, as its own step in `lint.yml`, so this is not a
+hole in the tick — it is the difference between finding out here and finding out
+in a published PR. `pnpm run typecheck` takes seconds and is the one check that
+speaks to this failure at all.
+
 **One fetch serves the whole machine.** Worktrees share refs through the common
 `.git` dir, so a fetch in any worktree updates `origin/main` for all of them.
 
