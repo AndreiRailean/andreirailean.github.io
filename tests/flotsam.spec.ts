@@ -1,6 +1,7 @@
 import type { ExperimentApi } from "@/experiments/flotsam/api"
 import { DEFAULT_SETTINGS, PRESETS } from "@/experiments/flotsam/settings"
 import { expect, openExperiment, test } from "./support/experiment"
+import { litPixels as countLit } from "./support/canvas.ts"
 
 /**
  * Flotsam, driven through its console API.
@@ -64,21 +65,16 @@ async function painted(page: Parameters<typeof openExperiment>[0]): Promise<void
   await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())))
 }
 
-/** How many canvas pixels are brighter than the water. */
+/**
+ * How many canvas pixels are brighter than the water.
+ *
+ * The frame wait stays here rather than moving into `countLit`: `light` is
+ * summed while drawing, so a reading taken straight after a `set()` is the
+ * previous frame's. That is a fact about flotsam, not about canvases.
+ */
 async function litPixels(page: Parameters<typeof openExperiment>[0]): Promise<number> {
   await painted(page)
-  return page.evaluate((threshold) => {
-    const canvas = document.querySelector("canvas")
-    if (!canvas) throw new Error("no canvas on the page")
-    const context = canvas.getContext("2d")
-    if (!context) throw new Error("no 2d context")
-    const { data } = context.getImageData(0, 0, canvas.width, canvas.height)
-    let lit = 0
-    for (let i = 0; i < data.length; i += 4) {
-      if (data[i]! + data[i + 1]! + data[i + 2]! > threshold) lit++
-    }
-    return lit
-  }, LIT_THRESHOLD)
+  return countLit(page, LIT_THRESHOLD)
 }
 
 /**
