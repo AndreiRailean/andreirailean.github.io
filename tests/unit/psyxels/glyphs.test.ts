@@ -25,6 +25,13 @@ function follows(from: number, count: number, draws = 20000): number[] {
   return tally
 }
 
+const MOON = 9
+const STAR = 10
+
+/** How many features two frames disagree on — `glyphs.ts` owns the same sum. */
+const apart = (a: number, b: number) =>
+  (["h", "v", "diagonal", "ring", "fill"] as const).filter((key) => GLYPHS[a]![key] !== GLYPHS[b]![key]).length
+
 describe("the vocabulary", () => {
   it("opens with the four signs the piece was described from", () => {
     expect(GLYPHS.slice(0, 4).map((glyph) => [glyph.h, glyph.v, glyph.ring])).toEqual([
@@ -33,6 +40,48 @@ describe("the vocabulary", () => {
       [true, false, true],
       [true, true, true],
     ])
+  })
+
+  /**
+   * **Two marks at distance zero would make the walk between them meaningless.**
+   *
+   * A drawn mark's features are a claim about kinship rather than a description
+   * of its shape, so nothing about the geometry stops one being given a vector
+   * another already holds — and the transition weights are `KINSHIP ** (d - 1)`,
+   * which at `d === 0` comes out *larger* than a one-feature step. The pair
+   * would then follow each other almost to the exclusion of the rest.
+   */
+  it("gives every mark a vector no other mark holds", () => {
+    for (let a = 0; a < GLYPH_COUNT; a++) {
+      for (let b = a + 1; b < GLYPH_COUNT; b++) {
+        expect(apart(a, b), `${a} vs ${b}`).toBeGreaterThan(0)
+      }
+    }
+  })
+
+  /**
+   * The drawn marks are appended, so a preset naming a smaller vocabulary means
+   * exactly the frames it always did.
+   */
+  it("keeps the drawn marks last, behind the nine that were decomposed", () => {
+    expect(GLYPHS.slice(0, 9).every((glyph) => glyph.paint === undefined)).toBe(true)
+    expect(GLYPHS[MOON]!.paint).toBeTypeOf("function")
+    expect(GLYPHS[STAR]!.paint).toBeTypeOf("function")
+    expect(GLYPH_COUNT).toBe(11)
+  })
+
+  /**
+   * What a drawn mark's vector is *for*: a crescent should sit beside a bare
+   * ring, and a star beside the plus whose four points it pulls the waist in on.
+   */
+  it("puts each drawn mark one step from the sign it belongs beside", () => {
+    const RING = 4
+    expect(apart(MOON, RING)).toBe(1)
+    expect(apart(STAR, PLUS)).toBe(1)
+    for (let other = 0; other < GLYPH_COUNT; other++) {
+      if (other !== MOON) expect(apart(MOON, other), `moon vs ${other}`).toBeGreaterThanOrEqual(1)
+      if (other !== STAR) expect(apart(STAR, other), `star vs ${other}`).toBeGreaterThanOrEqual(1)
+    }
   })
 })
 

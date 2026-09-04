@@ -89,12 +89,13 @@ is correct and worth knowing.
 
 ## A psyx is a small animation
 
-The vocabulary is nine frames, and the first four are the ones the piece was
+The vocabulary is eleven frames, and the first four are the ones the piece was
 described from: minus, plus, circled minus, circled plus. After those come a bare
-ring, a dot, a cross, a circled cross, and a single upright bar.
+ring, a dot, a cross, a circled cross, and a single upright bar. Last of all, a
+moon and a four-pointed star.
 
-They are not nine pictures. Each is a set of features — a horizontal stroke, a
-vertical one, a diagonal pair, a ring, a fill — and the distance between two
+The first nine are not pictures. Each is a set of features — a horizontal stroke,
+a vertical one, a diagonal pair, a ring, a fill — and the distance between two
 frames is how many features differ. A psyx picks its next frame with a strong
 preference for a near neighbour, so it grows a stroke, then acquires a ring, then
 loses the stroke. That is what makes a psyx read as one thing changing its mind
@@ -102,15 +103,24 @@ rather than a slot being refilled with something unrelated. It never repeats its
 current frame: a change that changes nothing is a pause, and pauses are what the
 hold time is for.
 
-Describing frames by their features pays a second time, and it is why the marks
-are not a set of pictures. **A change of frame is a change of features, so it can
-be played rather than cut.** A stroke grows out of the middle. A ring draws
-itself round like a pen stroke, starting wherever that psyx happens to start,
-so the field never sweeps in unison. A disc closes. And the diagonals are not a
-third pair of strokes at all — a cross is a plus rotated by an eighth of a turn,
-and saying so in the geometry makes that transition a _rotation_: the mark winds
-round without either arm ever losing length. A minus becoming a cross is the same
-movement seen from further off, one stroke turning while another grows across it.
+The diagonals are not a third pair of strokes, either: a cross is a plus rotated
+by an eighth of a turn, and saying so in the geometry is what keeps the two the
+same size and the same weight without anyone maintaining it by hand.
+
+**The last two are drawn, and that is a rule the piece used to keep and has let
+go.** The features once described the transition as well as the shape — a stroke
+grew out of the middle, a ring drew itself round — and a frame that could not be
+decomposed had no way to arrive. That was tried and taken out: a large plus
+spends its transition as a pair of stubs, and a ring has no legible fraction of
+itself. Two whole marks are cross-faded instead. So being decomposable was buying
+something the piece no longer does, and a mark drawn as itself can join on one
+condition — that it can still say who its neighbours are. A moon is given a ring
+and an upright, because a bare ring is what it should sit beside; a star is given
+a plus and the diagonals at once, because that is what it is, the same four points
+with the waist pulled in. Neither vector describes the shape. Both place it.
+
+They come last on purpose. `vocabulary` takes frames from the front of the list,
+so every scene written before them means exactly the frames it always did.
 
 How long any of it takes is **ease**, which is the piece's other clock. Every
 transition — a psyx arriving, one going, a frame turning into the next — is a

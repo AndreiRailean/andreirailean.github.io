@@ -8,28 +8,53 @@
  * noise, and related enough that consecutive frames look like the same object
  * moving rather than two unrelated marks swapped.
  *
- * Both fall out of describing a frame by its *features* rather than as a
- * picture. Every glyph is a subset of {horizontal stroke, vertical stroke,
- * diagonal pair, ring, fill}, and the distance between two glyphs is how many
- * features differ. A plus is one feature from a minus and one from a circled
- * plus, so a psyx wandering by nearest neighbours grows a stroke, then a ring,
- * then loses the stroke — which reads as one thing changing its mind.
+ * Both fall out of describing a frame by its *features* — {horizontal stroke,
+ * vertical stroke, diagonal pair, ring, fill} — and taking the distance between
+ * two frames to be how many features differ. A plus is one feature from a minus
+ * and one from a circled plus, so a psyx wandering by nearest neighbours grows a
+ * stroke, then a ring, then loses the stroke — which reads as one thing changing
+ * its mind.
  *
- * Describing a frame by its features pays a second time, and it is the reason
- * this is not a set of pictures. **A change of frame is a change of features,
- * so it can be played rather than cut.** A stroke grows out of the middle, a
- * ring opens from the centre, a disc closes — and the psyx reads as one mark
- * rearranging itself instead of one mark being swapped for another. Cross-fading
- * two drawings would give the same information and none of that, at twice the
- * draw calls.
+ * **What the features buy is that walk, and nothing else any more.** They were
+ * once the transition as well: a stroke grew out of the middle, a ring opened
+ * from the centre. That was tried and taken out, because a large plus spends its
+ * transition as a pair of stubs and a ring has no legible fraction of itself —
+ * `paintPsyxel` cross-fades two whole marks instead. So the rule that a frame
+ * must be decomposable was paying for something the piece no longer does, and a
+ * mark that cannot be decomposed is free to join as long as it can say who its
+ * neighbours are. The moon and the star are those: drawn, with a feature vector
+ * that is a claim about kinship rather than a description of the shape.
  *
  * They are drawn rather than typeset, in units of their own cell, because a
  * psyx here is anywhere between three and two hundred psyxels across and a font
  * would have to be loaded, measured and hinted at every one of those sizes.
  */
 
-/** A frame's features. Order matters: `vocabulary` takes the first N. */
-type Feature = { h: boolean; v: boolean; diagonal: boolean; ring: boolean; fill: boolean }
+/**
+ * A frame's features, and for a few of them a drawing.
+ *
+ * Order matters: `vocabulary` takes the first N.
+ *
+ * The features do two jobs for a decomposed mark — they *are* its geometry, and
+ * they say who its neighbours are. A mark that cannot be decomposed brings its
+ * own `paint` and the features then do only the second job: they are a claim
+ * about kinship rather than a description of the shape. A moon is given a ring
+ * and an upright because a bare ring is what it should follow and be followed
+ * by, not because there is an upright stroke anywhere in it.
+ *
+ * That claim has to be *unique*, or two marks sit at distance zero and the walk
+ * between them stops meaning anything. Every vector below is one no other mark
+ * uses.
+ */
+type Feature = {
+  h: boolean
+  v: boolean
+  diagonal: boolean
+  ring: boolean
+  fill: boolean
+  /** Drawn rather than decomposed, in units of the mark's own radius. */
+  paint?: (ctx: CanvasRenderingContext2D, r: number, lineWidth: number) => void
+}
 
 const frame = (h: boolean, v: boolean, diagonal: boolean, ring: boolean, fill = false): Feature => ({
   h,
@@ -39,6 +64,15 @@ const frame = (h: boolean, v: boolean, diagonal: boolean, ring: boolean, fill = 
   fill,
 })
 
+/** A mark with its own geometry, whose features stand only for its kinship. */
+const figure = (
+  paint: NonNullable<Feature["paint"]>,
+  h: boolean,
+  v: boolean,
+  diagonal: boolean,
+  ring: boolean,
+): Feature => ({ h, v, diagonal, ring, fill: false, paint })
+
 /**
  * The vocabulary, in the order a growing `vocabulary` setting admits them.
  *
@@ -46,6 +80,10 @@ const frame = (h: boolean, v: boolean, diagonal: boolean, ring: boolean, fill = 
  * they are the set the piece was described from, and a field made of only those
  * is already the thing. What follows adds ways to be quiet (a bare ring, a dot)
  * and ways to be loud (the diagonals) without changing the family.
+ *
+ * **The two drawn marks come last, and that is what keeps every scene that
+ * existed before them.** A preset naming `vocabulary: 4` means the same four
+ * frames it always did; only a scene that asks for the whole set sees a moon.
  */
 export const GLYPHS: Feature[] = [
   frame(true, false, false, false), // minus
@@ -57,6 +95,12 @@ export const GLYPHS: Feature[] = [
   frame(false, false, true, false), // cross
   frame(false, false, true, true), // circled cross
   frame(false, true, false, false), // bar
+  // A ring and an upright: one step from a bare ring, which is what a crescent
+  // should sit beside, and from a bar and a circled plus.
+  figure(moon, false, true, false, true), // moon
+  // A plus and the diagonals at once: one step from a plus, which is what it is
+  // — the same four points with the waist pulled in.
+  figure(starFour, true, true, true, false), // star
 ]
 
 export const GLYPH_COUNT = GLYPHS.length
@@ -116,6 +160,52 @@ const TURN = Math.PI * 2
 const QUARTER = Math.PI / 4
 
 /**
+ * A crescent, traced rather than bent.
+ *
+ * The centreline of a crescent is not a circle, so a moon drawn as one bent
+ * stroke comes out a broken ring. What reads is the *silhouette*: the far side
+ * of one circle and the near side of another that bites into it, closed into a
+ * single path. Equal radii keep the two horns the same.
+ *
+ * **The bite opens as the stroke thickens.** Held at a fraction of the radius
+ * it is right at a hairline and wrong at weight — the ink closes the gap from
+ * both sides at once and a heavy moon comes out a bean. The offset is what sets
+ * the horn width, so it has to answer to the ink and not to the box alone.
+ */
+function moon(ctx: CanvasRenderingContext2D, r: number, lineWidth: number): void {
+  // Capped short of 2r, where the two circles stop meeting at all and there is
+  // no crescent left to describe.
+  const bite = Math.min(r * 1.02 + lineWidth * 0.55, r * 1.9)
+  // Where the circles cross, as an angle off the line joining their centres.
+  const phi = Math.acos(bite / (2 * r))
+  const tilt = -Math.PI * 0.32
+  const bx = Math.cos(tilt) * bite
+  const by = Math.sin(tilt) * bite
+
+  ctx.moveTo(Math.cos(tilt + phi) * r, Math.sin(tilt + phi) * r)
+  ctx.arc(0, 0, r, tilt + phi, tilt - phi + TURN)
+  ctx.arc(bx, by, r, tilt + Math.PI + phi, tilt + Math.PI - phi, true)
+  ctx.closePath()
+}
+
+/**
+ * Four points with the waist pulled in — a plus that has been given curves.
+ *
+ * The control point is the whole of it: at zero the curves are straight and the
+ * mark is a rhombus, and past about a fifth the points thin into needles that
+ * are gone at the sizes this piece works at.
+ */
+function starFour(ctx: CanvasRenderingContext2D, r: number): void {
+  const waist = r * 0.17
+  ctx.moveTo(r, 0)
+  ctx.quadraticCurveTo(waist, waist, 0, r)
+  ctx.quadraticCurveTo(-waist, waist, -r, 0)
+  ctx.quadraticCurveTo(-waist, -waist, 0, -r)
+  ctx.quadraticCurveTo(waist, -waist, r, 0)
+  ctx.closePath()
+}
+
+/**
  * The two stroke pairs a mark is made of: how far each reaches, and how far the
  * pair is turned.
  *
@@ -163,6 +253,19 @@ export function paintGlyph(
 ): void {
   const shape = GLYPHS[Math.max(0, Math.min(GLYPH_COUNT - 1, glyph))]!
   const full = extent * 0.82
+
+  // A drawn mark is still one path and one stroke, and still sized off `full`,
+  // so a moon and a circled plus are the same mark across in the same field.
+  if (shape.paint) {
+    ctx.lineWidth = lineWidth
+    ctx.save()
+    ctx.translate(cx, cy)
+    ctx.beginPath()
+    shape.paint(ctx, full, lineWidth)
+    ctx.stroke()
+    ctx.restore()
+    return
+  }
   // The strokes stop short of a ring rather than crossing it, which is what
   // makes a circled plus read as one sign instead of a plus with a circle drawn
   // over it.

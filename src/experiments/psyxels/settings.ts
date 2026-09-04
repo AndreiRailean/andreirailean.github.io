@@ -284,7 +284,7 @@ export const CONTROLS: Control[] = [
     max: GLYPH_COUNT,
     step: 1,
     format: (value) => `${Math.round(value)} of ${GLYPH_COUNT}`,
-    hint: "How many frames a psyx may show, taken from the front of the list: minus, plus, circled minus, circled plus, ring, dot, cross, circled cross, bar. Small is a field with a strong accent — everything is a plus or a minus and you read the changes. Large is richer and, past about six, closer to texture than to signs.",
+    hint: "How many frames a psyx may show, taken from the front of the list: minus, plus, circled minus, circled plus, ring, dot, cross, circled cross, bar, moon, star. Small is a field with a strong accent — everything is a plus or a minus and you read the changes. Large is richer and, past about six, closer to texture than to signs. The last two are the only ones not built out of strokes and a ring, and they are last so that every scene written before them still means what it did.",
   },
   {
     kind: "slider",
@@ -810,7 +810,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       afterglow: 0,
       wander: 0.6,
       weight: 0.145,
-      vocabulary: 5,
+      vocabulary: 11,
       morph: 0.36,
       ease: 1.12,
       churn: 0,
