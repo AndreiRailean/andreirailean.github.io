@@ -132,7 +132,18 @@ function presetBlocks(source: string): { label: string; body: string }[] {
   // label. Anchoring on the label instead pairs a control's label with a later
   // preset's settings, because a piece's `CONTROLS` array comes first and the
   // labels there look identical.
-  const pattern = /settings:\s*\{([\s\S]*?)\n {4}\},/g
+  //
+  // **Matched on the braces rather than on the closing indentation.** The first
+  // version required `\n    },`, so a preset written on one line matched nothing
+  // and was dropped from the list — and `settings: { ...DEFAULT_SETTINGS },` is
+  // exactly that shape, so the single form this check exists to forbid was also
+  // the one form it could not see. Flotsam read seven of its eight presets that
+  // way. Nothing was actually being broken there, because that file carried a
+  // deliberate opt-out for its primary, but the two are independent: the parser
+  // would have dropped the same block just as silently in a piece that had not
+  // said anything. `[^{}]*` also refuses a nested block rather than mis-reading
+  // one; `blockCount` below is what stops that being another silent skip.
+  const pattern = /settings:\s*\{([^{}]*)\}/g
   for (const match of source.matchAll(pattern)) {
     const before = source.slice(Math.max(0, match.index - 300), match.index)
     const labels = [...before.matchAll(/label:\s*"([^"]+)"/g)]
@@ -140,6 +151,9 @@ function presetBlocks(source: string): { label: string; body: string }[] {
   }
   return found
 }
+
+/** How many `settings:` blocks are written, however they are laid out. */
+const blockCount = (source: string) => [...source.matchAll(/settings:\s*\{/g)].length
 
 const KEY = /^\s*(\w+):/gm
 
@@ -288,6 +302,17 @@ describe.each(slugs)("%s presets", (slug) => {
 
     const presets = presetBlocks(source)
     if (presets.length === 0) return
+
+    // Every block written must be a block read. A preset the parser cannot make
+    // sense of used to vanish from the list rather than fail, so the assertions
+    // below were enforced against whichever presets happened to be legible —
+    // and a one-line block, the exact shape of a spread, was the illegible one.
+    expect(
+      presets.length,
+      `${slug}/settings.ts writes ${blockCount(source)} settings blocks and this check could ` +
+        `read ${presets.length} of them. The unread ones are exempt from every assertion below, ` +
+        `which is how a preset hides. Widen presetBlocks rather than ignoring this.`,
+    ).toBe(blockCount(source))
 
     // The longest block is taken as the full set: a piece may legitimately gain
     // a setting between one preset being recorded and the next, and the answer

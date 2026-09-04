@@ -281,7 +281,24 @@ export function mountReel(): void {
   let from: { x: number; y: number; at: number; id: number } | null = null
   let axis: Axis | null = null
 
-  const isFurniture = (target: EventTarget | null) => target instanceof Element && Boolean(target.closest(".out"))
+  /**
+   * Things that are not the piece, and so are not a gesture on it.
+   *
+   * The listeners are on `window`, which is what lets a swipe start anywhere —
+   * and therefore means anything drawn over the piece has its taps read as taps
+   * on the work unless it says otherwise. `.out` is the view's own way out;
+   * `[data-reel-furniture]` is the general form, so something mounted over a
+   * piece can opt out without this file having to know what it is, which it may
+   * not — `gallery/` cannot import a piece.
+   *
+   * Added after a control mounted over a piece both did its own job **and** held
+   * the piece. Two effects from one finger reads as a button that misfires
+   * rather than as two controls, and it makes comparing anything by tapping
+   * impossible. Found with an instrument that has since been deleted; the fault
+   * was in here rather than in it.
+   */
+  const isFurniture = (target: EventTarget | null) =>
+    target instanceof Element && Boolean(target.closest(".out, [data-reel-furniture]"))
 
   function onPointerDown(event: PointerEvent) {
     if (leaving || from || isFurniture(event.target)) return
