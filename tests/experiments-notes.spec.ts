@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test"
 import { expect, test } from "./support/experiment.ts"
+import { litPixels as countLit } from "./support/canvas.ts"
 
 /**
  * The notes, which are the gallery's wall text rather than the works.
@@ -69,17 +70,16 @@ test("every note reaches the index, and the index reaches every note", async ({ 
 })
 
 /** Canvas pixels brighter than any of these grounds, which are all near-black. */
+/** Every piece here grounds well below this; the notes only ask whether anything lit at all. */
+const LIT_THRESHOLD = 90
+
+/**
+ * Zero rather than a throw for a canvas that is not there yet.
+ *
+ * This polls a note whose backdrop boots after the sheet, so a missing canvas
+ * is a state to wait through rather than a failure — every other caller wants
+ * the throw, which is why it is asked for here rather than defaulted.
+ */
 async function litPixels(page: Page): Promise<number> {
-  return page.evaluate(() => {
-    const canvas = document.querySelector("canvas")
-    if (!canvas) return 0
-    const context = canvas.getContext("2d")
-    if (!context) return 0
-    const { data } = context.getImageData(0, 0, canvas.width, canvas.height)
-    let lit = 0
-    for (let i = 0; i < data.length; i += 4) {
-      if (data[i]! + data[i + 1]! + data[i + 2]! > 90) lit++
-    }
-    return lit
-  })
+  return countLit(page, LIT_THRESHOLD, 0)
 }

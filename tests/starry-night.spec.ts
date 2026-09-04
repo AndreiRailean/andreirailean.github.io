@@ -1,5 +1,6 @@
 import type { ExperimentApi } from "@/experiments/starry-night/api"
 import { expect, openExperiment, test } from "./support/experiment"
+import { litPixels as countLit } from "./support/canvas.ts"
 
 /**
  * Starry Night, driven through its console API.
@@ -18,19 +19,7 @@ const openSky = (page: Parameters<typeof openExperiment>[0], options?: Parameter
   openExperiment<ExperimentApi>(page, "starry-night", options)
 
 /** How many canvas pixels are brighter than the background. */
-const litPixels = (page: Parameters<typeof openExperiment>[0]) =>
-  page.evaluate((threshold) => {
-    const canvas = document.querySelector("canvas")
-    if (!canvas) throw new Error("no canvas on the page")
-    const context = canvas.getContext("2d")
-    if (!context) throw new Error("no 2d context")
-    const { data } = context.getImageData(0, 0, canvas.width, canvas.height)
-    let lit = 0
-    for (let i = 0; i < data.length; i += 4) {
-      if (data[i]! + data[i + 1]! + data[i + 2]! > threshold) lit++
-    }
-    return lit
-  }, LIT_THRESHOLD)
+const litPixels = (page: Parameters<typeof openExperiment>[0]) => countLit(page, LIT_THRESHOLD)
 
 test("puts stars on the canvas, in as many layers as asked for", async ({ page }) => {
   const experiment = await openSky(page, { settings: { layerCount: 8 }, idle: true })

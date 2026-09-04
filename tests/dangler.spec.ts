@@ -1,6 +1,7 @@
 import type { ExperimentApi } from "@/experiments/dangler/api"
 import { DEFAULT_SETTINGS, PRESETS } from "@/experiments/dangler/settings"
 import { expect, openExperiment, test } from "./support/experiment"
+import { litPixels as countLit } from "./support/canvas.ts"
 
 /**
  * Dangler, driven through its console API.
@@ -41,20 +42,7 @@ function openDangler(page: Parameters<typeof openExperiment>[0], options?: Param
 }
 
 /** How many canvas pixels are brighter than the ground. */
-async function litPixels(page: Parameters<typeof openExperiment>[0]): Promise<number> {
-  return page.evaluate((threshold) => {
-    const canvas = document.querySelector("canvas")
-    if (!canvas) throw new Error("no canvas on the page")
-    const context = canvas.getContext("2d")
-    if (!context) throw new Error("no 2d context")
-    const { data } = context.getImageData(0, 0, canvas.width, canvas.height)
-    let lit = 0
-    for (let i = 0; i < data.length; i += 4) {
-      if (data[i]! + data[i + 1]! + data[i + 2]! > threshold) lit++
-    }
-    return lit
-  }, LIT_THRESHOLD)
-}
+const litPixels = (page: Parameters<typeof openExperiment>[0]) => countLit(page, LIT_THRESHOLD)
 
 test("settles to a shape it actually holds, with light on the canvas", async ({ page }) => {
   const experiment = await openDangler(page, { settings: MODEST_SCENE, idle: true })
