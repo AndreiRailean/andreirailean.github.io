@@ -150,6 +150,12 @@ test("heads lean out over their own feet, and lean further from a lower camera",
   const experiment = await openWalkers(page, { settings: { ...MODEST, camera: 120 }, idle: true })
   await experiment.api(({ api }) => api.settle(45))
 
+  // Nearly frozen for the rest of the test. The two readings below are of the
+  // same crowd at two camera heights, and a crowd that walks between them is a
+  // second variable — which is what made this flaky in a full run and fine on
+  // its own.
+  await experiment.api(({ api }) => api.set({ playback: 0.01 }))
+
   const leanAt = async (camera: number) => {
     await experiment.api(({ api, arg }) => api.set({ camera: arg }), camera)
     await painted(page)
@@ -169,8 +175,18 @@ test("heads lean out over their own feet, and lean further from a lower camera",
   // is magnified by 1.23 and thrown nearly a quarter of its distance from the
   // centre outward, which puts light in the corners of the frame that a plan
   // view leaves as ground.
-  const spread = async () =>
-    page.evaluate(() => {
+  /**
+   * The mean distance of a *dot* pixel from the middle of the frame.
+   *
+   * The threshold is derived from the ground, not written down. It was a fixed
+   * luminance of 150, which on this scene's ground counts the grass as well —
+   * so the measure came back as the mean radius of the whole canvas, 0.3828
+   * either way, and the test compared a number to itself and passed for two
+   * days.
+   */
+  const spread = async () => {
+    const { ground } = await inked(page)
+    return page.evaluate((floor) => {
       const canvas = document.querySelector("canvas") as HTMLCanvasElement
       const context = canvas.getContext("2d")!
       const { width, height } = canvas
@@ -181,13 +197,14 @@ test("heads lean out over their own feet, and lean further from a lower camera",
         for (let x = 0; x < width; x += 2) {
           const at = (y * width + x) * 4
           const luminance = (data[at]! * 3 + data[at + 1]! * 6 + data[at + 2]!) / 10
-          if (luminance < 150) continue
+          if (luminance < floor) continue
           sum += Math.hypot(x / width - 0.5, y / height - 0.5)
           count++
         }
       }
       return count > 0 ? sum / count : 0
-    })
+    }, ground + 14)
+  }
 
   await experiment.api(({ api }) => api.set({ camera: 120 }))
   await painted(page)
@@ -314,16 +331,24 @@ test("a bare address lands on the primary and says so in the URL", async ({ page
   expect(PRESETS[0]!.settings).not.toEqual(DEFAULT_SETTINGS)
 })
 
-test("?settle= lands on a park that has been going a while", async ({ page }) => {
+test("?settle= lands on a park that has already been running", async ({ page }) => {
   // For tools that cannot evaluate JS, which is the same reason ?panel= and
-  // ?idle= exist. A cold landing is a nearly empty field for the first minute.
+  // ?idle= exist.
+  //
+  // Asserted on the **clock**. It used to compare populations, on the reasoning
+  // that a cold landing is a nearly empty field — which was true when the
+  // opening crowd was laid out only inside the frame, and stopped being true
+  // when it was scattered across the whole world. A cold landing is now a full
+  // frame, so the population says nothing and the two readings differed by one
+  // person.
   const cold = await openWalkers(page, { settings: MODEST, query: { idle: "1" } })
   const coldStats = await cold.api(({ api }) => api.stats())
 
   const warm = await openWalkers(page, { settings: MODEST, query: { idle: "1", settle: "120" } })
   const warmStats = await warm.api(({ api }) => api.stats())
 
-  expect(warmStats.inFrame).toBeGreaterThan(coldStats.inFrame * 0.9)
+  expect(coldStats.clock).toBeLessThan(10)
+  expect(warmStats.clock).toBeGreaterThan(115)
   expect(warmStats.inFrame).toBeGreaterThan(3)
 })
 
@@ -345,12 +370,15 @@ test("every preset runs, populates and draws", async ({ page }) => {
     expect(stats.inFrame, `${names[index]} has nobody in shot`).toBeGreaterThan(1)
     expect(stats.overlap, `${names[index]} has somebody inside somebody`).toBeLessThan(0.05)
 
-    // Heads are pitched away from the ground in whichever direction has room,
-    // so a scene draws people either lighter or darker than the grass — and one
-    // scene draws no people at all on purpose. What every preset owes is *some*
-    // ink: a frame that is all ground is a frame where the piece did not run.
+    // Dots are pitched away from the ground in whichever direction has room, so
+    // a scene draws them either lighter or darker than it — and one scene draws
+    // no dots at all on purpose, only where they have been. What every preset
+    // owes is *some* ink: a frame that is all ground is a frame where the piece
+    // did not run. The floor is low because a deliberately sparse scene at a
+    // narrow span is a dozen dots a few pixels across, and that is the scene
+    // working.
     const canvas = await inked(page)
-    expect(canvas.lighter + canvas.darker, `${names[index]} drew nothing at all`).toBeGreaterThan(300)
+    expect(canvas.lighter + canvas.darker, `${names[index]} drew nothing at all`).toBeGreaterThan(60)
 
     await experiment.shot(`preset-${names[index]!.replace(/\s+/g, "-")}`)
   }

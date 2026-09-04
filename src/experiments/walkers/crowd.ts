@@ -187,6 +187,9 @@ const FILL_HEADROOM = 1.6
 /** A floor, so a nearly empty frame does not crawl. */
 const MAX_ARRIVALS = 2
 
+/** Metres of clear ground an arrival needs between them and anybody else. */
+const SPAWN_CLEARANCE = 0.6
+
 export type Activity =
   "walking" | "running" | "standing" | "sitting" | "crouching" | "chasing" | "fleeing" | "darting" | "fallen"
 
@@ -525,6 +528,29 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
   }
 
   /**
+   * Anywhere in the world, margin included — which is where the opening cast
+   * goes.
+   *
+   * **Not `spotInside`.** That insets by 28 per cent, which is right for a spot
+   * somebody has *chosen* to stand in — nobody picnics pressed against the edge
+   * of the frame — and quite wrong for scattering an opening crowd, because it
+   * lays them out in a rectangle in the middle of the screen with a quarter of
+   * the picture visibly empty around it. With traces on it is worse than
+   * visible: the first thing the ground remembers is the shape of the spawner,
+   * and it takes the best part of a minute to fade.
+   *
+   * The margin is included for the same reason. A crowd that starts exactly at
+   * the frame's edge has an edge; one that starts across the whole world does
+   * not, and the people out of shot walk in as the ones in shot walk out.
+   */
+  function spotAnywhere(): { x: number; y: number } {
+    return {
+      x: (stream() * 2 - 1) * (view.halfWidth + view.margin * 0.9),
+      y: (stream() * 2 - 1) * (view.halfHeight + view.margin * 0.9),
+    }
+  }
+
+  /**
    * A spot to settle on that somebody else has not already settled on.
    *
    * Two groups given nearby spots do not sort it out between them: each is
@@ -642,7 +668,7 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
     group.hue = (settings.hue + 160 + (skinRng() * 2 - 1) * settings.spread * 1.6) % 360
 
     const entryEdge = pickEdge()
-    const entry = placeInside ? spotInside() : edgePoint(entryEdge)
+    const entry = placeInside ? spotAnywhere() : edgePoint(entryEdge)
 
     // Where they are going, which depends on what the crowd is for.
     if (errand === "cross") {
@@ -750,7 +776,7 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
     let placed = false
     let where = entry
     for (let attempt = 0; attempt < 6 && !placed; attempt++) {
-      where = attempt === 0 ? entry : placeInside ? spotInside() : edgePoint(entryEdge)
+      where = attempt === 0 ? entry : placeInside ? spotAnywhere() : edgePoint(entryEdge)
       if (errand === "resident") arrangeRing(group, where)
       else layOut(where)
       placed = arriving.every(isClear)
@@ -772,23 +798,44 @@ export function createCrowd({ view: initialView, settings: initialSettings, sun:
 
     for (const walker of arriving) walkers.push(walker)
 
-    // Head start: someone arriving already knows which way they are facing.
+    // Head start: somebody arriving already knows which way they are facing,
+    // and is **already walking**. Spawning at rest costs a second of everybody
+    // standing still while the relaxation gets them going — which is a second of
+    // the avoidance solving a problem that does not exist, and, with traces on,
+    // a blob deposited at every spawn point before anybody moves.
     for (const walker of group.members) {
       const dx = group.goalX - walker.x
       const dy = group.goalY - walker.y
+      const distance = Math.hypot(dx, dy) || 1
       walker.facing = Math.atan2(dy, dx)
       walker.yaw = walker.facing
       walker.yawWanted = walker.facing
+
+      if (walker.activity === "walking" || walker.activity === "running") {
+        const speed = walker.activity === "running" ? walker.body.runSpeed : walker.body.preferredSpeed
+        walker.vx = (dx / distance) * speed
+        walker.vy = (dy / distance) * speed
+        walker.speed = speed
+      }
     }
 
     groups.push(group)
   }
 
-  /** Whether a spawning walker has room to exist where they are being put. */
+  /**
+   * Whether a spawning walker has room to exist where they are being put.
+   *
+   * The clearance is over half a metre rather than the width of a hand, because
+   * an arrival is **already walking** — at up to three metres a second, and
+   * possibly straight at somebody. A gap that is merely clear is closed inside a
+   * tenth of a second, before the avoidance has had a frame to notice, and the
+   * contact solver spends the next few prising apart a collision that was dealt
+   * at the moment of arrival.
+   */
   function isClear(walker: Walker): boolean {
     for (const other of walkers) {
       const gap = Math.hypot(other.x - walker.x, other.y - walker.y) - other.body.radius - walker.body.radius
-      if (gap < 0.25) return false
+      if (gap < SPAWN_CLEARANCE) return false
     }
     return true
   }

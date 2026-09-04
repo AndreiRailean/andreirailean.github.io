@@ -111,14 +111,10 @@ both effects grow together, because they are the same effect. It also means a
 child leaving the ground gets visibly larger, which is one of the two things
 that make a jump read.
 
-The other is the shadow — and the shadow is also where most of the size
-difference actually lives. Only heads are drawn, but the shadow is of the whole
-person, which is what a bright day from above actually looks like: a scattering
-of heads each with a body lying next to it on the grass. Shadow length and width
-both go straight with height, so an adult's is more than half again a small
-child's in both directions, where their heads differ by a seventh. If a crowd
-here ever reads as uniform, the light is the thing to reach for. When a child
-jumps, their shadow detaches and slides away from them.
+The other is the shadow. It is the shadow of a _circle_ — a soft ellipse,
+stretched along the light and thrown further the lower the sun is — and it earns
+its place for one reason: it is the only cue for height. When a child jumps,
+their shadow slides out from under them and shrinks.
 
 ## What the sliders are for
 
@@ -142,15 +138,14 @@ Two of them change what the piece _is_ rather than how it looks. **Traces** lets
 the ground remember: paths that keep being used stay dark because they keep
 being renewed, and paths that do not simply fade. Nobody draws a desire line — it
 is what is left when everything else has gone. And **heads** can be turned off
-entirely, which leaves the shadows walking about with nobody attached to them.
-On pale ground with a bright sun that is the whole piece as a black-and-white
-plan, and it turns out to lose surprisingly little: the shadow was carrying most
-of the information anyway.
+entirely, leaving nothing in the frame but where people have been.
 
-Between them the eight scenes are meant to be far apart. Two of them were found
-rather than designed — **bacteria** is what the crowd looks like from far enough
-up that people are motile specks, which is not what anyone set out to build, and
-**desire lines** is the ground remembering an hour of it.
+Between them the scenes are meant to be far apart, and three of them were found
+rather than designed. **Bacteria** is what the crowd looks like from far enough
+up that people are motile specks, which is not what anyone set out to build.
+**Desire lines** is the ground remembering the last minute of it. **Chalky** is
+the same thing at night with the people turned off, which is the piece reduced
+to its own handwriting.
 
 ## What it does not do yet
 

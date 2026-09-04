@@ -107,7 +107,15 @@ export function skinOf(
   const below = !settings.dusk && ground > PALE_GROUND
   const base = below
     ? clamp(ground - 30 - settings.pastel * 6, 10, 58)
-    : clamp(ground + (settings.dusk ? 34 : 20) + settings.pastel * 8, 38, 88)
+    : settings.dusk
+      ? // **Not pitched against the ground at dusk.** After dark the ground is
+        // unlit and people are lit by whatever there is, so how bright somebody
+        // is has nothing to do with how bright the grass is — and tying the two
+        // together is what capped the contrast. With the ground free to go to
+        // near-black and the crowd held up here, dusk reaches white on black,
+        // which is what a night scene is for and what it could not do before.
+        clamp(66 + settings.pastel * 14, 40, 92)
+      : clamp(ground + 20 + settings.pastel * 8, 38, 88)
   const lightness = clamp(base + (rng() - 0.5) * (below ? 20 : 26), 8, 95)
   const saturation = clamp((64 - settings.pastel * 36) * saturationScale, 3, 80)
 
@@ -123,6 +131,17 @@ export type Tones = {
   edge: string
   /** Whatever of a face is showing. */
   face: string
+  /**
+   * What this person writes on the ground behind them.
+   *
+   * Whichever of their own tones **contrasts with the ground**, which is not
+   * always the dark one. The trace used `edge` unconditionally — a contour line,
+   * right on pale ground and hopeless on a dark one, where it came out a muddy
+   * mid-grey a few points off the grass. On a dark ground the mark somebody
+   * leaves has to be the lit tone, and then a night scene can reach chalk on
+   * slate.
+   */
+  trace: string
 }
 
 /**
@@ -157,8 +176,14 @@ export function tonesFor(
     // rather than a shade of the person's own colour — the one place in the
     // piece where the palette does not reach.
     face: hsl(26, 30, clamp(lightness + 14, 34, 92)),
+    trace: onDarkGround(settings)
+      ? hsl(hue - warmth * 0.3, skin.saturation * 0.9, clamp(lightness + 16, 0, 97))
+      : hsl(hue + 12, skin.saturation * 1.1, clamp(lightness - 24, 2, 90)),
   }
 }
+
+/** Whether the crowd is the lighter thing in the frame. */
+const onDarkGround = (settings: Settings): boolean => settings.dusk || groundLightness(settings) <= PALE_GROUND
 
 export type Ground = {
   /** The flat colour under everything. */
@@ -189,7 +214,7 @@ export type Ground = {
  * the shadows-only scene needs one — a silhouette wants paper to be on.
  */
 export const groundLightness = (settings: Settings): number =>
-  settings.dusk ? 24 + settings.tint * 7 : 44 + (1 - settings.tint) * 40
+  settings.dusk ? 5 + settings.tint * 26 : 44 + (1 - settings.tint) * 40
 
 export function groundOf(settings: Settings, sun: Sun): Ground {
   const saturation = clamp(settings.tint * 38, 0, 38)

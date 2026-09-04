@@ -6,6 +6,39 @@ tell about them, you tell from how they move.
 `about.md` beside this file is the human-facing note. This is what you need
 before changing anything.
 
+## What this piece is, and what it is not
+
+**A walker is a dot. All of the humanity is in how it moves.**
+
+This is the rule that was learned the expensive way, and everything drawn here
+has to answer to it. The piece went a long way in the other direction first —
+heads as ovals a quarter longer front to back, a face that came into view as the
+chin lifted, and a shadow of the whole _person_, three tapered strokes for legs,
+torso and head. Every one of those is true of a crowd seen from above. Every one
+of them was wrong for this.
+
+The brief was dots, circles and points of light, with the _reason_ for their
+behaviour being that they are people. Figurative detail spends the piece's
+budget in the wrong place: it puts back the body that had explicitly been agreed
+to be invisible, it does not survive the sizes the piece is usually looked at,
+and at small sizes a field of little oriented ovals reads as something swimming
+rather than as anybody walking.
+
+So:
+
+- **Dots are circles**, lit as spheres, with the highlight the same way for
+  everybody so the frame has a light in it rather than a field of arrows.
+- **A shadow is the shadow of a circle** — a soft ellipse stretched along the
+  light. It survives only because it is the sole cue for **height**: a jumper's
+  shadow slides out from under them, and that needs no figure.
+- **Head orientation is simulated and not drawn.** `updateGaze` is real and the
+  debug overlay draws its rays, because gaze is what makes a group read as a
+  group in the _numbers_. It reaches the picture through nothing.
+
+Before adding anything representational, ask whether it is describing a person
+or a person's _behaviour_. The second is the piece; the first has been removed
+once already.
+
 ## The one design rule
 
 **`body.ts` has no settings in it, and must not get any.**
@@ -152,9 +185,10 @@ the whole reason the numbers in `stats()` exist.
   regardless of heading put every group entering from the side into a single file
   pointing at its own destination, and they sorted themselves out sideways in
   full view.
-- **The head's highlight is in world space, not head space.** Rotate the light
-  with the head and every face in the crowd lights on the same side of itself,
-  and the picture stops having a sun in it.
+- **The highlight must not encode a heading.** Pushed to where a sphere's really
+  would be, and offset along each walker's own facing, it turns every dot into a
+  little arrow and the crowd into a field of them. It is small, and toward the
+  sun, the same way for everybody.
 - **A walker who holds one speed for ever reads as a microbe, not a person.**
   Constant-velocity gliding is the single strongest tell at small sizes, and it
   is not fixed by any amount of avoidance quality. Three timescales answer it —

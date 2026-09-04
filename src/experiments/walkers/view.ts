@@ -32,11 +32,21 @@
  *
  * ## The light
  *
- * Only heads are drawn, but the *shadow* is the whole person, because that is
- * what a bright day from above actually looks like — a scattering of heads each
- * with a body lying next to it on the grass. The shadow is where the body
- * information goes, which is what keeps the heads from reading as floating
- * counters, and it costs three soft strokes per walker.
+ * A walker is a **circle**, and its shadow is the shadow of a circle: a soft
+ * ellipse, stretched along the light and thrown further the lower the sun is.
+ *
+ * It was the shadow of a whole *person* — three tapered strokes, head and torso
+ * and legs — on the reasoning that a bright day from above really does look like
+ * a scattering of heads each with a body lying next to it on the grass. That is
+ * true and it was the wrong thing to build. The brief here is dots with human
+ * motion, not people: the realism belongs in how they move, and drawing the body
+ * we had agreed was invisible put it back in the picture through the floor. See
+ * `AGENTS.md`.
+ *
+ * What the light is still for, and why it survived the deletion: a shadow that
+ * separates from its dot is the only cue for **height**. A child leaving the
+ * ground is magnified and their shadow slides out from under them, and neither
+ * of those needs a figure to read.
  */
 
 export type View = {
@@ -117,6 +127,14 @@ export type Sun = {
   reach: number
   /** How diffuse the light is. A low sun is a softer, longer, weaker shadow. */
   softness: number
+  /**
+   * How far a shadow is stretched along the light.
+   *
+   * The shadow of a sphere on the ground is an ellipse with its short axis the
+   * sphere's radius and its long axis `r / sin(elevation)`. Overhead it is a
+   * disc; near the horizon it is a streak.
+   */
+  stretch: number
 }
 
 /**
@@ -139,6 +157,7 @@ export function makeSun(azimuthDegrees: number, elevationDegrees: number): Sun {
     x: Math.sin(azimuth),
     y: Math.cos(azimuth),
     reach: Math.min(4, 1 / Math.tan(elevation)),
+    stretch: Math.min(4, 1 / Math.sin(elevation)),
     // The sun is the same size in the sky whatever its elevation, but its light
     // travels through more atmosphere low down, so the shadow edge is softer and
     // the shadow itself weaker. One number for both.
