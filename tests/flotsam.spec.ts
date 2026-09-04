@@ -401,8 +401,16 @@ test("the size mix thins the large pieces without emptying the water or narrowin
   const settings = { dots: 4000, smallest: 0.004, largest: 0.4, span: 8, steepness: 0, drift: 0, eddies: 0, stokes: 0 }
   const experiment = await openFlotsam(page, { settings: { ...settings, sizeMix: 0.9 }, idle: true })
 
+  // `light` is summed while drawing, so both readings wait a frame — the rule
+  // in `tests/AGENTS.md`, and the same one the exposure test above follows. This
+  // test was written without it and passed for weeks on luck: the scene is
+  // deliberately still, so a stale frame comes back byte-identical rather than
+  // obviously old. It failed in CI on a documentation-only PR, reading
+  // `fine.light` of 6.455 against a `coarse.light` of exactly 6.455.
+  await painted(page)
   const coarse = await experiment.api(({ api }) => api.stats())
   await experiment.api(({ api }) => api.set({ sizeMix: 0.2 }))
+  await painted(page)
   const fine = await experiment.api(({ api }) => api.stats())
 
   expect(fine.light).toBeLessThan(coarse.light / 2)
