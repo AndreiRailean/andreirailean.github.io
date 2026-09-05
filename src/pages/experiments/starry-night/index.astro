@@ -97,7 +97,7 @@ import Reel from "@/experiments/gallery/Reel.astro"
         PRESETS,
         normalizeSettings,
         reconcile,
-        settingsFromQuery,
+        settingsForLanding,
         urlForSettings,
       } from "@/experiments/starry-night/settings"
       import { announceApi, createApi } from "@/experiments/starry-night/api"
@@ -114,7 +114,12 @@ import Reel from "@/experiments/gallery/Reel.astro"
       const canvas = requireElement("sky", HTMLCanvasElement)
       const ui = requireElement("ui", HTMLDivElement)
 
-      const settings = settingsFromQuery(new URLSearchParams(window.location.search))
+      // Read once and reused below. The escape hatches are pulled from the same
+      // object rather than from `window.location.search`, because the landing
+      // rewrite at the end of this script changes what that says.
+      const params = new URLSearchParams(window.location.search)
+
+      const { settings, featured } = settingsForLanding(params)
 
       /**
        * The page owns document-level theming; the panel owns its own state.
@@ -171,10 +176,22 @@ import Reel from "@/experiments/gallery/Reel.astro"
       // Two escape hatches for tools that cannot evaluate JS: ?panel=1 opens the
       // settings panel on load, ?idle=0 stops the chrome hiding itself. Neither
       // is a setting, so neither belongs in the shareable query string.
-      const params = new URLSearchParams(window.location.search)
       if (params.get("panel") === "1") api.panel(true)
       const idleParam = params.get("idle")
       if (idleParam !== null) api.idle(idleParam !== "0")
+
+      // Last, so the escape hatches above are read from the URL as opened. The
+      // address then describes the sky on screen, which means a link copied
+      // without touching anything keeps working when the featured preset
+      // changes.
+      //
+      // It writes a bare address today, and that is the open half of #128: the
+      // primary and `DEFAULT_SETTINGS` hold the same values, so the diff
+      // `urlForSettings` writes is empty and the rewrite pins nothing. The wiring
+      // is here so that stops being true the moment the two are separated.
+      if (featured) {
+        window.history.replaceState(null, "", urlForSettings(settings, window.location.pathname))
+      }
     </script>
   </body>
 </html>

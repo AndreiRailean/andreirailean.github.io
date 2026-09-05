@@ -168,7 +168,14 @@ for (const slug of PIECES) {
    * `src/experiments/CONTEXT.md` on *primary*.
    */
   test(`${slug}: a bare address is rewritten to the scene it landed on`, async ({ page }) => {
-    test.skip(slug === "starry-night", "starry-night predates settingsForLanding and has no rewrite; see #128")
+    // starry-night has the rewrite now, and it writes a bare address: its
+    // primary holds the same values as its `DEFAULT_SETTINGS`, so the diff
+    // `urlForSettings` writes for that scene is empty. Separating the two is a
+    // scene choice rather than a mechanism, so it stayed open — #128.
+    test.skip(
+      slug === "starry-night",
+      "starry-night's primary is its baseline, so its landing address is bare; see #128",
+    )
     const experiment = await openExperiment<BaseApi>(page, slug, { idle: true })
 
     const landed = await experiment.api(({ api }) => api.get())
