@@ -232,19 +232,34 @@ export const DEFAULT_SETTINGS: Settings = {
 /**
  * Starting points, not conclusions. Keys 1-3 load these; the intent is that you
  * explore with the sliders, then a URL worth keeping gets baked in here.
- */
-/**
- * kit-opt-out: `deep field` is written as a copy of `DEFAULT_SETTINGS` rather
- * than in full, so retuning the defaults edits it. Deliberate when written and
- * worth revisiting — see
- * `../docs/adr/20260830-a-preset-inherits-from-nothing.md`, where the same shape
- * cost Psyxels four of its six scenes.
+ *
+ * Every one of them states every setting and inherits from nothing — not from
+ * another preset and not from `DEFAULT_SETTINGS`. `deep field` was a spread over
+ * the defaults until #128, which is the shape that cost Psyxels four of its six
+ * scenes; see `../docs/adr/20260830-a-preset-inherits-from-nothing.md`. The
+ * values below are the ones that spread produced, written out unchanged.
  */
 export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
   {
     label: "deep field",
     hint: "Many faint layers on a dark sky. The starting point.",
-    settings: { ...DEFAULT_SETTINGS },
+    settings: {
+      mode: "depth",
+      invert: false,
+      layerCount: 14,
+      fade: 0.1,
+      curve: 1,
+      glimmersPerSecond: 0.5,
+      densityScale: 1,
+      nearRadius: 3,
+      sizeMix: 1,
+      wobble: 0.22,
+      clouds: 0.15,
+      haze: 0.2,
+      hue: 247,
+      minLifetimeMs: 6_000,
+      maxLifetimeMs: 26_000,
+    },
   },
   {
     label: "clay",
@@ -424,4 +439,42 @@ export function settingsToQuery(settings: Settings): URLSearchParams {
     if (settings[key] !== DEFAULT_SETTINGS[key]) params.set(key, String(settings[key]))
   }
   return params
+}
+
+/**
+ * Whether a query string names any setting at all.
+ *
+ * The same rule `settingsFromQuery` applies, and it has to stay the same rule:
+ * absent, blank and unparseable are all "not a setting" there, so a URL made
+ * only of those is one the piece would read as carrying nothing. `invert` is
+ * the odd one — the parser accepts any non-null value, blank included, because
+ * anything that is not `0` or `false` is true — so it counts here on exactly
+ * that test rather than on being readable.
+ */
+function namesASetting(params: URLSearchParams): boolean {
+  if (isMode(params.get("mode"))) return true
+  if (params.get("invert") !== null) return true
+  return (Object.keys(BOUNDS) as NumericKey[]).some((key) => {
+    const raw = params.get(key)
+    return raw !== null && raw.trim() !== "" && Number.isFinite(Number(raw))
+  })
+}
+
+/**
+ * The scene a freshly-opened URL should show.
+ *
+ * `featured` says the caller should rewrite the address, so a landing visitor
+ * has a URL describing the sky in front of them rather than one standing for
+ * "whatever is featured". The piece read `settingsFromQuery` here until #128,
+ * which landed a bare address on `DEFAULT_SETTINGS` — the baseline rather than
+ * the chosen scene, and correct only for as long as the two coincide.
+ *
+ * They do coincide today, so the rewrite this enables is still a no-op: the
+ * address `urlForSettings` writes for the primary is empty, because every value
+ * in it equals the default it is diffed against. That half of #128 is a scene
+ * choice rather than a mechanism, and is left open there.
+ */
+export function settingsForLanding(params: URLSearchParams): { settings: Settings; featured: boolean } {
+  if (namesASetting(params)) return { settings: settingsFromQuery(params), featured: false }
+  return { settings: normalizeSettings(PRESETS[0]!.settings), featured: true }
 }

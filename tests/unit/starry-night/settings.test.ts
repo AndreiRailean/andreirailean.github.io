@@ -9,8 +9,10 @@ import {
   needsRebuild,
   normalizeSettings,
   reconcile,
+  settingsForLanding,
   settingsFromQuery,
   settingsToQuery,
+  urlForSettings,
 } from "@/experiments/starry-night/settings"
 
 /**
@@ -177,5 +179,87 @@ describe("presets", () => {
 
   it("has unique labels, since a number key selects one", () => {
     expect(new Set(PRESETS.map((preset) => preset.label)).size).toBe(PRESETS.length)
+  })
+
+  /**
+   * `deep field` was `{ ...DEFAULT_SETTINGS }` until #128, so retuning a default
+   * silently retuned the scene a visitor lands on. Stating every key is the rule
+   * — `../docs/adr/20260830-a-preset-inherits-from-nothing.md` — and this is the
+   * mechanical half of it, which reads the object rather than the source.
+   */
+  it.each(PRESETS.map((preset) => [preset.label, preset] as const))(
+    "%s states every setting, so no default can move it",
+    (_label, preset) => {
+      expect(Object.keys(preset.settings).sort()).toEqual(Object.keys(DEFAULT_SETTINGS).sort())
+    },
+  )
+})
+
+/**
+ * Where a bare address lands, and what it should leave the visitor holding.
+ *
+ * The indirection is the point: the address a visitor copies has to describe the
+ * sky in front of them rather than stand for "whatever is featured", or promoting
+ * a preset changes what an already-shared link shows. See `CONTEXT.md` on
+ * *primary*.
+ */
+describe("landing", () => {
+  /**
+   * **This one cannot fail today, and that is the same fault seen from inside.**
+   * Swapping the body of `settingsForLanding` back to `settingsFromQuery` — the
+   * bug #128 is about — leaves it green, because a bare query parses to
+   * `DEFAULT_SETTINGS` and the primary holds those same values. It is written
+   * against the property rather than the values, so it starts biting the moment
+   * the two are separated; until then the falsifiable half of this block is the
+   * pin at the bottom.
+   */
+  it("shows the first preset for a bare URL, and says the address should be rewritten", () => {
+    const landing = settingsForLanding(new URLSearchParams(""))
+    expect(landing.featured).toBe(true)
+    expect(landing.settings).toEqual(normalizeSettings(PRESETS[0]!.settings))
+  })
+
+  it("leaves a URL that names a setting alone", () => {
+    const landing = settingsForLanding(new URLSearchParams("hue=90"))
+    expect(landing.featured).toBe(false)
+    expect(landing.settings.hue).toBe(90)
+  })
+
+  it("treats a URL of only unreadable params as naming nothing, exactly as the parser does", () => {
+    expect(settingsForLanding(new URLSearchParams("hue=&clouds=nope")).featured).toBe(true)
+  })
+
+  /**
+   * The two non-numeric keys, which the numeric sweep cannot see. `mode` counts
+   * only when it is one the piece has, and `invert` counts whenever it is
+   * present at all — both because that is when `settingsFromQuery` reads them,
+   * and the two have to agree about what a URL carries.
+   */
+  it("counts a mode it has, and ignores one it does not", () => {
+    expect(settingsForLanding(new URLSearchParams("mode=random")).featured).toBe(false)
+    expect(settingsForLanding(new URLSearchParams("mode=sideways")).featured).toBe(true)
+  })
+
+  it("counts an invert on the same test the parser applies, blank included", () => {
+    expect(settingsForLanding(new URLSearchParams("invert=1")).featured).toBe(false)
+    expect(settingsForLanding(new URLSearchParams("invert=0")).featured).toBe(false)
+    expect(settingsForLanding(new URLSearchParams("invert=")).featured).toBe(false)
+    expect(settingsFromQuery(new URLSearchParams("invert=")).invert).toBe(true)
+  })
+
+  /**
+   * The half of #128 that is still open, pinned here so it is a failing
+   * assertion the day it is fixed rather than a comment nobody re-reads.
+   *
+   * `deep field` holds the same values as `DEFAULT_SETTINGS`, so the diff
+   * `settingsToQuery` writes for it is empty and the landing rewrite produces a
+   * bare address — which is exactly the address that means "whatever is
+   * featured". Separating the primary from the baseline is a scene choice, not a
+   * mechanism, so it is Andrei's; when it happens, invert this.
+   */
+  it("still cannot pin its own landing scene, because the primary is the baseline", () => {
+    const { settings } = settingsForLanding(new URLSearchParams(""))
+    expect(settings).toEqual(DEFAULT_SETTINGS)
+    expect(urlForSettings(settings, "/experiments/starry-night/")).toBe("/experiments/starry-night/")
   })
 })
