@@ -10,8 +10,28 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Two jobs rather than two steps, because the browser suite is most of the wall
+# clock and the unit suite needs none of what makes it slow. Measured on a green
+# run before the split: install 6s, Chromium 23s, unit 108s, browser 336s, all
+# in series. Run side by side, the longer job sets the clock — roughly 365s
+# against 473s, a fifth off, for the same compute plus one extra checkout and
+# install.
+#
+# The unit job also skips the Chromium download entirely, which is the part of
+# the setup that is not cached.
+#
+# What is lost: the unit suite no longer runs *first*, so a broken solver and a
+# broken page now surface together rather than in seconds. That was the reason
+# they were ordered, and it is worth less than it sounds — the unit job still
+# finishes and reports in about two minutes, and it fails its own check
+# independently, so nothing waits on the browser suite to learn about it.
+#
+# See #133 for what this does not touch: `fullyParallel`, which would spread a
+# spec's tests across workers and could trade slow for flaky on a shared dev
+# server, and the audit of which tests need a browser at all.
 jobs:
-  test:
+  unit:
+    name: Unit tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -31,16 +51,34 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # No Playwright browsers here: nothing under tests/unit/ opens a page, and
+      # that is the whole point of the split.
+      - name: Unit tests
+        run: pnpm run test:unit
+
+  browser:
+    name: Browser tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read the Node version
+        id: node
+        run: echo "version=$(cat .node-version)" >> "$GITHUB_OUTPUT"
+      - uses: pnpm/setup@v2
+        with:
+          runtime: node@${{ steps.node.outputs.version }}
+          install: false
+          cache: true
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       # Playwright has no install script, so its browsers arrive only from this.
       # Chromium alone: the suite declares one project and nothing needs the
       # others. `--with-deps` covers the system libraries the runner lacks.
       - name: Install Chromium for Playwright
         run: pnpm exec playwright install --with-deps chromium
-
-      # Fast, and needs nothing but node. Runs first so a broken solver fails in
-      # seconds rather than after a dev server has started.
-      - name: Unit tests
-        run: pnpm run test:unit
 
       # Starts its own Astro dev server; see tests/support/dev-server.ts.
       # PW_USE_BUNDLED_CHROMIUM so this tests the build installed above rather
