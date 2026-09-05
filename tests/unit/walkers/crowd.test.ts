@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest"
 import { createCrowd, type Crowd } from "@/experiments/walkers/crowd"
-import { DEFAULT_SETTINGS, normalizeSettings, PRESETS, type Settings } from "@/experiments/walkers/settings"
+import { DEFAULT_SETTINGS, normalizeSettings, PRESETS } from "@/experiments/walkers/settings"
 import { makeView } from "@/experiments/walkers/view"
+import { MARGIN, park, STEP } from "./park"
 
 /**
  * The crowd, run headless.
@@ -23,35 +24,41 @@ import { makeView } from "@/experiments/walkers/view"
  * much to run. The unit suite is the one every other session reaches for while
  * working, and a crowd simulated for four hundred seconds is not free.
  */
-const STEP = 1 / 60
 
 /** The leash in `crowd.ts`, which a child's *typical* distance stays inside. */
 const LEASH_METRES = 3.4
 
-/**
- * The margin the scene computes is a share of its span; here it is as small as
- * the world can be while still having one.
- *
- * It is not part of anything under test, and it is expensive: the opening crowd
- * is scattered across the whole world rather than only the frame, so doubling
- * the margin roughly doubles the people simulated to look at the same picture.
- */
-const MARGIN = 4
-
-function park(patch: Partial<Settings> = {}, seconds = 0) {
-  const settings = normalizeSettings(patch)
-  const view = makeView(settings.span, settings.camera, 1280, 800, MARGIN)
-  const crowd = createCrowd({ view, settings })
-  crowd.fill()
-  run(crowd, seconds)
-  return { crowd, view, settings }
-}
-
+/** Step a crowd built by hand, for the cases that do not want a whole park. */
 function run(crowd: Crowd, seconds: number): void {
   for (let step = 0; step < Math.round(seconds / STEP); step++) crowd.step(STEP)
 }
 
 describe("nobody walks through anybody", () => {
+  /**
+   * The same promise as below, at the density a real scene reaches rather than
+   * the one that stresses it.
+   *
+   * This came out of `tests/walkers.spec.ts`, where it settled thirty seconds of
+   * park in Chromium to read a number `crowd.ts` had already computed —
+   * `tests/unit/browser-suite.test.ts` is the gate that says so now. It cost
+   * about 18 seconds of the browser job and costs a fraction of that here, and
+   * nothing was lost: the browser cannot see `overlap` either, since it is
+   * written during integration rather than drawn.
+   *
+   * It is kept as well as the harder case below because the two ask different
+   * questions. That one asks what the resolution does when it is genuinely
+   * pushed, at a density above anything a preset ships. This asks that an
+   * ordinary crowded scene is *quiet* — that people at 60 per hundred square
+   * metres are not permanently pressed into each other while looking fine.
+   */
+  it("leaves an ordinary crowded scene barely touching", () => {
+    const scene = park({ density: 60, span: 14 }).settle(30)
+    const stats = scene.stats()
+
+    expect(stats.inFrame, "nobody in shot").toBeGreaterThan(20)
+    expect(stats.overlap, "somebody is inside somebody").toBeLessThan(0.045)
+  })
+
   /**
    * The piece's one hard promise, and the reason the separation in `crowd.ts` is
    * positional rather than a force. A force can always be outrun: two runners
@@ -67,7 +74,7 @@ describe("nobody walks through anybody", () => {
    * would register as most of half a metre.
    */
   it("never lets anybody get more than a tenth of a body inside anybody", { timeout: 90_000 }, () => {
-    const { crowd } = park({ density: 70, flow: "through", span: 10, settling: 0.05 }, 18)
+    const { crowd } = park({ density: 70, flow: "through", span: 10, settling: 0.05 }).settle(18)
 
     let worst = 0
     for (let step = 0; step < 25 / STEP; step++) {
@@ -80,7 +87,7 @@ describe("nobody walks through anybody", () => {
   })
 
   it("holds even when everybody is running", { timeout: 60_000 }, () => {
-    const { crowd } = park({ density: 40, runners: 0.6, flow: "through", span: 10, settling: 0 }, 25)
+    const { crowd } = park({ density: 40, runners: 0.6, flow: "through", span: 10, settling: 0 }).settle(25)
 
     let worst = 0
     for (let step = 0; step < 60 / STEP; step++) {
@@ -94,7 +101,7 @@ describe("nobody walks through anybody", () => {
 
 describe("the population", () => {
   it("fills the frame to the density asked for, and holds there", { timeout: 120_000 }, () => {
-    const { crowd, view, settings } = park({ density: 12 }, 0)
+    const { crowd, view, settings } = park({ density: 12 })
     const wanted = (settings.density / 100) * view.area
 
     expect(crowd.stats().inFrame).toBeGreaterThanOrEqual(Math.floor(wanted))
@@ -141,7 +148,7 @@ describe("the population", () => {
     let counted = 0
 
     for (const seed of [1, 2, 3]) {
-      const { crowd, view } = park({ density: 34, flow: "wander", settling: 0.3, span: 10, seed }, 70)
+      const { crowd, view } = park({ density: 34, flow: "wander", settling: 0.3, span: 10, seed }).settle(70)
       for (const walker of crowd.walkers) {
         if (Math.abs(walker.x) > view.halfWidth || Math.abs(walker.y) > view.halfHeight) continue
         quadrants[(walker.x < 0 ? 0 : 1) + (walker.y < 0 ? 0 : 2)]!++
@@ -157,7 +164,7 @@ describe("the population", () => {
   })
 
   it("turns the crowd over rather than keeping the same people", { timeout: 60_000 }, () => {
-    const { crowd } = park({ density: 14, settling: 0.1, flow: "through" }, 20)
+    const { crowd } = park({ density: 14, settling: 0.1, flow: "through" }).settle(20)
     const before = new Set(crowd.walkers.map((walker) => walker.id))
 
     run(crowd, 150)
@@ -169,7 +176,7 @@ describe("the population", () => {
 
 describe("who is out there", () => {
   it("makes about as many children as asked for", { timeout: 60_000 }, () => {
-    const { crowd } = park({ density: 40, children: 0.35, span: 10 }, 60)
+    const { crowd } = park({ density: 40, children: 0.35, span: 10 }).settle(60)
     const stats = crowd.stats()
     // Children arrive attached to adults, so the fraction is approached rather
     // than hit: a group of two adults and one child cannot be 35% child.
@@ -178,17 +185,17 @@ describe("who is out there", () => {
   })
 
   it("makes no children at all when asked for none", { timeout: 60_000 }, () => {
-    const { crowd } = park({ density: 40, children: 0, span: 10 }, 40)
+    const { crowd } = park({ density: 40, children: 0, span: 10 }).settle(40)
     expect(crowd.stats().children).toBe(0)
   })
 
   it("puts people on the ground when they are there to sit down", { timeout: 60_000 }, () => {
-    const { crowd } = park({ density: 20, flow: "gather", settling: 1, span: 14 }, 110)
+    const { crowd } = park({ density: 20, flow: "gather", settling: 1, span: 14 }).settle(110)
     expect(crowd.stats().sitting).toBeGreaterThan(0)
   })
 
   it("leaves nobody sitting when nobody is stopping", { timeout: 60_000 }, () => {
-    const { crowd } = park({ density: 20, flow: "through", settling: 0 }, 90)
+    const { crowd } = park({ density: 20, flow: "through", settling: 0 }).settle(90)
     expect(crowd.stats().sitting).toBe(0)
   })
 
@@ -217,8 +224,8 @@ describe("who is out there", () => {
     // have it barely slowed at all below 40 — which is why the first version of
     // this test compared 4 against 34 and found a difference of six per cent,
     // correctly, having picked two densities that are both free flow.
-    const empty = park({ ...plain, density: 4 }, 40)
-    const packed = park({ ...plain, density: 100 }, 40)
+    const empty = park({ ...plain, density: 4 }).settle(40)
+    const packed = park({ ...plain, density: 100 }).settle(40)
 
     expect(packed.crowd.stats().meanSpeed).toBeLessThan(empty.crowd.stats().meanSpeed * 0.9)
   })
@@ -268,15 +275,15 @@ describe("the presets", () => {
 
 describe("the seed", () => {
   it("gives the same afternoon twice", { timeout: 60_000 }, () => {
-    const one = park({ seed: 12345 }, 30)
-    const two = park({ seed: 12345 }, 30)
+    const one = park({ seed: 12345 }).settle(30)
+    const two = park({ seed: 12345 }).settle(30)
 
     expect(one.crowd.stats()).toEqual(two.crowd.stats())
   })
 
   it("gives a different one for a different seed", { timeout: 60_000 }, () => {
-    const one = park({ seed: 1 }, 30)
-    const two = park({ seed: 2 }, 30)
+    const one = park({ seed: 1 }).settle(30)
+    const two = park({ seed: 2 }).settle(30)
 
     expect(one.crowd.walkers.map((w) => w.body.stature)).not.toEqual(two.crowd.walkers.map((w) => w.body.stature))
   })
@@ -298,7 +305,9 @@ describe("children", () => {
    * minutes is the only way to see that.
    */
   it("darts, chases, crouches, jumps and falls over", { timeout: 120_000 }, () => {
-    const { crowd } = park({ density: 34, children: 0.55, play: 1.5, span: 8, flow: "gather", settling: 0.8 }, 15)
+    const { crowd } = park({ density: 34, children: 0.55, play: 1.5, span: 8, flow: "gather", settling: 0.8 }).settle(
+      15,
+    )
 
     const seen = new Set<string>()
     let jumped = false
@@ -319,7 +328,7 @@ describe("children", () => {
   })
 
   it("does none of it when play is off", { timeout: 60_000 }, () => {
-    const { crowd } = park({ density: 26, children: 0.5, play: 0, span: 9, flow: "gather", settling: 0.8 }, 15)
+    const { crowd } = park({ density: 26, children: 0.5, play: 0, span: 9, flow: "gather", settling: 0.8 }).settle(15)
 
     const seen = new Set<string>()
     for (let step = 0; step < 50 / STEP; step++) {
@@ -337,7 +346,9 @@ describe("children", () => {
    * to contain children.
    */
   it("keeps children near the adult they came with", { timeout: 60_000 }, () => {
-    const { crowd } = park({ density: 24, children: 0.5, play: 1.5, span: 10, flow: "gather", settling: 0.7 }, 40)
+    const { crowd } = park({ density: 24, children: 0.5, play: 1.5, span: 10, flow: "gather", settling: 0.7 }).settle(
+      40,
+    )
 
     let worst = 0
     let total = 0
@@ -396,10 +407,15 @@ describe("lanes", () => {
     // effect is a few hundredths and the seed-to-seed scatter is about as
     // large, so comparing two different afternoons was comparing the seeds as
     // much as the sorting. It is also half the work.
-    const { crowd } = park(
-      { density: 60, span: 13, settling: 0, grouping: 0.05, children: 0, play: 0, flow: "through" },
-      12,
-    )
+    const { crowd } = park({
+      density: 60,
+      span: 13,
+      settling: 0,
+      grouping: 0.05,
+      children: 0,
+      play: 0,
+      flow: "through",
+    }).settle(12)
     const early = crowd.stats().sorting
     run(crowd, 110)
     const settled = crowd.stats().sorting
@@ -430,7 +446,7 @@ describe("nobody holds one speed for ever", () => {
   it("gives one person a speed that wanders while they walk", { timeout: 60_000 }, () => {
     // A wide frame, so whoever is followed is in it long enough to be a sample
     // of one person's pace over time rather than a snapshot of two readings.
-    const { crowd } = park({ density: 6, flow: "wander", settling: 0, children: 0, play: 0, span: 24 }, 20)
+    const { crowd } = park({ density: 6, flow: "wander", settling: 0, children: 0, play: 0, span: 24 }).settle(20)
 
     // Follow whoever is still here for the whole sample, so this is one
     // person's speed over time rather than a population's spread.
@@ -457,7 +473,7 @@ describe("nobody holds one speed for ever", () => {
   })
 
   it("has some of the crowd dawdling or hurrying at any moment", { timeout: 60_000 }, () => {
-    const { crowd } = park({ density: 20, settling: 0.5, span: 12 }, 60)
+    const { crowd } = park({ density: 20, settling: 0.5, span: 12 }).settle(60)
     expect(crowd.stats().unsteady).toBeGreaterThan(0)
   })
 
@@ -465,8 +481,8 @@ describe("nobody holds one speed for ever", () => {
     // Yielding is a response to an imminent crossing, so it must be absent when
     // there is nothing to cross. A rate that fires anyway would be a walker
     // stopping for no reason, which reads as a stutter.
-    const empty = park({ density: 1, flow: "wander", span: 10, settling: 0, children: 0 }, 15)
-    const busy = park({ density: 60, flow: "wander", span: 10, settling: 0, children: 0 }, 20)
+    const empty = park({ density: 1, flow: "wander", span: 10, settling: 0, children: 0 }).settle(15)
+    const busy = park({ density: 60, flow: "wander", span: 10, settling: 0, children: 0 }).settle(20)
 
     let stoppedAlone = 0
     let stoppedInCrowd = 0
@@ -491,7 +507,7 @@ describe("changing their minds", () => {
    */
   it("wanders off the straight line, and less when everyone is crossing", { timeout: 90_000 }, () => {
     const straightness = (flow: "through" | "wander") => {
-      const { crowd } = park({ flow, density: 8, span: 16, settling: 0, children: 0, play: 0, grouping: 0 }, 20)
+      const { crowd } = park({ flow, density: 8, span: 16, settling: 0, children: 0, play: 0, grouping: 0 }).settle(20)
 
       const headings = new Map<number, number[]>()
       for (let step = 0; step < 60 / STEP; step++) {
