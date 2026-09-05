@@ -72,6 +72,12 @@ a **list** of them — Psyxels' vocabulary is the marks themselves rather than a
 count of them — so anything comparing two settings uses the kit's `sameValue`
 rather than `===`.
 
+An address states **all** of them, including the ones sitting on their default.
+Writing only the differences makes a shorter link and a link that changes scene
+the day a default moves, which is the same trap a preset inheriting from
+`DEFAULT_SETTINGS` is. See `AGENTS.md` under _Presets_, and
+`tests/unit/experiments-urls.test.ts`.
+
 **Preset** — a named, complete settings bundle, loadable from a number key.
 Presets are recorded from exploration rather than designed up front; they are
 starting points, not fixed configurations.

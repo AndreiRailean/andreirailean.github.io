@@ -36,8 +36,11 @@ describe("the query string", () => {
     expect(settingsFromQuery(settingsToQuery(custom))).toEqual(custom)
   })
 
-  it("writes nothing for a default sky", () => {
-    expect(settingsToQuery(DEFAULT_SETTINGS).toString()).toBe("")
+  it("names every setting, even the ones sitting on their default", () => {
+    // Including `mode` and `invert`, which are not in BOUNDS and so are written
+    // out by hand. A link resting on a default is a link whose scene changes the
+    // day the default does — #128.
+    expect([...settingsToQuery(DEFAULT_SETTINGS).keys()].sort()).toEqual(Object.keys(DEFAULT_SETTINGS).sort())
   })
 
   // Reading query numbers with a bare `Number()` silently disabled glimmers by
@@ -205,13 +208,13 @@ describe("presets", () => {
  */
 describe("landing", () => {
   /**
-   * **This one cannot fail today, and that is the same fault seen from inside.**
+   * **This one still cannot fail, and it is worth knowing which one it is.**
    * Swapping the body of `settingsForLanding` back to `settingsFromQuery` — the
-   * bug #128 is about — leaves it green, because a bare query parses to
-   * `DEFAULT_SETTINGS` and the primary holds those same values. It is written
-   * against the property rather than the values, so it starts biting the moment
-   * the two are separated; until then the falsifiable half of this block is the
-   * pin at the bottom.
+   * bug #128 was about — leaves it green, because a bare query parses to
+   * `DEFAULT_SETTINGS` and the primary holds those same values. Writing the
+   * whole scene into the address fixed the *link*, not this coincidence; the
+   * assertion is written against the property, so it starts biting if the two
+   * are ever separated. The falsifiable claims in this block are the ones below.
    */
   it("shows the first preset for a bare URL, and says the address should be rewritten", () => {
     const landing = settingsForLanding(new URLSearchParams(""))
@@ -248,18 +251,23 @@ describe("landing", () => {
   })
 
   /**
-   * The half of #128 that is still open, pinned here so it is a failing
-   * assertion the day it is fixed rather than a comment nobody re-reads.
+   * The half of #128 that was open, now closed from the other end.
    *
-   * `deep field` holds the same values as `DEFAULT_SETTINGS`, so the diff
-   * `settingsToQuery` writes for it is empty and the landing rewrite produces a
-   * bare address — which is exactly the address that means "whatever is
-   * featured". Separating the primary from the baseline is a scene choice, not a
-   * mechanism, so it is Andrei's; when it happens, invert this.
+   * `deep field` still holds the same values as `DEFAULT_SETTINGS`, and it no
+   * longer matters: the fix was not to move a scene apart from the baseline but
+   * to stop the address being written as a difference from it. So the landing
+   * rewrite pins this sky whether or not the two ever diverge, and a default
+   * moving underneath cannot change what an already-shared link shows.
+   *
+   * This is the assertion that was inverted to get here. It read "still cannot
+   * pin its own landing scene" and passed.
    */
-  it("still cannot pin its own landing scene, because the primary is the baseline", () => {
+  it("pins its own landing scene even though the primary is the baseline", () => {
     const { settings } = settingsForLanding(new URLSearchParams(""))
     expect(settings).toEqual(DEFAULT_SETTINGS)
-    expect(urlForSettings(settings, "/experiments/starry-night/")).toBe("/experiments/starry-night/")
+
+    const address = urlForSettings(settings, "/experiments/starry-night/")
+    expect(address).not.toBe("/experiments/starry-night/")
+    expect(settingsFromQuery(new URLSearchParams(address.split("?")[1]))).toEqual(settings)
   })
 })

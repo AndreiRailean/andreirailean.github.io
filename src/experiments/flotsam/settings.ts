@@ -957,12 +957,26 @@ export function settingsFromQuery(params: URLSearchParams): Settings {
   return normalizeSettings(patch)
 }
 
-/** Only values that differ from the defaults, so shared URLs stay readable. */
+/**
+ * The whole scene, every setting named.
+ *
+ * It carried only what differed from `DEFAULT_SETTINGS` until #128, for a
+ * shorter link — and that is the trap the presets above are written out in full
+ * to avoid, one layer down. **A link resting on a default is a link whose scene
+ * changes the day the default does**, silently, in somebody else's bookmark.
+ * Psyxels had already made this change and written the reasoning down; the
+ * other four pieces had not, and starry-night showed what it costs — its
+ * primary held the default values exactly, so the address its landing rewrite
+ * produced was empty, and an empty address is the one that means "whatever is
+ * featured".
+ *
+ * Defaults still have a job, and it is the other direction: filling an address
+ * that never named a setting at all. That address is an old bookmark, and an
+ * old bookmark was never promised its picture back.
+ */
 export function settingsToQuery(settings: Settings): URLSearchParams {
   const params = new URLSearchParams()
-  for (const key of Object.keys(BOUNDS) as NumericKey[]) {
-    if (settings[key] !== DEFAULT_SETTINGS[key]) params.set(key, String(settings[key]))
-  }
+  for (const key of Object.keys(BOUNDS) as NumericKey[]) params.set(key, String(settings[key]))
   return params
 }
 

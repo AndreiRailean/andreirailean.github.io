@@ -91,9 +91,11 @@ describe("the query string", () => {
     expect(settingsFromQuery(settingsToQuery(scene))).toEqual(scene)
   })
 
-  it("carries only what differs from the defaults, so a shared link stays readable", () => {
-    expect([...settingsToQuery(DEFAULT_SETTINGS).keys()]).toEqual([])
-    expect([...settingsToQuery({ ...DEFAULT_SETTINGS, glint: 0.11 }).keys()]).toEqual(["glint"])
+  it("carries the whole scene, so a shared link cannot drift when a default moves", () => {
+    // It carried only the differences until #128, for a shorter link. That is
+    // the trap the presets are written out in full to avoid, one layer down.
+    expect([...settingsToQuery(DEFAULT_SETTINGS).keys()].sort()).toEqual(Object.keys(DEFAULT_SETTINGS).sort())
+    expect(settingsToQuery({ ...DEFAULT_SETTINGS, glint: 0.11 }).get("glint")).toBe("0.11")
   })
 
   it("treats absent, blank and unparseable alike, and keeps the default for all three", () => {
@@ -102,8 +104,8 @@ describe("the query string", () => {
     }
   })
 
-  it("builds an address with no trailing question mark when nothing has changed", () => {
-    expect(urlForSettings(DEFAULT_SETTINGS, "/experiments/flotsam/")).toBe("/experiments/flotsam/")
+  it("builds an address that names the scene even when nothing has changed", () => {
+    expect(urlForSettings(DEFAULT_SETTINGS, "/experiments/flotsam/")).toContain("?")
   })
 })
 
