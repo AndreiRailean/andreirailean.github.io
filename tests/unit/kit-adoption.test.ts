@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync, statSync } from "node:fs"
 import { describe, expect, it } from "vitest"
+import { optsOutOf, optsOutOfFile } from "./opt-out.ts"
 
 /**
  * Whether each piece is using the kit, or has said out loud that it is not.
@@ -104,7 +105,17 @@ const KIT_SELECTORS = [
   'html[data-idle="true"]',
 ]
 
+/**
+ * The marker, for the messages. `tests/unit/opt-out.ts` owns what satisfies it.
+ *
+ * Two spellings, because two of these checks read the same file for unrelated
+ * reasons. The bare form says *this file is not the kit's* and answers the
+ * checks about the file as a copy; the preset check shares `settings.ts` with
+ * the symbol clash above it and so names itself. See #137 for what one
+ * unqualified line silenced in starry-night.
+ */
 const OPT_OUT = "kit-opt-out:"
+const OPT_OUT_PRESETS = "kit-opt-out(presets):"
 
 const slugs = readdirSync(EXPERIMENTS)
   .filter((name) => !NOT_A_PIECE.has(name) && statSync(`${EXPERIMENTS}/${name}`).isDirectory())
@@ -179,7 +190,7 @@ describe.each(slugs)("%s", (slug) => {
     const clashes: string[] = []
     for (const file of readdirSync(`${EXPERIMENTS}/${slug}`).filter((name) => name.endsWith(".ts"))) {
       const source = readFileSync(`${EXPERIMENTS}/${slug}/${file}`, "utf8")
-      if (source.includes(OPT_OUT)) continue
+      if (optsOutOfFile(source)) continue
       for (const symbol of definitions(source)) {
         const where = kitSymbols.get(symbol)
         // The label carries the folder, because the two shared layers are not
@@ -228,7 +239,7 @@ describe.each(slugs)("%s", (slug) => {
 
   it("takes the console API's chrome half from the kit", () => {
     const api = read(`${EXPERIMENTS}/${slug}/api.ts`)
-    if (api === null || api.includes(OPT_OUT)) return
+    if (api === null || optsOutOfFile(api)) return
 
     const reaches = CHROME_REACHES.filter((call) => api.includes(call))
     expect(
@@ -256,7 +267,7 @@ describe.each(slugs)("%s", (slug) => {
     const rendersChrome = page.includes("createControls") || page.includes('id="ui"')
     if (!rendersChrome) return
     expect(
-      page.includes("kit/controls.css") || page.includes(OPT_OUT),
+      page.includes("kit/controls.css") || optsOutOfFile(page),
       `${slug} builds the kit's chrome but never imports kit/controls.css, so it will render ` +
         `unstyled. Add it to the frontmatter, or say why not with a "${OPT_OUT} <reason>" comment.`,
     ).toBe(true)
@@ -265,7 +276,7 @@ describe.each(slugs)("%s", (slug) => {
   it.each(KIT_SELECTORS)("does not redeclare the kit's %s", (selector) => {
     if (page === null) return
     const style = styleBlock(page)
-    if (style.includes(OPT_OUT)) return
+    if (optsOutOfFile(style)) return
 
     // A selector at the start of a rule: followed by `{`, a comma, or a
     // combinator. `.row.copy` and `.span::after` count; `--ui-row-gap` does not.
@@ -298,7 +309,7 @@ describe.each(slugs)("%s presets", (slug) => {
   const source = read(`${EXPERIMENTS}/${slug}/settings.ts`)
 
   it("states every setting in every preset, rather than inheriting them", () => {
-    if (source === null || source.includes(OPT_OUT)) return
+    if (source === null || optsOutOf(source, "presets")) return
 
     const presets = presetBlocks(source)
     if (presets.length === 0) return
@@ -331,12 +342,12 @@ describe.each(slugs)("%s presets", (slug) => {
         missing,
         `${slug}'s "${preset.label}" preset does not state ${missing.join(", ")}, so it takes ` +
           `whatever another scene decides. Write every setting out, or say why not with a ` +
-          `"${OPT_OUT} <reason>" comment in settings.ts.`,
+          `"${OPT_OUT_PRESETS} <reason>" comment in settings.ts.`,
       ).toEqual([])
       expect(
         preset.body.includes("...") ? preset.label : "",
         `${slug}'s "${preset.label}" preset spreads another object into itself, so it inherits. ` +
-          `Write every setting out, or say why not with a "${OPT_OUT} <reason>" comment.`,
+          `Write every setting out, or say why not with a "${OPT_OUT_PRESETS} <reason>" comment.`,
       ).toBe("")
     }
   })
