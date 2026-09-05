@@ -166,16 +166,16 @@ for (const slug of PIECES) {
    * of them rather than standing for "whatever is featured this month", so
    * promoting a preset cannot invalidate a link anybody has already sent. See
    * `src/experiments/CONTEXT.md` on *primary*.
+   *
+   * **starry-night was skipped here until #128 closed, and how it closed matters
+   * for reading this.** It had no rewrite at all, and adding one was not enough:
+   * its primary holds its `DEFAULT_SETTINGS` values exactly, and the address was
+   * written as the *difference* from those, so the rewrite produced an empty
+   * query — the one address that means "whatever is featured". Every piece now
+   * writes the whole scene, so the assertion below holds for all five without
+   * anyone having to move a scene off its baseline to earn it.
    */
   test(`${slug}: a bare address is rewritten to the scene it landed on`, async ({ page }) => {
-    // starry-night has the rewrite now, and it writes a bare address: its
-    // primary holds the same values as its `DEFAULT_SETTINGS`, so the diff
-    // `urlForSettings` writes for that scene is empty. Separating the two is a
-    // scene choice rather than a mechanism, so it stayed open — #128.
-    test.skip(
-      slug === "starry-night",
-      "starry-night's primary is its baseline, so its landing address is bare; see #128",
-    )
     const experiment = await openExperiment<BaseApi>(page, slug, { idle: true })
 
     const landed = await experiment.api(({ api }) => api.get())

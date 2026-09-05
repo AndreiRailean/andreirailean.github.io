@@ -76,8 +76,24 @@ should stay the scene they found. Recorded, with what it cost, in
 `docs/adr/20260830-a-preset-inherits-from-nothing.md`.
 
 **`DEFAULT_SETTINGS` is a baseline, not a scene.** It is what `normalizeSettings`
-fills gaps from and what `settingsToQuery` measures a link against, so it should
-move only when the meaning of a control moves.
+fills gaps from — an address that named nothing, which is an old bookmark or a
+bare visit, and neither was ever promised a particular picture.
+
+**A shared address states the whole scene, and no longer measures itself against
+that baseline.** `settingsToQuery` writes every setting, whatever its value. Four
+of the five pieces wrote only the differences, for a shorter link, and that is
+the trap a preset spreading over the defaults is, one layer up: **a link resting
+on a default is a link whose scene changes the day the default does**, silently,
+in a bookmark belonging to somebody who is not watching. Psyxels had already made
+the change and written the reasoning into its own `settingsToQuery`; nobody
+carried it across until #128, where starry-night showed the cost — its primary
+holds the default values exactly, so the difference was _empty_ and its landing
+rewrite produced a bare address, which is the one address meaning "whatever is
+featured". `tests/unit/experiments-urls.test.ts` holds all five pieces to it, and
+to the landing rewrite restoring its own scene.
+
+The consequence is deliberate and worth stating: URLs are long now. That is the
+price of a link that means the same thing next month.
 
 **Position one is the primary, and a great deal follows from being first.** A
 bare address lands on it and the page rewrites the URL to that scene's full

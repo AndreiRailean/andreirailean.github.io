@@ -362,8 +362,10 @@ flatten` at first, which looks right on a letter — ink is 1 almost everywhere 
   setting now, and `settings.test.ts` asserts it. Position one is only position
   one: what a bare address lands on, rewritten to that scene's full query.
   The defaults are the piece's _zero_ — a plain letter with every effect at rest
-  — and they are what `normalizeSettings` fills gaps from and what
-  `settingsToQuery` measures a link against. The note's backdrop renders
+  — and they are what `normalizeSettings` fills gaps from. They are **not** what
+  `settingsToQuery` measures a link against, and this line said they were: this
+  piece writes every setting into the address, and was the only one that did
+  until #128 carried it to the other four. The note's backdrop renders
   `PRESETS[0]`, because a backdrop should show a scene someone chose.
 - **Anything that changes the picture without the clock moving must set
   `dirty`.** The loop parks itself when the clock is frozen, and setting

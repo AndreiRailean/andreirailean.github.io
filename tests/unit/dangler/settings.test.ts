@@ -22,8 +22,12 @@ describe("the query string", () => {
     expect(settingsFromQuery(settingsToQuery(custom))).toEqual(custom)
   })
 
-  it("writes nothing for a default scene", () => {
-    expect(settingsToQuery(DEFAULT_SETTINGS).toString()).toBe("")
+  it("names every setting, even the ones sitting on their default", () => {
+    // It carried only the differences until #128. A link resting on a default is
+    // a link whose scene changes the day the default does, in somebody else's
+    // bookmark; `tests/unit/experiments-urls.test.ts` holds all five pieces to
+    // this.
+    expect([...settingsToQuery(DEFAULT_SETTINGS).keys()].sort()).toEqual(Object.keys(DEFAULT_SETTINGS).sort())
   })
 
   it("keeps defaults for absent and empty params, rather than zeroing them", () => {
@@ -110,7 +114,7 @@ describe("landing", () => {
     expect(settingsFromQuery(new URLSearchParams(url.split("?")[1]))).toEqual(settings)
   })
 
-  it("writes no query for a scene that is the defaults", () => {
-    expect(urlForSettings(DEFAULT_SETTINGS, "/experiments/dangler/")).toBe("/experiments/dangler/")
+  it("writes a query even for a scene that is the defaults", () => {
+    expect(urlForSettings(DEFAULT_SETTINGS, "/experiments/dangler/")).toContain("?")
   })
 })
