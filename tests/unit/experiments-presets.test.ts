@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync, statSync } from "node:fs"
 import { describe, expect, it } from "vitest"
+import { optsOutOf, optsOutOfFile } from "./opt-out.ts"
 
 /**
  * Whether every preset still carries a hue the presentation surfaces can use.
@@ -45,7 +46,21 @@ const PAGES = "src/pages/experiments"
 /** Not pieces: shared code, and the section's own docs. */
 const NOT_A_PIECE = new Set(["docs", "gallery", "kit"])
 
+/**
+ * The marker, for the messages. `tests/unit/opt-out.ts` owns what satisfies it.
+ *
+ * Two of the checks below read the same `settings.ts` for unrelated reasons, so
+ * each names itself. Starry Night carried one unqualified line — written about a
+ * preset spreading over `DEFAULT_SETTINGS` — and it was also the reason nothing
+ * checked that the piece had a primary or that its presets carried usable hues.
+ * #137.
+ *
+ * The accent check keeps the bare form: it reads `about.astro`, and nothing else
+ * does.
+ */
 const OPT_OUT = "kit-opt-out:"
+const OPT_OUT_PRIMARY = "kit-opt-out(primary):"
+const OPT_OUT_HUE = "kit-opt-out(hue):"
 
 const slugs = readdirSync(EXPERIMENTS)
   .filter((name) => !NOT_A_PIECE.has(name) && statSync(`${EXPERIMENTS}/${name}`).isDirectory())
@@ -80,10 +95,9 @@ it("finds the experiments, so an empty run cannot pass for a clean one", () => {
 
 describe.each(slugs)("%s", (slug) => {
   const source = readFileSync(`${EXPERIMENTS}/${slug}/settings.ts`, "utf8")
-  const optedOut = source.includes(OPT_OUT)
 
   it("has a primary, which is the first preset", async () => {
-    if (optedOut) return
+    if (optsOutOf(source, "primary")) return
     const { PRESETS } = await settingsModule(slug)
     expect(
       PRESETS,
@@ -92,7 +106,8 @@ describe.each(slugs)("%s", (slug) => {
     ).toBeDefined()
     expect(
       PRESETS!.length,
-      `${slug} has no presets, so there is nothing for the index poster or the note to render.`,
+      `${slug} has no presets, so there is nothing for the index poster or the note to render. ` +
+        `Or say why not with a "${OPT_OUT_PRIMARY} <reason>" comment in settings.ts.`,
     ).toBeGreaterThan(0)
   })
 
@@ -110,7 +125,7 @@ describe.each(slugs)("%s", (slug) => {
    */
   it("computes the note's accent from the primary rather than hardcoding it", () => {
     const page = read(`${PAGES}/${slug}/about.astro`)
-    if (page === null || page.includes(OPT_OUT)) return
+    if (page === null || optsOutOfFile(page)) return
 
     const accent = /accent:\s*(.+),/.exec(page)?.[1] ?? ""
     expect(
@@ -123,7 +138,7 @@ describe.each(slugs)("%s", (slug) => {
   })
 
   it("gives every preset a usable hue", async () => {
-    if (optedOut) return
+    if (optsOutOf(source, "hue")) return
     const { PRESETS } = await settingsModule(slug)
 
     const bad = (PRESETS ?? [])
@@ -137,7 +152,7 @@ describe.each(slugs)("%s", (slug) => {
         `so every preset needs one in [0, 360). If this piece genuinely has no hue control, ` +
         `that is the point at which the section has to decide how to derive one from its other ` +
         `settings — raise it rather than working around it, or say why not with a ` +
-        `"${OPT_OUT} <reason>" comment in settings.ts.`,
+        `"${OPT_OUT_HUE} <reason>" comment in settings.ts.`,
     ).toEqual([])
   })
 })

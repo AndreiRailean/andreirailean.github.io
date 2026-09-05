@@ -506,6 +506,20 @@ because nothing said a duplicate existed.
 - **Diverge on purpose, in writing.** Put `kit-opt-out: <reason>` in the file
   that differs — the module, or the page's `<style>` block. One line, and the
   divergence is a decision someone can find.
+
+  **The reason is the part that counts, and one line does not excuse
+  everything.** A bare `kit-opt-out:` with nothing after it satisfies nothing;
+  what these checks rule out is silence, and a magic word would put us back
+  where we started. And where two checks read the same file for unrelated
+  reasons, the marker **names the one it answers** —
+  `kit-opt-out(presets): <reason>`, `kit-opt-out(primary):`, `kit-opt-out(hue):`
+  — while the bare form keeps its own meaning, which is _this file is not the
+  kit's_. The two do not stand in for each other, so a piece needing both writes
+  both. Starry Night carried one unqualified line about a preset spreading over
+  its defaults, and it was also, silently, the reason nothing checked that the
+  piece had a primary; see `tests/unit/opt-out.ts`, which owns what satisfies a
+  marker and carries the history.
+
 - **Or say the kit is short**, by opening an issue labelled `kit`. A control kind
   it has no row for, a behaviour it hardcodes, a token it does not expose: those
   are gaps, and the next piece will hit them too. `scale: "log"` arrived exactly
