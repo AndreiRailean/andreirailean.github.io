@@ -92,8 +92,12 @@ rewrite produced a bare address, which is the one address meaning "whatever is
 featured". `tests/unit/experiments-urls.test.ts` holds all five pieces to it, and
 to the landing rewrite restoring its own scene.
 
-The consequence is deliberate and worth stating: URLs are long now. That is the
-price of a link that means the same thing next month.
+The consequence is deliberate and worth stating: URLs are long now — flotsam has
+twenty-nine settings, so its addresses run to about four hundred characters. That
+is the price of a link that means the same thing next month, and it is the thing
+a reader will want to undo on sight. Both alternatives that were weighed and
+rejected, including moving a scene off its baseline instead, are in
+`docs/adr/20260905-a-shared-address-states-the-whole-scene.md`.
 
 **Position one is the primary, and a great deal follows from being first.** A
 bare address lands on it and the page rewrites the URL to that scene's full
