@@ -39,10 +39,18 @@ const SPECS = "tests"
 
 /** What a page owns, and no headless harness can answer. */
 const NEEDS_A_PAGE = [
-  // The canvas itself.
+  // The canvas itself. `litPixels` is the section's shared reader, hoisted in
+  // #134 on its fourth copy; `inked` and `light` are the two richer readings
+  // walkers and psyxels kept, which that PR explains rather than absorbs. A
+  // piece writing its own belongs on this list too — and that growing without
+  // limit is the design question in #133, not something to solve one name at a
+  // time.
   /getImageData/,
   /toDataURL/,
+  /\blitPixels\s*\(/,
   /\binked\s*\(/,
+  /\blight\s*\(/,
+  /\bcornerLight\s*\(/,
   /\bpainted\s*\(/,
   // The frame loop, and the three stats that only exist because something drew.
   // Read off `stats`, not as bare words: `heads` is also a *setting* in walkers,
