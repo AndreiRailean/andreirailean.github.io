@@ -50,6 +50,25 @@ Every item below was a real bug in this experiment, not a hypothetical.
   a few hundred pixels bands into concentric rings at 8-bit precision. More
   colour stops do not help. See `dither` in `clouds.ts`.
 
+## The palette is one switch, and that is a real limit
+
+`invert` chooses between `NIGHT` and `DAY` wholesale, and those two are mirrors:
+`DAY`'s background is `NIGHT`'s star and vice versa. `hue` colours the mottling
+and the controls, and nothing else — the stars are deliberately neutral.
+
+So there are **two** colours in play and **one** control over them, and the
+ground and the stars cannot move independently. There is no way to grey the black
+a little without greying the white by the same amount, and no way to soften a
+scheme on one side only.
+
+That has never mattered for a full-screen piece, where the contrast is the
+point. It starts to matter the moment the field is behind something else and has
+to stay out of its way. Anyone reaching for that will want four values rather
+than one — ground and star, for each scheme — and should expect it to be a real
+change to `palette.ts` rather than a setting bolted on beside `hue`.
+
+Recorded rather than done: nothing in the piece needs it yet.
+
 ## Invariants worth preserving
 
 - **One canvas path per layer.** Every dot in a layer shares an alpha, so a
