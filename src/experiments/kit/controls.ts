@@ -282,8 +282,21 @@ export type Options<S extends object> = {
   onChange: (settings: S) => void
   /** Where the written note lives. Omitted, no link is shown. */
   aboutHref?: string
-  /** The copy button's resting label — pieces word it differently. */
-  copyLabel?: string
+  /**
+   * What the panel offers to copy, in order, one full-width button each.
+   *
+   * Defaults to the one action the panel has always had: this page's address.
+   *
+   * The kit owns the button, its label, the copied / copy-failed reply and the
+   * clipboard fallback in `copy.ts` — all genuinely shared, and `copy.ts` in
+   * particular is careful work about plain-http origins that nobody should
+   * rewrite. Deciding *what is worth copying* is not shared, and used to be the
+   * one part of the row a caller could not supply: the label was configurable
+   * and the text was not, so anything wanting to offer a second thing had to
+   * rebuild the row, duplicate the clipboard handling, and trip
+   * `tests/unit/kit-adoption.test.ts` for reimplementing shared code. See #144.
+   */
+  copy?: CopyAction[]
   /**
    * Whether to mount the bar and the panel. Default true.
    *
@@ -302,6 +315,23 @@ export type Options<S extends object> = {
   chrome?: boolean
 }
 
+/**
+ * One entry in the panel's copy row.
+ *
+ * `text` is a function rather than a string because the interesting things to
+ * copy are all derived from settings that move under it — the address changes
+ * with every drag, and anything built from the current scene has the same
+ * problem. Read at click time, it cannot go stale.
+ */
+export type CopyAction = {
+  /** The button's resting label. Pieces word it differently. */
+  label: string
+  /** Built when the button is pressed. */
+  text: () => string
+  /** Tooltip. Worth saying what the copied text is for. */
+  title?: string
+}
+
 function button(label: string, className = ""): HTMLButtonElement {
   const element = document.createElement("button")
   element.type = "button"
@@ -312,7 +342,13 @@ function button(label: string, className = ""): HTMLButtonElement {
 
 export function createControls<S extends object>(options: Options<S>): Controls<S> {
   const { root, controls: specs, presets, groups, actions = [], normalize, url, onChange, aboutHref } = options
-  const copyLabel = options.copyLabel ?? "copy link to these settings"
+  const copyActions: CopyAction[] = options.copy ?? [
+    {
+      label: "copy link to these settings",
+      title: "Copy this page's address, which carries every setting above.",
+      text: () => window.location.href,
+    },
+  ]
   const chrome = options.chrome ?? true
 
   let current: S = { ...options.settings }
@@ -536,19 +572,25 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     return row
   }
 
-  const copyRow = document.createElement("div")
-  copyRow.className = "row copy"
-  const copyButton = button(copyLabel, "copy")
-  copyButton.title = "Copy this page's address, which carries every setting above."
-  copyButton.addEventListener("click", async () => {
-    const copied = await copyText(window.location.href)
-    copyButton.textContent = copied ? "copied" : "copy failed"
-    window.setTimeout(() => {
-      copyButton.textContent = copyLabel
-    }, 1600)
-  })
-  copyRow.append(copyButton)
-  panel.append(copyRow)
+  // One row each rather than one row of several: `controls.css` gives
+  // `.row.copy` a single full-width column, so stacking keeps every button the
+  // size the one button has always been, and the row count stays the thing
+  // `.row:not(.copy)` filters out.
+  for (const action of copyActions) {
+    const copyRow = document.createElement("div")
+    copyRow.className = "row copy"
+    const copyButton = button(action.label, "copy")
+    if (action.title) copyButton.title = action.title
+    copyButton.addEventListener("click", async () => {
+      const copied = await copyText(action.text())
+      copyButton.textContent = copied ? "copied" : "copy failed"
+      window.setTimeout(() => {
+        copyButton.textContent = action.label
+      }, 1600)
+    })
+    copyRow.append(copyButton)
+    panel.append(copyRow)
+  }
 
   // --- state ---------------------------------------------------------------
 

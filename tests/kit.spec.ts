@@ -342,6 +342,36 @@ for (const slug of PIECES) {
   })
 
   /**
+   * The panel's copy row, which had no test at all until the row learned to
+   * carry more than one action.
+   *
+   * Deliberately not asserting what reached the clipboard. `kit/copy.ts` has two
+   * paths — `navigator.clipboard` and a legacy selection fallback for the
+   * plain-http LAN case — and which one runs depends on the origin and on a
+   * permission the suite would have to grant. The label is the part every piece
+   * relies on and the part a refactor can break: it announces the outcome and
+   * then goes back to what it said.
+   */
+  test(`${slug}: the copy row offers at least one labelled action and reports back`, async ({ page }) => {
+    const experiment = await openExperiment<BaseApi>(page, slug, { idle: false })
+    await experiment.api(({ api }) => api.panel(true))
+
+    const buttons = page.locator(".panel .row.copy button")
+    expect(await buttons.count()).toBeGreaterThan(0)
+
+    const first = buttons.first()
+    const resting = (await first.textContent())?.trim()
+    expect(resting).toBeTruthy()
+    expect(await first.getAttribute("title")).toBeTruthy()
+
+    await first.click()
+    await expect(first).not.toHaveText(resting!)
+
+    // And it does not stay stuck on the outcome.
+    await expect(first).toHaveText(resting!, { timeout: 4000 })
+  })
+
+  /**
    * A bound pair is two handles on **one** track, and both of them can be
    * grabbed.
    *
