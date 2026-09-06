@@ -1,6 +1,5 @@
 import { decodeScene, encodeScene, type Slot } from "@/experiments/address"
 import {
-  keysOf,
   gridAt,
   snapToGrid,
   type Control as KitControl,
@@ -88,7 +87,7 @@ export const CONTROLS: Control[] = [
     key: "mode",
     label: "depth",
     hint: DEPTH_HINT,
-    options: MODES.map((mode) => ({ value: mode, label: MODE_LABELS[mode] })),
+    options: /* @__PURE__ */ MODES.map((mode) => ({ value: mode, label: MODE_LABELS[mode] })),
   },
   {
     kind: "toggle",
@@ -315,26 +314,46 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
 ]
 
 /**
- * Bounds for every numeric setting, flattened out of the control list so the
- * validator never has to know how a control is presented.
+ * The numeric shape of every setting a slider owns: its bounds and its grid.
+ *
+ * **Written out rather than derived from `CONTROLS`, and that is the point.**
+ * Both this and `BOUNDS` were built from `CONTROLS` at module scope, which made
+ * the whole control list reachable from `normalizeSettings` — and therefore from
+ * a runner, which has no panel and draws none of it. Labels, hints, `format`
+ * closures and option lists all rode along: 4.3kb of starry-night's 14.1kb
+ * runner, about 30%. See #151.
+ *
+ * The cost is that this can now disagree with the controls, and the answer is a
+ * check rather than a derivation — `tests/unit/experiments-grid.test.ts` fails
+ * if any track here differs from the control it describes. Same trade the
+ * address `REGISTRY` makes: the thing that must not drift silently gets a test,
+ * not a computation.
  */
-export const BOUNDS = Object.fromEntries(
-  CONTROLS.filter(isNumericControl).flatMap((control) =>
-    keysOf(control).map((key) => [key, { min: control.min, max: control.max }] as const),
-  ),
-) as Record<NumericKey, { min: number; max: number }>
+export const TRACKS: Partial<Record<NumericKey, Track>> = {
+  layerCount: { min: 1, max: 28, step: 1 },
+  densityScale: { min: 0.1, max: 3, step: 0.05 },
+  nearRadius: { min: 1.5, max: 16, step: 0.1 },
+  sizeMix: { min: 0, max: 1, step: 0.05 },
+  wobble: { min: 0, max: 0.45, step: 0.01 },
+  clouds: { min: 0, max: 1, step: 0.05 },
+  haze: { min: 0, max: 1, step: 0.05 },
+  hue: { min: 0, max: 360, step: 1 },
+  fade: { min: 0.02, max: 0.5, step: 0.01 },
+  curve: { min: 0.4, max: 3, step: 0.05 },
+  glimmersPerSecond: { min: 0, max: 6, step: 0.05 },
+  minLifetimeMs: { min: 1000, max: 60000, step: 500 },
+  maxLifetimeMs: { min: 1000, max: 60000, step: 500 },
+}
 
 /**
- * The grid every numeric setting is stored on, keyed the way `BOUNDS` is.
- *
- * `normalizeSettings` snaps to this, so a value arriving from the query string
- * or the console API lands where a dragged handle would have put it. Before
- * this, only the slider quantised — see `snapToGrid` in `kit/controls.ts` for
- * what that cost.
+ * Bounds for every numeric setting, so the validator never has to know how a
+ * control is presented. Narrowed from `TRACKS` rather than declared twice.
  */
-export const TRACKS = Object.fromEntries(
-  CONTROLS.filter(isNumericControl).flatMap((control) => keysOf(control).map((key) => [key, control])),
-) as Partial<Record<NumericKey, Track>>
+export const BOUNDS: Record<NumericKey, { min: number; max: number }> = {
+  ...(Object.fromEntries(
+    Object.entries(TRACKS).map(([key, track]) => [key, { min: track!.min, max: track!.max }]),
+  ) as Record<NumericKey, { min: number; max: number }>),
+}
 
 /**
  * Settings stored finer than their control's step.
