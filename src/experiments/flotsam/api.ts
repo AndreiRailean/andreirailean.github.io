@@ -1,6 +1,6 @@
 import type { Flotsam, FlotsamStats } from "@/experiments/flotsam/flotsam"
 import { reroll } from "@/experiments/flotsam/reroll"
-import { CONTROLS, normalizeSettings, PRESETS, type Settings } from "@/experiments/flotsam/settings"
+import { CONTROLS, normalizeSettings, PRESETS, type Settings, settingsFromQuery } from "@/experiments/flotsam/settings"
 import { createBaseApi, type BaseApi } from "@/experiments/kit/api"
 import { keysOf, type Controls } from "@/experiments/kit/controls"
 import type { WakeLock } from "@/experiments/kit/wakelock"
@@ -71,7 +71,14 @@ export function createApi(controls: Controls<Settings>, wakeLock: WakeLock, scen
     // fullscreen, awake — comes from the kit. It was written out here, and
     // identically in three other pieces, until the fourth copy; see
     // src/experiments/kit/api.ts.
-    ...createBaseApi({ controls, wakeLock, scene, presets: PRESETS, normalize: normalizeSettings }),
+    ...createBaseApi({
+      controls,
+      wakeLock,
+      scene,
+      presets: PRESETS,
+      normalize: normalizeSettings,
+      fromQuery: settingsFromQuery,
+    }),
 
     // Flattened over `keysOf`, so a bound pair reports both of its ends. The
     // browser suite checks that every setting has a control this way, and a

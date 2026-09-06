@@ -1,3 +1,4 @@
+import { decodeScene, encodeScene, type Slot } from "@/experiments/address"
 import {
   keysOf,
   gridAt,
@@ -399,13 +400,30 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
 }
 
 /**
+ * Reads settings from a query string, in either form.
+ *
+ * The packed parameter wins when it is there and readable. Anything else falls
+ * through to the named-parameter reader below, which is why every link written
+ * before the packed form still restores its own scene — and why a corrupt `s`
+ * degrades to the defaults rather than throwing in a page's first statement.
+ */
+export function settingsFromQuery(params: URLSearchParams): Settings {
+  const packed = params.get("s")
+  if (packed !== null && packed !== "") {
+    const scene = decodeScene(REGISTRY, packed)
+    if (scene) return normalizeSettings(scene as Partial<Settings>)
+  }
+  return settingsFromNamedQuery(params)
+}
+
+/**
  * Reads settings from a query string.
  *
  * An absent param is `null` and `Number(null)` is 0, which is a legal value for
  * most of these — that once disabled glimmers by default. Absent, blank and
  * unparseable are all skipped so the default survives.
  */
-export function settingsFromQuery(params: URLSearchParams): Settings {
+function settingsFromNamedQuery(params: URLSearchParams): Settings {
   const patch: Partial<Settings> = {}
 
   const mode = params.get("mode")
@@ -483,27 +501,59 @@ export function urlForSettings(settings: Settings, pathname: string): string {
 }
 
 /**
- * The whole scene, every setting named.
+ * **The address registry: append-only, and immutable slot by slot.**
  *
- * It carried only what differed from `DEFAULT_SETTINGS` until #128, for a
- * shorter link — and that is the trap the presets above are written out in full
- * to avoid, one layer down. **A link resting on a default is a link whose scene
- * changes the day the default does**, silently, in somebody else's bookmark.
- * Psyxels had already made this change and written the reasoning down; the
- * other four pieces had not, and starry-night showed what it costs — its
- * primary held the default values exactly, so the address its landing rewrite
- * produced was empty, and an empty address is the one that means "whatever is
- * featured".
+ * Read `@/experiments/address` before touching this. The rules, in short:
  *
- * Defaults still have a job, and it is the other direction: filling an address
- * that never named a setting at all. That address is an old bookmark, and an
- * old bookmark was never promised its picture back.
+ * - **Adding a setting?** Append a slot at the end. Nothing else changes, no
+ *   version is bumped, and every address already written keeps working — it
+ *   simply has a shorter bitmap and is silent about the new slot, which falls
+ *   back to `DEFAULT_SETTINGS`.
+ * - **Changing a slot's `grid`, `origin`, `bits`, or its `options` list?**
+ *   You may not. Mark the existing slot `retired: true`, leave it exactly where
+ *   it is, and append a new one with the same `key`. Later slots win, so an
+ *   address carrying both ends up with the new value. Deleting or reordering a
+ *   slot silently changes what every older address means.
+ * - **Removing a setting?** Mark its slot `retired: true` and leave it. A
+ *   retired slot costs one bit.
+ * - **Changing what a value *means*, while its numbers stay the same?** Retire
+ *   the slot anyway. Nothing can detect that automatically — the encoding
+ *   guarantees the number survives, not its meaning — and a seventh of a
+ *   character is a cheap price for the rule being obeyable.
+ *
+ * `tests/unit/experiments-address.test.ts` holds a snapshot of every registry
+ * and fails on any edit that is not an append, so none of the above depends on
+ * being remembered.
+ */
+export const REGISTRY: readonly Slot[] = [
+  { key: "mode", kind: "enum", options: ["depth", "random", "identical"] },
+  { key: "invert", kind: "bool" },
+  { key: "layerCount", kind: "num", grid: 1, origin: 1, bits: 5 },
+  { key: "fade", kind: "num", grid: 0.01, origin: 0.02, bits: 6 },
+  { key: "curve", kind: "num", grid: 0.05, origin: 0.4, bits: 6 },
+  { key: "glimmersPerSecond", kind: "num", grid: 0.05, origin: 0, bits: 7 },
+  { key: "densityScale", kind: "num", grid: 0.05, origin: 0.1, bits: 6 },
+  { key: "nearRadius", kind: "num", grid: 0.1, origin: 1.5, bits: 8 },
+  { key: "sizeMix", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "wobble", kind: "num", grid: 0.01, origin: 0, bits: 6 },
+  { key: "clouds", kind: "num", grid: 0.01, origin: 0, bits: 7 },
+  { key: "haze", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "hue", kind: "num", grid: 1, origin: 0, bits: 9 },
+  { key: "minLifetimeMs", kind: "num", grid: 500, origin: 1000, bits: 7 },
+  { key: "maxLifetimeMs", kind: "num", grid: 500, origin: 1000, bits: 7 },
+]
+
+/**
+ * The address that carries this scene, packed.
+ *
+ * Opaque on purpose — `../docs/adr/20260906-an-address-is-packed-not-readable.md`.
+ * The named-parameter form this replaced is still *read*, forever; it is only no
+ * longer written. `experiment.decode()` expands an address back to a plain
+ * object, which is where readability went.
  */
 export function settingsToQuery(settings: Settings): URLSearchParams {
   const params = new URLSearchParams()
-  params.set("mode", settings.mode)
-  params.set("invert", settings.invert ? "1" : "0")
-  for (const key of Object.keys(BOUNDS) as NumericKey[]) params.set(key, String(settings[key]))
+  params.set("s", encodeScene(REGISTRY, settings))
   return params
 }
 
@@ -518,6 +568,10 @@ export function settingsToQuery(settings: Settings): URLSearchParams {
  * that test rather than on being readable.
  */
 function namesASetting(params: URLSearchParams): boolean {
+  // The packed form names the whole scene by definition, so it settles this
+  // before any per-key test runs.
+  const packed = params.get("s")
+  if (packed !== null && packed !== "" && decodeScene(REGISTRY, packed)) return true
   if (isMode(params.get("mode"))) return true
   if (params.get("invert") !== null) return true
   return (Object.keys(BOUNDS) as NumericKey[]).some((key) => {

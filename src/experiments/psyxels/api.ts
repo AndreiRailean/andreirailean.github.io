@@ -3,7 +3,14 @@ import { keysOf, type Controls } from "@/experiments/kit/controls"
 import type { WakeLock } from "@/experiments/kit/wakelock"
 import type { Psyxels, PsyxelsStats } from "@/experiments/psyxels/psyxels"
 import { reroll } from "@/experiments/psyxels/reroll"
-import { CONTROLS, isTrackedControl, normalizeSettings, PRESETS, type Settings } from "@/experiments/psyxels/settings"
+import {
+  CONTROLS,
+  isTrackedControl,
+  normalizeSettings,
+  PRESETS,
+  type Settings,
+  settingsFromQuery,
+} from "@/experiments/psyxels/settings"
 
 /**
  * A console handle on the piece, at `window.experiment`.
@@ -65,7 +72,14 @@ export function createApi(controls: Controls<Settings>, wakeLock: WakeLock, scen
     // fullscreen, awake — comes from the kit. It was written out here, and
     // identically in three other pieces, until the fourth copy; see
     // src/experiments/kit/api.ts.
-    ...createBaseApi({ controls, wakeLock, scene, presets: PRESETS, normalize: normalizeSettings }),
+    ...createBaseApi({
+      controls,
+      wakeLock,
+      scene,
+      presets: PRESETS,
+      normalize: normalizeSettings,
+      fromQuery: settingsFromQuery,
+    }),
 
     // A choice or set row reports the same shape as a slider, with the bounds it
     // does not have left at zero. The browser suite checks every setting has a

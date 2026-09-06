@@ -94,8 +94,14 @@ test("settings survive the round trip through the query string", async ({ page }
   // the loop could quietly stop covering them — which is exactly what a 1..3
   // range for depth would have caused, since the validator rejects `mode: 2`
   // and falls back to the default.
-  expect(applied.url).toContain("mode=")
-  expect(applied.url).toContain("invert=")
+  //
+  // Asked of the decoded address rather than of its text. The address is packed
+  // now, so `mode=` and `invert=` do not appear in it — but the claim was never
+  // about the spelling, it was that both rows moved and both travel.
+  const carried = await experiment.api(({ api, arg }) => api.decode(arg), applied.url)
+  expect(carried.mode).toBe(applied.settings.mode)
+  expect(carried.invert).toBe(applied.settings.invert)
+  expect(carried.mode, "the sweep did not move depth off its default").not.toBe("depth")
 
   await page.goto(applied.url)
   await page.waitForFunction(() => Boolean(window.experiment))

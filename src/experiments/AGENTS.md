@@ -128,13 +128,43 @@ a reader will want to undo on sight. Both alternatives that were weighed and
 rejected, including moving a scene off its baseline instead, are in
 `docs/adr/20260905-a-shared-address-states-the-whole-scene.md`.
 
-**A packed replacement is designed but not built**, which shortens those
-addresses to 46-81 characters and stops them being readable at all — readability
-moves to the panel and to a decoder on the console handle. If you are about to
-change how a scene reaches the query string, read
-`docs/adr/20260906-an-address-is-packed-not-readable.md` first; it is `proposed`
-rather than `accepted`, so the rule above is still the one in force. Issue #141
-carries the measurements.
+### The address is packed, and that changes what you do when you touch settings
+
+Addresses are now one opaque parameter — `?s=__9ADilBSg9RYZHuMaA` — and are
+between 48 and 78 characters instead of 214 to 489. **Readability did not
+disappear, it moved:** the panel keeps its labels and hints, the console API
+still takes human-readable keys (`experiment.set({ steepness: 0.9 })`), and
+`experiment.decode(url)` expands any address back to a plain object. Why, and
+the four schemes measured against each other, is in
+`docs/adr/20260906-an-address-is-packed-not-readable.md`.
+
+**Every piece has a `REGISTRY` in its `settings.ts`, and it is append-only.** A
+slot is `(key, kind, grid, origin, bits)` and is immutable once allocated,
+because the slot's _position_ is what an address refers to. There is no version
+field and none is needed — the slot index is the version.
+
+What to do, by case:
+
+| You are…                                               | Do this                                                                                                                                                 |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **adding a setting**                                   | Append a slot. Nothing else. Older addresses have a shorter bitmap, are silent about it, and fall back to `DEFAULT_SETTINGS`.                           |
+| **removing one**                                       | Mark the slot `retired: true` and **leave it where it is**. It costs one bit. Deleting it misaligns every slot after it.                                |
+| **changing a `grid`, `origin`, `bits` or option list** | You may not edit the slot. Retire it, append a new one with the same `key`. Later slots win, so both can appear in one address.                         |
+| **changing what a value _means_**, numbers unchanged   | Retire the slot anyway. Nothing can detect this — the encoding guarantees the number survives, not its meaning — and a seventh of a character is cheap. |
+
+`tests/unit/experiments-address.test.ts` holds a snapshot of every registry, so
+an edit that is not an append fails rather than being noticed later by nobody.
+**If that snapshot diff shows an existing line changing, that is the check
+working**, not a snapshot needing updating.
+
+**A slot's range is the range of values the setting can hold, which is not
+always its control's bounds.** Walkers' `traces` has an _off_ value of 0 below
+its log track's bottom stop; a slot sized from the control alone could not hold
+it, and 0 came back as 0.05. That was caught by the round-trip check rather than
+by review.
+
+The named-parameter form is still **read**, forever, so every link written
+before this keeps working. It is simply never written again.
 
 **Position one is the primary, and a great deal follows from being first.** A
 bare address lands on it and the page rewrites the URL to that scene's full

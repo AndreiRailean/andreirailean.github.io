@@ -160,9 +160,12 @@ test("a bare URL lands on the first preset, and says so in the address bar", asy
   expect(landed.strands).not.toBe(DEFAULT_SETTINGS.strands)
 
   // Rewritten, so a link copied without touching a control keeps pointing at
-  // this scene rather than at whichever preset is featured later.
-  const url = new URL(page.url())
-  expect(url.searchParams.get("strands")).toBe(String(PRESETS[0]!.settings.strands))
+  // this scene rather than at whichever preset is featured later. Read through
+  // `decode`: the address is packed, so `strands=52` is not in its text — but
+  // the claim was always that the address carries the scene, not that it spells
+  // it. See `src/experiments/docs/adr/20260906-an-address-is-packed-not-readable.md`.
+  expect(new URL(page.url()).searchParams.get("s"), "the landing rewrite left no packed address").toBeTruthy()
+  expect(await experiment.api(({ api, arg }) => api.decode(arg).strands, page.url())).toBe(PRESETS[0]!.settings.strands)
 
   // And the rewrite has to be one the piece can read back.
   await page.goto(page.url())

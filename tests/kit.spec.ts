@@ -189,6 +189,35 @@ for (const slug of PIECES) {
     expect(restored, `${slug}: its own address did not restore its own scene`).toEqual(landed)
   })
 
+  /**
+   * An opaque address has to be readable *somehow*, and this is the somehow.
+   *
+   * Addresses stopped being readable deliberately — see
+   * `src/experiments/docs/adr/20260906-an-address-is-packed-not-readable.md` —
+   * and the whole bargain rests on `decode` existing and working. It is checked
+   * here rather than in a unit test because the thing that has to work is the
+   * handle a person actually reaches for in a console, on a real page, against
+   * the address that page rewrote for itself.
+   */
+  test(`${slug}: says what its own address means`, async ({ page }) => {
+    const experiment = await openExperiment<BaseApi>(page, slug, { idle: true })
+
+    const showing = await experiment.api(({ api }) => api.get())
+    const address = page.url()
+
+    // The whole URL, which is what someone pasting a link has in hand.
+    expect(await experiment.api(({ api, arg }) => api.decode(arg), address)).toEqual(showing)
+
+    // And the bare packed value, which is what they have after copying out of
+    // the middle of one.
+    const packed = new URLSearchParams(address.split("?")[1]).get("s")
+    expect(packed, `${slug} did not write a packed address`).toBeTruthy()
+    expect(await experiment.api(({ api, arg }) => api.decode(arg), packed!)).toEqual(showing)
+
+    // No argument means the address in the bar.
+    expect(await experiment.api(({ api }) => api.decode())).toEqual(showing)
+  })
+
   test(`${slug}: publishes which preset is on screen, and stops when it is nobody's`, async ({ page }) => {
     const experiment = await openExperiment<BaseApi>(page, slug, { idle: false })
     const html = page.locator("html")

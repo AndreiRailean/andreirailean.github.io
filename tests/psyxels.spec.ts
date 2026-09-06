@@ -816,9 +816,13 @@ test("the glyph row picks marks by name, and refuses to go below two", async ({ 
   expect(await chosen()).toEqual(["ring", "moon", "star"])
 
   // A click removes one, and the address says so rather than carrying a count.
+  // Read through `decode` rather than off the query string: the address is
+  // packed now, so the marks travel as a bitmask over the slot's frozen
+  // vocabulary. The claim is the same one — the address names *which* marks —
+  // and it is asked of the piece instead of of the URL text.
   await buttons.nth(GLYPH_NAMES.indexOf("star")).click()
   expect(await chosen()).toEqual(["ring", "moon"])
-  expect(new URL(page.url()).searchParams.get("glyphs")).toBe("ring,moon")
+  expect(await experiment.api(({ api, arg }) => api.decode(arg).glyphs, page.url())).toEqual(["ring", "moon"])
 
   // At the floor the survivors are marked, and clicking one does nothing.
   expect(await row.locator('button[data-locked="true"]').count()).toBe(2)

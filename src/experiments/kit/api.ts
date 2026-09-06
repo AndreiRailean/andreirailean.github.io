@@ -81,6 +81,8 @@ export type BaseApi<S> = {
    * that to go through. See `Holdable` above for why this is not `stop()`.
    */
   pause: (held?: boolean) => boolean
+  /** What scene an address describes. Defaults to the one in the address bar. */
+  decode: (address?: string) => S
   /** Pin idle on or off — hiding the cursor and chrome. Omit to resume auto. */
   idle: (force?: boolean | null) => void
   /** The shareable URL for the current scene. */
@@ -106,15 +108,51 @@ export type BaseApiOptions<S> = {
    * reaches a state a URL could not, which `AGENTS.md` rules out.
    */
   normalize: (patch: Partial<S>, base?: S) => S
+  /**
+   * The piece's query-string reader, for `decode`.
+   *
+   * Optional only because a piece could exist without one; every piece has one
+   * today and should pass it. Without it, an address cannot be read back at all
+   * from the console, which is the whole reason `decode` exists.
+   */
+  fromQuery?: (params: URLSearchParams) => S
 }
 
-export function createBaseApi<S>({ controls, wakeLock, scene, presets, normalize }: BaseApiOptions<S>): BaseApi<S> {
+export function createBaseApi<S>({
+  controls,
+  wakeLock,
+  scene,
+  presets,
+  normalize,
+  fromQuery,
+}: BaseApiOptions<S>): BaseApi<S> {
   // Held here rather than read back off the scene: whether a piece is paused is
   // a fact about how it is being looked at, not about what it is drawing.
   let paused = false
 
   return {
     get: () => controls.getSettings(),
+
+    /**
+     * What scene an address describes, as a plain object.
+     *
+     * **This is where the readability went.** An address is a packed, opaque
+     * string — `../docs/adr/20260906-an-address-is-packed-not-readable.md` — so
+     * "what is this link" stopped being answerable by looking. Without a
+     * decoder, the first confusing report costs an afternoon, which is the only
+     * reason this is part of the base handle rather than a piece's own verb.
+     *
+     * Takes a whole URL, a query string, or the bare packed value, because all
+     * three are things a person actually has in hand when they ask. Defaults to
+     * the address currently in the bar.
+     */
+    decode(address) {
+      if (!fromQuery) throw new Error("This piece was built without a query reader, so an address cannot be decoded.")
+      const text = address ?? window.location.search
+      const query = text.includes("?") ? text.slice(text.indexOf("?") + 1) : text
+      // A bare packed value has no `=` in it; treat it as the value of `s`.
+      return fromQuery(new URLSearchParams(query.includes("=") ? query : `s=${query}`))
+    },
 
     set(patch) {
       const next = normalize(patch, controls.getSettings())
