@@ -2,7 +2,14 @@ import type { Starfield, StarfieldStats } from "@/experiments/starry-night/starf
 import { createBaseApi, type BaseApi } from "@/experiments/kit/api"
 import type { Controls } from "@/experiments/kit/controls"
 import type { WakeLock } from "@/experiments/kit/wakelock"
-import { CONTROLS, keysOf, normalizeSettings, PRESETS, type Settings } from "@/experiments/starry-night/settings"
+import {
+  CONTROLS,
+  keysOf,
+  normalizeSettings,
+  PRESETS,
+  type Settings,
+  settingsFromQuery,
+} from "@/experiments/starry-night/settings"
 
 /**
  * A console handle on the piece, at `window.experiment`.
@@ -78,7 +85,14 @@ export function createApi(controls: Controls<Settings>, wakeLock: WakeLock, sky:
     // identically in three other pieces, until the fourth copy; see
     // src/experiments/kit/api.ts. `sky` is this piece's scene, and the only
     // thing the base handle asks of it is `setPaused`.
-    ...createBaseApi({ controls, wakeLock, scene: sky, presets: PRESETS, normalize: normalizeSettings }),
+    ...createBaseApi({
+      controls,
+      wakeLock,
+      scene: sky,
+      presets: PRESETS,
+      normalize: normalizeSettings,
+      fromQuery: settingsFromQuery,
+    }),
 
     controls: () =>
       CONTROLS.flatMap((control): ControlReport[] =>

@@ -1,3 +1,4 @@
+import { decodeScene, encodeScene, type Slot } from "@/experiments/address"
 import {
   keysOf,
   gridAt,
@@ -1014,6 +1015,23 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
 }
 
 /**
+ * Reads settings from a query string, in either form.
+ *
+ * The packed parameter wins when it is there and readable. Anything else falls
+ * through to the named-parameter reader below, which is why every link written
+ * before the packed form still restores its own scene — and why a corrupt `s`
+ * degrades to the defaults rather than throwing in a page's first statement.
+ */
+export function settingsFromQuery(params: URLSearchParams): Settings {
+  const packed = params.get("s")
+  if (packed !== null && packed !== "") {
+    const scene = decodeScene(REGISTRY, packed)
+    if (scene) return normalizeSettings(scene as Partial<Settings>)
+  }
+  return settingsFromNamedQuery(params)
+}
+
+/**
  * Reads settings from a query string.
  *
  * An absent param is `null` and `Number(null)` is 0, which is a legal value for
@@ -1021,7 +1039,7 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
  * field, empty the colour and stop the clock. Absent, blank and unparseable are
  * all skipped so the default survives.
  */
-export function settingsFromQuery(params: URLSearchParams): Settings {
+function settingsFromNamedQuery(params: URLSearchParams): Settings {
   const patch: Partial<Settings> = {}
 
   for (const key of Object.keys(BOUNDS) as NumericKey[]) {
@@ -1068,24 +1086,100 @@ function glyphsFromQuery(params: URLSearchParams): GlyphName[] | null {
 }
 
 /**
- * The whole scene, every setting named.
+ * **The address registry: append-only, and immutable slot by slot.**
  *
- * It carried only what differed from `DEFAULT_SETTINGS` at first, for a shorter
- * link — and that is the trap the presets above are written out in full to
- * avoid, one layer down. **A link resting on a default is a link whose scene
- * changes the day the default does**, silently, in somebody else's bookmark.
+ * Read `@/experiments/address` before touching this. The rules, in short:
  *
- * Defaults still have a job, and it is the other direction: filling an address
- * that never named a setting at all. That address is an old bookmark, and an old
- * bookmark was never promised its picture back.
+ * - **Adding a setting?** Append a slot at the end. Nothing else changes, no
+ *   version is bumped, and every address already written keeps working — it
+ *   simply has a shorter bitmap and is silent about the new slot, which falls
+ *   back to `DEFAULT_SETTINGS`.
+ * - **Changing a slot's `grid`, `origin`, `bits`, or its `options` list?**
+ *   You may not. Mark the existing slot `retired: true`, leave it exactly where
+ *   it is, and append a new one with the same `key`. Later slots win, so an
+ *   address carrying both ends up with the new value. Deleting or reordering a
+ *   slot silently changes what every older address means.
+ * - **Removing a setting?** Mark its slot `retired: true` and leave it. A
+ *   retired slot costs one bit.
+ * - **Changing what a value *means*, while its numbers stay the same?** Retire
+ *   the slot anyway. Nothing can detect that automatically — the encoding
+ *   guarantees the number survives, not its meaning — and a seventh of a
+ *   character is a cheap price for the rule being obeyable.
+ *
+ * `tests/unit/experiments-address.test.ts` holds a snapshot of every registry
+ * and fails on any edit that is not an append, so none of the above depends on
+ * being remembered.
+ */
+export const REGISTRY: readonly Slot[] = [
+  { key: "seed", kind: "num", grid: 1, origin: 0, bits: 20 },
+  { key: "subject", kind: "enum", options: ["A", "Alive", "L", "Luna", "&", "avatar"] },
+  { key: "face", kind: "enum", options: ["grotesque", "roman", "script", "typewriter"] },
+  { key: "polarity", kind: "enum", options: ["ink", "void"] },
+  { key: "fill", kind: "num", grid: 0.01, origin: 0.25, bits: 7 },
+  { key: "coarse", kind: "num", grid: 0.001, origin: 0.015, bits: 10 },
+  { key: "levels", kind: "num", grid: 1, origin: 0, bits: 3 },
+  { key: "detail", kind: "num", grid: 0.01, origin: 0, bits: 7 },
+  { key: "variety", kind: "num", grid: 0.01, origin: 0, bits: 7 },
+  { key: "threshold", kind: "num", grid: 0.01, origin: 0, bits: 7 },
+  { key: "fuzz", kind: "num", grid: 0.01, origin: 0, bits: 7 },
+  { key: "flatten", kind: "num", grid: 0.01, origin: 0, bits: 7 },
+  { key: "inset", kind: "num", grid: 0.01, origin: -0.4, bits: 7 },
+  { key: "bloom", kind: "num", grid: 0.01, origin: 0, bits: 7 },
+  { key: "solid", kind: "num", grid: 0.01, origin: 0, bits: 7 },
+  { key: "layers", kind: "num", grid: 0.01, origin: 0, bits: 7 },
+  { key: "glow", kind: "num", grid: 0.01, origin: 0, bits: 7 },
+  { key: "afterglow", kind: "num", grid: 0.01, origin: 0, bits: 7 },
+  { key: "wander", kind: "num", grid: 0.01, origin: 0, bits: 6 },
+  { key: "spin", kind: "num", grid: 0.01, origin: 0, bits: 7 },
+  { key: "weight", kind: "num", grid: 0.005, origin: 0.03, bits: 6 },
+  {
+    key: "glyphs",
+    kind: "set",
+    options: [
+      "minus",
+      "plus",
+      "circled-minus",
+      "circled-plus",
+      "ring",
+      "dot",
+      "cross",
+      "circled-cross",
+      "bar",
+      "moon",
+      "star",
+      "diamond",
+      "eye",
+      "heart",
+      "leaf",
+    ],
+  },
+  { key: "morph", kind: "num", grid: 0.01, origin: 0, bits: 7 },
+  { key: "ease", kind: "num", grid: 0.01, origin: 0.2, bits: 10 },
+  { key: "churn", kind: "num", grid: 0.5, origin: 0, bits: 8 },
+  { key: "flicker", kind: "num", grid: 0.05, origin: 0, bits: 8 },
+  { key: "pulse", kind: "num", grid: 0.01, origin: 0, bits: 7 },
+  { key: "tempo", kind: "num", grid: 0.01, origin: 0.02, bits: 9 },
+  { key: "wave", kind: "num", grid: 0.01, origin: 0, bits: 7 },
+  { key: "hue", kind: "num", grid: 1, origin: 0, bits: 9 },
+  { key: "spread", kind: "num", grid: 1, origin: 0, bits: 8 },
+  { key: "edge", kind: "num", grid: 0.01, origin: 0, bits: 7 },
+  { key: "edgeHue", kind: "num", grid: 1, origin: -180, bits: 9 },
+  { key: "wildness", kind: "num", grid: 0.01, origin: 0, bits: 7 },
+  { key: "saturation", kind: "num", grid: 0.01, origin: 0, bits: 7 },
+  { key: "playback", kind: "num", grid: 0.01, origin: 0, bits: 8 },
+]
+
+/**
+ * The address that carries this scene, packed.
+ *
+ * Opaque on purpose — `../docs/adr/20260906-an-address-is-packed-not-readable.md`.
+ * The named-parameter form this replaced is still *read*, forever; it is only no
+ * longer written. `experiment.decode()` expands an address back to a plain
+ * object, which is where readability went.
  */
 export function settingsToQuery(settings: Settings): URLSearchParams {
   const params = new URLSearchParams()
-  for (const key of Object.keys(BOUNDS) as NumericKey[]) params.set(key, String(settings[key]))
-  params.set("subject", settings.subject)
-  params.set("face", settings.face)
-  params.set("polarity", settings.polarity)
-  params.set("glyphs", settings.glyphs.join(","))
+  params.set("s", encodeScene(REGISTRY, settings))
   return params
 }
 
@@ -1108,6 +1202,10 @@ export function urlForSettings(settings: Settings, pathname: string): string {
  * only of those is one the piece would read as carrying nothing.
  */
 function namesASetting(params: URLSearchParams): boolean {
+  // The packed form names the whole scene by definition, so it settles this
+  // before any per-key test runs.
+  const packed = params.get("s")
+  if (packed !== null && packed !== "" && decodeScene(REGISTRY, packed)) return true
   if (isSubject(params.get("subject")) || isFace(params.get("face")) || isPolarity(params.get("polarity"))) return true
   if (glyphsFromQuery(params)) return true
   return (Object.keys(BOUNDS) as NumericKey[]).some((key) => {

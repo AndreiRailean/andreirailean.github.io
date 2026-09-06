@@ -22,12 +22,16 @@ describe("the query string", () => {
     expect(settingsFromQuery(settingsToQuery(custom))).toEqual(custom)
   })
 
-  it("names every setting, even the ones sitting on their default", () => {
+  it("restores every setting, even the ones sitting on their default", () => {
     // It carried only the differences until #128. A link resting on a default is
     // a link whose scene changes the day the default does, in somebody else's
     // bookmark; `tests/unit/experiments-urls.test.ts` holds all five pieces to
     // this.
-    expect([...settingsToQuery(DEFAULT_SETTINGS).keys()].sort()).toEqual(Object.keys(DEFAULT_SETTINGS).sort())
+    // **Restores, rather than spells.** The address was one named parameter per
+    // setting until the packed form landed; the property was always that it
+    // states the whole scene, and the packed form states it without spelling it.
+    // See `../../src/experiments/docs/adr/20260906-an-address-is-packed-not-readable.md`.
+    expect(settingsFromQuery(settingsToQuery(DEFAULT_SETTINGS))).toEqual(DEFAULT_SETTINGS)
   })
 
   it("keeps defaults for absent and empty params, rather than zeroing them", () => {

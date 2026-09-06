@@ -123,16 +123,23 @@ describe("the query string", () => {
    * avoid, one layer down. Shorter addresses are not worth a shared scene that
    * quietly becomes a different one.
    */
-  it("names every setting, so no address rests on a default", () => {
-    const keys = Object.keys(DEFAULT_SETTINGS).sort()
-    expect([...settingsToQuery(DEFAULT_SETTINGS).keys()].sort()).toEqual(keys)
-    expect([...settingsToQuery(PRESETS[2]!.settings).keys()].sort()).toEqual(keys)
+  it("restores every setting, so no address rests on a default", () => {
+    // **Restores, rather than spells.** The address was one named parameter per
+    // setting until the packed form landed; the property was always that it
+    // states the whole scene, and the packed form states it without spelling it.
+    // See `../../src/experiments/docs/adr/20260906-an-address-is-packed-not-readable.md`.
+    expect(settingsFromQuery(settingsToQuery(DEFAULT_SETTINGS))).toEqual(DEFAULT_SETTINGS)
+    const third = normalizeSettings(PRESETS[2]!.settings)
+    expect(settingsFromQuery(settingsToQuery(third))).toEqual(third)
     expect(urlForSettings(DEFAULT_SETTINGS, "/experiments/psyxels/")).toContain("?")
   })
 
   it("carries the chosen marks by name", () => {
     const scene = normalizeSettings({ glyphs: ["ring", "moon", "star"] as GlyphName[] })
-    expect(settingsToQuery(scene).get("glyphs")).toBe("ring,moon,star")
+    // A set is a bitmask over the slot's frozen vocabulary now, so the address
+    // carries membership rather than an order. `normalizeGlyphs` already put
+    // these in the vocabulary's own order, which is what comes back.
+    expect(settingsFromQuery(settingsToQuery(scene)).glyphs).toEqual(scene.glyphs)
     expect(settingsFromQuery(new URLSearchParams("glyphs=moon,ring")).glyphs).toEqual(["ring", "moon"])
     expect(settingsForLanding(new URLSearchParams("glyphs=ring,moon")).featured).toBe(false)
   })
@@ -197,8 +204,8 @@ describe("the presets", () => {
     expect(landing.settings).toEqual(normalizeSettings(PRESETS[0]!.settings))
     // And the address it rewrites to carries that scene in full rather than
     // standing for "whatever is first".
-    const query = settingsToQuery(PRESETS[0]!.settings)
-    expect([...query.keys()].length).toBeGreaterThan(10)
+    const primary = normalizeSettings(PRESETS[0]!.settings)
+    expect(settingsFromQuery(settingsToQuery(primary))).toEqual(primary)
   })
 })
 

@@ -1,7 +1,14 @@
 import { createBaseApi, type BaseApi } from "@/experiments/kit/api"
 import type { Controls } from "@/experiments/kit/controls"
 import type { WakeLock } from "@/experiments/kit/wakelock"
-import { CONTROLS, keysOf, normalizeSettings, PRESETS, type Settings } from "@/experiments/walkers/settings"
+import {
+  CONTROLS,
+  keysOf,
+  normalizeSettings,
+  PRESETS,
+  type Settings,
+  settingsFromQuery,
+} from "@/experiments/walkers/settings"
 import type { Walkers, WalkersStats } from "@/experiments/walkers/walkers"
 import { reroll } from "@/experiments/walkers/reroll"
 
@@ -75,7 +82,14 @@ export function createApi(controls: Controls<Settings>, wakeLock: WakeLock, park
   return {
     // The chrome half — get, set, preset, presets, panel, pause, idle, url,
     // fullscreen, awake — comes from the kit. See src/experiments/kit/api.ts.
-    ...createBaseApi({ controls, wakeLock, scene: park, presets: PRESETS, normalize: normalizeSettings }),
+    ...createBaseApi({
+      controls,
+      wakeLock,
+      scene: park,
+      presets: PRESETS,
+      normalize: normalizeSettings,
+      fromQuery: settingsFromQuery,
+    }),
 
     /**
      * One entry per **settings key**, flattened over `keysOf`.

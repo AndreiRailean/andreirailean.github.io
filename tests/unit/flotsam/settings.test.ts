@@ -94,8 +94,13 @@ describe("the query string", () => {
   it("carries the whole scene, so a shared link cannot drift when a default moves", () => {
     // It carried only the differences until #128, for a shorter link. That is
     // the trap the presets are written out in full to avoid, one layer down.
-    expect([...settingsToQuery(DEFAULT_SETTINGS).keys()].sort()).toEqual(Object.keys(DEFAULT_SETTINGS).sort())
-    expect(settingsToQuery({ ...DEFAULT_SETTINGS, glint: 0.11 }).get("glint")).toBe("0.11")
+    // **Restores, rather than spells.** The address was one named parameter per
+    // setting until the packed form landed; the property was always that it
+    // states the whole scene, and the packed form states it without spelling it.
+    // See `../../src/experiments/docs/adr/20260906-an-address-is-packed-not-readable.md`.
+    expect(settingsFromQuery(settingsToQuery(DEFAULT_SETTINGS))).toEqual(DEFAULT_SETTINGS)
+    const brighter = normalizeSettings({ ...DEFAULT_SETTINGS, glint: 0.11 })
+    expect(settingsFromQuery(settingsToQuery(brighter)).glint).toBe(0.11)
   })
 
   it("treats absent, blank and unparseable alike, and keeps the default for all three", () => {

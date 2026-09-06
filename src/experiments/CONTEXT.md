@@ -75,8 +75,16 @@ rather than `===`.
 An address states **all** of them, including the ones sitting on their default.
 Writing only the differences makes a shorter link and a link that changes scene
 the day a default moves, which is the same trap a preset inheriting from
-`DEFAULT_SETTINGS` is. See `AGENTS.md` under _Presets_, and
+`DEFAULT_SETTINGS` is. It states them **packed and opaque** — one parameter over
+a per-piece, append-only slot registry — so an address is short and is not read
+by eye. Readability lives in the panel and in `experiment.decode()`. See
+`AGENTS.md` under _Presets_,
+`docs/adr/20260906-an-address-is-packed-not-readable.md`, and
 `tests/unit/experiments-urls.test.ts`.
+
+Every value also lands on a declared **grid**, whichever route it arrived by, so
+the same scene has one spelling whether it was dragged, set from the console, or
+read from a link — `docs/adr/20260906-a-setting-lands-on-a-grid.md`.
 
 **Preset** — a named, complete settings bundle, loadable from a number key.
 Presets are recorded from exploration rather than designed up front; they are

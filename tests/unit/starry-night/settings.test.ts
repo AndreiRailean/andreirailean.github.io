@@ -36,11 +36,14 @@ describe("the query string", () => {
     expect(settingsFromQuery(settingsToQuery(custom))).toEqual(custom)
   })
 
-  it("names every setting, even the ones sitting on their default", () => {
-    // Including `mode` and `invert`, which are not in BOUNDS and so are written
-    // out by hand. A link resting on a default is a link whose scene changes the
-    // day the default does — #128.
-    expect([...settingsToQuery(DEFAULT_SETTINGS).keys()].sort()).toEqual(Object.keys(DEFAULT_SETTINGS).sort())
+  it("restores every setting, even the ones sitting on their default", () => {
+    // Including `mode` and `invert`, which are not in BOUNDS. A link resting on
+    // a default is a link whose scene changes the day the default does — #128.
+    // **Restores, rather than spells.** The address was one named parameter per
+    // setting until the packed form landed; the property was always that it
+    // states the whole scene, and the packed form states it without spelling it.
+    // See `../../src/experiments/docs/adr/20260906-an-address-is-packed-not-readable.md`.
+    expect(settingsFromQuery(settingsToQuery(DEFAULT_SETTINGS))).toEqual(DEFAULT_SETTINGS)
   })
 
   // Reading query numbers with a bare `Number()` silently disabled glimmers by

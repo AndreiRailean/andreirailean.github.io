@@ -65,17 +65,20 @@ it("finds the experiments, so an empty run cannot pass for a clean one", () => {
 })
 
 describe.each(slugs)("%s", (slug) => {
-  it("names every setting in a shared address, including the ones on their default", async () => {
-    const { DEFAULT_SETTINGS, settingsToQuery } = await settingsModule(slug)
+  it("restores every setting from a shared address, including the ones on their default", async () => {
+    const { DEFAULT_SETTINGS, settingsToQuery, settingsFromQuery } = await settingsModule(slug)
 
-    const named = [...settingsToQuery(DEFAULT_SETTINGS).keys()].sort()
+    // **Restores, rather than spells.** This asserted that the query *named*
+    // every key, which was the right property under the named-parameter form
+    // and is the wrong test of it now that the address is packed. The property
+    // never changed: an address states the whole scene, so nothing in it is
+    // left to a default that can move underneath a link.
     expect(
-      named,
-      `${slug}'s settingsToQuery leaves settings out of the address. Write every key, ` +
-        `whatever its value: an address that omits a setting is an address that means ` +
-        `"whatever the default is", and it silently changes scene the day that default ` +
-        `moves. See #128.`,
-    ).toEqual(Object.keys(DEFAULT_SETTINGS).sort())
+      settingsFromQuery(settingsToQuery(DEFAULT_SETTINGS)),
+      `${slug}'s address does not restore the scene it was written from. An address that cannot ` +
+        `rebuild a setting is an address that means "whatever the default is", and it silently ` +
+        `changes scene the day that default moves. See #128.`,
+    ).toEqual(DEFAULT_SETTINGS)
   })
 
   /**
@@ -110,18 +113,25 @@ describe.each(slugs)("%s", (slug) => {
    * if the address named everything.
    */
   it("restores a scene from its address alone, with nothing left to the defaults", async () => {
-    const { PRESETS, settingsToQuery, settingsFromQuery, normalizeSettings } = (await settingsModule(slug)) as Awaited<
-      ReturnType<typeof settingsModule>
-    > & { normalizeSettings: (patch: Partial<Settings>) => Settings }
+    const { PRESETS, REGISTRY, settingsToQuery, settingsFromQuery, normalizeSettings } = (await settingsModule(
+      slug,
+    )) as Awaited<ReturnType<typeof settingsModule>> & {
+      REGISTRY: readonly { key: string; retired?: true }[]
+      normalizeSettings: (patch: Partial<Settings>) => Settings
+    }
 
     for (const preset of PRESETS) {
       const scene = normalizeSettings(preset.settings)
-      const query = settingsToQuery(scene)
       expect(
-        [...query.keys()].sort(),
-        `${slug}'s "${preset.label}" writes an address that leaves settings out`,
-      ).toEqual(Object.keys(scene).sort())
-      expect(settingsFromQuery(query), `${slug}'s "${preset.label}" does not survive its own address`).toEqual(scene)
+        settingsFromQuery(settingsToQuery(scene)),
+        `${slug}'s "${preset.label}" does not survive its own address`,
+      ).toEqual(scene)
     }
+
+    // And the address carries every setting rather than relying on the reader
+    // to fill gaps: every key of a scene has a live slot to travel in.
+    const live = new Set(REGISTRY.filter((slot) => !slot.retired).map((slot) => slot.key))
+    const missing = Object.keys(normalizeSettings(PRESETS[0]!.settings)).filter((key) => !live.has(key))
+    expect(missing, `${slug} has settings with no slot in its address registry: ${missing.join(", ")}`).toEqual([])
   })
 })

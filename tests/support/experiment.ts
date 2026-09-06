@@ -57,6 +57,15 @@ export type BaseApi = {
    * handle and nothing else.
    */
   pause: (held?: boolean) => boolean
+  /**
+   * What scene an address describes, as a plain object.
+   *
+   * Part of the minimum surface since addresses became opaque — see
+   * `src/experiments/docs/adr/20260906-an-address-is-packed-not-readable.md`.
+   * A packed address cannot be read by looking at it, so anything that wants to
+   * know what a link says has to ask the piece.
+   */
+  decode: (address?: string) => Record<string, unknown>
   panel: (open?: boolean) => boolean
   idle: (force?: boolean | null) => void
 }

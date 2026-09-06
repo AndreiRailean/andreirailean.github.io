@@ -1,14 +1,27 @@
 ---
 type: ADR
-status: proposed
+status: accepted
 date: 2026-09-06
 summary: A scene's address becomes an opaque packed string over an append-only per-piece slot registry; readability moves to the panel and a console decoder, and the slot index replaces a schema version.
 ---
 
 # An address is packed, not readable
 
-**Proposed, not built.** The shape is settled and the numbers are measured; no
-code exists yet. Issue #141 carries the working.
+Built. `src/experiments/address.ts` is the codec, each piece's `settings.ts`
+holds its `REGISTRY`, and `src/experiments/AGENTS.md` carries the procedure for
+adding, removing or re-cutting a setting. Issue #141 carries the working.
+
+**Measured on the built thing rather than estimated**, across every preset of
+every piece rather than the primary alone: 48 characters for starry-night, 54
+walkers, 65 dangler, 77 psyxels, 78 flotsam. Against the 46 to 81 predicted from
+bit budgets, which is closer than it had any right to be.
+
+One simplification survived into the build. A log slot is stored on a uniform
+grid at its _finest_ resolution rather than by significant figures, which
+over-allocates a few bits per log control — flotsam and walkers have five each,
+psyxels three. It was left alone: it keeps a slot to five numbers a reader can
+check by eye, and buying those bits back would make `grid` mean something
+different for two kinds of track.
 
 ## Context
 
@@ -74,6 +87,16 @@ describe.
 
 Retiring a slot costs one bit. A piece could retire a setting a month for a
 decade and pay about seventeen characters.
+
+### A slot's range is not its control's bounds
+
+Found by the round-trip check rather than by review, and worth stating because
+it looks like a detail and is not: walkers' `traces` has an **off** value of 0
+sitting _below_ its log track's bottom stop of 0.05. A slot sized from
+`BOUNDS` alone could not hold it, and 0 decoded as 0.05 — a piece's "no traces"
+scene silently acquiring traces. Each slot's `origin` and `bits` therefore cover
+every value the setting can legally hold, which is the union of its bounds and
+what its scenes actually contain.
 
 ### The grid, which is the registry's and not the control's
 

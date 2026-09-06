@@ -2,7 +2,7 @@ import type { Dangler, DanglerStats } from "@/experiments/dangler/dangler"
 import { reroll } from "@/experiments/dangler/reroll"
 import { createBaseApi, type BaseApi } from "@/experiments/kit/api"
 import { keysOf, type Controls } from "@/experiments/kit/controls"
-import { CONTROLS, normalizeSettings, PRESETS, type Settings } from "@/experiments/dangler/settings"
+import { CONTROLS, normalizeSettings, PRESETS, type Settings, settingsFromQuery } from "@/experiments/dangler/settings"
 import type { WakeLock } from "@/experiments/kit/wakelock"
 
 /**
@@ -66,7 +66,14 @@ export function createApi(controls: Controls<Settings>, wakeLock: WakeLock, scen
     // fullscreen, awake — comes from the kit. It was written out here, and
     // identically in three other pieces, until the fourth copy; see
     // src/experiments/kit/api.ts.
-    ...createBaseApi({ controls, wakeLock, scene, presets: PRESETS, normalize: normalizeSettings }),
+    ...createBaseApi({
+      controls,
+      wakeLock,
+      scene,
+      presets: PRESETS,
+      normalize: normalizeSettings,
+      fromQuery: settingsFromQuery,
+    }),
 
     // Flattened over `keysOf`, so a bound pair reports both of its ends —
     // matching Flotsam and Psyxels, and one entry per settings key.
