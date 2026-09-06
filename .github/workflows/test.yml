@@ -1,7 +1,43 @@
 name: Test code
 
+# Both suites are entirely about the experiments: every `.spec.ts` navigates to
+# `/experiments/...`, and every directory under `tests/unit/` is a piece, the
+# gallery or the kit. A change that cannot reach any of that cannot break them,
+# and running the browser suite over five pieces to approve a paragraph on the
+# resume is the friction `docs/adr/20260828-experiments-stay-in-the-site-repo.md`
+# named as the cheapest thing to fix. See #143.
+#
+# **`paths-ignore` rather than `paths`, deliberately.** The two fail in opposite
+# directions, and only one of them fails safely: a path nobody remembered to add
+# to an allow-list silently stops being tested, while a path nobody remembered to
+# add here merely runs the suite it did not need. That is the reverse of the
+# allow-list in `src/experiments/AGENTS.md`, where skipping is the safe default,
+# and the reasoning is the same in both places — pick the direction where
+# forgetting is cheap.
+#
+# So this lists only what is provably site-only. `src/pages/` is named file by
+# file rather than as a folder, because `src/pages/experiments/` lives under it
+# and `paths-ignore` has no way to carve an exception back out.
+#
+# **`lint` is deliberately NOT filtered**, and must not be. It is the only
+# required status check on `main`, and a required check that never runs leaves a
+# pull request permanently *pending* rather than passing — so filtering it would
+# block exactly the changes this is meant to speed up. It costs about 30 seconds
+# and covers everything. If `Unit tests` or `Browser tests` are ever made
+# required, this filter has to go or grow a job that always reports.
 on:
-  - pull_request
+  pull_request:
+    paths-ignore:
+      - "src/assets/**"
+      - "src/components/**"
+      - "src/layouts/**"
+      - "src/lib/**"
+      - "src/styles/**"
+      - "src/pages/index.astro"
+      - "src/pages/resume.md"
+      - "public/**"
+      - "docs/**"
+      - "*.md"
 
 # A second push to the same branch supersedes the first, so an iterative session
 # does not leave a queue of runs testing commits nobody will merge. Keyed on the
