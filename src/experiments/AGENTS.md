@@ -73,6 +73,19 @@ src/pages/experiments/<slug>/  index.astro (the piece), about.astro (the note)
 
 ## Presets
 
+**Every numeric setting lands on a grid, whichever route it arrived by.**
+`normalizeSettings` snaps, so a value from `experiment.set()` or a query string
+ends up where a dragged handle would have put it. **The grid is not the control's
+`step`** — `step` is how far an arrow key moves a handle, and a piece may declare
+a finer resolution per setting through `FINER_GRID`, which three do because their
+scenes were recorded before their control was cut as it is now. A log track's
+grid is three significant figures, floored at `step`. `gridAt` and `snapToGrid`
+in `kit/controls.ts` own the rule and `valueAtPosition` is written in terms of
+them, so a drag and the validator cannot disagree;
+`tests/unit/experiments-grid.test.ts` holds every piece to it. Why, and what
+snapping to `step` instead would have cost, is in
+`docs/adr/20260906-a-setting-lands-on-a-grid.md`.
+
 **A preset states every setting, and inherits from nothing.** Not from another
 preset, and not from `DEFAULT_SETTINGS`. Spreading over the defaults reads as
 tidy and is a trap: the day the featured scene changes, every preset that did
@@ -105,6 +118,14 @@ is the price of a link that means the same thing next month, and it is the thing
 a reader will want to undo on sight. Both alternatives that were weighed and
 rejected, including moving a scene off its baseline instead, are in
 `docs/adr/20260905-a-shared-address-states-the-whole-scene.md`.
+
+**A packed replacement is designed but not built**, which shortens those
+addresses to 46-81 characters and stops them being readable at all — readability
+moves to the panel and to a decoder on the console handle. If you are about to
+change how a scene reaches the query string, read
+`docs/adr/20260906-an-address-is-packed-not-readable.md` first; it is `proposed`
+rather than `accepted`, so the rule above is still the one in force. Issue #141
+carries the measurements.
 
 **Position one is the primary, and a great deal follows from being first.** A
 bare address lands on it and the page rewrites the URL to that scene's full
