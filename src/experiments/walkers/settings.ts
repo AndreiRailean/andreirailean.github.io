@@ -1,6 +1,5 @@
 import { decodeScene, encodeScene, type Slot } from "@/experiments/address"
 import {
-  keysOf,
   gridAt,
   snapToGrid,
   type Control as KitControl,
@@ -148,7 +147,7 @@ export const CONTROLS: Control[] = [
     key: "flow",
     label: "going",
     group: "crowd",
-    options: FLOWS.map((flow) => ({ value: flow, label: FLOW_LABELS[flow] })),
+    options: /* @__PURE__ */ FLOWS.map((flow) => ({ value: flow, label: FLOW_LABELS[flow] })),
     hint: "Where people are headed. Across sends everyone from one edge to the opposite one, so two streams meet head-on and sort themselves into files — nothing in the code knows what a lane is, it is what happens when people prefer to follow someone going their way. About gives each arrival an unrelated way in and way out, so every crossing is oblique. To a spot sends most of them somewhere in the middle to stand, sit or picnic.",
   },
   {
@@ -324,7 +323,7 @@ export const CONTROLS: Control[] = [
     key: "palette",
     label: "colour by",
     group: "colour",
-    options: PALETTES.map((name) => ({ value: name, label: PALETTE_LABELS[name] })),
+    options: /* @__PURE__ */ PALETTES.map((name) => ({ value: name, label: PALETTE_LABELS[name] })),
     hint: "What decides what a person is wearing. Each gives everyone their own hue. Kin gives the hue to the group and varies only its lightness inside it, so a family reads as a family across the whole frame. Teams pushes everyone toward one of two hues a third of the circle apart, which is a match day or a concert. Quiet nearly gives up on hue and lets size and movement carry the picture.",
   },
   {
@@ -532,26 +531,53 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
 ]
 
 /**
- * Bounds for every numeric setting, flattened out of the control list so the
- * validator never has to know how a control is presented.
+ * The numeric shape of every setting a slider owns: its bounds and its grid.
+ *
+ * **Written out rather than derived from `CONTROLS`, and that is the point.**
+ * Both this and `BOUNDS` were built from `CONTROLS` at module scope, which made
+ * the whole control list reachable from `normalizeSettings` — and therefore from
+ * a runner, which has no panel and draws none of it. Labels, hints, `format`
+ * closures and option lists all rode along: 4.3kb of starry-night's 14.1kb
+ * runner, about 30%. See #151.
+ *
+ * The cost is that this can now disagree with the controls, and the answer is a
+ * check rather than a derivation — `tests/unit/experiments-grid.test.ts` fails
+ * if any track here differs from the control it describes. Same trade the
+ * address `REGISTRY` makes: the thing that must not drift silently gets a test,
+ * not a computation.
  */
-export const BOUNDS = Object.fromEntries(
-  CONTROLS.filter(isNumericControl).flatMap((control) =>
-    keysOf(control).map((key) => [key, { min: control.min, max: control.max }] as const),
-  ),
-) as Record<NumericKey, { min: number; max: number }>
+export const TRACKS: Partial<Record<NumericKey, Track>> = {
+  density: { min: 0.5, max: 150, step: 0.5, scale: "log" },
+  grouping: { min: 0, max: 1, step: 0.05 },
+  children: { min: 0, max: 0.6, step: 0.02 },
+  runners: { min: 0, max: 0.6, step: 0.02 },
+  settling: { min: 0, max: 1, step: 0.05 },
+  paceLow: { min: 0.3, max: 4.5, step: 0.05 },
+  paceHigh: { min: 0.3, max: 4.5, step: 0.05 },
+  play: { min: 0, max: 1.5, step: 0.05 },
+  gaze: { min: 0, max: 1.5, step: 0.05 },
+  bob: { min: 0, max: 2.5, step: 0.05 },
+  span: { min: 5, max: 60, step: 0.5, scale: "log" },
+  camera: { min: 6, max: 150, step: 1, scale: "log" },
+  traces: { min: 0.05, max: 90, step: 0.01, scale: "log" },
+  hue: { min: 0, max: 360, step: 1 },
+  tint: { min: 0, max: 1, step: 0.02 },
+  spread: { min: 0, max: 120, step: 1 },
+  pastel: { min: 0, max: 1, step: 0.02 },
+  playback: { min: 0, max: 2, step: 0.05 },
+  seed: { min: 0, max: 99999, step: 1 },
+}
 
 /**
- * The grid every numeric setting is stored on, keyed the way `BOUNDS` is.
- *
- * `normalizeSettings` snaps to this, so a value arriving from the query string
- * or the console API lands where a dragged handle would have put it. Before
- * this, only the slider quantised — see `snapToGrid` in `kit/controls.ts` for
- * what that cost.
+ * Bounds for every numeric setting, so the validator never has to know how a
+ * control is presented. Narrowed from `TRACKS` rather than declared twice.
  */
-export const TRACKS = Object.fromEntries(
-  CONTROLS.filter(isNumericControl).flatMap((control) => keysOf(control).map((key) => [key, control])),
-) as Partial<Record<NumericKey, Track>>
+export const BOUNDS: Record<NumericKey, { min: number; max: number }> = {
+  ...(Object.fromEntries(
+    Object.entries(TRACKS).map(([key, track]) => [key, { min: track!.min, max: track!.max }]),
+  ) as Record<NumericKey, { min: number; max: number }>),
+  seed: SEED_BOUNDS,
+}
 
 /**
  * Settings stored finer than their control's step.

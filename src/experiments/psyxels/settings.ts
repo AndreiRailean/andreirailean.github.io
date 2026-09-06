@@ -1,6 +1,5 @@
 import { decodeScene, encodeScene, type Slot } from "@/experiments/address"
 import {
-  keysOf,
   gridAt,
   snapToGrid,
   type ChoiceControl,
@@ -161,7 +160,7 @@ export const CONTROLS: Control[] = [
     group: "subject",
     key: "subject",
     label: "subject",
-    options: SUBJECTS.map((value) => ({ value, label: SUBJECT_LABELS[value] })),
+    options: /* @__PURE__ */ SUBJECTS.map((value) => ({ value, label: SUBJECT_LABELS[value] })),
     hint: "What is underneath. A letterform and a photograph go through exactly the same machinery: the picture is read as coverage, and coverage is what the packing subdivides. Black is not a dark subject, it is no subject — which is why the portrait's shadows are bare ground rather than dark psyxels.",
   },
   {
@@ -169,7 +168,7 @@ export const CONTROLS: Control[] = [
     group: "subject",
     key: "face",
     label: "face",
-    options: FACES.map((value) => ({ value, label: FACE_LABELS[value] })),
+    options: /* @__PURE__ */ FACES.map((value) => ({ value, label: FACE_LABELS[value] })),
     hint: "Which letterform the subject is drawn with. It is asked for as a kind of shape rather than a named font, so the machine supplies whatever it has of that kind — and the character is what survives being packed: a grotesque gives even strokes and a hard silhouette, a roman gives thick-and-thin and serifs that break into separate psyxels, a script gives a stroke that changes width as it turns. Ignored by the portrait, which is not typeset.",
   },
   {
@@ -180,8 +179,12 @@ export const CONTROLS: Control[] = [
     least: LEAST_GLYPHS,
     // Two rows. Fifteen on one line made the panel half again as wide as
     // everything else in it needed.
-    columns: Math.ceil(GLYPH_NAMES.length / 2),
-    options: GLYPH_NAMES.map((value) => ({ value, label: value.replace("-", " "), icon: () => glyphIcon(value) })),
+    columns: /* @__PURE__ */ Math.ceil(GLYPH_NAMES.length / 2),
+    options: /* @__PURE__ */ GLYPH_NAMES.map((value) => ({
+      value,
+      label: /* @__PURE__ */ value.replace("-", " "),
+      icon: () => glyphIcon(value),
+    })),
     hint: "Which marks a psyx may show. It was a count before — how many to take from the front of the list — so the only way to be rid of one mark was to be rid of everything after it as well. Two is the floor: at one there is nothing to change to, and a psyx that cannot change is not what this piece is made of. A small set is a field with a strong accent and you read the changes; a large one is closer to texture than to signs.",
   },
   {
@@ -189,7 +192,7 @@ export const CONTROLS: Control[] = [
     group: "subject",
     key: "polarity",
     label: "polarity",
-    options: POLARITIES.map((value) => ({ value, label: POLARITY_LABELS[value] })),
+    options: /* @__PURE__ */ POLARITIES.map((value) => ({ value, label: POLARITY_LABELS[value] })),
     hint: "Which side of the subject the psyxels are made of. On ink they fill the subject and the ground stays bare. On void the picture is turned inside out before the packing ever sees it: the whole frame is psyxels and the subject is the hole left in them, read the way a stencil is read. Nothing downstream knows — the packing still spends its small psyxels along the same contours, only now from the other side of them.",
   },
   {
@@ -920,16 +923,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
   },
 ]
 
-export const BOUNDS: Record<NumericKey, { min: number; max: number }> = {
-  ...(Object.fromEntries(
-    CONTROLS.filter(isTrackedControl).flatMap((control) =>
-      keysOf(control).map((key) => [key, { min: control.min, max: control.max }]),
-    ),
-  ) as Record<NumericKey, { min: number; max: number }>),
-  // Last, and deliberately: seed has no slider to derive bounds from.
-  seed: SEED_BOUNDS,
-}
-
 /**
  * The grid every numeric setting is stored on, keyed the way `BOUNDS` is.
  *
@@ -938,9 +931,47 @@ export const BOUNDS: Record<NumericKey, { min: number; max: number }> = {
  * this, only the slider quantised — see `snapToGrid` in `kit/controls.ts` for
  * what that cost.
  */
-export const TRACKS = Object.fromEntries(
-  CONTROLS.filter(isTrackedControl).flatMap((control) => keysOf(control).map((key) => [key, control])),
-) as Partial<Record<NumericKey, Track>>
+export const TRACKS: Partial<Record<NumericKey, Track>> = {
+  fill: { min: 0.25, max: 1, step: 0.01 },
+  coarse: { min: 0.015, max: 0.6, step: 0.001, scale: "log" },
+  levels: { min: 0, max: 5, step: 1 },
+  detail: { min: 0, max: 1, step: 0.01 },
+  variety: { min: 0, max: 1, step: 0.01 },
+  threshold: { min: 0, max: 0.9, step: 0.01 },
+  fuzz: { min: 0, max: 1, step: 0.01 },
+  flatten: { min: 0, max: 1, step: 0.01 },
+  inset: { min: -0.4, max: 0.45, step: 0.01 },
+  bloom: { min: 0, max: 1, step: 0.01 },
+  layers: { min: 0, max: 1, step: 0.01 },
+  solid: { min: 0, max: 1, step: 0.01 },
+  wander: { min: 0, max: 0.6, step: 0.01 },
+  spin: { min: 0, max: 1, step: 0.01 },
+  weight: { min: 0.03, max: 0.34, step: 0.005 },
+  flicker: { min: 0, max: 10, step: 0.05 },
+  morph: { min: 0, max: 1, step: 0.01 },
+  ease: { min: 0.2, max: 6, step: 0.01, scale: "log" },
+  churn: { min: 0, max: 90, step: 0.5 },
+  pulse: { min: 0, max: 1, step: 0.01 },
+  tempo: { min: 0.02, max: 3, step: 0.01, scale: "log" },
+  wave: { min: 0, max: 1, step: 0.01 },
+  hue: { min: 0, max: 360, step: 1 },
+  spread: { min: 0, max: 180, step: 1 },
+  glow: { min: 0, max: 1, step: 0.01 },
+  afterglow: { min: 0, max: 1, step: 0.01 },
+  edge: { min: 0, max: 1, step: 0.01 },
+  edgeHue: { min: -180, max: 180, step: 1 },
+  wildness: { min: 0, max: 1, step: 0.01 },
+  saturation: { min: 0, max: 1, step: 0.01 },
+  playback: { min: 0, max: 2, step: 0.01 },
+}
+
+export const BOUNDS: Record<NumericKey, { min: number; max: number }> = {
+  ...(Object.fromEntries(
+    Object.entries(TRACKS).map(([key, track]) => [key, { min: track!.min, max: track!.max }]),
+  ) as Record<NumericKey, { min: number; max: number }>),
+  // Last, and deliberately: seed has no slider to derive bounds from.
+  seed: SEED_BOUNDS,
+}
 
 /**
  * The spacing one setting is stored on, or 0 for a key with no track.

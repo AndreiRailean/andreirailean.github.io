@@ -558,27 +558,62 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
   },
 ]
 
-/** Bounds for every numeric setting, including the ones with no slider. */
-export const BOUNDS: Record<NumericKey, { min: number; max: number }> = {
-  ...(Object.fromEntries(CONTROLS.map((c) => [c.key, { min: c.min, max: c.max }])) as Record<
-    NumericKey,
-    { min: number; max: number }
-  >),
-  // Last, and deliberately: seed has no slider to derive bounds from.
-  seed: SEED_BOUNDS,
+/**
+ * The numeric shape of every setting a slider owns: its bounds and its grid.
+ *
+ * **Written out rather than derived from `CONTROLS`, and that is the point.**
+ * Both this and `BOUNDS` were built from `CONTROLS` at module scope, which made
+ * the whole control list reachable from `normalizeSettings` — and therefore from
+ * a runner, which has no panel and draws none of it. Labels, hints, `format`
+ * closures and option lists all rode along: 4.3kb of starry-night's 14.1kb
+ * runner, about 30%. See #151.
+ *
+ * The cost is that this can now disagree with the controls, and the answer is a
+ * check rather than a derivation — `tests/unit/experiments-grid.test.ts` fails
+ * if any track here differs from the control it describes. Same trade the
+ * address `REGISTRY` makes: the thing that must not drift silently gets a test,
+ * not a computation.
+ */
+export const TRACKS: Partial<Record<NumericKey, Track>> = {
+  strands: { min: 1, max: 80, step: 1 },
+  beads: { min: 2, max: 48, step: 1 },
+  segments: { min: 6, max: 80, step: 1 },
+  extent: { min: 0.2, max: 10, step: 0.05 },
+  ceiling: { min: 1.5, max: 14, step: 0.1 },
+  relief: { min: 0, max: 4, step: 0.05 },
+  branches: { min: 0, max: 14, step: 1 },
+  length: { min: 0.1, max: 8, step: 0.05 },
+  stiffness: { min: 0, max: 1, step: 0.01 },
+  set: { min: 0, max: 2.5, step: 0.01 },
+  twist: { min: -2, max: 2, step: 0.01 },
+  irregularity: { min: 0, max: 1, step: 0.01 },
+  fieldOfView: { min: 30, max: 150, step: 1 },
+  pitch: { min: 0, max: 60, step: 1 },
+  hue: { min: 0, max: 360, step: 1 },
+  hueSpread: { min: 0, max: 90, step: 0.5 },
+  variance: { min: 0, max: 1, step: 0.01 },
+  size: { min: 0.002, max: 0.08, step: 0.001 },
+  bloom: { min: 1, max: 24, step: 0.1 },
+  facing: { min: 0, max: 1, step: 0.01 },
+  falloff: { min: 0, max: 1, step: 0.01 },
+  flicker: { min: 0, max: 1, step: 0.01 },
+  gust: { min: 0, max: 1, step: 0.01 },
+  gustRate: { min: 0.5, max: 30, step: 0.5 },
+  sway: { min: 0, max: 1, step: 0.01 },
+  tremble: { min: 0, max: 1, step: 0.01 },
+  breeze: { min: 0, max: 1, step: 0.01 },
 }
 
 /**
- * The grid every numeric setting is stored on, keyed the way `BOUNDS` is.
- *
- * `normalizeSettings` snaps to this, so a value arriving from the query string
- * or the console API lands where a dragged handle would have put it. Before
- * this, only the slider quantised — see `snapToGrid` in `kit/controls.ts` for
- * what that cost.
+ * Bounds for every numeric setting, so the validator never has to know how a
+ * control is presented. Narrowed from `TRACKS` rather than declared twice.
  */
-export const TRACKS = Object.fromEntries(CONTROLS.map((control) => [control.key, control])) as Partial<
-  Record<NumericKey, Track>
->
+export const BOUNDS: Record<NumericKey, { min: number; max: number }> = {
+  ...(Object.fromEntries(
+    Object.entries(TRACKS).map(([key, track]) => [key, { min: track!.min, max: track!.max }]),
+  ) as Record<NumericKey, { min: number; max: number }>),
+  seed: SEED_BOUNDS,
+}
 
 /**
  * The spacing one setting is stored on, or 0 for a key with no track.

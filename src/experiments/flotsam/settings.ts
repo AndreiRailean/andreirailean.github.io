@@ -1,12 +1,5 @@
 import { decodeScene, encodeScene, type Slot } from "@/experiments/address"
-import {
-  gridAt,
-  keysOf,
-  snapToGrid,
-  type RangeControl,
-  type SliderControl,
-  type Track,
-} from "@/experiments/kit/controls"
+import { gridAt, snapToGrid, type RangeControl, type SliderControl, type Track } from "@/experiments/kit/controls"
 
 /**
  * Everything about the sea that is tunable at runtime.
@@ -882,26 +875,64 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
   },
 ]
 
-/** Bounds for every numeric setting, including the ones with no slider. */
-export const BOUNDS: Record<NumericKey, { min: number; max: number }> = {
-  ...(Object.fromEntries(
-    CONTROLS.flatMap((control) => keysOf(control).map((key) => [key, { min: control.min, max: control.max }])),
-  ) as Record<NumericKey, { min: number; max: number }>),
-  // Last, and deliberately: seed has no slider to derive bounds from.
-  seed: SEED_BOUNDS,
+/**
+ * The numeric shape of every setting a slider owns: its bounds and its grid.
+ *
+ * **Written out rather than derived from `CONTROLS`, and that is the point.**
+ * Both this and `BOUNDS` were built from `CONTROLS` at module scope, which made
+ * the whole control list reachable from `normalizeSettings` — and therefore from
+ * a runner, which has no panel and draws none of it. Labels, hints, `format`
+ * closures and option lists all rode along: 4.3kb of starry-night's 14.1kb
+ * runner, about 30%. See #151.
+ *
+ * The cost is that this can now disagree with the controls, and the answer is a
+ * check rather than a derivation — `tests/unit/experiments-grid.test.ts` fails
+ * if any track here differs from the control it describes. Same trade the
+ * address `REGISTRY` makes: the thing that must not drift silently gets a test,
+ * not a computation.
+ */
+export const TRACKS: Partial<Record<NumericKey, Track>> = {
+  span: { min: 1.5, max: 320, step: 0.01, scale: "log" },
+  playback: { min: 0, max: 2, step: 0.01 },
+  trains: { min: 1, max: 9, step: 1 },
+  shortest: { min: 0.1, max: 60, step: 0.01, scale: "log" },
+  longest: { min: 0.1, max: 60, step: 0.01, scale: "log" },
+  peak: { min: 0, max: 1, step: 0.01 },
+  steepness: { min: 0, max: 0.92, step: 0.01 },
+  heading: { min: 0, max: 360, step: 1 },
+  spread: { min: 0, max: 180, step: 1 },
+  gusts: { min: 0, max: 1, step: 0.01 },
+  drift: { min: 0, max: 2, step: 0.01 },
+  bearing: { min: 0, max: 360, step: 1 },
+  eddies: { min: 0, max: 2, step: 0.01 },
+  gyre: { min: 0.4, max: 400, step: 0.01, scale: "log" },
+  stokes: { min: 0, max: 3, step: 0.01 },
+  dots: { min: 60, max: 9000, step: 1, scale: "log" },
+  smallest: { min: 0.004, max: 1.5, step: 0.001, scale: "log" },
+  largest: { min: 0.004, max: 1.5, step: 0.001, scale: "log" },
+  sizeMix: { min: 0, max: 1, step: 0.01 },
+  hue: { min: 0, max: 360, step: 1 },
+  hueSpread: { min: 0, max: 90, step: 0.5 },
+  variance: { min: 0, max: 1, step: 0.01 },
+  exposure: { min: 0, max: 2, step: 0.01 },
+  glint: { min: 0, max: 1, step: 0.01 },
+  azimuth: { min: 0, max: 360, step: 1 },
+  elevation: { min: 12, max: 90, step: 1 },
+  shade: { min: 0, max: 1, step: 0.01 },
+  gleam: { min: 0, max: 40, step: 0.5 },
+  softness: { min: 0, max: 1, step: 0.01 },
 }
 
 /**
- * The grid every numeric setting is stored on, keyed the way `BOUNDS` is.
- *
- * `normalizeSettings` snaps to this, so a value arriving from the query string
- * or the console API lands where a dragged handle would have put it. Before
- * this, only the slider quantised — see `snapToGrid` in `kit/controls.ts` for
- * what that cost.
+ * Bounds for every numeric setting, so the validator never has to know how a
+ * control is presented. Narrowed from `TRACKS` rather than declared twice.
  */
-export const TRACKS = Object.fromEntries(
-  CONTROLS.flatMap((control) => keysOf(control).map((key) => [key, control])),
-) as Partial<Record<NumericKey, Track>>
+export const BOUNDS: Record<NumericKey, { min: number; max: number }> = {
+  ...(Object.fromEntries(
+    Object.entries(TRACKS).map(([key, track]) => [key, { min: track!.min, max: track!.max }]),
+  ) as Record<NumericKey, { min: number; max: number }>),
+  seed: SEED_BOUNDS,
+}
 
 /**
  * Settings stored finer than their control's step.

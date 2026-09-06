@@ -82,6 +82,19 @@ src/pages/experiments/<slug>/  index.astro (the piece), about.astro (the note)
 
 ## Presets
 
+**A piece states its tracks; it does not derive them.** `TRACKS` is written out
+in each `settings.ts` and `BOUNDS` is narrowed from it, rather than either being
+computed from `CONTROLS`. **Adding a slider therefore means adding a track too**,
+and any call inside a control list — `MODES.map(...)`, `Math.ceil(...)` — needs a
+`/* @__PURE__ */` annotation. Both rules exist for one reason: a computation over
+`CONTROLS`, or an un-annotated call inside it, makes the whole control list reach
+a **runner**, which draws none of it. That was 28% of starry-night's bundle in
+labels, hints and `format` closures. `tests/unit/experiments-runner-weight.test.ts`
+holds both, `tests/unit/experiments-grid.test.ts` checks the literals still match
+their controls, and
+`docs/adr/20260906-a-runner-sheds-the-panel.md` has the measurements — including
+why fixing either half alone changes nothing.
+
 **Every numeric setting lands on a grid, whichever route it arrived by.**
 `normalizeSettings` snaps, so a value from `experiment.set()` or a query string
 ends up where a dragged handle would have put it. **The grid is not the control's

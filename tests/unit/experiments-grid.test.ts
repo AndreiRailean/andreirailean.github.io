@@ -60,6 +60,60 @@ it("finds the experiments, so an empty run cannot pass for a clean one", () => {
 })
 
 describe.each(slugs)("%s", (slug) => {
+  /**
+   * **The literals have to agree with the controls, or nothing else here means
+   * anything.**
+   *
+   * `TRACKS` was derived from `CONTROLS` until #151, which made the whole control
+   * list reachable from `normalizeSettings` and therefore from a runner that
+   * draws none of it — labels, hints, `format` closures and option lists, 30% of
+   * starry-night's bundle. Declaring the numbers instead lets the rest shake
+   * out, and buys a way for them to disagree.
+   *
+   * This is what pays for that. It is the same trade the address registry makes:
+   * the thing that must not drift silently gets a check rather than a
+   * computation.
+   */
+  it("declares tracks that match the controls they describe", async () => {
+    const { TRACKS, CONTROLS } = (await settingsModule(slug)) as Awaited<ReturnType<typeof settingsModule>> & {
+      CONTROLS: {
+        kind: string
+        key?: string
+        keys?: string[]
+        min?: number
+        max?: number
+        step?: number
+        scale?: string
+      }[]
+    }
+
+    const fromControls: Record<string, Track> = {}
+    for (const control of CONTROLS) {
+      if (typeof control.step !== "number") continue
+      for (const key of control.keys ?? (control.key ? [control.key] : [])) {
+        fromControls[key] = {
+          min: control.min!,
+          max: control.max!,
+          step: control.step,
+          ...(control.scale === "log" ? { scale: "log" as const } : {}),
+        }
+      }
+    }
+
+    expect(
+      Object.keys(TRACKS).sort(),
+      `${slug}'s TRACKS and its sliders disagree about which settings have a track`,
+    ).toEqual(Object.keys(fromControls).sort())
+
+    for (const [key, declared] of Object.entries(TRACKS)) {
+      expect(
+        declared,
+        `${slug}.${key}: the declared track and its control disagree. Update the literal in ` +
+          `settings.ts — it is written out on purpose so a runner does not carry the panel's prose.`,
+      ).toEqual(fromControls[key])
+    }
+  })
+
   it("publishes a track for every setting a slider owns", async () => {
     const { TRACKS } = await settingsModule(slug)
     const tracked = Object.keys(TRACKS)
