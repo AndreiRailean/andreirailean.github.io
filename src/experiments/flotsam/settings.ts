@@ -1,4 +1,11 @@
-import { keysOf, type RangeControl, type SliderControl } from "@/experiments/kit/controls"
+import {
+  gridAt,
+  keysOf,
+  snapToGrid,
+  type RangeControl,
+  type SliderControl,
+  type Track,
+} from "@/experiments/kit/controls"
 
 /**
  * Everything about the sea that is tunable at runtime.
@@ -883,6 +890,49 @@ export const BOUNDS: Record<NumericKey, { min: number; max: number }> = {
   seed: SEED_BOUNDS,
 }
 
+/**
+ * The grid every numeric setting is stored on, keyed the way `BOUNDS` is.
+ *
+ * `normalizeSettings` snaps to this, so a value arriving from the query string
+ * or the console API lands where a dragged handle would have put it. Before
+ * this, only the slider quantised — see `snapToGrid` in `kit/controls.ts` for
+ * what that cost.
+ */
+export const TRACKS = Object.fromEntries(
+  CONTROLS.flatMap((control) => keysOf(control).map((key) => [key, control])),
+) as Partial<Record<NumericKey, Track>>
+
+/**
+ * Settings stored finer than their control's step.
+ *
+ * `step` is how far an arrow key moves a handle, not a claim about which values
+ * a setting can hold, and `drift` was recorded when its control was cut
+ * differently — it sits between the stops its slider offers today. Storing it
+ * at its own resolution keeps the scene exactly as it was found; re-recording
+ * it on the current step would be a change to a picture, and that is not a
+ * decision this file gets to make.
+ */
+const FINER_GRID: Partial<Record<NumericKey, number>> = { drift: 0.005 }
+
+/**
+ * The spacing one setting is stored on, or 0 for a key with no track.
+ *
+ * Exported because a check that a value is on its grid has to read the grid
+ * from the piece rather than re-derive it — re-deriving is how a test ends up
+ * asserting its own copy of the rule. It is also the column a slot registry
+ * would need if the address ever stops being readable.
+ */
+export function gridFor(key: NumericKey, value: number): number {
+  const track = TRACKS[key]
+  return track ? gridAt(track, value, FINER_GRID[key]) : 0
+}
+
+/** Snaps one setting, leaving alone any key with no track — `seed` has none. */
+function snap(key: NumericKey, value: number): number {
+  const track = TRACKS[key]
+  return track ? snapToGrid(track, value, FINER_GRID[key]) : value
+}
+
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
 /** Settings that must hold whole numbers; a fractional train count is nonsense. */
@@ -902,6 +952,7 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
     const value = Number(settings[key])
     settings[key] = Number.isFinite(value) ? clamp(value, bound.min, bound.max) : base[key]
     if (INTEGER_KEYS.includes(key)) settings[key] = Math.round(settings[key])
+    settings[key] = snap(key, settings[key])
   }
 
   // A pair arriving reversed — from a hand-written URL, or from the API — is

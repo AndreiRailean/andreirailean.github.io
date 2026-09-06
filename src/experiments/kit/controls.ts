@@ -63,7 +63,14 @@ type Shared = {
  */
 export type Scale = "linear" | "log"
 
-type Track = { min: number; max: number; step: number; scale?: Scale }
+/**
+ * The numeric shape of a row, which is all the grid and position helpers need.
+ *
+ * Exported because a piece's `normalizeSettings` now holds a table of these to
+ * snap with — see `snapToGrid`. It was internal while the only callers were in
+ * this file.
+ */
+export type Track = { min: number; max: number; step: number; scale?: Scale }
 
 type Numeric = Shared & Track
 
@@ -178,22 +185,53 @@ export function positionOf(track: Track, value: number): number {
 }
 
 /**
- * The value a position stands for, rounded to something a person would write.
+ * The spacing a track's values sit on, at a given magnitude.
  *
- * `step` is a floor rather than the grid: a track from 0.15 to 40 needs
- * hundredths at the bottom and whole numbers at the top, so the value is snapped
- * to three significant figures unless `step` is coarser. The final `toPrecision`
- * is not cosmetic — without it a snapped value arrives as 0.30000000000000004
- * and goes into a shared URL that way.
+ * `step` is a **floor** rather than the grid: a track from 0.15 to 40 needs
+ * hundredths at the bottom and whole numbers at the top, so a log track is cut
+ * at three significant figures unless `step` is coarser. A linear track's grid
+ * is its `step` and nothing else.
+ *
+ * `finer` lets a piece store a setting at a resolution its slider does not
+ * offer. That is not a contradiction: `step` says how far an arrow key moves a
+ * handle, and it has never been a claim about which values the setting can
+ * hold. Three settings in the section were recorded before their control's step
+ * was what it is now and sit between its stops.
  */
+export function gridAt(track: Track, value: number, finer?: number): number {
+  const floor = finer !== undefined ? Math.min(finer, track.step) : track.step
+  if (track.scale !== "log") return floor
+  const magnitude = Math.max(Math.abs(value), Number.MIN_VALUE)
+  return Math.max(floor, 10 ** (Math.floor(Math.log10(magnitude)) - 2))
+}
+
+/**
+ * A value put onto its track's grid.
+ *
+ * **One rule, one implementation, and that is the point of it living here.**
+ * The quantisation used to belong to `valueAtPosition` alone, so a value was cut
+ * to the grid when a handle was dragged and left alone when it arrived from the
+ * console API or a query string — the same scene with two spellings depending on
+ * how it was reached. `normalizeSettings` now applies this to every route, and
+ * `valueAtPosition` is written in terms of it so the two cannot drift apart.
+ *
+ * The final `toPrecision` is not cosmetic. Without it a snapped value arrives as
+ * 0.30000000000000004 and goes into a shared URL that way.
+ */
+export function snapToGrid(track: Track, value: number, finer?: number): number {
+  if (!Number.isFinite(value)) return value
+  const grid = gridAt(track, value, finer)
+  if (!(grid > 0)) return value
+  return Number((Math.round(value / grid) * grid).toPrecision(10))
+}
+
+/** The value a position stands for, rounded to something a person would write. */
 export function valueAtPosition(track: Track, position: number): number {
   const t = Math.min(1, Math.max(0, position))
   if (track.scale !== "log") return track.min + t * (track.max - track.min)
 
   const low = Math.max(track.min, Number.MIN_VALUE)
-  const raw = low * (track.max / low) ** t
-  const quantum = Math.max(track.step, 10 ** (Math.floor(Math.log10(raw)) - 2))
-  return Number((Math.round(raw / quantum) * quantum).toPrecision(10))
+  return snapToGrid(track, low * (track.max / low) ** t)
 }
 
 export type Preset<S> = { label: string; hint: string; settings: S }

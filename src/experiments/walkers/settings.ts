@@ -1,4 +1,12 @@
-import { keysOf, type Control as KitControl, type RangeControl, type SliderControl } from "@/experiments/kit/controls"
+import {
+  keysOf,
+  gridAt,
+  snapToGrid,
+  type Control as KitControl,
+  type RangeControl,
+  type SliderControl,
+  type Track,
+} from "@/experiments/kit/controls"
 
 /** Re-exported so a consumer needs one import for a control and its keys. */
 export { keysOf } from "@/experiments/kit/controls"
@@ -532,6 +540,49 @@ export const BOUNDS = Object.fromEntries(
   ),
 ) as Record<NumericKey, { min: number; max: number }>
 
+/**
+ * The grid every numeric setting is stored on, keyed the way `BOUNDS` is.
+ *
+ * `normalizeSettings` snaps to this, so a value arriving from the query string
+ * or the console API lands where a dragged handle would have put it. Before
+ * this, only the slider quantised — see `snapToGrid` in `kit/controls.ts` for
+ * what that cost.
+ */
+export const TRACKS = Object.fromEntries(
+  CONTROLS.filter(isNumericControl).flatMap((control) => keysOf(control).map((key) => [key, control])),
+) as Partial<Record<NumericKey, Track>>
+
+/**
+ * Settings stored finer than their control's step.
+ *
+ * `step` is how far an arrow key moves a handle, not a claim about which values
+ * a setting can hold, and `settling` was recorded when its control was cut
+ * differently — it sits between the stops its slider offers today. Storing it
+ * at its own resolution keeps the scene exactly as it was found; re-recording
+ * it on the current step would be a change to a picture, and that is not a
+ * decision this file gets to make.
+ */
+const FINER_GRID: Partial<Record<NumericKey, number>> = { settling: 0.01 }
+
+/**
+ * The spacing one setting is stored on, or 0 for a key with no track.
+ *
+ * Exported because a check that a value is on its grid has to read the grid
+ * from the piece rather than re-derive it — re-deriving is how a test ends up
+ * asserting its own copy of the rule. It is also the column a slot registry
+ * would need if the address ever stops being readable.
+ */
+export function gridFor(key: NumericKey, value: number): number {
+  const track = TRACKS[key]
+  return track ? gridAt(track, value, FINER_GRID[key]) : 0
+}
+
+/** Snaps one setting, leaving alone any key with no track — `seed` has none. */
+function snap(key: NumericKey, value: number): number {
+  const track = TRACKS[key]
+  return track ? snapToGrid(track, value, FINER_GRID[key]) : value
+}
+
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
 /**
@@ -554,6 +605,7 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
   for (const [key, bound] of Object.entries(BOUNDS) as [NumericKey, { min: number; max: number }][]) {
     const value = Number(settings[key])
     settings[key] = Number.isFinite(value) ? clamp(value, bound.min, bound.max) : base[key]
+    settings[key] = snap(key, settings[key])
   }
 
   settings.seed = Math.round(settings.seed)

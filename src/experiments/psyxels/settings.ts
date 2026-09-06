@@ -1,9 +1,12 @@
 import {
   keysOf,
+  gridAt,
+  snapToGrid,
   type ChoiceControl,
   type RangeControl,
   type SetControl,
   type SliderControl,
+  type Track,
 } from "@/experiments/kit/controls"
 import {
   FACE_LABELS,
@@ -926,6 +929,37 @@ export const BOUNDS: Record<NumericKey, { min: number; max: number }> = {
   seed: SEED_BOUNDS,
 }
 
+/**
+ * The grid every numeric setting is stored on, keyed the way `BOUNDS` is.
+ *
+ * `normalizeSettings` snaps to this, so a value arriving from the query string
+ * or the console API lands where a dragged handle would have put it. Before
+ * this, only the slider quantised — see `snapToGrid` in `kit/controls.ts` for
+ * what that cost.
+ */
+export const TRACKS = Object.fromEntries(
+  CONTROLS.filter(isTrackedControl).flatMap((control) => keysOf(control).map((key) => [key, control])),
+) as Partial<Record<NumericKey, Track>>
+
+/**
+ * The spacing one setting is stored on, or 0 for a key with no track.
+ *
+ * Exported because a check that a value is on its grid has to read the grid
+ * from the piece rather than re-derive it — re-deriving is how a test ends up
+ * asserting its own copy of the rule. It is also the column a slot registry
+ * would need if the address ever stops being readable.
+ */
+export function gridFor(key: NumericKey, value: number): number {
+  const track = TRACKS[key]
+  return track ? gridAt(track, value) : 0
+}
+
+/** Snaps one setting, leaving alone any key with no track — `seed` has none. */
+function snap(key: NumericKey, value: number): number {
+  const track = TRACKS[key]
+  return track ? snapToGrid(track, value) : value
+}
+
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
 /**
@@ -973,6 +1007,7 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
     const value = Number(settings[key])
     settings[key] = Number.isFinite(value) ? clamp(value, bound.min, bound.max) : base[key]
     if (INTEGER_KEYS.includes(key)) settings[key] = Math.round(settings[key])
+    settings[key] = snap(key, settings[key])
   }
 
   return settings
