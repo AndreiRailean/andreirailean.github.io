@@ -1,5 +1,31 @@
 # AGENTS.md
 
+## What to work on first
+
+**Anything that speeds up iteration outranks feature work.** A slow or noisy
+loop is paid on every change by every session afterwards, so fixing it compounds
+where a feature does not. Treat these as higher priority than whatever is next
+in the queue, and do not ask before taking one:
+
+- **A red or flaky check**, which taxes everybody at once.
+- **A check that cannot see what it is meant to check.** Worse than a missing
+  one, because it reads as coverage. Five identical copies of a helper sat in
+  `.astro` files past the third-copy rule while `kit-adoption.test.ts` scanned
+  only `.ts` —
+  `src/experiments/docs/adr/20260906-a-page-holds-no-logic.md`.
+- **Work the tools cannot reach.** Code a grep of its own section does not find,
+  or a type checker does not type, will be refactored wrongly eventually. The
+  fix is to move the code, not to remember the trap.
+- **Waiting that buys nothing.** A full browser suite over five pieces to
+  approve a paragraph of prose is friction with no verification in it —
+  `.github/workflows/test.yml` and `tests/unit/ci-paths.test.ts`.
+- **A rule that depends on being remembered.** Where a check can hold it
+  instead, that is the higher-leverage version of writing it down. This repo
+  keeps producing documented rules broken by their own author within the hour.
+
+The trade this makes explicit: a day spent on the loop is worth more than a day
+spent on the thing being looped over, and neither needs asking for.
+
 ## Agent skills
 
 ### Issue tracker

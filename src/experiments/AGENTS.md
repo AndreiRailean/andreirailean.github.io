@@ -56,6 +56,18 @@ src/pages/experiments/<slug>/  index.astro (the piece), about.astro (the note)
 
 - **Never put `.ts` under `src/pages/`.** Astro turns it into an API endpoint.
   Experiment code lives in `src/experiments/<slug>/`; only routes go in `pages`.
+- **And never put logic in the `.astro` either.** A piece's page is markup, a
+  `<style>` block, and `import { boot } from "@/experiments/<slug>/page"`. That
+  is the other half of the rule above and the one that actually bit: about 115
+  lines per page — more than half of each file — used to sit in a `<script>`
+  outside `src/experiments/`, where **a grep of the section never reaches it and
+  only `astro check` types it.** `pnpm run lint`'s eslint does not, and neither
+  does anything reading `.ts`. `copyLabel` was renamed with three live callers in
+  those files; five byte-identical copies of `requireElement` sat there past the
+  third-copy rule with `tests/unit/kit-adoption.test.ts` structurally unable to
+  see them. `tests/unit/experiments-pages.test.ts` keeps a page to an import and
+  a call; the reasoning is in
+  `docs/adr/20260906-a-page-holds-no-logic.md`.
 - An experiment page **imports nothing from the rest of the site** — no
   `Layout.astro`, no `globals.css`, no Tailwind. It is a bare document.
   **`pnpm run lint` fails this now**, so it is no longer convention: inside
