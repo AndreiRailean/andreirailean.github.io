@@ -23,8 +23,8 @@ Four of those records are rules you will otherwise rediscover the hard way:
   `docs/adr/20260829-a-wrapped-patch-needs-a-periodic-field.md`.
 - **A frame is not a viewport.** Every piece renders into whatever box it is
   given, and none of them is tuned for one. Starry Night's density grows with
-  `area^0.75` because a smaller *viewport* means a closer viewer — an assumption
-  a smaller *frame* breaks — and at 320x200 it comes out twice as dense as at
+  `area^0.75` because a smaller _viewport_ means a closer viewer — an assumption
+  a smaller _frame_ breaks — and at 320x200 it comes out twice as dense as at
   1280x800, while Flotsam and Dangler shrink every unit instead. Whatever renders
   a piece at a size it was not tuned for owns choosing settings for it. See
   `docs/adr/20260906-a-frame-is-not-a-viewport.md`.

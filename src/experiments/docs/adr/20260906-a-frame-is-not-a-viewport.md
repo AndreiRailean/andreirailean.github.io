@@ -33,11 +33,11 @@ Starry Night on its `clay` preset, rendered at three frame sizes on one desktop
 display. "Widest unit" is the longest horizontal run of ink, a proxy for the
 largest star; "ink" is the share of pixels covered.
 
-| frame | dots | dots per Mpx | widest unit | ink |
-|---|---|---|---|---|
-| 1280×800 | 1619 | 1581 | 28 css px | 2.5% |
-| 640×400 | 572 | 2234 | 33 css px | 4.0% |
-| 320×200 | 206 | 3219 | 21 css px | 5.2% |
+| frame    | dots | dots per Mpx | widest unit | ink  |
+| -------- | ---- | ------------ | ----------- | ---- |
+| 1280×800 | 1619 | 1581         | 28 css px   | 2.5% |
+| 640×400  | 572  | 2234         | 33 css px   | 4.0% |
+| 320×200  | 206  | 3219         | 21 css px   | 5.2% |
 
 Two things move and one does not. Unit size **does not** change — `nearRadius`
 is in css px and a star stays the size it was. Relative density **doubles**, and
