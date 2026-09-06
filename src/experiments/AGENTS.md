@@ -66,6 +66,19 @@ src/pages/experiments/<slug>/  index.astro (the piece), about.astro (the note)
 
 ## Presets
 
+**Every numeric setting lands on a grid, whichever route it arrived by.**
+`normalizeSettings` snaps, so a value from `experiment.set()` or a query string
+ends up where a dragged handle would have put it. **The grid is not the control's
+`step`** — `step` is how far an arrow key moves a handle, and a piece may declare
+a finer resolution per setting through `FINER_GRID`, which three do because their
+scenes were recorded before their control was cut as it is now. A log track's
+grid is three significant figures, floored at `step`. `gridAt` and `snapToGrid`
+in `kit/controls.ts` own the rule and `valueAtPosition` is written in terms of
+them, so a drag and the validator cannot disagree;
+`tests/unit/experiments-grid.test.ts` holds every piece to it. Why, and what
+snapping to `step` instead would have cost, is in
+`docs/adr/20260906-a-setting-lands-on-a-grid.md`.
+
 **A preset states every setting, and inherits from nothing.** Not from another
 preset, and not from `DEFAULT_SETTINGS`. Spreading over the defaults reads as
 tidy and is a trap: the day the featured scene changes, every preset that did
