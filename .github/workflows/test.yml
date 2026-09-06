@@ -19,6 +19,21 @@ name: Test code
 # file rather than as a folder, because `src/pages/experiments/` lives under it
 # and `paths-ignore` has no way to carve an exception back out.
 #
+# **Prose is here too, and the list is specific rather than `**/*.md`.** Agent
+# docs, section ADRs and skills change constantly and no test reads any of them —
+# a docs-only pull request was running the full browser suite over five pieces to
+# approve a paragraph, which is the same friction as the resume, one directory
+# over.
+#
+# The blanket form is the trap to refuse: **`src/experiments/*/about.md` is
+# content, not prose.** It feeds the collection `/experiments/` is generated
+# from, and `tests/experiments-index.spec.ts` pins that index's contents while
+# `tests/experiments-notes.spec.ts` pins the notes. Ignoring every `.md` would
+# stop testing the one kind that is tested, silently, which is the failure mode
+# `paths-ignore` was chosen to avoid in the first place.
+# `tests/unit/ci-paths.test.ts` holds that line so it does not depend on the next
+# person reading this comment.
+#
 # **`lint` is deliberately NOT filtered**, and must not be. It is the only
 # required status check on `main`, and a required check that never runs leaves a
 # pull request permanently *pending* rather than passing — so filtering it would
@@ -37,6 +52,9 @@ on:
       - "src/pages/resume.md"
       - "public/**"
       - "docs/**"
+      - "src/experiments/docs/**"
+      - "**/AGENTS.md"
+      - ".claude/**"
       - "*.md"
 
 # A second push to the same branch supersedes the first, so an iterative session
