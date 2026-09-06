@@ -9,7 +9,7 @@ say so explicitly if your work contradicts one rather than quietly overriding
 it. Vocabulary and decisions belonging to a single experiment stay in that
 experiment's own folder.
 
-Three of those records are rules you will otherwise rediscover the hard way:
+Four of those records are rules you will otherwise rediscover the hard way:
 
 - **A piece under exploration owes its URLs nothing.** Presets, defaults and
   already-shared links are not things to preserve while a piece is still being
@@ -21,6 +21,13 @@ Three of those records are rules you will otherwise rediscover the hard way:
   convincingly that it reads as a result rather than a bug. Measured at an index
   of dispersion of 134 against a baseline of 1, in
   `docs/adr/20260829-a-wrapped-patch-needs-a-periodic-field.md`.
+- **A frame is not a viewport.** Every piece renders into whatever box it is
+  given, and none of them is tuned for one. Starry Night's density grows with
+  `area^0.75` because a smaller _viewport_ means a closer viewer — an assumption
+  a smaller _frame_ breaks — and at 320x200 it comes out twice as dense as at
+  1280x800, while Flotsam and Dangler shrink every unit instead. Whatever renders
+  a piece at a size it was not tuned for owns choosing settings for it. See
+  `docs/adr/20260906-a-frame-is-not-a-viewport.md`.
 - **A placement strategy is a choice about a scale, and does not travel with the
   file it is written in.** Dangler's R2 sequence is right for eighty anchors and
   comes out as a visible lattice at nine thousand specks. It is why each piece
