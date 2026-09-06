@@ -99,6 +99,14 @@ a reader will want to undo on sight. Both alternatives that were weighed and
 rejected, including moving a scene off its baseline instead, are in
 `docs/adr/20260905-a-shared-address-states-the-whole-scene.md`.
 
+**A packed replacement is designed but not built**, which shortens those
+addresses to 46-81 characters and stops them being readable at all — readability
+moves to the panel and to a decoder on the console handle. If you are about to
+change how a scene reaches the query string, read
+`docs/adr/20260906-an-address-is-packed-not-readable.md` first; it is `proposed`
+rather than `accepted`, so the rule above is still the one in force. Issue #141
+carries the measurements.
+
 **Position one is the primary, and a great deal follows from being first.** A
 bare address lands on it and the page rewrites the URL to that scene's full
 query, so a visitor leaves with a link to _that scene_ rather than to whatever is
