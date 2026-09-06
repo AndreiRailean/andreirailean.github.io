@@ -66,6 +66,44 @@ test("the background follows the site's theme, which is a class and not a media 
 })
 
 /**
+ * The scheme has to be right on the *first* frame, not eventually.
+ *
+ * `<Footer>` carries the script that puts `.dark` on the document and renders
+ * after the page's own slot, so anything here that reads the class while parsing
+ * reads it before it exists. That is worth a test rather than a comment because
+ * the symptom was not a wrong background — it was a *flash*, and then, depending
+ * on whether the theme toggle had finished hydrating, sometimes a correction and
+ * sometimes not. A test that only checked the settled state passed throughout.
+ *
+ * So this records every variant the loader ever reports and insists there is
+ * exactly one.
+ */
+for (const [name, stored, os] of [
+  ["the OS preference, with nothing stored", null, "dark"],
+  ["a stored choice that disagrees with the OS", "light", "dark"],
+] as const) {
+  test(`the background starts on ${name}, without passing through the other one`, async ({ page }) => {
+    const wanted = stored ?? os
+
+    await page.addInitScript((value) => {
+      if (value) localStorage.setItem("theme", value)
+      const seen: string[] = []
+      ;(window as unknown as { __variants: string[] }).__variants = seen
+      new MutationObserver(() => {
+        const shown = document.getElementById("showcase-bg")?.dataset.showcaseVariant
+        if (shown && seen.at(-1) !== shown) seen.push(shown)
+      }).observe(document, { subtree: true, attributes: true, attributeFilter: ["data-showcase-variant"] })
+    }, stored)
+
+    await page.emulateMedia({ colorScheme: os })
+    await page.goto("/")
+    await page.waitForFunction(() => (window as unknown as ShowcaseWindow).showcase?.stats().length === 1)
+
+    expect(await page.evaluate(() => (window as unknown as { __variants: string[] }).__variants)).toEqual([wanted])
+  })
+}
+
+/**
  * The failure that matters, because it is the one nobody would notice.
  *
  * The site's dot pattern is left in `globals.css` precisely so a dead embed

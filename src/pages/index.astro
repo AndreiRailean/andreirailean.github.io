@@ -36,31 +36,53 @@ import avatar from "@/assets/avatar.jpg"
       position: relative;
       z-index: 1;
     }
+
+    /* The scrim: the background dulled a few notches under the text, and only
+       under the text. Drawn from the theme's own `--background`, so one rule
+       serves both schemes and neither can drift from the page it sits on.
+
+       Inside `main`'s stacking context at `z-index: -1`, which puts it behind
+       the words and in front of the canvas — the canvas is outside that context
+       entirely. A gradient rather than a shape, so it has no edge to notice. */
+    main::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      background: radial-gradient(
+        ellipse 46rem 30rem at 50% 46%,
+        hsl(var(--background) / 78%) 0%,
+        hsl(var(--background) / 55%) 42%,
+        hsl(var(--background) / 0%) 72%
+      );
+    }
   </style>
 
   {
-    /* Runs before the deferred loader below, so the first frame is already the
-      right scheme. Setting the attribute rather than calling `setVariant` avoids
-      a race: nothing is mounted yet, so there would be nothing to set. */
+    /* A module, deliberately, and that is the whole fix for a flash.
+
+      `<Footer>` carries the script that puts `.dark` on the document, and the
+      footer renders *after* this slot. A classic inline script here therefore
+      reads the class before it exists, decides "light", and the background
+      mounts wrong; whether it then corrects itself depends on a race with the
+      theme toggle hydrating. A module runs after parsing, by which time the
+      class is settled, and modules execute in document order so this one is
+      guaranteed to be ahead of the loader below. */
   }
-  <script is:inline>
-    document.getElementById("showcase-bg").dataset.showcaseVariant = document.documentElement.classList.contains("dark")
-      ? "dark"
-      : "light"
+  <script>
+    const scheme = () => (document.documentElement.classList.contains("dark") ? "dark" : "light")
+    document.getElementById("showcase-bg")!.dataset.showcaseVariant = scheme()
+
+    // For every later change. `window.showcase` may not exist yet — the loader
+    // is the next module — so it is checked when the toggle fires, not now.
+    new MutationObserver(() => window.showcase?.setVariant(scheme())).observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    })
   </script>
 
   <script is:inline type="module" src="/showcase/embed.js"></script>
-
-  {
-    /* The site's theme is a class, not a media query, so the embed cannot read
-      it — and should not have to. This is the whole of the host's side. */
-  }
-  <script is:inline>
-    new MutationObserver(() => {
-      const scheme = document.documentElement.classList.contains("dark") ? "dark" : "light"
-      if (window.showcase) window.showcase.setVariant(scheme)
-    }).observe(document.documentElement, { attributes: true, attributeFilter: ["class"] })
-  </script>
 
   <main class="m-0 flex grow flex-col items-center justify-center px-6 py-8 md:px-10 md:py-10">
     <div class="flex flex-col space-y-3 md:w-[40rem] md:space-y-5">
