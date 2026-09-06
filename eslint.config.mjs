@@ -12,7 +12,7 @@ const __dirname = path.dirname(__filename)
 
 export default tseslint.config(
   {
-    ignores: ["dist/**/*", ".astro/"],
+    ignores: ["dist/**/*", ".astro/", "public/showcase/**"], // `pnpm run runners` output: bundled and minified
   },
   {
     languageOptions: {

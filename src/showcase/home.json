@@ -1,0 +1,40 @@
+{
+  "piece": "starry-night",
+  "defaultVariant": "light",
+  "variants": {
+    "light": {
+      "mode": "depth",
+      "invert": true,
+      "layerCount": 13,
+      "fade": 0.13,
+      "curve": 1,
+      "glimmersPerSecond": 0.5,
+      "densityScale": 1.6,
+      "nearRadius": 10,
+      "sizeMix": 0.65,
+      "wobble": 0.22,
+      "clouds": 0.18,
+      "haze": 0,
+      "hue": 30,
+      "minLifetimeMs": 2500,
+      "maxLifetimeMs": 9500
+    },
+    "dark": {
+      "mode": "depth",
+      "invert": false,
+      "layerCount": 13,
+      "fade": 0.13,
+      "curve": 1,
+      "glimmersPerSecond": 0.5,
+      "densityScale": 1.6,
+      "nearRadius": 10,
+      "sizeMix": 0.65,
+      "wobble": 0.22,
+      "clouds": 0.18,
+      "haze": 0,
+      "hue": 30,
+      "minLifetimeMs": 2500,
+      "maxLifetimeMs": 9500
+    }
+  }
+}

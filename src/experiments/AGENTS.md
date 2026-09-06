@@ -9,7 +9,7 @@ say so explicitly if your work contradicts one rather than quietly overriding
 it. Vocabulary and decisions belonging to a single experiment stay in that
 experiment's own folder.
 
-Four of those records are rules you will otherwise rediscover the hard way:
+Five of those records are rules you will otherwise rediscover the hard way:
 
 - **A piece under exploration owes its URLs nothing.** Presets, defaults and
   already-shared links are not things to preserve while a piece is still being
@@ -28,6 +28,15 @@ Four of those records are rules you will otherwise rediscover the hard way:
   1280x800, while Flotsam and Dangler shrink every unit instead. Whatever renders
   a piece at a size it was not tuned for owns choosing settings for it. See
   `docs/adr/20260906-a-frame-is-not-a-viewport.md`.
+- **A published scene is settings plus a frozen runner.** A page outside the
+  section gets a piece through two URLs and no imports: a content-addressed
+  runner built from `src/experiments/<slug>/runner.ts`, and an artefact naming
+  it. A piece opts in by having a `runner.ts`; how runners are named, served and
+  loaded is the gallery's, in `gallery/embed.ts` and `scripts/runners.ts`.
+  Normalisation happens inside the runner, behind the freeze, which is what
+  keeps a published scene immune to the piece's later defaults — and is why a
+  piece under exploration still owes its URLs nothing. See
+  `docs/adr/20260906-a-published-scene-is-settings-plus-a-frozen-runner.md`.
 - **A placement strategy is a choice about a scale, and does not travel with the
   file it is written in.** Dangler's R2 sequence is right for eighty anchors and
   comes out as a visible lattice at nine thousand specks. It is why each piece

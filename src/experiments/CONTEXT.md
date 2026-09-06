@@ -108,6 +108,27 @@ down. The last of those has no opinion about the colour — offsetting from the
 primary passes, typing a literal does not — because a literal is the mechanism
 every instance of this fault used, in all four pieces.
 
+**Runner** — a piece bundled into one self-contained module, frozen. Built from
+`src/experiments/<slug>/runner.ts` and named by the **content hash** of its own
+bytes, so identical code is always the same address. Carries the scene and
+nothing else: no chrome, no kit, no presets, no URL handling. A piece opts in by
+having a `runner.ts`; naming, serving and loading them is the gallery's, and
+therefore imposed.
+
+**Artefact** — a settings blob naming the runner it was published against.
+**Data, never code.** Every variant states every setting, for the same reason a
+preset does. Sources live in `src/showcase/`, because choosing a scene for a page
+is the site's decision rather than an experiment's.
+
+Together they are how a page outside the section runs a piece: two URLs and no
+imports, with normalisation happening inside the runner so a published scene is
+immune to the piece's later defaults. See
+`docs/adr/20260906-a-published-scene-is-settings-plus-a-frozen-runner.md`.
+
+**Variant** — one named settings blob inside an artefact, picked by a host _by
+name_. How light and dark are carried without the host learning what any setting
+means.
+
 **Idle** — the state a piece enters after a few seconds without input, in which
 the pointer and the chrome both disappear. Suppressed while the pointer rests on
 the chrome, so a control cannot vanish mid-drag.

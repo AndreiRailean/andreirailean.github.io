@@ -3,9 +3,9 @@
   "version": "3.0.2",
   "private": true,
   "scripts": {
-    "dev": "astro dev",
-    "start": "astro dev",
-    "build": "astro check && astro build && pnpm run check:links",
+    "dev": "pnpm run runners && astro dev",
+    "start": "pnpm run runners && astro dev",
+    "build": "pnpm run runners && astro check && astro build && pnpm run check:links",
     "check:links": "node scripts/check-links.mts",
     "preview": "astro preview",
     "posters": "node scripts/posters.ts",
@@ -19,7 +19,8 @@
     "test:unit": "vitest run",
     "test:watch": "vitest",
     "test:browser": "playwright test",
-    "test:headed": "playwright test --headed"
+    "test:headed": "playwright test --headed",
+    "runners": "node scripts/runners.ts"
   },
   "dependencies": {
     "@astrojs/react": "^6.0.3",
@@ -57,6 +58,7 @@
     "@typescript-eslint/parser": "^8.53.1",
     "astro-eslint-parser": "^3.1.0",
     "baseline-browser-mapping": "^2.9.16",
+    "esbuild": "^0.28.2",
     "eslint": "^10.8.1",
     "eslint-plugin-astro": "^3.1.0",
     "globals": "^17.0.0",
