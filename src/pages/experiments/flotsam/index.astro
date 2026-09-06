@@ -151,7 +151,13 @@ import Reel from "@/experiments/gallery/Reel.astro"
         // lower one instead of fighting it.
         normalize: (next, changed) => normalizeSettings(changed ? reconcile(next, changed) : next),
         url: (next) => urlForSettings(next, window.location.pathname),
-        copyLabel: "copy link to this water",
+        copy: [
+          {
+            label: "copy link to this water",
+            title: "Copy this page's address, which carries every setting above.",
+            text: () => window.location.href,
+          },
+        ],
         onChange: (next) => {
           applyTheme(next)
           scene.setSettings(next)

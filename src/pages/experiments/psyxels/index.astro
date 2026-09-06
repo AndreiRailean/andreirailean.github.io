@@ -171,7 +171,13 @@ const portrait = await getImage({ src: avatar, format: "jpeg" })
         ],
         normalize: (next) => normalizeSettings(next),
         url: (next) => urlForSettings(next, window.location.pathname),
-        copyLabel: "copy link to this field",
+        copy: [
+          {
+            label: "copy link to this field",
+            title: "Copy this page's address, which carries every setting above.",
+            text: () => window.location.href,
+          },
+        ],
         onChange: (next) => {
           applyTheme(next)
           scene.setSettings(next)

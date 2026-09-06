@@ -150,7 +150,13 @@ import Reel from "@/experiments/gallery/Reel.astro"
         ],
         normalize: (next) => normalizeSettings(next),
         url: (next) => urlForSettings(next, window.location.pathname),
-        copyLabel: "copy link to this scene",
+        copy: [
+          {
+            label: "copy link to this scene",
+            title: "Copy this page's address, which carries every setting above.",
+            text: () => window.location.href,
+          },
+        ],
         onChange: (next) => {
           applyTheme(next)
           scene.setSettings(next)
