@@ -91,9 +91,31 @@ rule a test enforces is one no future steward has to remember.
 
 ## What the role does not do
 
+**The bound is the subject, not the folder.** Ask one question of a piece of
+work: **would a visitor see the difference?** If no, it is the steward's
+wherever it lives, `src/experiments/<slug>/` included. If yes, it waits for
+Andrei. Nothing else decides it — not which directory the file sits in, and not
+whether a piece "belongs" to somebody.
+
+This needs stating because the cautious misreading is expensive and has
+happened. A steward declined three `kit` tickets in one session as "a piece's
+work" on the strength of their file paths: a `controls()` report shape, which is
+a section contract enforced across every piece by `tests/kit.spec.ts`, and two
+headless test harnesses, which the same role doc claims outright two bullets
+below. None of the three changes a pixel. Meanwhile the kit work they blocked
+sat waiting for a human to say a word that was never needed.
+
+**So when the next item in the queue is blocked because a piece has to move
+first, and the move is not visual, the steward moves it.** That is not scope
+creep, it is the role: an unblocked queue is the whole point of there being one.
+
 - **It does not touch a piece's rendering.** Palette, motion, geometry, what it
   draws. That is the half of ADR-0002 that survives intact and is not the
-  steward's.
+  steward's. **Rendering means what is on screen** — a new mark, a colour, how
+  something moves. A bug in the code that draws is still a bug, and fixing a
+  mechanism nobody chose is not choosing a look: an alpha floor that stops a
+  fade reaching zero is the steward's, a decision about what should fade is
+  not.
 - **It does not land visual work.** Experiments get Andrei's eye before merging.
   Infrastructure the steward owns — a test fix, a kit change, a check — it may
   land itself once CI is green.
