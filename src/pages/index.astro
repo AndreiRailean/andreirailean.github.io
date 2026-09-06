@@ -7,6 +7,61 @@ import avatar from "@/assets/avatar.jpg"
 ---
 
 <Layout title="Andrei Railean" description="Experienced web developer ready to help you and your team">
+  {
+    /* A published artefact, running as the page's background.
+
+      Nothing here imports from `@/experiments`. The background arrives through
+      two URLs — an artefact and a loader, both built by `pnpm run runners` —
+      exactly as it would on a page belonging to somebody else.
+
+      The dot pattern in `globals.css` is deliberately left in place. The canvas
+      is opaque and covers it while the piece is running, so it costs nothing;
+      when the embed fails the container is emptied and the dots are what show. */
+  }
+  <div id="showcase-bg" data-showcase="/showcase/artefacts/home.json"></div>
+
+  <style is:global>
+    #showcase-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+    }
+
+    /* A `position: fixed` box outranks unpositioned block content in the paint
+       order whatever the DOM order says, so without this the canvas covers the
+       page. The footer needs no such rule — it is already `fixed` with its own
+       z-index for the theme toggle, and giving it `position: relative` here
+       would undo that and hide the toggle. */
+    main {
+      position: relative;
+      z-index: 1;
+    }
+  </style>
+
+  {
+    /* Runs before the deferred loader below, so the first frame is already the
+      right scheme. Setting the attribute rather than calling `setVariant` avoids
+      a race: nothing is mounted yet, so there would be nothing to set. */
+  }
+  <script is:inline>
+    document.getElementById("showcase-bg").dataset.showcaseVariant = document.documentElement.classList.contains("dark")
+      ? "dark"
+      : "light"
+  </script>
+
+  <script is:inline type="module" src="/showcase/embed.js"></script>
+
+  {
+    /* The site's theme is a class, not a media query, so the embed cannot read
+      it — and should not have to. This is the whole of the host's side. */
+  }
+  <script is:inline>
+    new MutationObserver(() => {
+      const scheme = document.documentElement.classList.contains("dark") ? "dark" : "light"
+      if (window.showcase) window.showcase.setVariant(scheme)
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ["class"] })
+  </script>
+
   <main class="m-0 flex grow flex-col items-center justify-center px-6 py-8 md:px-10 md:py-10">
     <div class="flex flex-col space-y-3 md:w-[40rem] md:space-y-5">
       <div class="flex justify-center">
