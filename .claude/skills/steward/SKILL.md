@@ -175,6 +175,14 @@ is a snapshot, and a ticket filed while you were working is invisible to it —
 which has happened twice, both times to a steward that had already announced its
 queue clear. Two `gh` calls, at the end of the turn.
 
+**A `kit` ticket is only declinable if a visitor would see the difference.**
+Not if the fix lives in `src/experiments/<slug>/` — the scope is the subject,
+not the folder, and `docs/agents/issue-tracker.md` says "it belongs to a piece"
+is not a finding. Three tickets were declined that way in one day, all three
+the steward's, and the kit work behind them waited on a human who was never
+needed. **When the queue's next item is blocked because a piece has to move
+first, and the move is not visual, move it.**
+
 **If none of the four has anything in it then, say so and stop.** Do not go
 looking for something to share: the section hoists on the _third_ copy, and a
 steward hunting for work is exactly how a premature abstraction gets written —

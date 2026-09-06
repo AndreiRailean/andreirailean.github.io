@@ -42,6 +42,12 @@ all of `src/experiments`, and was widened to that deliberately.
   filing; it is on **stopping mid-investigation** — if you did the work and are
   leaving, record what you ruled out and why, because that is the one thing that
   does not derive from the repo.
+- **"It belongs to a piece" is not a finding.** The scope is all of
+  `src/experiments`, and the only work excluded is what a visitor would see —
+  see `experiments-steward.md`. A ticket whose fix happens to live in
+  `src/experiments/<slug>/` is still the steward's if it changes no pixel, and
+  declining it on the file path leaves the queue blocked on a human who was
+  never needed. That has happened, to three tickets in one day.
 - **Removing the label must leave findings.** The steward may decide a ticket is
   out of domain, and then it says so in a comment before un-labelling. Otherwise
   the label silently disappears and the next reader cannot tell whether it was
