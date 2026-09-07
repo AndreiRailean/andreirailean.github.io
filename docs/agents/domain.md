@@ -57,9 +57,19 @@ stop a repeat — `20260828-a-derived-port-per-worktree.md` was written and then
 rederived from scratch in another session, because nothing in `tests/AGENTS.md`
 mentioned it. The archive holds the evidence; the `AGENTS.md` holds the rule.
 
-The records under `src/experiments/docs/adr/` predate this format and use
-sequential numbers with a `Status:` line in the body. They are not being
-migrated.
+**`tests/unit/adr-format.test.ts` holds all of this**, so the format is a
+second's work to establish rather than a judgement call. It checks the date stem,
+the four fields, that a `summary` is a real sentence rather than a stub, that the
+frontmatter date agrees with the filename, and that a `superseded` record names
+what replaced it. That check exists because the rule turned out to be arguable:
+ten dated records had no frontmatter, three written the same week, and the case
+for leaving them — that conforming would put a third format in one directory —
+was reasonable until somebody counted.
+
+**Only `0001` to `0003` predate this format** and use sequential numbers with a
+`Status:` line in the body. Those three are not being migrated, and the exemption
+is theirs alone; every dated record carries frontmatter. Nothing new may join
+them, which the date stem in the filename pattern is what enforces.
 
 ## Use the glossary's vocabulary
 

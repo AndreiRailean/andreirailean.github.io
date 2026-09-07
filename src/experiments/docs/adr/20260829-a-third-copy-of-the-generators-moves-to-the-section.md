@@ -1,6 +1,11 @@
-# A third copy of the generators moves to the section level
+---
+type: ADR
+status: accepted
+date: 2026-08-29
+summary: The generators hoist to the section level rather than into kit/, because the kit is the control surface and they travel alone.
+---
 
-**Status:** Accepted — 2026-08-29
+# A third copy of the generators moves to the section level
 
 ## Context
 

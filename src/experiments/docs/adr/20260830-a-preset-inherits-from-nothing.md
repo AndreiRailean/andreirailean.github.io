@@ -1,6 +1,11 @@
-# A preset inherits from nothing
+---
+type: ADR
+status: accepted
+date: 2026-08-30
+summary: A preset states every setting rather than spreading over DEFAULT_SETTINGS, because a scene someone found by dragging should stay the scene they found.
+---
 
-**Status:** Accepted — 2026-08-30
+# A preset inherits from nothing
 
 ## Context
 
