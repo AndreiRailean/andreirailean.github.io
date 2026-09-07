@@ -208,7 +208,11 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
 
     canvas = fresh
     showing = next
+    // A fresh mount is running, so the readout has to say so. Setting the flag
+    // without the attribute left the wall reading `data-paused="true"` over a
+    // piece that was plainly moving — invisible in code and obvious on screen.
     paused = false
+    root.dataset.paused = "false"
     root.dataset.state = "running"
     held?.setAttribute("hidden", "")
     say(next)
