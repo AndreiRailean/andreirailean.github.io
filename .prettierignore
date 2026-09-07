@@ -6,3 +6,7 @@ pnpm-lock.yaml
 .editorconfig
 .prettierignore
 .astro
+
+# `pnpm run runners` output. The runners are minified bundles and the manifest
+# is generated; both are committed, and neither is anybody's source.
+public/showcase

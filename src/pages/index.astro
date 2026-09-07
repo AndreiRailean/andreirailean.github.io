@@ -8,17 +8,39 @@ import avatar from "@/assets/avatar.jpg"
 
 <Layout title="Andrei Railean" description="Experienced web developer ready to help you and your team">
   {
-    /* A published artefact, running as the page's background.
+    /* A published scene, running as this page's background.
 
-      Nothing here imports from `@/experiments`. The background arrives through
-      two URLs — an artefact and a loader, both built by `pnpm run runners` —
-      exactly as it would on a page belonging to somebody else.
+      This is a **pasted embed**, and the point is that it looks like one. The
+      snippet pins a runner by content hash and carries its scene as the packed
+      address string — 19 characters — and that is the whole of the coupling.
+      Nothing here imports from `@/experiments`, nothing is generated into this
+      file, and the section does not know this page exists. The experiments are a
+      third-party system that happens to share a domain.
 
-      The dot pattern in `globals.css` is deliberately left in place. The canvas
-      is opaque and covers it while the piece is running, so it costs nothing;
-      when the embed fails the container is emptied and the dots are what show. */
+      Which is why the runner URL is root-relative rather than absolute: the
+      origin is a fact about where a page lives, not about how tightly it is
+      coupled. A stranger's snippet names `https://www.andrei.md/...` because
+      their page is elsewhere; this page is on the same origin today, and will
+      grow an origin the day the section gets its own.
+
+      **The hash is pinned, so this scene does not follow the piece.** Changing
+      Starry Night writes a new runner beside this one and leaves this page
+      exactly as it is, until somebody deliberately republishes it.
+      `tests/unit/showcase-runners.test.ts` fails if the runner named here is not
+      committed, because the failure is otherwise silent — the loader falls back
+      to the dot pattern below.
+
+      Two scenes, because this page has a light and a dark mode. Pairing them is
+      the host's job: a copy-embed button gives one scene, and an embed offers
+      the switch as a convenience rather than deciding it. */
   }
-  <div id="showcase-bg" data-showcase="/showcase/artefacts/home.json"></div>
+  <div
+    id="showcase-bg"
+    data-showcase-runner="/showcase/runners/starry-night.490e5f9452c8.js"
+    data-showcase-scene="__9ALCzBTyq1YkAPAyI"
+    data-showcase-scene-dark="__9ADCzBTyq1YkAPAyI"
+  >
+  </div>
 
   <style is:global>
     #showcase-bg {

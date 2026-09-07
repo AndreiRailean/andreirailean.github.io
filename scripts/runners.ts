@@ -31,22 +31,29 @@
  * describes it. The manifest records the commit anyway, for tracing a runner
  * back to a tree.
  *
- * ## Output
+ * ## Output, and which half is committed
  *
  * ```
- * public/showcase/embed.js                     the loader. One URL, unversioned.
- * public/showcase/runners/<slug>.<hash>.js     frozen. Never edited again.
- * public/showcase/artefacts/<name>.json        settings + the runner they name.
- * public/showcase/manifest.json                slug -> current runner, plus the commit.
+ * public/showcase/runners/<slug>.<hash>.js   COMMITTED. Frozen, accumulating.
+ * public/showcase/manifest.json              COMMITTED. slug -> current runner.
+ * public/showcase/embed.js                   generated. The mutable loader.
  * ```
  *
- * All of it is build output and none of it is committed; `pnpm run runners`
- * regenerates it, and `dev` and `build` both run it first.
+ * The split states the design: the immutable things are committed, so a page
+ * that pinned one keeps finding it, and the one deliberately mutable thing is
+ * rebuilt every time. The manifest is committed because it is what the Astro
+ * build reads to know a piece's current runner — leaving it generated would put
+ * a build-order dependency in front of `astro check`.
+ *
+ * Run it by hand after changing a piece and commit what it writes, the way
+ * `pnpm run posters` works. Unlike a poster, a runner is byte-reproducible, so
+ * `tests/unit/showcase-runners.test.ts` rebuilds and fails if what is committed
+ * is not what the source produces.
  */
 
 import { execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
-import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises"
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -54,7 +61,6 @@ import { build } from "esbuild"
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const experiments = resolve(root, "src/experiments")
-const sources = resolve(root, "src/showcase")
 const out = resolve(root, "public/showcase")
 
 const shared = {
@@ -97,17 +103,13 @@ function commit(): string {
 }
 
 async function main() {
-  // Files are pruned individually rather than removing the directories. A
-  // directory under `public/` that is deleted and recreated makes a running dev
-  // server 404 everything inside it until restarted, which looks exactly like
-  // the build having failed.
+  // **Nothing is deleted here, ever.** A runner's name is the hash of its own
+  // bytes and a published page pins that name, so removing an old one breaks a
+  // page that was promised it would not break — silently, because the loader
+  // falls back to the host's own background. Runners accumulate in the repo and
+  // GitHub Pages serves whatever is committed; see
+  // `src/experiments/docs/adr/20260907-runners-are-committed.md`.
   await mkdir(resolve(out, "runners"), { recursive: true })
-  await mkdir(resolve(out, "artefacts"), { recursive: true })
-  for (const dir of ["runners", "artefacts"]) {
-    for (const name of await readdir(resolve(out, dir))) {
-      await rm(resolve(out, dir, name), { force: true })
-    }
-  }
 
   const runners: Record<string, string> = {}
   for (const slug of await piecesWithRunners()) {
@@ -118,28 +120,6 @@ async function main() {
     await writeFile(resolve(out, "runners", name), code)
     runners[slug] = name
     console.log(`runner    ${slug.padEnd(14)} ${name}  ${kb(code.byteLength)}`)
-  }
-
-  const artefacts = (await readdir(sources)).filter((name) => name.endsWith(".json"))
-  for (const file of artefacts) {
-    const source = JSON.parse(await readFile(resolve(sources, file), "utf8")) as {
-      piece: string
-      variants: Record<string, unknown>
-      defaultVariant: string
-    }
-    const runner = runners[source.piece]
-    if (!runner) {
-      throw new Error(
-        `src/showcase/${file} names piece "${source.piece}", which has no ` +
-          `src/experiments/${source.piece}/runner.ts. Known: ${Object.keys(runners).join(", ") || "none"}.`,
-      )
-    }
-    const id = file.replace(/\.json$/, "")
-    await writeFile(
-      resolve(out, "artefacts", file),
-      `${JSON.stringify({ id, runner: `../runners/${runner}`, defaultVariant: source.defaultVariant, variants: source.variants }, null, 2)}\n`,
-    )
-    console.log(`artefact  ${id.padEnd(14)} -> ${runner}`)
   }
 
   const loader = await build({ ...shared, entryPoints: [resolve(experiments, "gallery/embed.ts")] })

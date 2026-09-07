@@ -9,7 +9,7 @@ say so explicitly if your work contradicts one rather than quietly overriding
 it. Vocabulary and decisions belonging to a single experiment stay in that
 experiment's own folder.
 
-Five of those records are rules you will otherwise rediscover the hard way:
+Six of those records are rules you will otherwise rediscover the hard way:
 
 - **A piece under exploration owes its URLs nothing.** Presets, defaults and
   already-shared links are not things to preserve while a piece is still being
@@ -28,7 +28,14 @@ Five of those records are rules you will otherwise rediscover the hard way:
   1280x800, while Flotsam and Dangler shrink every unit instead. Whatever renders
   a piece at a size it was not tuned for owns choosing settings for it. See
   `docs/adr/20260906-a-frame-is-not-a-viewport.md`.
-- **A published scene is settings plus a frozen runner.** A page outside the
+- **Runners are committed, and a rebuild proves they are current.** They live in
+  `public/showcase/runners/` and are never pruned: a published page pins one by
+  content hash, so deleting it breaks that page silently. Run `pnpm run runners`
+  after changing a piece and commit what it writes;
+  `tests/unit/showcase-runners.test.ts` fails when the bytes a piece now builds
+  to are not committed, and that failure is an instruction rather than a bug. See
+  `docs/adr/20260907-runners-are-committed.md`.
+- **A published scene is a packed address string plus a frozen runner.** A page outside the
   section gets a piece through two URLs and no imports: a content-addressed
   runner built from `src/experiments/<slug>/runner.ts`, and an artefact naming
   it. A piece opts in by having a `runner.ts`; how runners are named, served and
