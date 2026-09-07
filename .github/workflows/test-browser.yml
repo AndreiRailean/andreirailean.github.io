@@ -1,11 +1,18 @@
-name: Test code
+name: Browser tests
 
-# Both suites are entirely about the experiments: every `.spec.ts` navigates to
-# `/experiments/...`, and every directory under `tests/unit/` is a piece, the
-# gallery or the kit. A change that cannot reach any of that cannot break them,
-# and running the browser suite over five pieces to approve a paragraph on the
-# resume is the friction `docs/adr/20260828-experiments-stay-in-the-site-repo.md`
-# named as the cheapest thing to fix. See #143.
+# Every `.spec.ts` here navigates to `/experiments/...`, so a change that cannot
+# reach the section cannot break them. Running the browser suite over five pieces
+# to approve a paragraph on the resume is the friction
+# `docs/adr/20260828-experiments-stay-in-the-site-repo.md` named as the cheapest
+# thing to fix. See #143.
+#
+# **The filter lives here and only here.** It used to sit on a shared `test.yml`
+# and therefore also skipped the unit suite, which is how
+# `tests/unit/adr-format.test.ts` came to be unable to fail on an ADR-only pull
+# request — it reads the two directories the list ignores. `test-unit.yml` is now
+# unfiltered and carries that history; #166. The eight minutes this filter saves
+# was always the whole point of having one, and the unit suite's two minutes
+# never was.
 #
 # **`paths-ignore` rather than `paths`, deliberately.** The two fail in opposite
 # directions, and only one of them fails safely: a path nobody remembered to add
@@ -15,15 +22,17 @@ name: Test code
 # and the reasoning is the same in both places — pick the direction where
 # forgetting is cheap.
 #
-# So this lists only what is provably site-only. `src/pages/` is named file by
-# file rather than as a folder, because `src/pages/experiments/` lives under it
-# and `paths-ignore` has no way to carve an exception back out.
+# So this lists only what is provably unreachable from a page under
+# `/experiments/`. `src/pages/` is named file by file rather than as a folder,
+# because `src/pages/experiments/` lives under it and `paths-ignore` has no way
+# to carve an exception back out.
 #
 # **Prose is here too, and the list is specific rather than `**/*.md`.** Agent
-# docs, section ADRs and skills change constantly and no test reads any of them —
-# a docs-only pull request was running the full browser suite over five pieces to
-# approve a paragraph, which is the same friction as the resume, one directory
-# over.
+# docs, ADRs and skills change constantly and no *browser* test reads any of
+# them. That qualifier is load-bearing now: the unfiltered form of this comment
+# said "no test reads any of them", which stopped being true the day #161 gave
+# `docs/adr` and `src/experiments/docs/adr` their first reader, and nothing
+# noticed because the claim was in a comment rather than in a check.
 #
 # The blanket form is the trap to refuse: **`src/experiments/*/about.md` is
 # content, not prose.** It feeds the collection `/experiments/` is generated
@@ -38,8 +47,8 @@ name: Test code
 # required status check on `main`, and a required check that never runs leaves a
 # pull request permanently *pending* rather than passing — so filtering it would
 # block exactly the changes this is meant to speed up. It costs about 30 seconds
-# and covers everything. If `Unit tests` or `Browser tests` are ever made
-# required, this filter has to go or grow a job that always reports.
+# and covers everything. If `Browser tests` is ever made required, this filter
+# has to go or grow a job that always reports.
 on:
   pull_request:
     paths-ignore:
@@ -64,52 +73,23 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Two jobs rather than two steps, because the browser suite is most of the wall
-# clock and the unit suite needs none of what makes it slow. Measured on a green
-# run before the split: install 6s, Chromium 23s, unit 108s, browser 336s, all
-# in series. Run side by side, the longer job sets the clock — roughly 365s
-# against 473s, a fifth off, for the same compute plus one extra checkout and
-# install.
-#
-# The unit job also skips the Chromium download entirely, which is the part of
-# the setup that is not cached.
+# One job rather than two steps beside the unit suite, because the browser suite
+# is most of the wall clock and the unit suite needs none of what makes it slow.
+# Measured on a green run before the split: install 6s, Chromium 23s, unit 108s,
+# browser 336s, all in series. Run side by side, the longer job sets the clock —
+# roughly 365s against 473s, a fifth off, for the same compute plus one extra
+# checkout and install. Re-measured on #138 as unit 2m24s against browser 8m0s.
 #
 # What is lost: the unit suite no longer runs *first*, so a broken solver and a
-# broken page now surface together rather than in seconds. That was the reason
-# they were ordered, and it is worth less than it sounds — the unit job still
-# finishes and reports in about two minutes, and it fails its own check
-# independently, so nothing waits on the browser suite to learn about it.
+# broken page surface together rather than in seconds. That was the reason they
+# were ordered, and it is worth less than it sounds — the unit job finishes and
+# reports in about two minutes, and it fails its own check independently, so
+# nothing waits on the browser suite to learn about it.
 #
 # See #133 for what this does not touch: `fullyParallel`, which would spread a
 # spec's tests across workers and could trade slow for flaky on a shared dev
 # server, and the audit of which tests need a browser at all.
 jobs:
-  unit:
-    name: Unit tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-
-      # See lint.yml for why this is pnpm/setup rather than actions/setup-node,
-      # why `.node-version` is read into an output, and why the install is a step
-      # of its own rather than the action's `require-lockfile`.
-      - name: Read the Node version
-        id: node
-        run: echo "version=$(cat .node-version)" >> "$GITHUB_OUTPUT"
-      - uses: pnpm/setup@v2
-        with:
-          runtime: node@${{ steps.node.outputs.version }}
-          install: false
-          cache: true
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      # No Playwright browsers here: nothing under tests/unit/ opens a page, and
-      # that is the whole point of the split.
-      - name: Unit tests
-        run: pnpm run test:unit
-
   browser:
     name: Browser tests
     runs-on: ubuntu-latest
