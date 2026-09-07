@@ -108,10 +108,16 @@ The panel is in four parts. **fire** is the thing you cannot see — how wide it
 is, how hard it is sputtering, how often it spits a splinter or surges into a
 burst. **air** is the plume and its weather. **embers** is what is being carried:
 how big, how hot, how fast they consume themselves. **picture** is where you are
-standing and how much light you are gathering.
+standing, how much light you are gathering, and how fast the whole thing runs.
 
 A few places worth going:
 
+- **`playback`, first.** Real time is quick — a campfire's updraft just above
+  the coals is about four and a half metres a second, which is what the plume
+  correlations give for a fire that size and what this piece uses. Fire is worth
+  watching slowly, and a close framing needs it most: how fast an ember crosses
+  the screen is its real speed multiplied by how far you have zoomed in, so at a
+  metre across it moves eight times faster than at eight.
 - **Turn `swirl` to zero.** The eddies vanish and the embers rise in obedient
   arcs, which is a good way to see how much of the piece is the vortices and how
   much is the plume.
@@ -124,8 +130,18 @@ A few places worth going:
   a blue fire still has white-hot sparks and deep dying cinders and needs no
   re-tuning. **`hue spread`** lets several colours ride the same air at once,
   which is a different piece using this one's physics.
-- **`trails`** turns the picture from a set of points into a long exposure, and
-  the flow itself becomes visible as the lines the embers leave in it.
+- **`shutter`** is how long one frame gathers, in seconds of fire. Every ember
+  already draws a streak from where it was to where it is, so this is not what
+  makes motion visible — it is how much motion one frame holds. Wound up, each
+  ember smears along the path it actually took, curve and all, and the flow
+  itself becomes legible.
+- **`churn` has to keep up with the framing.** The fire sheds eddies at its own
+  puffing frequency, about 1.5 over the square root of its width — so a
+  four-metre fire breathes once every one and a third seconds. Stand a metre from
+  it and an eddy crosses the picture in half of one, so eddies arrive less often
+  than they leave and the flow goes quiet between them. Turning `churn` up closes
+  that gap, and it is the one control whose right value depends on where you are
+  standing.
 - **`b`** makes the fire surge on demand.
 
 The address bar always describes what is on screen, so a fire worth keeping is a

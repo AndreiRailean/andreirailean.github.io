@@ -34,37 +34,64 @@
  *
  * ## Reduced motion gets a still of a fire that has been going a while
  *
- * Not an empty frame. The simulation is run forward for several seconds before
- * the one frame is drawn, and where `trail` is up the last stretch of it is
- * *drawn* rather than only stepped — a picture built out of accumulation has no
- * scene at all until enough frames have gone into it, which is the trap
- * `../docs/adr/20260828-posters-are-captured-by-hand.md` records under a
- * different name. The poster and the note's backdrop take the same route.
+ * Not an empty frame: the simulation is run forward for several seconds before
+ * the one frame is drawn, because a picture of the moment a fire was lit is not
+ * a picture of this piece. The poster and the note's backdrop take the same
+ * route, through `settle`.
  */
 
 import { gaussian, hashSeed, makeRng } from "@/experiments/random"
 import { createAir, type Air } from "@/experiments/embers/air"
 import { createBed, type Bed } from "@/experiments/embers/bed"
-import { blankEmber, dress, stepEmber, type Ember, type Physics } from "@/experiments/embers/ember"
-import { drawEmbers, drawFirelight, fadeFrame, makeSheet, sheetMatches, type Sheet } from "@/experiments/embers/draw"
+import { blankEmber, dress, samplePath, stepEmber, type Ember, type Physics } from "@/experiments/embers/ember"
+import { clearFrame, drawEmbers, drawFirelight, makeSheet, sheetMatches, type Sheet } from "@/experiments/embers/draw"
 import { DARK_TEMP, rampStep } from "@/experiments/embers/palette"
 import { needsSheet, type Settings } from "@/experiments/embers/settings"
 import { beyond, makeView, screenX, screenY, type View } from "@/experiments/embers/view"
 
-/** Seconds. The field sample per ember per frame is what fixes this; see above. */
+/**
+ * The **largest** step the simulation will take, in seconds of fire.
+ *
+ * A ceiling, not the step. Both integrators in `ember.ts` are exponential and so
+ * unconditionally stable at any `dt` — which was the whole reason for writing
+ * them that way — so what this bounds is accuracy, not stability: the vortex
+ * advection is explicit Euler and a long step would cut corners off an eddy.
+ *
+ * **It used to be the step, with an accumulator draining it, and that was a real
+ * bug at slow playback.** At 0.12x a wall frame is worth 0.002 seconds of fire,
+ * so the accumulator reached a sixtieth only every eighth frame — the simulation
+ * advanced once and then stood still for seven frames. Slow motion came out as
+ * stop motion, and the slower it was set the worse it got, which is the opposite
+ * of what the control is for. Stepping by the time that actually elapsed, cut
+ * into substeps no longer than this, is smooth at every playback and is *more*
+ * accurate the slower it runs rather than less.
+ */
 const STEP = 1 / 60
 
-/** Never catch up on more than this in one frame. A tab returning resumes, it does not fast-forward. */
+/** Most substeps in one frame. A tab returning resumes; it does not fast-forward. */
 const MAX_STEPS = 4
 
 /** How long the fire is run before a reduced-motion still is taken, in seconds. */
 const STILL_SECONDS = 14
 
-/** How much of a settle is drawn as well as stepped, so an accumulated picture exists. */
-const TRAIL_WARM = 2
-
 /** An ember younger than this is never retired for being dark: it may still be lighting. */
 const GRACE = 0.25
+
+/**
+ * How one wall frame becomes simulation steps.
+ *
+ * Pulled out of the frame loop so the property that matters can be checked
+ * without a browser: **every frame that is worth any time at all advances the
+ * simulation.** That is not a tautology — it is the thing that was broken. An
+ * accumulator draining a fixed step advances on some frames and not others, and
+ * at 0.12x playback it advanced on one frame in eight, so the piece came out as
+ * stop motion and got worse the slower it was set.
+ */
+export function framePlan(elapsed: number, playback: number): { advance: number; substeps: number; dt: number } {
+  const advance = Math.max(0, Math.min(MAX_STEPS * STEP, elapsed * playback))
+  const substeps = advance > 0 ? Math.max(1, Math.ceil(advance / STEP)) : 0
+  return { advance, substeps, dt: substeps > 0 ? advance / substeps : 0 }
+}
 
 export type EmbersStats = {
   /** Embers being simulated. */
@@ -151,7 +178,6 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
   let frame = 0
   let running = false
   let previous = 0
-  let carry = 0
   let fps = 0
   let drawMs = 0
   let clock = 0
@@ -162,7 +188,7 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
   /** Set when the picture needs repainting without the fire having moved. */
   let dirty = true
 
-  const isAnimated = () => !stillOnly.matches
+  const isAnimated = () => !stillOnly.matches && settings.playback > 0
 
   function resizePool(): void {
     const wanted = Math.round(settings.count)
@@ -216,8 +242,6 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
     air.at(spawn.x, spawn.y, sample)
     ember.vx = sample[0]! * 0.85 + spawn.vx
     ember.vy = sample[1]! * 0.85 + spawn.vy
-    ember.px = spawn.x
-    ember.py = spawn.y
     alive++
   }
 
@@ -239,8 +263,7 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
       const ember = pool[at]!
       if (!ember.alive) continue
 
-      ember.px = ember.x
-      ember.py = ember.y
+      samplePath(ember, clock, settings.shutter)
 
       air.sample(ember.x, ember.y, sample)
       stepEmber(ember, sample, sample[2]!, dt, physics)
@@ -274,11 +297,21 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
     air.setBounds(view.halfWidth + view.flank, view.ceilingY + view.margin)
   }
 
-  function draw(elapsed: number): void {
+  /**
+   * Draw one frame.
+   *
+   * **It takes no elapsed time, and that is the point of the tail being drawn
+   * rather than accumulated.** A frame is a function of the state — the embers
+   * and the paths they remember — so it does not matter how long the last one
+   * took or how fast the piece is being played back. It used to need the frame's
+   * duration to work out how far to fade the buffer, which is what tied the look
+   * to the frame rate.
+   */
+  function draw(): void {
     const began = performance.now()
     context.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-    fadeFrame(context, view, settings, elapsed)
+    clearFrame(context, view, settings)
     drawFirelight(context, view, settings, air, sheet)
     const stats = drawEmbers(context, pool, view, settings, sheet)
     drawn = stats.drawn
@@ -343,24 +376,21 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
   }
 
   /**
-   * Run the fire forward, and draw the last of it if the picture accumulates.
+   * Run the fire forward, without drawing.
    *
-   * **A picture that accumulates has to be drawn into, not just advanced to.**
-   * Stepping settles the simulation; it does not fill a buffer that is built up
-   * frame by frame, because that buffer is a rendering artefact rather than
-   * simulation state. With `trail` up, a settle that draws only its final frame
-   * lands on a fire with no trails at all — see `poster.ts`.
+   * **It used to have to draw its last stretch, and no longer does** — which is
+   * the tidiest dividend of the tail being drawn rather than accumulated. While
+   * the picture was built out of a fading buffer it had no scene at all until
+   * enough frames had gone into it, so a fast-forward that drew only its final
+   * frame landed on a fire with no tails; the poster, the note's backdrop and the
+   * reduced-motion still all fell into that together. Now a frame is a frame:
+   * everything it needs is in the embers, including the paths they remember, and
+   * those are filled by stepping.
    */
   function advance(seconds: number): void {
     const total = Math.max(0, Math.min(600, seconds))
     const steps = Math.round(total / STEP)
-    const drawing = settings.trail > 0 && width > 0
-    const from = drawing ? steps - Math.round(Math.min(total, TRAIL_WARM) / STEP) : steps
-
-    for (let at = 0; at < steps; at++) {
-      step(STEP)
-      if (at >= from) draw(STEP)
-    }
+    for (let at = 0; at < steps; at++) step(STEP)
   }
 
   function tick(now: number): void {
@@ -371,15 +401,17 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
     if (elapsed > 0) fps += (1 / elapsed - fps) * 0.1
 
     if (isAnimated()) {
-      carry += elapsed
-      let steps = 0
-      while (carry >= STEP && steps < MAX_STEPS) {
-        step(STEP)
-        carry -= STEP
-        steps++
-      }
-      if (steps === MAX_STEPS) carry = 0
-      draw(elapsed || STEP)
+      // **The one place playback is applied.** Everything time-dependent in the
+      // piece — the plume's own clock, the shedding, the gusts, the burning, the
+      // shutter — is integrated through this step or reads the clock it advances,
+      // so half speed is the same fire watched slowly rather than a different
+      // fire. Real time is quick: a campfire's updraft just over the coals is
+      // about 4.5 m/s, which is what the plume correlations give and what this
+      // piece uses, and at a close framing that is two screen-heights a second.
+      const plan = framePlan(elapsed, settings.playback)
+      for (let at = 0; at < plan.substeps; at++) step(plan.dt)
+      // Seconds of *fire* drawn, which is what the shutter is quoted in.
+      draw()
       dirty = false
       return
     }
@@ -390,7 +422,7 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
     // it, so the piece would simply vanish when the window changed size.
     if (dirty) {
       dirty = false
-      draw(STEP)
+      draw()
       return
     }
 
@@ -424,7 +456,7 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
       // A still gets a fire that has been going a while rather than one that has
       // just been lit.
       if (!isAnimated()) advance(STILL_SECONDS)
-      draw(STEP)
+      draw()
       wake()
     },
 

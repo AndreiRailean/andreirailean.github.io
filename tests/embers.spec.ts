@@ -41,7 +41,7 @@ test("puts embers over the fire, and draws fewer of them than it is carrying", a
 
   // Ten seconds, because the scene does not exist at t=0 in either sense: an
   // ember takes a second or two to cross the frame, and the picture is built up
-  // over frames wherever `trail` is above zero.
+  // over frames wherever the shutter is open.
   const stats = await experiment.api(({ api }) => {
     api.settle(10)
     return api.stats()

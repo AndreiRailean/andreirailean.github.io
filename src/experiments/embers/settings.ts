@@ -83,8 +83,21 @@ export type Settings = {
   exposure: number
   /** How much halo a bright ember throws. */
   flare: number
-  /** Fraction of the previous frame kept, per 60th of a second. */
-  trail: number
+  /**
+   * Exposure, in **seconds of fire** — how long the shutter is open.
+   *
+   * Not a fraction of the last frame, which is what this was and which meant
+   * nothing a viewer could name. See the control's hint.
+   */
+  shutter: number
+  /**
+   * How fast the fire is played back. 1 is real time.
+   *
+   * Applied in exactly one place — the step handed to the simulation — so
+   * everything time-dependent in the piece goes through it and half speed is the
+   * same fire watched slowly rather than a different fire.
+   */
+  playback: number
   mark: Mark
 }
 
@@ -373,14 +386,26 @@ export const CONTROLS: Control[] = [
   },
   {
     kind: "slider",
-    key: "trail",
+    key: "shutter",
     group: "picture",
-    label: "trails",
+    label: "shutter",
     min: 0,
-    max: 0.96,
-    step: 0.02,
-    format: (v) => v.toFixed(2),
-    hint: "How much of the last frame is kept. At zero every frame stands alone and the embers are points. Turned up, the picture is built out of where they have been — long exposure rather than motion — and the flow itself becomes visible as the lines the embers leave in it.",
+    max: 0.5,
+    step: 0.005,
+    format: (v) => (v <= 0 ? "off" : `1/${Math.round(1 / v)}s`),
+    hint: "How long the shutter stays open, in seconds of fire. Every ember is already drawn as a streak from where it was to where it is, so this is not what makes motion visible — it is how much motion one frame gathers. A long shutter smears each ember along the path it actually took, curve and all, and because the light is spread rather than repeated it does not brighten the picture. Off gives you a single instant.",
+  },
+  {
+    kind: "slider",
+    key: "playback",
+    group: "picture",
+    label: "playback",
+    min: 0.05,
+    max: 2,
+    step: 0.01,
+    scale: "log",
+    format: (v) => `${v.toFixed(2)}x`,
+    hint: "How fast the fire runs. 1 is real time — and real time is quick: a campfire's updraft just above the coals is about four and a half metres a second, which is what the plume correlations give for a fire of that size and what this piece uses. Fire is worth watching slowly, and a close framing needs it most, because how fast an ember crosses the screen is its real speed multiplied by how much you have zoomed in.",
   },
   {
     kind: "choice",
@@ -418,7 +443,8 @@ export const DEFAULT_SETTINGS: Settings = {
   hueSpread: 5,
   exposure: 2.2,
   flare: 1.5,
-  trail: 0.32,
+  shutter: 0.03,
+  playback: 0.45,
   mark: "ember",
 }
 
@@ -433,8 +459,42 @@ export const DEFAULT_SETTINGS: Settings = {
  */
 export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
   {
+    label: "wide hearth",
+    hint: "Right up against a fire wider than the frame, in a real crosswind. The starting point.",
+    settings: {
+      count: 590,
+      sputter: 0.95,
+      pops: 0.3,
+      bursts: 7,
+      bed: 4,
+      hearth: 0.1,
+      firelight: 0.06,
+      updraft: 2.7,
+      spread: 0.11,
+      swirl: 1.5,
+      churn: 0.35,
+      mixing: 1.1,
+      wind: -2.5,
+      gust: 0.45,
+      sizeMin: 0.4,
+      sizeMax: 1.5,
+      flutter: 0.8,
+      heat: 1610,
+      burn: 0.3,
+      breath: 0.95,
+      span: 1.27,
+      hue: 54,
+      hueSpread: 13,
+      exposure: 2.31,
+      flare: 0.75,
+      shutter: 0.05,
+      playback: 0.12,
+      mark: "ember",
+    },
+  },
+  {
     label: "campfire",
-    hint: "An ordinary fire on a still evening. The starting point.",
+    hint: "An ordinary fire on a still evening, from far enough back to see the whole column.",
     settings: {
       count: 2200,
       sputter: 1.4,
@@ -461,7 +521,8 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hueSpread: 5,
       exposure: 2.2,
       flare: 1.5,
-      trail: 0.32,
+      shutter: 0.03,
+      playback: 0.45,
       mark: "ember",
     },
   },
@@ -494,7 +555,8 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hueSpread: 6,
       exposure: 1.5,
       flare: 0.8,
-      trail: 0.42,
+      shutter: 0.04,
+      playback: 0.5,
       mark: "ember",
     },
   },
@@ -527,7 +589,8 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hueSpread: 5,
       exposure: 2.2,
       flare: 1.3,
-      trail: 0.56,
+      shutter: 0.065,
+      playback: 0.4,
       mark: "ember",
     },
   },
@@ -560,7 +623,8 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hueSpread: 5,
       exposure: 3.2,
       flare: 0.9,
-      trail: 0.22,
+      shutter: 0.025,
+      playback: 0.22,
       mark: "flake",
     },
   },
@@ -593,7 +657,8 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hueSpread: 4,
       exposure: 2.2,
       flare: 1.3,
-      trail: 0.62,
+      shutter: 0.075,
+      playback: 0.35,
       mark: "ember",
     },
   },
@@ -626,7 +691,8 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hueSpread: 52,
       exposure: 2,
       flare: 2.1,
-      trail: 0.5,
+      shutter: 0.055,
+      playback: 0.45,
       mark: "mote",
     },
   },
@@ -668,7 +734,8 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   hueSpread: { min: 0, max: 90, step: 1 },
   exposure: { min: 0.05, max: 20, step: 0.01, scale: "log" },
   flare: { min: 0, max: 3, step: 0.05 },
-  trail: { min: 0, max: 0.96, step: 0.02 },
+  shutter: { min: 0, max: 0.5, step: 0.005 },
+  playback: { min: 0.05, max: 2, step: 0.01, scale: "log" },
 }
 
 /** Bounds for every numeric setting, narrowed from `TRACKS` rather than declared twice. */
@@ -777,8 +844,15 @@ export const REGISTRY: readonly Slot[] = [
   { key: "hueSpread", kind: "num", grid: 1, origin: 0, bits: 7 },
   { key: "exposure", kind: "num", grid: 0.01, origin: 0.05, bits: 11 },
   { key: "flare", kind: "num", grid: 0.05, origin: 0, bits: 6 },
-  { key: "trail", kind: "num", grid: 0.02, origin: 0, bits: 6 },
+  // Retired, not deleted, and left exactly where it was: the slot's *position*
+  // is what an address refers to. `trail` was a fraction of the previous frame
+  // kept per 60th of a second, which is not what `shutter` means — so even
+  // though both are numbers in the same region, the rule is to retire and
+  // append. See the registry note above.
+  { key: "trail", kind: "num", grid: 0.02, origin: 0, bits: 6, retired: true },
   { key: "mark", kind: "enum", options: MARKS },
+  { key: "shutter", kind: "num", grid: 0.005, origin: 0, bits: 7 },
+  { key: "playback", kind: "num", grid: 0.01, origin: 0.05, bits: 8 },
 ]
 
 /**

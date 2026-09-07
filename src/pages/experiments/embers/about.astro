@@ -33,24 +33,36 @@ const primary = PRESETS[0]!.settings
 
     const canvas = document.getElementById("backdrop")
     if (canvas instanceof HTMLCanvasElement) {
-      // Calmer than the piece proper: this one is scenery, not the subject, so
-      // the fire is small, far away and not bursting. The only thing held to the
-      // primary is the hue — everything else here is a deliberate turning-down,
-      // and taking the whole preset would undo it.
+      // Calmer than the piece proper: this one is scenery, not the subject. The
+      // only things held to the primary are its hue and its *framing* —
+      // everything else here is a deliberate turning-down, and taking the whole
+      // preset would undo it.
+      //
+      // **The framing is not optional and is why it is read rather than
+      // chosen.** A narrow fire makes a column up the middle of the page, which
+      // is exactly where the note's sheet sits, so the backdrop was a piece you
+      // could not see. The primary is a bed wider than the frame for that
+      // reason: it lays light along the bottom of the page, under the text
+      // rather than behind it.
+      const primary = PRESETS[0]!.settings
       const fire = createEmbers(
         canvas,
         normalizeSettings({
-          hue: PRESETS[0]!.settings.hue,
-          span: 9,
-          bed: 0.4,
-          sputter: 0.55,
-          pops: 0.3,
-          bursts: 1.5,
-          updraft: 3.6,
-          count: 900,
-          firelight: 0.18,
-          exposure: 1.1,
-          trail: 0.5,
+          hue: primary.hue,
+          span: primary.span,
+          bed: primary.bed,
+          hearth: primary.hearth,
+          sputter: 0.4,
+          pops: 0.15,
+          bursts: 2,
+          updraft: 2.2,
+          count: 700,
+          firelight: 0.05,
+          wind: -1.1,
+          gust: 0.3,
+          exposure: 2,
+          shutter: 0.06,
+          playback: 0.12,
         }),
       )
       fire.start()

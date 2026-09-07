@@ -105,6 +105,63 @@ ground.
   worth knowing when a reel test starts failing for no reason connected to the
   reel.
 
+## The tail, the shutter and the clock — three rounds of getting this wrong
+
+All three came out of one review and they are worth reading together, because
+each fix exposed the next.
+
+**The clock was a fixed step drained from an accumulator, and that is stop
+motion at slow playback.** A frame added `elapsed × playback` to a carry and
+stepped whenever the carry reached a sixtieth. At 0.12x a wall frame is worth two
+thousandths of a second of fire, so it stepped once every eighth frame and stood
+still for seven — and the slower you set it the worse it got, which is the
+opposite of what the control is for. `framePlan` steps by the time that actually
+elapsed, cut into substeps no longer than `STEP`; both integrators in `ember.ts`
+are exponential and stable at any `dt`, which is what makes that safe.
+`tests/unit/embers/clock.test.ts` holds it.
+
+**`trail` was a badly scaled control, not a wrong mechanism.** It held the
+fraction of the previous frame surviving one frame at 60 Hz, and that maps to a
+time constant of 24 ms at 0.5, 158 ms at 0.9 and 410 ms at 0.96 — so nine tenths
+of the slider lived inside the first six per cent of its useful range. Dragging
+it did nothing until the very top, and all it could reach was piling a few frames
+onto the head of each mark. It read as a glow control because that is all it was.
+
+**And then no normalisation of an accumulation buffer works, which is why there
+is not one any more.** Both ends of that were tried:
+
+- **Uncompensated**, a slow mark adds to itself and the picture just gets
+  brighter. At slow playback a shutter spans twenty-five frames and the whole
+  frame saturates — measured, and it looked like a wall of yellow.
+- **Compensated** so the total is conserved, one frame's contribution falls to
+  about a single level of an 8-bit channel, so the moving parts of a tail
+  quantise away and the mark reads as a row of dots where frames happened to
+  land.
+
+Both are the same mistake: how many times a buffer gets written depends on the
+frame rate, and a tail is a property of the ember. So each ember remembers its
+own path — `samplePath`, twelve points spanning one exposure in _piece_ seconds —
+and the tail is drawn from it. Length is `speed × shutter` and nothing else, per
+pixel brightness is the ember's own, and neither depends on the frame rate or the
+playback. It also has to be the real path rather than a chord back along the
+velocity: the subject of this piece is that the path curves, and a straight tail
+cuts the corner off the one thing worth seeing.
+
+The dividend is that **a frame is now a frame.** While the picture accumulated it
+had no scene until enough frames had gone into it, so `settle` had to _draw_ its
+last stretch and the poster, the note's backdrop and the reduced-motion still all
+fell into that together. All of that machinery is gone.
+
+## `churn` is the one control whose right value depends on the framing
+
+The fire sheds eddies at its own puffing frequency, `f ≈ 1.5/√D` — so a
+four-metre bed breathes once every 1.33 s. Stand a metre from it and an eddy
+crosses the picture in about half of one, so eddies arrive less often than they
+leave and the flow goes quiet between them. Measured on the primary: at
+`churn` 0.35 the mean is 0.59 eddies with **55% of frames empty**; at 1.4 it is
+1.70 and 8%. Nothing is broken at the low end — it is a duty cycle, and the debug
+overlay reporting `0 vortices` is a sampled instant rather than a dead field.
+
 ## Traps
 
 - **`flare` is the performance control, and `count` is not.** Compositing a
@@ -125,13 +182,11 @@ ground.
   and passed every time it was run by itself. The magnitudes above are the
   record; the mechanism is the test.
 
-- **The picture accumulates.** Every preset has `trail` above zero, so what is on
-  the glass is built from the last couple of dozen frames rather than being a
-  function of the current state. **A fast-forward that draws only its final frame
-  lands on a fire with no trails at all**, which is why `settle` draws the last
-  two seconds of what it steps. The three surfaces that fall into this together
-  are the poster, the note's backdrop and the reduced-motion still — all three
-  ask the piece to arrive somewhere without watching it get there.
+- **The primary is a bed wider than the frame, and that is not a stylistic
+  choice.** A narrow fire makes a column up the middle, which on the note is
+  exactly where the sheet of text sits — so the backdrop was a piece you could
+  not see. `about.astro` reads the primary's `span`, `bed` and `hearth` for that
+  reason and turns down only the busyness.
 - **A symmetric hue rotation runs past red into magenta.** `hueSpread` rotates
   the locus both ways, so at a spread of 14° the cool end of a fire at `hue` 20
   lands at −15° and you get pink embers, which read as a bug rather than as

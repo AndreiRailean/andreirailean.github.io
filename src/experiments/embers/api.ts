@@ -25,7 +25,8 @@ export type ExperimentApi = BaseApi<Settings> & {
    *
    * The piece needs it more than the others do. An ember takes a couple of
    * seconds to cross the frame and the picture is built up over frames wherever
-   * `trail` is above zero, so "the scene" does not exist at t=0 in either sense.
+   * `shutter` is above zero, so "the scene" does not exist at t=0 in either
+   * sense.
    * The poster recipe, the note's backdrop and the reduced-motion still all go
    * through this.
    */

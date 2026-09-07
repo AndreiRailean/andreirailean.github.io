@@ -80,8 +80,6 @@ function burn(settings: Settings, seconds: number): Outcome {
     air.at(spawn.x, spawn.y, sample)
     ember.vx = sample[0]! * 0.85 + spawn.vx
     ember.vy = sample[1]! * 0.85 + spawn.vy
-    ember.px = spawn.x
-    ember.py = spawn.y
     alive++
     born++
   }
@@ -93,8 +91,6 @@ function burn(settings: Settings, seconds: number): Outcome {
     for (let at = 0; at < pool.length; at++) {
       const ember = pool[at]!
       if (!ember.alive) continue
-      ember.px = ember.x
-      ember.py = ember.y
       air.sample(ember.x, ember.y, sample)
       stepEmber(ember, sample, sample[2]!, STEP, physics)
 

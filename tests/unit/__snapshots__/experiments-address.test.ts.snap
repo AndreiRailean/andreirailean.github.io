@@ -60,8 +60,10 @@ exports[`embers > has not edited a slot in place 1`] = `
   "hueSpread num grid=1 origin=0 bits=7",
   "exposure num grid=0.01 origin=0.05 bits=11",
   "flare num grid=0.05 origin=0 bits=6",
-  "trail num grid=0.02 origin=0 bits=6",
+  "trail num grid=0.02 origin=0 bits=6 RETIRED",
   "mark enum ember|spark|mote|flake",
+  "shutter num grid=0.005 origin=0 bits=7",
+  "playback num grid=0.01 origin=0.05 bits=8",
 ]
 `;
 

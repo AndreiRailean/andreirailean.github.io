@@ -146,9 +146,6 @@ export type Ember = {
   alive: boolean
   x: number
   y: number
-  /** Where it was drawn last frame, which is what a streak is drawn between. */
-  px: number
-  py: number
   vx: number
   vy: number
   /** Diameter in mm. Sets the fall speed and the on-screen size. */
@@ -167,6 +164,18 @@ export type Ember = {
   tone: number
   /** Seconds since it left the fire. Only the stats read it. */
   age: number
+  /**
+   * Where it has been, newest first, as `x, y` pairs — its tail.
+   *
+   * Allocated once with the pool and never replaced, because an ember is
+   * recycled a few times a second and this is the only per-ember allocation
+   * large enough to matter.
+   */
+  path: Float64Array
+  /** How many of those points are real. A newborn ember has none. */
+  pathLength: number
+  /** The clock reading when the newest point was taken. */
+  sampledAt: number
 }
 
 export function blankEmber(): Ember {
@@ -174,8 +183,6 @@ export function blankEmber(): Ember {
     alive: false,
     x: 0,
     y: 0,
-    px: 0,
-    py: 0,
     vx: 0,
     vy: 0,
     size: 1,
@@ -186,11 +193,53 @@ export function blankEmber(): Ember {
     shape: 0,
     tone: 0.5,
     age: 0,
+    path: new Float64Array(TAIL * 2),
+    pathLength: 0,
+    sampledAt: 0,
   }
+}
+
+/**
+ * Remember where the ember is now, if it is time to.
+ *
+ * Sampled at a fixed interval of `shutter / TAIL` in **piece** seconds, so the
+ * remembered path always spans about one exposure whatever the playback — which
+ * is what makes a tail the same physical length in slow motion as at speed.
+ */
+export function samplePath(ember: Ember, clock: number, shutter: number): void {
+  if (shutter <= 0) {
+    ember.pathLength = 0
+    return
+  }
+  if (ember.pathLength > 0 && clock - ember.sampledAt < shutter / TAIL) return
+
+  const path = ember.path
+  // Shifted rather than kept as a ring: this runs once per TAIL of an exposure
+  // rather than once a frame, and a plain array in newest-first order is what
+  // the drawing wants to walk.
+  for (let at = Math.min(ember.pathLength, TAIL - 1); at > 0; at--) {
+    path[at * 2] = path[(at - 1) * 2]!
+    path[at * 2 + 1] = path[(at - 1) * 2 + 1]!
+  }
+  path[0] = ember.x
+  path[1] = ember.y
+  ember.pathLength = Math.min(TAIL, ember.pathLength + 1)
+  ember.sampledAt = clock
 }
 
 /** How many distinct outlines the drawing shares out. Enough that no two neighbours match. */
 export const SHAPES = 24
+
+/**
+ * How many points of its own past an ember remembers, for drawing its tail.
+ *
+ * The tail is the path the ember actually took over the last `shutter` seconds,
+ * so it needs samples spanning that — and it has to be the real path rather than
+ * a straight line back, because the whole subject of this piece is that the path
+ * curves. Twelve is enough that the polyline reads as a curve and that the
+ * wobble from sampling at a fixed interval is under a tenth of the length.
+ */
+export const TAIL = 12
 
 /**
  * Radiative cooling rate constant, per second at the reference excess.
@@ -369,5 +418,7 @@ export function dress(ember: Ember, rng: Rng, sizeMin: number, sizeMax: number, 
   ember.shape = Math.floor(rng() * SHAPES)
   ember.tone = tone
   ember.age = 0
+  // A fresh ember has no past, so it has no tail until it has travelled one.
+  ember.pathLength = 0
   ember.alive = true
 }

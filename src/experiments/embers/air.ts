@@ -202,17 +202,38 @@ export function createAir(initial: Settings, seed: number): Air {
   let boundTop = 1e4
 
   /**
-   * Two octaves of curl noise, sized and paced off the fire rather than chosen.
+   * How many octaves of curl noise the mixing is built from.
    *
-   * The scales are fractions of the plume's own width, and the turnover rates
-   * follow Kolmogorov — a structure of size ℓ turns over in a time going as
-   * ℓ^(2/3), so the small octave churns about 1.6 times faster than the large
-   * one instead of at whatever number looked good.
+   * **Three, and the third one is not decoration.** With two the smallest eddy was
+   * a share of the plume's own width, which is fine while the frame is comparable
+   * to the fire and useless when it is not: at a four-metre bed seen from a metre
+   * away the smallest structure in the field was wider than the picture, so it
+   * translated everything in unison and there was no fine motion at all. That is
+   * the frame the piece is most worth looking at closely, and it was the frame
+   * with the least going on.
+   *
+   * A turbulent cascade is scale-free — that is the whole content of Kolmogorov's
+   * argument — so the honest fix is more of it rather than a scale tuned to the
+   * viewport. Three octaves spanning a factor of about twenty cover any framing
+   * this piece offers.
    */
-  const octaves: Octave[] = [
-    { scale: 1, rate: 1, amplitude: 0, seed: hashSeed(seed, 1) | 0 },
-    { scale: 1, rate: 1, amplitude: 0, seed: hashSeed(seed, 2) | 0 },
-  ]
+  const OCTAVES = 3
+
+  /** Each octave is this much smaller than the one above it. */
+  const OCTAVE_STEP = 2.7
+
+  /**
+   * The curl-noise octaves, sized and paced off the fire rather than chosen.
+   *
+   * Amplitudes and rates both follow the cascade rather than being picked; see
+   * `tuneOctaves`.
+   */
+  const octaves: Octave[] = Array.from({ length: OCTAVES }, (_, at) => ({
+    scale: 1,
+    rate: 1,
+    amplitude: 0,
+    seed: hashSeed(seed, 1 + at) | 0,
+  }))
 
   /** For the vortex advection loop, which is the only place a field is summed by hand. */
   const scratch = new Float64Array(3)
@@ -411,8 +432,15 @@ export function createAir(initial: Settings, seed: number): Air {
    * deliberate.
    */
   function rollUp(): void {
-    const h0 = originHeight()
-    const y = h0 * (0.25 + rng() * 1.6)
+    // **Height off the source, not off the virtual origin.** A shear layer rolls
+    // up within about a source-width of where it is formed, so this scales with
+    // the bed. It used to scale with `originHeight`, which is the bed over the
+    // entrainment coefficient — six to nine times larger — and the consequence
+    // was worst exactly where the piece is most worth looking at closely: on a
+    // four-metre bed the roll-ups were born four to thirty metres up, every one
+    // of them outside a frame a metre tall, and the debug overlay reported *zero
+    // vortices* in a scene that should be full of them.
+    const y = bedHalf() * (0.2 + rng() * 1.6)
     const b = bedHalf() + Math.max(0.01, settings.spread) * y
     const side = rng() < 0.5 ? -1 : 1
     const core = b * (0.3 + rng() * 0.35)
@@ -420,7 +448,14 @@ export function createAir(initial: Settings, seed: number): Air {
     // Peak tangential speed of a Kaufmann vortex is `Γ/(4πr_c)`, so this asks
     // for an eddy whose fastest air is a stated fraction of the plume's.
     const gamma = side * 4 * Math.PI * core * w * 0.55 * settings.swirl * (0.6 + rng() * 0.8)
-    addVortex(axisAt(y) + side * b * (0.7 + rng() * 0.6), y, gamma, core, puffPeriod() * (1.5 + rng() * 2))
+    // **A band across the profile rather than a line at its edge.** What rolls up
+    // is a velocity gradient, and `sech²` has its steepest one at `|s| ≈ 0.66` —
+    // so shedding is drawn from a band around the inflection rather than pinned
+    // to `|s| = 1`. On a narrow fire that is the edge either way. On one wider
+    // than the frame it is the difference between structure you can see and a
+    // vortex street happening off to both sides of the picture.
+    const across = side * (0.4 + rng() * 1.2)
+    addVortex(axisAt(y) + across * b, y, gamma, core, puffPeriod() * (1.5 + rng() * 2))
   }
 
   function vortexAt(x: number, y: number, out: Float64Array): void {
@@ -458,22 +493,33 @@ export function createAir(initial: Settings, seed: number): Air {
     out[1] = spare[1]!
   }
 
-  /** Sized off the plume, so mixing is always mixing *at the scale of this fire*. */
+  /**
+   * Size and pace the octaves off the fire, following the cascade.
+   *
+   * Two relationships do all of it and neither is a free number:
+   *
+   * - **Velocity at a scale goes as ℓ^(1/3)**, which is the Kolmogorov
+   *   two-thirds law read as a speed. So each octave down carries
+   *   `OCTAVE_STEP^(-1/3)` — about 0.72 — of the one above it: the fine
+   *   structure is real but it is not what moves an ember across the frame.
+   * - **Turnover time goes as ℓ^(2/3)**, so small eddies churn faster. At a
+   *   factor of 2.7 per octave that is about 1.9 times faster each step down.
+   *
+   * `mixing` is therefore a fraction of the plume's own speed at every size of
+   * fire, and the stream function's amplitude carries the extra factor of scale
+   * because the curl of it is what has to come out as a velocity.
+   */
   function tuneOctaves(): void {
-    const b = bedHalf()
     const w = Math.max(0.2, settings.updraft)
-    const large = Math.max(0.06, b * 2.4)
-    const small = large / 2.7
-    // ψ has units of m²/s, and the curl of it is a velocity; scaling the
-    // amplitude by `w · scale` makes `mixing` a fraction of the plume's speed
-    // whatever size the fire is.
-    octaves[0]!.scale = large
-    octaves[0]!.amplitude = settings.mixing * w * large * 0.42
-    octaves[0]!.rate = w / large
-    octaves[1]!.scale = small
-    octaves[1]!.amplitude = settings.mixing * w * small * 0.5
-    // Kolmogorov: turnover time goes as ℓ^(2/3), so rate goes as ℓ^(-2/3).
-    octaves[1]!.rate = (w / large) * (large / small) ** (2 / 3)
+    const largest = Math.max(0.06, bedHalf() * 2.4)
+
+    for (let at = 0; at < OCTAVES; at++) {
+      const scale = largest / OCTAVE_STEP ** at
+      const octave = octaves[at]!
+      octave.scale = scale
+      octave.amplitude = settings.mixing * w * scale * 0.42 * (scale / largest) ** (1 / 3)
+      octave.rate = (w / largest) * (largest / scale) ** (2 / 3)
+    }
   }
 
   tuneOctaves()

@@ -41,10 +41,10 @@
  *
  * Light on a dark field, so `lighter`: two embers overlapping are brighter than
  * one, and the base of the column goes white where the population is dense.
- * `trail` fades the previous frame toward the background instead of clearing it,
- * which accumulates the paths — and makes the picture something built up over
- * frames rather than a function of one, which the poster recipe has to know
- * about. See `poster.ts`.
+ * `shutter` fades the previous frame toward the background instead of clearing
+ * it, so the picture is an *exposure* rather than a function of the current
+ * state — which the poster recipe has to know about. See `exposureShare` for why
+ * that is a shutter and not an accumulator, and `poster.ts` for what it costs.
  */
 
 import { hashSeed, makeRng } from "@/experiments/random"
@@ -215,28 +215,33 @@ export type DrawStats = {
 }
 
 /**
- * Fade the last frame toward the ground, or clear it.
+ * Clear the frame.
  *
- * `trail` is the fraction of the previous frame that survives one frame at 60 Hz,
- * corrected for the frame actually taken — a scene at 30 fps must not have twice
- * as much memory as the same scene at 60. Without the correction, dropping frames
- * lengthens the trails, which reads as the piece getting *more* alive under load.
+ * **There is no accumulation buffer any more, and two rounds of getting the
+ * exposure wrong is why.** The tail used to be made by fading the previous frame
+ * instead of clearing it, and no normalisation of that works:
+ *
+ * - Left uncompensated, a mark that lands near where it landed last frame adds
+ *   to itself, so the control's only visible effect is that the picture gets
+ *   *brighter*. At slow playback a shutter spans twenty-five frames and the
+ *   whole frame saturates.
+ * - Compensated so the total is conserved, one frame's contribution falls to
+ *   about a single level of an 8-bit channel, so the moving parts of a tail
+ *   quantise to nothing and the mark reads as a row of dots where frames
+ *   happened to land.
+ *
+ * Both failures are the same mistake: how many times a buffer is written depends
+ * on the frame rate, and a tail is a property of the ember. So the tail is drawn
+ * — explicitly, from the path the ember remembers in `samplePath` — and the
+ * frame holds one instant. Length is `speed × shutter` and nothing else, per
+ * pixel brightness is the ember's own, and neither depends on the frame rate or
+ * on the playback.
  */
-export function fadeFrame(context: CanvasRenderingContext2D, view: View, settings: Settings, elapsed: number): void {
+export function clearFrame(context: CanvasRenderingContext2D, view: View, settings: Settings): void {
   context.globalCompositeOperation = "source-over"
   context.globalAlpha = 1
-
-  if (settings.trail <= 0) {
-    context.fillStyle = groundColour(settings.hue)
-    context.fillRect(0, 0, view.width, view.height)
-    return
-  }
-
-  const keep = settings.trail ** (Math.max(1 / 240, Math.min(0.25, elapsed)) * 60)
-  context.globalAlpha = 1 - keep
   context.fillStyle = groundColour(settings.hue)
   context.fillRect(0, 0, view.width, view.height)
-  context.globalAlpha = 1
 }
 
 /**
@@ -319,7 +324,16 @@ export function drawEmbers(
 
   const mark: Mark = settings.mark
   const wantsCore = mark !== "mote"
-  const wantsStreak = mark === "ember" || mark === "spark" || mark === "flake"
+  /**
+   * **The tail is the path, and `shutter` is how much of it.**
+   *
+   * Drawn from the points the ember remembers rather than from a chord back
+   * along its velocity, because the subject of the piece is that the path
+   * curves — a straight tail on an ember riding an eddy cuts the corner off the
+   * one thing worth seeing. With the shutter shut there is no remembered path
+   * and an ember is a point, which is what "off" should mean.
+   */
+  const wantsTail = settings.shutter > 0 && mark !== "mote"
   const wantsOutline = mark === "ember" || mark === "flake"
 
   for (const ember of embers) {
@@ -342,6 +356,7 @@ export function drawEmbers(
     // that never clips to black at the bottom.
     const alpha = raw / (1 + raw)
     if (alpha < 0.004) continue
+
     // Counted here rather than where the white centre is drawn, so the number a
     // `stats()` reports means "marks past clipping" for every mark kind — a
     // `mote` has no core to whiten and used to report none at all.
@@ -372,18 +387,16 @@ export function drawEmbers(
       context.drawImage(sprite, sx - halo, sy - halo, halo * 2, halo * 2)
     }
 
-    if (wantsStreak) {
-      const dx = sx - screenX(view, ember.px)
-      const dy = sy - screenY(view, ember.py)
-      if (dx * dx + dy * dy > 1.4) {
-        context.globalAlpha = alpha * 0.55
-        context.strokeStyle = ramp.css[step]!
-        context.lineWidth = core * 1.5
-        context.beginPath()
-        context.moveTo(sx - dx, sy - dy)
-        context.lineTo(sx, sy)
-        context.stroke()
+    if (wantsTail && ember.pathLength > 0) {
+      context.globalAlpha = alpha * 0.5
+      context.strokeStyle = ramp.css[step]!
+      context.lineWidth = core * 1.5
+      context.beginPath()
+      context.moveTo(sx, sy)
+      for (let at = 0; at < ember.pathLength; at++) {
+        context.lineTo(screenX(view, ember.path[at * 2]!), screenY(view, ember.path[at * 2 + 1]!))
       }
+      context.stroke()
     }
 
     if (wantsCore) {
