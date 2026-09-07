@@ -1,6 +1,12 @@
+---
+type: ADR
+status: accepted
+date: 2026-09-06
+summary: A page outside the section runs a piece through two URLs and no imports: a content-addressed runner, and a scene naming it. The runner half stands; the artefact half is superseded by 20260907-runners-are-committed.
+---
+
 # A published scene is settings plus a frozen runner
 
-**Status:** Accepted — 2026-09-06. **Partly superseded 2026-09-07**: the runner
 half stands unchanged; the artefact half does not. See the correction at the end.
 
 ## Context
@@ -91,15 +97,28 @@ shows.
 
 ## Consequences
 
-- `public/showcase/` is build output and is **not committed**. `pnpm run
-runners` writes it; `dev` and `build` both run it first.
-- The unit suite cannot see a runner, since building one needs a bundler. What
-  it can check — that an artefact names a piece with a runner, and that every
-  variant states every setting — is in `tests/unit/showcase-artefacts.test.ts`.
-  That an artefact actually reaches a page is `tests/showcase.spec.ts`.
+- ~~`public/showcase/` is build output and is **not committed**.~~ **Reversed
+  2026-09-07** — the runners and the manifest are committed and never pruned,
+  because a published page pins a runner by content hash and a build directory
+  keeps no history. `embed.js` alone is still generated. See
+  `20260907-runners-are-committed.md`.
+
+  Struck through rather than deleted, and struck through rather than left to be
+  read. A steward ran `pnpm run runners`, saw an untracked runner beside a
+  tracked one, read this line, and concluded the tracking was accidental — they
+  were about to gitignore `public/showcase/` and `git rm --cached` the pinned
+  runner. Records are append-only, but a live claim that reverses the design has
+  to be visibly dead. Same treatment ADR 0001 got, for the same reason.
+
+- ~~The unit suite cannot see a runner, since building one needs a bundler.~~
+  **Reversed 2026-09-07** — it can, and does: a runner is byte-reproducible, so
+  `tests/unit/showcase-runners.test.ts` rebuilds one and fails when what is
+  committed is not what the source produces. It replaced
+  `showcase-artefacts.test.ts`, which no longer exists.
+  `tests/showcase.spec.ts` still covers what needs a browser.
 - **A piece with a `runner.ts` acquires a second audience.** Its scene modules
   are now imported by something that will not be rebuilt when they change. That
-  costs the piece nothing today — a published artefact keeps its old runner —
+  costs the piece nothing today — a published page keeps its old runner —
   but it is the reason `runner.ts` exposes a deliberately tiny surface rather
   than re-exporting the piece.
 - The wake lock does not travel: it lives in the kit, and a runner does not

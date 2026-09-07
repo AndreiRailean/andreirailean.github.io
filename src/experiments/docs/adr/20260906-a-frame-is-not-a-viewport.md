@@ -1,6 +1,11 @@
-# A frame is not a viewport
+---
+type: ADR
+status: accepted
+date: 2026-09-06
+summary: Every piece renders into any box but is tuned for a viewport, and the two families break that assumption in opposite directions, so whatever renders a piece at another size owns choosing its settings.
+---
 
-**Status:** Accepted — 2026-09-06
+# A frame is not a viewport
 
 ## Context
 
