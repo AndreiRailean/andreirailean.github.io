@@ -4,6 +4,44 @@ import tailwindcss from "@tailwindcss/vite"
 
 import icon from "astro-icon"
 
+/**
+ * Lets the dev server hand out a committed runner as a module.
+ *
+ * Two correct things disagree here. Runners are **built artefacts committed
+ * under `public/`**, served byte-for-byte, because a published page pins one
+ * by content hash — `src/experiments/docs/adr/20260907-runners-are-committed.md`.
+ * And Vite holds that nothing in `public/` is ever a module: it bypasses the
+ * plugin transforms, so one "should not be imported from source code. It can
+ * only be referenced via HTML tags."
+ *
+ * A dynamic import written in source is rewritten to `<url>?import`, and that
+ * query is what trips the guard. A `@vite-ignore` comment does not prevent it:
+ * it stops Vite *resolving* the specifier, and the query is injected anyway.
+ *
+ * `gallery/embed.ts` never meets this, because it is bundled to
+ * `public/showcase/embed.js` and loaded from an HTML tag — its own dynamic
+ * import is a plain browser import Vite never sees. Anything driving runners
+ * from source does meet it.
+ *
+ * **Dev only, and it changes nothing about what is served.** The built site has
+ * no Vite in front of it, so this exists so that what you preview is what you
+ * deploy. Dropping the query is the whole fix: the request then falls through
+ * to the static handler that already answers that exact path.
+ */
+const runnersAreModules = {
+  name: "showcase-runners-are-modules",
+  apply: "serve",
+  configureServer(server) {
+    server.middlewares.use((request, _response, next) => {
+      const [path, query] = (request.url ?? "").split("?")
+      if (query === "import" && path.startsWith("/showcase/runners/") && path.endsWith(".js")) {
+        request.url = path
+      }
+      next()
+    })
+  },
+}
+
 // https://astro.build/config
 export default defineConfig({
   vite: {
@@ -11,6 +49,7 @@ export default defineConfig({
       tailwindcss({
         applyBaseStyles: false,
       }),
+      runnersAreModules,
     ],
   },
   site: "https://www.andrei.md",
