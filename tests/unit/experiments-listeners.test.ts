@@ -49,6 +49,29 @@ import { describe, expect, it } from "vitest"
  * If a piece ever genuinely needs a listener that outlives `stop()`, the
  * section's own escape hatch applies: a `kit-opt-out: <reason>` line in the
  * file, per `tests/unit/opt-out.ts`.
+ *
+ * ### What it does not check, stated so nobody reads it as stronger
+ *
+ * **It matches presence, not position.** The pair has to exist somewhere in the
+ * same file; it is not required to be inside `stop()`. So a piece whose removal
+ * sits only in some other teardown method would pass this while `stop()` still
+ * leaked, and that is a weaker guarantee than the heading above claims.
+ *
+ * Deliberate, because the section has not settled on one teardown method name —
+ * a piece may reasonably carry both a `stop()` and a `destroy()`, and dropping
+ * its listeners in either is defensible depending on which a host calls.
+ * Requiring `stop()` specifically would encode a naming convention this check
+ * has no business deciding, and names are exactly what `kit-adoption.test.ts`
+ * stopped trusting.
+ *
+ * What it does catch is the fault that actually happened twice: **registered and
+ * never removed at all.** That is the shape with no visible symptom, and the one
+ * a reader cannot spot by looking at `stop()`, because what is missing is not
+ * there to see.
+ *
+ * **Presence also means a duplicate removal is fine**, which is not a special
+ * case bolted on: walkers already drops both of its listeners in two different
+ * places, and has done since before this check existed.
  */
 
 import { optsOutOfFile } from "./opt-out.ts"
