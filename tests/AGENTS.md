@@ -26,6 +26,23 @@ the suite is still instant, and the filter is how you get it:
 anything else. Reach for the filter mid-change and the full run before you push.
 Nothing is wrong when the full run takes two and a half minutes.
 
+## Neither runner typechecks
+
+`pnpm test` runs both suites and **types nothing**. Vitest strips types and
+Playwright compiles per file; a type error in a test passes locally and fails in
+CI, where the lint job's `astro check` is the only thing that types anything.
+
+That has now caught two changes in one day from opposite directions: a shared
+type renamed with live callers in `.astro` files, which nothing else types at
+all, and a test declaring `type Record` — which silently shadows TypeScript's own
+generic, so `Record<string, string>` in the same file became "Type 'Record' is
+not generic". Both were invisible to a green `pnpm test`.
+
+**So run `pnpm exec astro check` before pushing, not just the suites.** It is the
+cheap half of `pnpm run build` and takes seconds. The failure mode is not a
+broken build — it is a red pull request after you thought you were done, which is
+the most expensive place to find a one-word mistake.
+
 ## The dev server the browser suite drives
 
 **Do not give it a fixed port, and do not make it insist on one.** Both are

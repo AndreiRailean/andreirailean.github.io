@@ -30,9 +30,17 @@ const DATED = /^(\d{4})(\d{2})(\d{2})-[a-z0-9-]+\.md$/
 /** The pre-format records, sequential and deliberately left alone. */
 const EXEMPT = /^\d{4}-/
 
-type Record = { path: string; name: string; source: string; stem: RegExpExecArray }
+/**
+ * One record on disk.
+ *
+ * Named `Entry` rather than `Record`, which is TypeScript's own generic and
+ * which a local declaration silently shadows: `Record<string, string>` below
+ * became "Type 'Record' is not generic" — and only in CI, because the unit
+ * runner does not typecheck. See `tests/AGENTS.md` on what each command sees.
+ */
+type Entry = { path: string; name: string; source: string; stem: RegExpExecArray }
 
-const records: Record[] = DIRECTORIES.flatMap((directory) =>
+const records: Entry[] = DIRECTORIES.flatMap((directory) =>
   readdirSync(directory)
     .filter((name) => name.endsWith(".md"))
     .map((name) => ({ directory, name })),
