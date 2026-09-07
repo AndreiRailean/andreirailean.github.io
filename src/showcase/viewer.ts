@@ -61,6 +61,12 @@ type RunnerModule = { mount: (canvas: HTMLCanvasElement, scene: string) => Mount
 /** How long the scene's name stays up after it arrives. */
 const PLACARD_MS = 2600
 
+/** How long a play or pause mark holds before it starts going, matching `gallery/reel.ts`. */
+const MARK_MS = 850
+
+/** How long it takes to go, matching the transition in `Wall.astro`. */
+const MARK_GOING_MS = 450
+
 /** Runner modules already fetched, by URL. The browser caches the bytes; this caches the evaluation. */
 const modules = new Map<string, Promise<RunnerModule>>()
 
@@ -117,7 +123,8 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
   const noteText = root.querySelector<HTMLElement>(".placard .note")
   const counter = root.querySelector<HTMLElement>(".counter")
   const trouble = root.querySelector<HTMLElement>(".trouble")
-  const held = root.querySelector<HTMLElement>(".held")
+  const held = root.querySelector<HTMLElement>(".mark.held")
+  const playing = root.querySelector<HTMLElement>(".mark.playing")
 
   let at = start
   let mounted: Mounted | null = null
@@ -129,6 +136,52 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
   let placardTimer = 0
 
   const entry = () => wall[at]!
+
+  // --- the mark in the middle ----------------------------------------------
+
+  let markShowing: HTMLElement | null = null
+  let markHoldTimer = 0
+  let markGoneTimer = 0
+
+  const putAway = (element: HTMLElement) => {
+    element.hidden = true
+    delete element.dataset.going
+  }
+
+  /**
+   * Shows one mark, which then goes.
+   *
+   * **One slot and one timer pair for both**, so play and pause cannot be up at
+   * once and a fast double-tap replaces the first mark rather than racing it —
+   * the arrangement `gallery/reel.ts` arrived at for the same problem. Leaving
+   * `hidden` restarts the transition for free, since `hidden` is `display:
+   * none` and a re-shown element transitions from its initial state.
+   */
+  function flashMark(element: HTMLElement | null) {
+    if (!element) return
+    window.clearTimeout(markHoldTimer)
+    window.clearTimeout(markGoneTimer)
+    if (markShowing && markShowing !== element) putAway(markShowing)
+
+    putAway(element)
+    element.hidden = false
+    markShowing = element
+
+    markHoldTimer = window.setTimeout(() => {
+      element.dataset.going = "true"
+      markGoneTimer = window.setTimeout(() => {
+        putAway(element)
+        if (markShowing === element) markShowing = null
+      }, MARK_GOING_MS)
+    }, MARK_MS)
+  }
+
+  function clearMark() {
+    window.clearTimeout(markHoldTimer)
+    window.clearTimeout(markGoneTimer)
+    if (markShowing) putAway(markShowing)
+    markShowing = null
+  }
 
   // --- the placard ---------------------------------------------------------
 
@@ -214,7 +267,9 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
     paused = false
     root.dataset.paused = "false"
     root.dataset.state = "running"
-    held?.setAttribute("hidden", "")
+    // A new scene arrives playing, so a mark left over from the previous one
+    // would be describing a piece that is no longer on the screen.
+    clearMark()
     say(next)
     void prefetchNeighbours()
   }
@@ -267,7 +322,7 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
     paused = next
     mounted.setPaused(paused)
     root.dataset.paused = String(paused)
-    if (held) held.hidden = !paused
+    flashMark(paused ? held : playing)
     wakePlacard()
   }
 

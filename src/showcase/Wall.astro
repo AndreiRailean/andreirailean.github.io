@@ -205,8 +205,8 @@ const entry = WALL[start]!
         }
       }
 
-      /* The held mark, and the failure. Both middle-of-screen. */
-      .held,
+      /* The marks, and the failure. All middle-of-screen. */
+      .mark,
       .trouble {
         position: absolute;
         inset: 0;
@@ -215,10 +215,31 @@ const entry = WALL[start]!
         pointer-events: none;
       }
 
-      .held span {
+      /*
+       * Both marks go, rather than the held one staying put.
+       *
+       * A persistent hold indicator would sit over the work for as long as you
+       * looked at it, and holding a piece to look at one frame is a thing a
+       * gallery is for — the same reason the placard fades. So the mark reports
+       * the change and leaves, which also makes play and pause symmetrical
+       * rather than one being a state and the other an event.
+       */
+      .mark span {
         font-size: 2.5rem;
         color: rgb(255 255 255 / 80%);
         text-shadow: 0 2px 20px rgb(0 0 0 / 70%);
+        transition: opacity 0.45s ease;
+        opacity: 1;
+      }
+
+      .mark[data-going="true"] span {
+        opacity: 0;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .mark span {
+          transition: none;
+        }
       }
 
       .trouble div {
@@ -266,7 +287,12 @@ const entry = WALL[start]!
 
       <button type="button" data-frame-toggle data-showcase-furniture aria-label="Toggle frame">frame</button>
 
-      <div class="held" hidden><span>❙❙</span></div>
+      {
+        /* Both marks, in one slot. Whichever is shown replaces the other rather
+          than racing it, so a fast double-tap cannot leave both up. */
+      }
+      <div class="mark held" hidden><span>❙❙</span></div>
+      <div class="mark playing" hidden><span>▶</span></div>
 
       <div class="trouble" hidden>
         <div>
