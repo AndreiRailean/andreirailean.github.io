@@ -70,6 +70,19 @@ safe to run in your own worktree without checking on anyone else, and is never
 the right way to tidy up someone else's. A `dev.json` naming a dead pid is a
 session that stopped its server cleanly, not a leak.
 
+**Starting that server runs `pnpm run runners`, so the browser suite builds the
+showcase runners whether or not it cares about them.** `pnpm run dev` is
+`pnpm run runners && astro dev`. Until #163 the script rewrote
+`public/showcase/manifest.json` unconditionally, so **every full
+`pnpm run test:browser` left the tree dirty** at a committed file — breaking the
+rule in `src/experiments/AGENTS.md` that `pnpm test` must never write tracked
+files, and doing it in the one directory where a stray modification is expensive
+to misread, since a runner is committed because Pages keeps no history. It writes
+only when a runner hash actually changes now, and
+`tests/unit/showcase-runners.test.ts` runs the script and fails if a committed
+file moved. **So a modified `manifest.json` after a run is a real change**: a
+piece's runner has moved and wants committing.
+
 Two things bite anyone who changes this:
 
 - **Worktrees share a machine.** A fixed port means a run here can find _another

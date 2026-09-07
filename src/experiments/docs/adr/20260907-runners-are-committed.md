@@ -37,6 +37,19 @@ The manifest is committed for a duller reason: it is what tells anything in the
 Astro build which runner is a piece's current one, and leaving it generated would
 put a build-order dependency in front of `astro check`.
 
+**Being committed means it is only written when it changes**, which was an
+amendment rather than part of the original decision — see #163. `pnpm run dev` is
+`pnpm run runners && astro dev`, so the browser suite ran the script every time
+its `globalSetup` started a server, and an unconditional write stamped HEAD into
+`manifest.json` on every run. That broke the rule in `AGENTS.md` that `pnpm test`
+must never write tracked files, and it made the `commit` field untrue besides:
+documented as tracing a runner back to a tree, it recorded the commit at which
+somebody last started a dev server. The field now means **the commit these
+runners were built at**, and the manifest is left alone when the runner map is
+unchanged — which is the property the content-addressed naming already promised
+one section up. `tests/unit/showcase-runners.test.ts` runs the script and fails
+if a committed file moved.
+
 **Committed by hand, in the change that alters the piece.** `pnpm run runners`
 writes them; a human or an agent commits what it wrote. The precedent is
 `20260828-posters-are-captured-by-hand.md`, and the reasoning transfers: this is
