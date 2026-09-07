@@ -58,6 +58,13 @@ export type WallEntry = {
  * consecutive entries sharing a runner swap in place and instantly, and
  * crossing pieces tears one down and mounts another. Judged worth it, and the
  * order is a source edit away from any other opinion.
+ *
+ * **Twenty-three of the twenty-four presets are here.** The one missing is
+ * Psyxels' `maker`, the only scene in any piece whose subject is a photograph
+ * rather than a glyph. Its runner has no way to be handed an image, and how a
+ * frozen runner carries an asset is undecided — see the note at the top of
+ * `src/experiments/psyxels/runner.ts`. Its six glyph-drawn siblings needed
+ * nothing and are here.
  */
 export const WALL: readonly WallEntry[] = [
   {
@@ -68,6 +75,15 @@ export const WALL: readonly WallEntry[] = [
     note: "Open water at night, a gusting sea running diagonally, a slow current crossing it — close enough in to read the shape of each wave rather than the pattern they make.",
     runner: "flotsam.b08fcae289b9.js",
     scene: "_____2AAApg-AAhWZMoefOEiIhWqrJNnYMfAUFyA8ZKB8UJgwADrig",
+  },
+  {
+    id: "psyxels-alive",
+    title: "alive",
+    piece: "psyxels",
+    pieceTitle: "Psyxels",
+    note: "Every hue at once, packed fine and overlapping, with the levels above showing through — and a word rather than a letter, so the field has to hold five shapes and the spaces between them.",
+    runner: "psyxels.3d3ba1c0d12f.js",
+    scene: "______9AnD0SngHypCDFYIYIDjmQ3gBAAPogRbxfCDYMEtG4qoxXM",
   },
   {
     id: "walkers-chalky",
@@ -106,6 +122,15 @@ export const WALL: readonly WallEntry[] = [
     scene: "_____2AADQi7AAhWZCYQeEGGFZTrSpFBQIRQMDcAyZKqKUKggALVDw",
   },
   {
+    id: "psyxels-neon",
+    title: "neon",
+    piece: "psyxels",
+    pieceTitle: "Psyxels",
+    note: "Fine grain at a high threshold, half-solid, spread across the whole wheel: tube light rather than ink.",
+    runner: "psyxels.3d3ba1c0d12f.js",
+    scene: "______9AnD0QnIGJitjvD5wolWo1HgBcAD0xQdcjIwEdjtBkxe5Bo",
+  },
+  {
     id: "walkers-bacteria",
     title: "bacteria",
     piece: "walkers",
@@ -140,6 +165,15 @@ export const WALL: readonly WallEntry[] = [
     note: "Nine trains from every quarter and none of them dominant — a confused sea that gathers in patches rather than lines.",
     runner: "flotsam.b08fcae289b9.js",
     scene: "_____2AABNfBAAhqZMQkhQCCK3WikZkHgMfQYHvA8ZKAoZMhQAWRJY",
+  },
+  {
+    id: "psyxels-ampersand",
+    title: "ampersand",
+    piece: "psyxels",
+    pieceTitle: "Psyxels",
+    note: "A script ampersand, held still and lit from within: no frame changes at all, only breathing.",
+    runner: "psyxels.3d3ba1c0d12f.js",
+    scene: "______9AnD0ZGwGJitjvH5woAWmBngBcAfshQdgBaK6djtJUxyI2Q",
   },
   {
     id: "walkers-busy",
@@ -178,6 +212,15 @@ export const WALL: readonly WallEntry[] = [
     scene: "_____2ACRgi7AAAuZKgwoKAtBzVo0gWFwyBigAbhkZKr6QngoAFFCg",
   },
   {
+    id: "psyxels-mono",
+    title: "mono",
+    piece: "psyxels",
+    pieceTitle: "Psyxels",
+    note: "One hue and almost no colour: the packing and its light, and nothing else to look at.",
+    runner: "psyxels.3d3ba1c0d12f.js",
+    scene: "______9AnD0RmALNu6TLbDgoAWo1F4AYAD0xQCgo8wEc-FHoABlsA",
+  },
+  {
     id: "flotsam-pond",
     title: "pond",
     piece: "flotsam",
@@ -187,6 +230,15 @@ export const WALL: readonly WallEntry[] = [
     scene: "_____2AAKUJ7AAAWZCwIVGAFAoKnj6WDQBlgCAPBkZLR4jPiQAB9Hg",
   },
   {
+    id: "psyxels-maybe",
+    title: "maybe",
+    piece: "psyxels",
+    pieceTitle: "Psyxels",
+    note: "Few frames, big psyxels, slow repacking: the field as a sign rather than a texture.",
+    runner: "psyxels.3d3ba1c0d12f.js",
+    scene: "______9AADA4m5aONAQLbDQoAWo1F4BgAB0xQIAdaCLScYBkxq0GQ",
+  },
+  {
     id: "flotsam-migration",
     title: "migration",
     piece: "flotsam",
@@ -194,6 +246,15 @@ export const WALL: readonly WallEntry[] = [
     note: "A hard cross-current under a slack, wide-open sea, carrying a warm scatter of everything somewhere else.",
     runner: "flotsam.b08fcae289b9.js",
     scene: "_____2AADQNjgAA4ZCZvPEAVHQlExFCHBSVaOAKCUZD5EUMggAE0Cg",
+  },
+  {
+    id: "psyxels-luna",
+    title: "luna",
+    piece: "psyxels",
+    pieceTitle: "Psyxels",
+    note: "The word as a hole again, and everything around it held: one grain everywhere rather than a range of them, and every psyx keeping the mark and the colour it was dealt. Made of the four that are drawn rather than built — a moon, a star, a heart and a leaf — each facing whichever way it was born facing, so the field reads as things strewn about rather than as signs stamped in rows — and nothing moves in it but the breath.",
+    runner: "psyxels.3d3ba1c0d12f.js",
+    scene: "______9AnD0W34BgyBj4D5wAODMxfmRfMAJBcAADIjnirtABHfyw4",
   },
   {
     id: "flotsam-simmer",

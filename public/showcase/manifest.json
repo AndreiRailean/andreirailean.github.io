@@ -1,8 +1,9 @@
 {
-  "commit": "f2ef1e266336cb408713cea7013854f1009d5a5e",
+  "commit": "9aabc146007220bb0b7efbdb0383ba6a908d9247",
   "runners": {
     "dangler": "dangler.b1ea8731e234.js",
     "flotsam": "flotsam.b08fcae289b9.js",
+    "psyxels": "psyxels.3d3ba1c0d12f.js",
     "starry-night": "starry-night.490e5f9452c8.js",
     "walkers": "walkers.6daa00b20e51.js"
   }
