@@ -111,6 +111,15 @@ the dev server rather than the site and injects four extra `h1`s into every page
 **Everything gets uniformly slower, and nothing stalls.** That is what makes it
 read as a mystery instead of as contention.
 
+**The size of the tax is the piece's, not Playwright's**, and the number below is
+flotsam's. It scales with per-frame work, which the `dots: 100` row makes plain:
+same piece, same loop, a thirtieth of the cost. Measured at the other end by the
+showcase session, on the home page's embedded starry-night at 863 dots against
+the same page with nothing rendering, it is **1.4-2x on `boundingBox` and about
+3x on `evaluate`** — tens of milliseconds per ten calls. So do not carry "35x"
+around as a property of the harness; carry the mechanism, and measure your own
+piece if the number matters.
+
 Measured on flotsam, whose default scene is 8,500 specks, ten `boundingBox()`
 calls on a panel row:
 
@@ -138,6 +147,37 @@ pair is in `needsScatter`, so eight steps rebuilt 8,500 specks eight times per
 handle. One move is enough when the assertion that follows proves the handle
 took. Holding the piece and dropping to one move measured 14,945ms to 6,232ms
 for the same sequence.
+
+**An embedded piece has no `pause` to reach for.** `gallery/embed.ts` exposes
+`window.showcase` rather than `window.experiment`, so there is no console API on
+it and inventing one for a test would be speculative. The way to get a
+no-motion arm there is to **route-404 the runner** so nothing renders, which is
+how the showcase numbers above were taken.
+
+**Holding the piece does nothing for a test that asks it to simulate.** The two
+levers are for different shapes and it is worth knowing which you have. A chrome
+test makes many cheap round trips and pays the contention above — holding it is
+worth 2.4x. A test that calls `run()` or `settle()` makes a few expensive calls,
+and `api.pause(true)` changed flotsam's raft sequence from 14,455ms to 14,151ms,
+which is nothing. The work is synchronous arithmetic and parking the frame loop
+cannot touch it.
+
+**And the simulated duration is often not the cost either.** #133 asks for these
+to be measured, so: flotsam's `a raft ignores the chop` costs the same at
+`run(0.5)`, `run(1)` and `run(3)` — 14.4s in all three. Phase-timed, the cost is
+**speck size**, not seconds:
+
+|           | with 4mm specks | with 1.2m rafts |
+| --------- | --------------- | --------------- |
+| `run(3)`  | 346ms           | 6,892ms         |
+| `stats()` | 217ms           | 5,747ms         |
+
+A raft that spans a wave has to be sampled across its own footprint, so it is
+20x the arithmetic to advance and 26x to measure. That is the piece's physics
+rather than a test's waste, it is identical in either runner, and it is why
+**moving that test to a headless harness would not make it cheap** — the same
+thing #131 measured for walkers, now confirmed on a second piece. What a harness
+buys is the page, and a shorter serial chain; it does not buy the arithmetic.
 
 **Do not read a single whole-test timing as a measurement.** This box is shared
 with other sessions, and the same test measured 24s, 29s and 41-55s within an
