@@ -1,16 +1,9 @@
-import { createBaseApi, type BaseApi } from "@/experiments/kit/api"
-import { keysOf, type Controls } from "@/experiments/kit/controls"
+import { createBaseApi, reportControls, type BaseApi, type ControlReport } from "@/experiments/kit/api"
+import type { Controls } from "@/experiments/kit/controls"
 import type { WakeLock } from "@/experiments/kit/wakelock"
 import type { Psyxels, PsyxelsStats } from "@/experiments/psyxels/psyxels"
 import { reroll } from "@/experiments/psyxels/reroll"
-import {
-  CONTROLS,
-  isTrackedControl,
-  normalizeSettings,
-  PRESETS,
-  type Settings,
-  settingsFromQuery,
-} from "@/experiments/psyxels/settings"
+import { CONTROLS, normalizeSettings, PRESETS, type Settings, settingsFromQuery } from "@/experiments/psyxels/settings"
 
 /**
  * A console handle on the piece, at `window.experiment`.
@@ -26,8 +19,17 @@ import {
  * the one thing the piece is about.
  */
 export type ExperimentApi = BaseApi<Settings> & {
-  /** Every control with its group, bounds and blurb. One entry per setting. */
-  controls: () => { key: string; group: string; label: string; min: number; max: number; hint: string }[]
+  /**
+   * Every control the panel shows, one entry per settings key.
+   *
+   * The kit's `ControlReport`, which this piece is the reason for. Its `glyphs`
+   * row is a **set** — the setting's value is a list of glyph names — and the
+   * flat shape declared here until #130 required `min` and `max`, so a control
+   * with no track reported `min: 0, max: 0`. A valid number and no information:
+   * point any of the generic sweeps in `tests/` at it and it writes `glyphs: 0`,
+   * a number into a setting that holds a list.
+   */
+  controls: () => ControlReport[]
   /** A fresh packing of the same picture. Omit for a random seed; returns the seed used. */
   reroll: (seed?: number) => number
   /** Run the field forward by this many seconds at once, then redraw. */
@@ -81,21 +83,7 @@ export function createApi(controls: Controls<Settings>, wakeLock: WakeLock, scen
       fromQuery: settingsFromQuery,
     }),
 
-    // A choice or set row reports the same shape as a slider, with the bounds it
-    // does not have left at zero. The browser suite checks every setting has a
-    // control this way, and a row that reported nothing would look like a
-    // missing one.
-    controls: () =>
-      CONTROLS.flatMap((control) =>
-        keysOf(control).map((key) => ({
-          key,
-          group: control.group,
-          label: control.label,
-          min: isTrackedControl(control) ? control.min : 0,
-          max: isTrackedControl(control) ? control.max : 0,
-          hint: control.hint,
-        })),
-      ),
+    controls: () => reportControls(CONTROLS),
 
     reroll: (seed) => reroll(controls, seed),
 

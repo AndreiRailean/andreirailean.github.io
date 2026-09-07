@@ -1,7 +1,7 @@
 import type { Dangler, DanglerStats } from "@/experiments/dangler/dangler"
 import { reroll } from "@/experiments/dangler/reroll"
-import { createBaseApi, type BaseApi } from "@/experiments/kit/api"
-import { keysOf, type Controls } from "@/experiments/kit/controls"
+import { createBaseApi, reportControls, type BaseApi, type ControlReport } from "@/experiments/kit/api"
+import type { Controls } from "@/experiments/kit/controls"
 import { CONTROLS, normalizeSettings, PRESETS, type Settings, settingsFromQuery } from "@/experiments/dangler/settings"
 import type { WakeLock } from "@/experiments/kit/wakelock"
 
@@ -14,8 +14,8 @@ import type { WakeLock } from "@/experiments/kit/wakelock"
  * not.
  */
 export type ExperimentApi = BaseApi<Settings> & {
-  /** Every control with its group, bounds and blurb. */
-  controls: () => { key: string; group: string; label: string; min: number; max: number; hint: string }[]
+  /** Every control the panel shows, one entry per settings key. */
+  controls: () => ControlReport[]
   /** A fresh arrangement. Omit for a random seed; returns the seed used. */
   reroll: (seed?: number) => number
   /**
@@ -75,25 +75,12 @@ export function createApi(controls: Controls<Settings>, wakeLock: WakeLock, scen
       fromQuery: settingsFromQuery,
     }),
 
-    // Flattened over `keysOf`, so a bound pair reports both of its ends —
-    // matching Flotsam and Psyxels, and one entry per settings key.
-    //
-    // This read `control.key` directly until #85. A range control carries
-    // `keys` and no `key`, so it would have reported `undefined` the day
-    // Dangler gained one; it was correct only because Dangler has none. A
-    // caller reading `.key` off such an entry writes to a setting no piece has,
-    // and the assertion after it passes because nothing moved.
-    controls: () =>
-      CONTROLS.flatMap((control) =>
-        keysOf(control).map((key) => ({
-          key,
-          group: control.group,
-          label: control.label,
-          min: control.min,
-          max: control.max,
-          hint: control.hint,
-        })),
-      ),
+    // The kit's, since #130. Every control here is a slider, so the report is
+    // all one kind and this piece could have kept writing the flat shape out
+    // indefinitely without noticing what it could not say — which is precisely
+    // why the shape is not its to choose. It read `control.key` directly until
+    // #85, and was correct only because Dangler has no range control.
+    controls: () => reportControls(CONTROLS),
 
     reroll: (seed) => reroll(controls, seed),
 

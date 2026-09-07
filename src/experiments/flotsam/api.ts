@@ -1,8 +1,8 @@
 import type { Flotsam, FlotsamStats } from "@/experiments/flotsam/flotsam"
 import { reroll } from "@/experiments/flotsam/reroll"
 import { CONTROLS, normalizeSettings, PRESETS, type Settings, settingsFromQuery } from "@/experiments/flotsam/settings"
-import { createBaseApi, type BaseApi } from "@/experiments/kit/api"
-import { keysOf, type Controls } from "@/experiments/kit/controls"
+import { createBaseApi, reportControls, type BaseApi, type ControlReport } from "@/experiments/kit/api"
+import type { Controls } from "@/experiments/kit/controls"
 import type { WakeLock } from "@/experiments/kit/wakelock"
 
 /**
@@ -20,8 +20,8 @@ import type { WakeLock } from "@/experiments/kit/wakelock"
  * Neither a poster nor a test can wait for that in real time.
  */
 export type ExperimentApi = BaseApi<Settings> & {
-  /** Every control with its group, bounds and blurb. One entry per setting. */
-  controls: () => { key: string; group: string; label: string; min: number; max: number; hint: string }[]
+  /** Every control the panel shows, one entry per settings key. */
+  controls: () => ControlReport[]
   /** A fresh sea and a fresh scattering. Omit for a random seed; returns the seed used. */
   reroll: (seed?: number) => number
   /**
@@ -80,20 +80,11 @@ export function createApi(controls: Controls<Settings>, wakeLock: WakeLock, scen
       fromQuery: settingsFromQuery,
     }),
 
-    // Flattened over `keysOf`, so a bound pair reports both of its ends. The
-    // browser suite checks that every setting has a control this way, and a
-    // range row that reported only its label would look like two missing ones.
-    controls: () =>
-      CONTROLS.flatMap((control) =>
-        keysOf(control).map((key) => ({
-          key,
-          group: control.group,
-          label: control.label,
-          min: control.min,
-          max: control.max,
-          hint: control.hint,
-        })),
-      ),
+    // The kit's, since #130. Flattened over `keysOf` in there, so this piece's
+    // two range rows still report both of their ends — the browser suite checks
+    // that every setting has a control this way, and a range row that reported
+    // only its label would look like two missing ones.
+    controls: () => reportControls(CONTROLS),
 
     reroll: (seed) => reroll(controls, seed),
 

@@ -326,10 +326,17 @@ by one identifier. **`set()` in particular is a trap worth not re-deriving** —
 `Controls.apply` is the raw setter and does not normalize, so a hand-written
 `set` that forgets is how the API reaches a state a URL could not.
 
-What stays the piece's, because these differ for reasons: `controls()`,
-`stats()`, `debug()`, the console banner, and the piece's own verbs like
-`settle()` and `run()`. `tests/unit/kit-adoption.test.ts` fails a piece that
-drives the chrome by hand from its `api.ts` instead — unless it says why.
+What stays the piece's, because these differ for reasons: `stats()`, `debug()`,
+the console banner, and the piece's own verbs like `settle()` and `run()`.
+`tests/unit/kit-adoption.test.ts` fails a piece that drives the chrome by hand
+from its `api.ts` instead — unless it says why.
+
+**`controls()` used to be on that list and no longer is.** It is still not a
+method on `BaseApi` — building the report needs the piece's `CONTROLS` array,
+which `createBaseApi` is not given — but its shape and the mapping are the kit's,
+so a piece's `controls()` is `reportControls(CONTROLS)` and nothing else. See the
+next-but-one paragraph, and
+`docs/adr/20260907-the-controls-report-is-the-kits.md`.
 
 **A setting may be a value or a list, and `===` no longer compares two of
 them.** Every piece made settings a bag of primitives until Psyxels' vocabulary
@@ -345,18 +352,34 @@ which scene is on screen, since `gallery/` may not import a piece. So an identit
 compare in the kit costs the reel its placard and its dots, which is a gallery
 failure arriving from a kit line.
 
-**`controls()` reports one entry per settings key, and every key must be real.**
-Flatten over the kit's `keysOf(control)`: a range owns two settings and has
-`keys` rather than a `key`, so a piece mapping `control.key` straight through
-reports `undefined` for it. Three pieces did something different here and
-nothing said which was the contract — Dangler read `control.key` and was correct
-only because it happens to have no range control; Starry Night reported one
-entry per _control_ with a `keys` array. It cost a real assertion, because
-generic code reading `.key` off those got `undefined`, wrote its patch to a
-setting no piece has, and then passed because nothing had moved. Extra fields
-are fine — Starry Night keeps a `kind` discriminant, the others carry `group` —
-but `key` is the part everything else may rely on.
-`tests/kit.spec.ts` holds every piece to it.
+**`controls()` is the kit's `reportControls(CONTROLS)`, and a control reports the
+bound it actually has.** One entry per settings key, flattened over the kit's
+`keysOf` — a range owns two settings and carries `keys` rather than a `key`, so a
+piece mapping `control.key` straight through reports `undefined` for it. The
+report is a discriminated union: `slider | range` carry `min`/`max`,
+`choice | set` carry `options`, `toggle` carries neither, and **`kind` is
+required** because without it there is nothing to narrow on.
+
+**Do not write the shape out.** Five pieces did, and it produced the same fault
+three times: #85, three shapes with no stated contract, where generic code
+reading `.key` wrote its patch to a setting no piece has and passed because
+nothing moved; #127, a `default:` branch reading `control.min` off a control with
+none, so the field was present-and-`undefined` and every consumer got `NaN`; and
+#130, where Psyxels' flat type _required_ `min` and `max` and its `glyphs` set —
+a setting holding a list of five names — reported `min: 0, max: 0`. A valid
+number and no information.
+
+**So a sweep over `controls()` must narrow on `kind` before reading a bound**,
+and should say so when it cannot rather than skipping the row. Every Dangler row
+is a slider, so its round-trip test covers all of them today; it collects what it
+skipped and fails on a non-empty list, because narrowing and moving on is how a
+sweep quietly stops covering the control somebody just added.
+
+`tests/unit/experiments-controls-report.test.ts` holds the presence rule in
+milliseconds against every piece's real controls, and `tests/kit.spec.ts` holds
+whatever a piece actually returns at runtime — a piece may still write its own
+report and say why in a `kit-opt-out:` line. The reasoning, and what it reverses,
+is in `docs/adr/20260907-the-controls-report-is-the-kits.md`.
 
 **`pause()` is not the scene's `stop()`.** `stop()` is teardown — it drops the
 resize listener, and in two pieces `start()` visibly moves the scene on the way
