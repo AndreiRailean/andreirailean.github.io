@@ -1,6 +1,11 @@
-# A mark need not be decomposable
+---
+type: ADR
+status: accepted
+date: 2026-09-04
+summary: A mark may bring its own geometry provided it can still say who its neighbours are; the features are a kinship metric and nothing else.
+---
 
-**Status:** Accepted — 2026-09-04
+# A mark need not be decomposable
 
 ## Context
 

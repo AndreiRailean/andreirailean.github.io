@@ -1,6 +1,11 @@
-# Large units demand attention, and every piece pays for it
+---
+type: ADR
+status: accepted
+date: 2026-08-30
+summary: The large end of any size distribution needs its own control and its own quietening; a big unit that also sits still is what breaks the illusion first.
+---
 
-**Status:** Accepted — 2026-08-30
+# Large units demand attention, and every piece pays for it
 
 ## Context
 

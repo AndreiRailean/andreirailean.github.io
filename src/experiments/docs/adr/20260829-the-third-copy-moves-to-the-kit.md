@@ -1,6 +1,11 @@
-# The third copy moves to the kit
+---
+type: ADR
+status: accepted
+date: 2026-08-29
+summary: A module joins kit/ when a third piece independently wants it, and not before; wakelock.ts is the first to qualify.
+---
 
-**Status:** Accepted — 2026-08-29
+# The third copy moves to the kit
 
 ## Context
 

@@ -1,6 +1,11 @@
-# The gallery presents a piece on a phone, through the console API
+---
+type: ADR
+status: accepted
+date: 2026-09-01
+summary: A touch device gets the piece full-bleed with no chrome and three gestures, reached only through the console API so the gallery holds no per-piece knowledge.
+---
 
-**Status:** Accepted — 2026-09-01
+# The gallery presents a piece on a phone, through the console API
 
 ## Context
 

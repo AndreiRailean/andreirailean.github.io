@@ -1,6 +1,11 @@
-# A poster held over a booting piece
+---
+type: ADR
+status: rejected
+date: 2026-09-01
+summary: Holding a piece's poster over it while it boots was tried and abandoned.
+---
 
-**Status:** Rejected — 2026-09-01
+# A poster held over a booting piece
 
 ## Context
 
