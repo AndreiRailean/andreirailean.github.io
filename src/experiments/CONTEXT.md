@@ -119,23 +119,23 @@ every instance of this fault used, in all four pieces.
 **Runner** — a piece bundled into one self-contained module, frozen. Built from
 `src/experiments/<slug>/runner.ts` and named by the **content hash** of its own
 bytes, so identical code is always the same address. Carries the scene and
-nothing else: no chrome, no kit, no presets, no URL handling. A piece opts in by
-having a `runner.ts`; naming, serving and loading them is the gallery's, and
-therefore imposed.
+nothing else: no chrome, no kit, no presets, no URL handling. **Committed and
+never pruned**, because a published page pins one by name — see
+`docs/adr/20260907-runners-are-committed.md`. A piece opts in by having a
+`runner.ts`; naming, serving and loading them is the gallery's, and therefore
+imposed.
 
-**Artefact** — a settings blob naming the runner it was published against.
-**Data, never code.** Every variant states every setting, for the same reason a
-preset does. Sources live in `src/showcase/`, because choosing a scene for a page
-is the site's decision rather than an experiment's.
+**Scene** — one settings state, written as the packed string an address carries.
+The unit a page embeds and the unit a copy-embed action would hand over: pasting
+one into an experiment's address bar previews it, and pasting it into a page runs
+it. Only the runner can read it, since a packed scene is positional and the slot
+index in `REGISTRY` is the version.
 
-Together they are how a page outside the section runs a piece: two URLs and no
-imports, with normalisation happening inside the runner so a published scene is
-immune to the piece's later defaults. See
-`docs/adr/20260906-a-published-scene-is-settings-plus-a-frozen-runner.md`.
-
-**Variant** — one named settings blob inside an artefact, picked by a host _by
-name_. How light and dark are carried without the host learning what any setting
-means.
+**Variant** — a second scene, named, pinned by the same page. A convenience the
+embed offers so a host can carry a light and a dark scene and switch between
+them; not something a copy-embed action produces, because which scenes pair and
+what drives the switch are the host's business. Absent one, the embed follows
+`prefers-color-scheme` and keeps following it.
 
 **Idle** — the state a piece enters after a few seconds without input, in which
 the pointer and the chrome both disappear. Suppressed while the pointer rests on

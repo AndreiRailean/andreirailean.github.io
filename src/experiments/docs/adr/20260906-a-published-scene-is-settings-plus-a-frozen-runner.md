@@ -1,6 +1,7 @@
 # A published scene is settings plus a frozen runner
 
-**Status:** Accepted — 2026-09-06
+**Status:** Accepted — 2026-09-06. **Partly superseded 2026-09-07**: the runner
+half stands unchanged; the artefact half does not. See the correction at the end.
 
 ## Context
 
@@ -104,3 +105,34 @@ runners` writes it; `dev` and `build` both run it first.
 - The wake lock does not travel: it lives in the kit, and a runner does not
   import the kit. Worth keeping as a property to check rather than a fact to
   remember.
+
+## Correction — 2026-09-07
+
+**A scene is not a JSON file, and never should have been one on this site.**
+
+This record described an artefact as `src/showcase/*.json`, stamped by the build
+into `public/showcase/artefacts/` and fetched by the page. Every property claimed
+above survives that shape, which is why it read as a detail. It was not one.
+
+Generating the home page's background out of the same build that builds the piece
+makes the site and the section **one system** — the thing the boundary in
+`AGENTS.md` exists to prevent, arrived at from the other direction. Andrei named
+it: _"this work appears to be blurring the line between the experiments project
+and the home page of andrei.md and treating them as one system. i'd rather see
+the home page treat experiments as a third party system even at this early
+stage."_
+
+**A scene is now the packed address string, carried in the page.** The snippet
+pins a runner and states its scene inline, `src/showcase/` is gone, and nothing
+is generated into `src/pages/index.astro`. The runner decodes the string, because
+a packed scene is positional and only the registry that wrote it can read it —
+which is also why packing is safe here and would not have been in a free-standing
+JSON file, where the registry version would be implicit and unpinned.
+
+Two consequences this record did not reach:
+
+- **Pinning requires retention**, so runners are committed and never pruned. See
+  `20260907-runners-are-committed.md`.
+- **Light and dark are a host convenience, not the base form.** A copy-embed
+  action produces one scene; pairing two, and deciding what drives the switch,
+  belongs to the page — it cannot be generalised across hosts.
