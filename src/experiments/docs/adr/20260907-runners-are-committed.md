@@ -1,6 +1,11 @@
-# Runners are committed, by hand, and a rebuild proves it
+---
+type: ADR
+status: accepted
+date: 2026-09-07
+summary: Runners and the manifest are committed and never pruned, because a published page pins a runner by content hash; a rebuild in CI proves what is committed is current.
+---
 
-**Status:** Accepted — 2026-09-07
+# Runners are committed, by hand, and a rebuild proves it
 
 ## Context
 

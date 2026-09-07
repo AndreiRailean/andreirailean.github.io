@@ -91,7 +91,9 @@ describe("the home page's embed", () => {
 
   it("carries its scenes inline, rather than fetching them", () => {
     expect(page).toMatch(/data-showcase-scene="[\w-]+"/)
-    // The artefact-file indirection is gone on purpose; see src/showcase/README.md.
+    // The artefact-file indirection is gone on purpose — see the correction in
+    // `docs/adr/20260906-a-published-scene-is-settings-plus-a-frozen-runner.md`.
+    // `src/showcase/README.md` used to say so and no longer exists.
     expect(page).not.toMatch(/data-showcase="/)
   })
 
