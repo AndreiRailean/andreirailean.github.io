@@ -302,6 +302,10 @@ export function drawEmbers(
     // that never clips to black at the bottom.
     const alpha = raw / (1 + raw)
     if (alpha < 0.004) continue
+    // Counted here rather than where the white centre is drawn, so the number a
+    // `stats()` reports means "marks past clipping" for every mark kind — a
+    // `mote` has no core to whiten and used to report none at all.
+    if (raw > 1) clipped++
 
     const sx = screenX(view, ember.x)
     const sy = screenY(view, ember.y)
@@ -383,7 +387,6 @@ export function drawEmbers(
       // white-hot that temperature alone cannot reach.
       if (raw > 1) {
         const over = raw - 1
-        clipped++
         context.globalAlpha = Math.min(1, over / (1 + over))
         context.fillStyle = "rgb(255 255 255)"
         const white = core * 0.6

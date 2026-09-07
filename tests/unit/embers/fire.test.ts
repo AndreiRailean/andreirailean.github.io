@@ -228,6 +228,58 @@ describe.each(PRESETS.map((preset) => [preset.label, preset.settings] as const))
   })
 })
 
+/**
+ * The bed, which is the fire, and the two things about it that are not the flow.
+ *
+ * Both of these were written as browser tests first and
+ * `tests/unit/browser-suite.test.ts` sent them back — correctly. They settle a
+ * scene and then read the model, which is arithmetic in either runner and
+ * milliseconds in this one.
+ */
+describe("the fire itself", () => {
+  it("presses against its population ceiling rather than treating it as a target", () => {
+    // Far more emission than a ceiling of 300 can hold, so births are dropped —
+    // which is deliberate. Evicting a live ember instead would take the dimmest,
+    // oldest and most interesting one and replace it with a fresh one at the
+    // bed, so raising the sputter past the ceiling would visibly shorten every
+    // ember's life instead of simply not adding more.
+    const outcome = burn({ ...DEFAULT_SETTINGS, count: 300, sputter: 4, bed: 2 }, 8)
+    expect(outcome.alive).toBeLessThanOrEqual(300)
+    expect(outcome.alive).toBeGreaterThan(250)
+  })
+
+  it("lifts the whole fire on a burst and lets it settle back", () => {
+    const settings = { ...DEFAULT_SETTINGS, bursts: 0 }
+    const air = createAir(settings, 1)
+    const bed = createBed(settings, 1)
+    const nothing = () => {}
+
+    // `bursts: 0`, so nothing can happen on its own — which is what makes the
+    // count attributable.
+    for (let frame = 0; frame < 120; frame++) {
+      air.step(STEP)
+      bed.step(STEP, air, nothing)
+    }
+    expect(bed.bursts).toBe(0)
+    expect(air.vigour()).toBeCloseTo(1, 2)
+
+    bed.burst()
+    air.step(STEP)
+    bed.step(STEP, air, nothing)
+    expect(bed.bursts).toBe(1)
+    // Vigour is raised before the vortex pair is made, so the puff's own
+    // circulation is set from the swollen plume rather than the resting one.
+    expect(air.vigour()).toBeGreaterThan(1.5)
+
+    // And it relaxes back, with a time constant of about six tenths of a second.
+    for (let frame = 0; frame < 240; frame++) {
+      air.step(STEP)
+      bed.step(STEP, air, nothing)
+    }
+    expect(air.vigour()).toBeCloseTo(1, 2)
+  })
+})
+
 describe("the campfire, in detail", () => {
   const outcome = burn(DEFAULT_SETTINGS, 25)
 

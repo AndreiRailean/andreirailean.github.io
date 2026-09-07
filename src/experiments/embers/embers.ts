@@ -42,7 +42,7 @@
  * different name. The poster and the note's backdrop take the same route.
  */
 
-import { hashSeed, makeRng } from "@/experiments/random"
+import { gaussian, hashSeed, makeRng } from "@/experiments/random"
 import { createAir, type Air } from "@/experiments/embers/air"
 import { createBed, type Bed } from "@/experiments/embers/bed"
 import { blankEmber, dress, stepEmber, type Ember, type Physics } from "@/experiments/embers/ember"
@@ -197,9 +197,15 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
     const low = settings.sizeMin * spawn.size
     const high = Math.max(low, settings.sizeMax * spawn.size)
     // Tone is the ember's place in the hue spread: a clamped normal draw
-    // remapped to 0…1, which `draw.ts` turns back into degrees. Both halves of
-    // that mapping are stated in one place there.
-    const tone = Math.min(1, Math.max(0, 0.5 + (rng() + rng() + rng() - 1.5) * 0.55))
+    // remapped to 0…1, and it has to be *exactly* the inverse of what
+    // `bucketHue` does with it — that function reads the ends of 0…1 as ±2.5σ,
+    // so the draw has to be divided by five and nothing else. A sum of three
+    // uniforms stood here and was a σ of 0.276 rather than 0.2, which made
+    // every scene's hue spread 38% wider than its own slider said. That is not
+    // a cosmetic error: the fire presets are set just inside the point where a
+    // symmetric rotation carries the cool end of the locus past red into
+    // magenta.
+    const tone = Math.min(1, Math.max(0, 0.5 + gaussian(rng) / 5))
     dress(ember, rng, low, high, settings.heat * spawn.heat, tone)
 
     ember.x = spawn.x
