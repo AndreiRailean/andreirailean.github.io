@@ -87,7 +87,17 @@ seeing water of the same size is a deliberate property, not an accident.
 ## Consequences
 
 - The gallery's interactive view, which renders pieces at phone sizes, is
-  already relying on the tuned-for-a-viewport case and is fine.
+  already relying on the tuned-for-a-viewport case and is fine. Its own record,
+  `20260901-the-gallery-presents-a-piece-on-a-phone.md`, states the assumption
+  more broadly than this one supports — "a narrow viewport is just another aspect
+  ratio" — and now carries a note pointing here, because a session designing a
+  page-sized frame read it as a deliberate choice about full-bleed that it would
+  be contradicting.
+- **Aspect ratio is not the variable.** Worth saying because pinning one is the
+  obvious first move for anything presenting a scene across devices, and it does
+  not address this: 1280×800 and 320×200 in the table above are both 8:5, and the
+  density between them doubles. Fixing the shape fixes the crop and leaves the
+  picture to be chosen.
 - A poster captured at one size is not a preview of the piece at another.
 - Anything that ever renders a piece into a page-sized region rather than a
   viewport should expect to want its own settings, and should not read that as

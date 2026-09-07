@@ -11,11 +11,33 @@ summary: A touch device gets the piece full-bleed with no chrome and three gestu
 
 The pieces already fitted a phone screen — they are full-bleed graphics and a
 narrow viewport is just another aspect ratio. What did not fit was everything
-around them. The kit's bar puts preset buttons and a `adjust` toggle at 12px
-tall in the corner, and the panel behind it is thirty rows of sliders; on a
-touch screen those are targets nobody can hit and nobody wants to. The section's
-author, looking at the index on a phone, reached for gestures that were not
-there: sideways through a piece's scenes, up and down between pieces, the way an
+around them.
+
+> **That first sentence is true of the case this record decides and false as a
+> general claim, and it has now misled a reader.** `20260906-a-frame-is-not-a-viewport.md`
+> measured it: Starry Night's dot count grows with `area^0.75` because a smaller
+> _viewport_ implies a closer viewer, so the same scene comes out roughly twice
+> as dense at 320×200 as at 1280×800 — **which are the same aspect ratio.** What
+> moves the picture is size, not shape.
+>
+> The decision below is unaffected, and that ADR says so outright: a phone
+> viewport _is_ a viewport, held close, so the interactive view "is already
+> relying on the tuned-for-a-viewport case and is fine". Read the sentence above
+> as being about the chrome not fitting, which is what the paragraph below it
+> goes on to describe.
+>
+> **What it must not be read as** is a licence for anything else that renders a
+> piece into a box. A page-sized region is the other clause of that ADR —
+> "whatever renders a piece at a size it was not tuned for owns choosing settings
+> for it" — and a session designing one asked whether full-bleed here had been a
+> deliberate choice it would be contradicting. It had not; the two are different
+> cases. Noted here so the next one does not have to ask.
+
+The kit's bar puts preset buttons and a `adjust` toggle at 12px tall in the
+corner, and the panel behind it is thirty rows of sliders; on a touch screen
+those are targets nobody can hit and nobody wants to. The section's author,
+looking at the index on a phone, reached for gestures that were not there:
+sideways through a piece's scenes, up and down between pieces, the way an
 Instagram feed works.
 
 So a piece needed a second presentation. The question was whose it is, and how
