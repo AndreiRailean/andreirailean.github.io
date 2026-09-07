@@ -144,7 +144,8 @@ claims that are checkable that way are the ones least likely to be corpses.
   no memory and no exit-time discipline. Worktrees share refs through the common
   `.git` dir, so a branch on this machine is visible without a fetch or a push;
   pushing buys the same visibility across machines. A pushed branch with no PR
-  costs nothing — `test.yml` and `lint.yml` are both `on: pull_request`.
+  costs nothing — every workflow is `on: pull_request` (`test-unit.yml`,
+  `test-browser.yml` and `lint.yml`).
 - **The claiming comment and the issue's own activity** are timestamped by GitHub
   and reach everywhere, which is the property `ListAgents` lacks.
 
