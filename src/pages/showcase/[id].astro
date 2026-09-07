@@ -1,0 +1,20 @@
+---
+/**
+ * One published scene, addressable.
+ *
+ * Every entry is a real page rather than a fragment, so a shared link lands on
+ * the scene it names with the right title and description, with no client-side
+ * routing having to run first. Moving between entries afterwards never comes
+ * back here: the viewer swaps in place and rewrites the address.
+ */
+import Wall from "@/showcase/Wall.astro"
+import { WALL } from "@/showcase/wall"
+
+export function getStaticPaths() {
+  return WALL.map((entry, start) => ({ params: { id: entry.id }, props: { start } }))
+}
+
+const { start } = Astro.props
+---
+
+<Wall start={start} />
