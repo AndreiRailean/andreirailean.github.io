@@ -604,6 +604,10 @@ export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flo
       frame = 0
       running = false
       window.removeEventListener("resize", onResize)
+      // Both of them, or the one left behind holds this whole closure alive —
+      // canvas, settings and 8,500 specks — for every mount that is ever torn
+      // down. See #168; `tests/unit/experiments-listeners.test.ts` now checks it.
+      stillOnly.removeEventListener("change", wake)
     },
 
     setPaused(paused) {

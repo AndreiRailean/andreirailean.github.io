@@ -389,6 +389,19 @@ else, and picks the clock up from the moment it comes back rather than from wher
 it was left. Starry Night is the one piece where `stop`/`start` already did
 exactly that.
 
+**So `stop()` drops _every_ listener the scene took, and a handler must be named
+so that it can.** Not just the resize one: a handler holds its closure, and that
+closure is the whole scene — canvas, settings, buffers, and in Flotsam's case
+8,500 specks — so one left behind retains an entire scene per mount that is torn
+down. Flotsam and Dangler each registered two and dropped one, while Walkers,
+nearly byte-identical, dropped both; and Dangler's was an **inline arrow**, so no
+reference existed and the missing `removeEventListener` was unwritable rather than
+forgotten. Nothing visible happens when this is wrong — the leaked callback wakes
+a loop that is not running — and it cost nothing until a host existed that mounts
+and unmounts repeatedly. `tests/unit/experiments-listeners.test.ts` holds both
+halves, and takes a `kit-opt-out: <reason>` line for a listener that genuinely
+has to outlive teardown. See #168.
+
 The global is declared **once for the section**, as `unknown`, in `window.d.ts`;
 each piece keeps its own typed reference rather than widening it. Do not add a
 second declaration — see
