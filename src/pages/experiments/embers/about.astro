@@ -1,0 +1,63 @@
+---
+import { getCollection } from "astro:content"
+import Note, { type NoteTheme } from "@/experiments/gallery/Note.astro"
+import { PRESETS } from "@/experiments/embers/settings"
+
+// The note's furniture is the gallery's; only the paint is this piece's. See
+// docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.
+const entry = (await getCollection("experiments")).find(({ data }) => data.slug === "embers")
+if (!entry) throw new Error("Embers: missing about.md")
+
+// Read off the primary rather than written down, so promoting a preset moves the
+// note's accent along with the poster and the landing scene. Every instance of
+// this fault in the section was a hue typed as a literal, correct on the day.
+const primary = PRESETS[0]!.settings
+---
+
+<Note
+  entry={entry}
+  theme={{
+    bg: "#0a0605",
+    sheet: "rgb(10 6 5 / 74%)",
+    fg: "#e2d6cd",
+    bright: "#fbf5f0",
+    muted: "#9b8479",
+    edge: "rgb(255 235 215 / 12%)",
+    accent: `hsl(${primary.hue} 82% 62%)`,
+  } satisfies NoteTheme}
+  backdrop={0.5}
+>
+  <script>
+    import { createEmbers } from "@/experiments/embers/embers"
+    import { normalizeSettings, PRESETS } from "@/experiments/embers/settings"
+
+    const canvas = document.getElementById("backdrop")
+    if (canvas instanceof HTMLCanvasElement) {
+      // Calmer than the piece proper: this one is scenery, not the subject, so
+      // the fire is small, far away and not bursting. The only thing held to the
+      // primary is the hue — everything else here is a deliberate turning-down,
+      // and taking the whole preset would undo it.
+      const fire = createEmbers(
+        canvas,
+        normalizeSettings({
+          hue: PRESETS[0]!.settings.hue,
+          span: 9,
+          bed: 0.4,
+          sputter: 0.55,
+          pops: 0.3,
+          bursts: 1.5,
+          updraft: 3.6,
+          count: 900,
+          firelight: 0.18,
+          exposure: 1.1,
+          trail: 0.5,
+        }),
+      )
+      fire.start()
+      // A backdrop is a still until it is looked at for a while, and this one
+      // accumulates: without a run-up the sheet sits over an empty frame for the
+      // first second of every visit.
+      fire.settle(6)
+    }
+  </script>
+</Note>

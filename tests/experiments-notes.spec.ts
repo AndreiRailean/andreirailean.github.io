@@ -19,6 +19,7 @@ const NOTES = [
   { slug: "flotsam", title: "Flotsam" },
   { slug: "psyxels", title: "Psyxels" },
   { slug: "walkers", title: "Walkers" },
+  { slug: "embers", title: "Embers" },
 ]
 
 /** In this order, on every note, forever. That is the whole point of the layout. */
