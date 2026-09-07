@@ -137,8 +137,8 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
   const seed = 0x656d62
   const rng = makeRng(hashSeed(seed, 0x706f6f6c))
 
-  let air: Air = createAir(settings, seed)
-  let bed: Bed = createBed(settings, seed)
+  const air: Air = createAir(settings, seed)
+  const bed: Bed = createBed(settings, seed)
   let sheet: Sheet = makeSheet(settings.hue, settings.hueSpread, seed)
 
   let pool: Ember[] = []

@@ -29,6 +29,19 @@ import type { PosterRecipe } from "@/experiments/poster"
 const poster: PosterRecipe<ExperimentApi> = {
   preset: "campfire",
 
+  /**
+   * The primary, wound *up* rather than down — because the poster is a wide
+   * frame and the piece is a vertical column.
+   *
+   * `span` is metres across the **shorter** side, so a 16:9 still sees nearly
+   * eight metres of air across and a campfire's column is one of them. That is
+   * an honest picture of the piece in a wide window and a poor thumbnail. A
+   * closer framing and a livelier fire fill it: more sputter for density, and
+   * enough gust that the column has leaned and spread across the frame instead
+   * of standing in the middle of it.
+   */
+  settings: { span: 3.4, sputter: 2.4, gust: 1.2, bursts: 12 },
+
   async prepare({ api }) {
     // Long enough for embers to have reached the top of the frame and for two
     // or three bursts to have gone through at six a minute.

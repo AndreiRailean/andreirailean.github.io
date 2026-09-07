@@ -95,8 +95,6 @@ function lattice(seed: number, i: number, j: number, k: number): number {
 /** Quintic ease. Perlin's improved fade: zero first *and* second derivative at the ends. */
 const fade = (t: number): number => t * t * t * (t * (t * 6 - 15) + 10)
 
-const mix = (a: number, b: number, t: number): number => a + (b - a) * t
-
 /** Gradient noise on the unit lattice, roughly in [-1, 1]. */
 export function noise3(seed: number, x: number, y: number, z: number): number {
   const xi = Math.floor(x)

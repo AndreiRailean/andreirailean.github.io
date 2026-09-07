@@ -15,13 +15,30 @@
  * particle appearing at rest at the lower edge of a frame reads as a particle
  * system.
  *
- * ## Span is metres across the shorter side
+ * ## Span is metres from the bottom edge to the top, and that differs from the
+ * other pieces on purpose
  *
- * Matching every piece before it: a portrait phone gets the framing a monitor
- * gets vertically, and a wide window sees more air to the sides rather than a
- * squashed version of the same column. **A frame is not a viewport** — see
- * `../docs/adr/20260906-a-frame-is-not-a-viewport.md`. Nothing here is tuned for
- * a window size; every length in the piece is in metres and the view converts.
+ * Every piece before this one maps its span across the **shorter side**, so a
+ * portrait phone gets the framing a monitor gets vertically. That is right for
+ * a subject with no preferred direction — a sky, a sea, a crowd from above —
+ * and it is wrong here, because this piece's subject is a *column*. It has a
+ * natural height, and the frame's job is to hold it.
+ *
+ * On a landscape monitor the two rules are the same rule: the shorter side *is*
+ * the height, so nothing about the desktop picture changes. They diverge on a
+ * portrait phone, where the shorter side is the width — which at `span` 4.5 on
+ * a 390×844 screen gave a world **nine and a half metres tall** with a column
+ * reaching five, so a third of the picture was empty sky and the embers were
+ * half the size they are on a desktop. Framing by height gives that phone the
+ * same column at the same scale in a narrower crop, which is what "the same
+ * piece" ought to mean.
+ *
+ * `../docs/adr/20260906-a-frame-is-not-a-viewport.md` is the section's record on
+ * this, and it says two things that matter here: a phone viewport is a tuned
+ * case rather than an arbitrary frame, and **aspect ratio is not the variable**
+ * — fixing the shape would fix the crop and leave the picture to be chosen. So
+ * this chooses the picture. Nothing else in the piece is tuned for a window
+ * size; every length is in metres and the view converts.
  */
 
 export type View = {
@@ -63,10 +80,9 @@ export type View = {
 }
 
 export function makeView(span: number, hearth: number, width: number, height: number): View {
-  const shortSide = Math.max(1, Math.min(width, height))
-  const pxPerMetre = shortSide / Math.max(0.05, span)
+  const frameHeight = Math.max(0.05, span)
+  const pxPerMetre = Math.max(1, height) / frameHeight
   const halfWidth = width / 2 / pxPerMetre
-  const frameHeight = height / pxPerMetre
 
   return {
     width,

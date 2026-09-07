@@ -250,8 +250,6 @@ export type Physics = {
   breath: number
 }
 
-const scratch = new Float64Array(2)
-
 /**
  * One ember, one step.
  *

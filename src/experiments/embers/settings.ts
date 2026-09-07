@@ -73,7 +73,7 @@ export type Settings = {
   burn: number
   /** How much airflow fans an ember: brighter, and shorter lived. */
   breath: number
-  /** Metres across the shorter side of the frame. */
+  /** Metres of air from the bottom edge of the frame to the top. */
   span: number
   /** Hue the whole blackbody locus is rotated to, degrees. */
   hue: number
@@ -324,7 +324,7 @@ export const CONTROLS: Control[] = [
     step: 0.01,
     scale: "log",
     format: (v) => (v < 1 ? `${Math.round(v * 100)}cm` : `${v.toFixed(1)}m`),
-    hint: "How much air the frame holds, in metres across its shorter side. This is where you stand, and it is the only control that changes what an ember's shape is: at a metre or less they are several pixels across and you can see them tumble, and at twenty they are points of light in a column.",
+    hint: "How much air the frame holds, top to bottom, in metres — which is where you stand. Measured up the frame rather than across its shorter side, because the subject is a column and a column has a height; a narrow screen therefore gets the same fire in a narrower crop rather than a smaller one in a taller world. It is also the only control that changes what an ember's shape is: at a metre or less they are several pixels across and you can watch them tumble, and at twenty they are points of light in a column.",
   },
   {
     kind: "slider",
