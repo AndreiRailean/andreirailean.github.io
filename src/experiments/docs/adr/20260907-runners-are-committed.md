@@ -50,6 +50,22 @@ unchanged — which is the property the content-addressed naming already promise
 one section up. `tests/unit/showcase-runners.test.ts` runs the script and fails
 if a committed file moved.
 
+**And the untruth had already landed, which is the part worth keeping.** Not a
+working-copy observation: `ee57788` — a documentation-only commit, "the
+superseded record no longer reads as live", in PR #160 — carries
+
+```diff
+-  "commit": "1b6c6e48e2ba2f4ab1486b14b3e1cc780fd5372a",
++  "commit": "bd5b4b7d1f02ba706a450779a646f67b6f89142f",
+```
+
+and nothing else. `starry-night.490e5f9452c8.js` is unchanged across both, so the
+provenance stamp moved in a commit that touched no runner and no code. `bd5b4b7`
+is simply what HEAD happened to be when somebody last ran the browser suite. A
+field that records something other than what it claims is worse than no field,
+which is why the semantics are the more important half of this amendment and the
+tracked-file rule is the more visible one.
+
 **Committed by hand, in the change that alters the piece.** `pnpm run runners`
 writes them; a human or an agent commits what it wrote. The precedent is
 `20260828-posters-are-captured-by-hand.md`, and the reasoning transfers: this is
