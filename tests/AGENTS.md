@@ -106,6 +106,47 @@ The suite also serves the Astro dev toolbar's module empty, since it is part of
 the dev server rather than the site and injects four extra `h1`s into every page.
 `tests/harness.spec.ts` checks that suppression still works.
 
+## A running piece starves the thread Playwright is talking to
+
+**Everything gets uniformly slower, and nothing stalls.** That is what makes it
+read as a mystery instead of as contention.
+
+Measured on flotsam, whose default scene is 8,500 specks, ten `boundingBox()`
+calls on a panel row:
+
+|                          | 10 boxes |
+| ------------------------ | -------- |
+| piece running            | 9,934ms  |
+| `api.pause(true)` first  | 279ms    |
+| `reducedMotion: true`    | 215ms    |
+| running, but `dots: 100` | 346ms    |
+
+**35x on a call that touches no canvas.** A `boundingBox`, a `getAttribute`, an
+`api.get()` — all of them queue behind the render on the single core a headless
+run has. `flotsam: both handles of a bound pair` took 24 seconds for this reason
+and failed once in a full suite when other work pushed a 10-second `expect`
+timeout over.
+
+**So a test about the chrome should hold the piece.** `api.pause(true)` is in the
+minimum surface of every piece and parks the frame loop without tearing anything
+down — `stats().running` goes false. Do it before touching the panel, not after.
+`kit.spec.ts` does, and says so.
+
+**And a drag is one settings change per step.** `page.mouse.move(x, y, { steps:
+8 })` is eight of them, and a settings change can be expensive: flotsam's size
+pair is in `needsScatter`, so eight steps rebuilt 8,500 specks eight times per
+handle. One move is enough when the assertion that follows proves the handle
+took. Holding the piece and dropping to one move measured 14,945ms to 6,232ms
+for the same sequence.
+
+**Do not read a single whole-test timing as a measurement.** This box is shared
+with other sessions, and the same test measured 24s, 29s and 41-55s within an
+hour with no code change — overlapping ranges for conditions that differ by
+2.4x. Compare conditions **inside one run**, where they meet the same load: a
+loop of ten identical calls, or two tests in one file. Every reliable number
+above came out that way, and the unreliable ones sent this investigation after a
+race that was never there.
+
 ## The principle
 
 **Assert on numbers. Do not compare pixels.**
