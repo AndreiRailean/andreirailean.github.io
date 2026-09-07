@@ -12,10 +12,20 @@ import { litPixels as countLit } from "./support/canvas.ts"
  * canvas: whether anything is actually painted, what a frame costs, and whether
  * a reduced-motion visitor gets a fire or an empty rectangle.
  *
- * The cost assertion is the one worth reading. It states the piece's least
- * obvious property as a number — that drawing cost is set by `flare` and not by
- * `count` — and it is written as a ratio because a headless run has no GPU and
- * its absolute frame times are pessimistic. See `src/experiments/AGENTS.md`.
+ * **The piece's frame cost is checked in the unit runner, not here**, and the
+ * reason is worth keeping. It was asserted through `drawMs` as a ratio between
+ * two flare settings, on the section's own advice that a headless run's absolute
+ * frame times are pessimistic and its ratios are not. That advice does not
+ * survive four parallel workers: contention is added to *both* halves of a
+ * wall-clock ratio, so at enough load the ratio approaches 1 whatever the
+ * drawing is doing. Measured — 30.7 ms against 15.5 ms where the same test alone
+ * gives 8 ms against 1.6 ms — it failed one run in three and passed every time
+ * it was run by itself, which is the exact signature of flotsam's #65.
+ *
+ * The claim underneath it is about *area*, which is arithmetic:
+ * `tests/unit/embers/mark.test.ts` holds `haloRadius` to it, and the measured
+ * milliseconds live in `src/experiments/embers/AGENTS.md`, where a measurement
+ * belongs.
  */
 
 /** The ground is `hsl(25 55% 2.6%)`, whose channels sum to about 18. */
@@ -54,39 +64,6 @@ test("puts embers over the fire, and draws fewer of them than it is carrying", a
   expect(stats.drawn).toBeLessThan(stats.alive)
 
   await experiment.shot("campfire")
-})
-
-// browser-because: `drawMs` is time spent in canvas calls, which is the subject.
-// The headless core has no drawing in it at all — that is why it is headless —
-// so this is the one claim in the piece that cannot be made anywhere else.
-test("the cost of a frame is set by flare, not by how many embers there are", async ({ page }) => {
-  const experiment = await openFire(page, { settings: { count: 1500, sputter: 2, flare: 0.15 }, idle: true })
-
-  // `settle` draws synchronously, so `drawMs` — a rolling average — has
-  // converged by the time it returns. A frame wait would give one sample.
-  const bare = await experiment.api(({ api }) => {
-    api.settle(4)
-    return api.stats()
-  })
-
-  const flared = await experiment.api(({ api }) => {
-    api.set({ flare: 2.4 })
-    api.settle(4)
-    return api.stats()
-  })
-
-  // The same population either way: `flare` is a drawing setting and touches
-  // nothing the simulation does. Without this the comparison below could be
-  // measuring a busier fire.
-  expect(Math.abs(flared.alive - bare.alive) / bare.alive).toBeLessThan(0.35)
-
-  // Compositing a scaled sprite costs its destination area, so the frame costs
-  // the sum of the squares of the halo radii. Sixteen times the radius is not
-  // sixteen times the cost, because the halo also scales with the mark's core
-  // and its brightness — but it is emphatically not free, and it is the largest
-  // single term in a heavy frame. 27 ms against 5 ms, measured, at three
-  // thousand embers.
-  expect(flared.drawMs).toBeGreaterThan(bare.drawMs * 2)
 })
 
 test("a mote is drawn with no body at all, and still paints", async ({ page }) => {

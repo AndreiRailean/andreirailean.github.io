@@ -164,6 +164,47 @@ export const sheetMatches = (sheet: Sheet, settings: Settings): boolean =>
 /** The near-black the picture sits on, tinted from the same hue the embers are. */
 export const groundColour = (hue: number): string => `hsl(${hue} 55% 2.6%)`
 
+/**
+ * How much halo a mark of each kind throws, as a multiplier.
+ *
+ * A spark is hard and nearly bare; a mote is *only* halo, so it carries the most.
+ */
+const FLARE_SCALE: Record<Mark, number> = { ember: 1, spark: 0.45, mote: 2.1, flake: 1 }
+
+/**
+ * The radius of a mark's bright body, in CSS pixels.
+ *
+ * Floored, because a 3 mm ember in a frame three metres across is 0.45 px and
+ * every part of "tiny, irregular shaped" has to survive that. Grows with
+ * brightness as well as with size, which is the eye's own point spread rather
+ * than a fudge — see the note at the top of this file.
+ */
+export function coreRadius(sizeMm: number, pxPerMetre: number, alpha: number): number {
+  return Math.max(MIN_CORE, (sizeMm / 2000) * pxPerMetre) * (0.7 + 0.9 * alpha)
+}
+
+/**
+ * The radius of a mark's halo, in CSS pixels. Zero means it has none.
+ *
+ * **This function is the piece's frame budget.** Compositing a scaled sprite
+ * costs its destination *area*, so the cost of a frame is the sum of the squares
+ * of what this returns — which makes `flare` the performance control and `count`
+ * not, the opposite of what anybody guesses. Doubling `flare` roughly doubles
+ * this and therefore roughly quadruples the cost.
+ *
+ * It is a named function rather than an expression inside the draw loop so the
+ * relationship can be checked without a browser. It was asserted through
+ * `drawMs` in the browser suite first, and that test was genuinely flaky: a
+ * wall-clock *ratio* under four parallel workers has contention added to both
+ * halves, so at enough load it approaches 1 whatever the drawing is doing. The
+ * observed magnitude — 27 ms against 5 ms at three thousand embers — is recorded
+ * in `AGENTS.md`, where a measurement belongs; the relationship is checked here.
+ */
+export function haloRadius(core: number, alpha: number, flare: number, mark: Mark): number {
+  if (flare <= 0) return 0
+  return core * (2.4 + flare * 15) * FLARE_SCALE[mark] * (0.5 + alpha * 0.9)
+}
+
 export type DrawStats = {
   /** Marks that reached the glass. Not the same as the population — dark ones do not. */
   drawn: number
@@ -280,7 +321,6 @@ export function drawEmbers(
   const wantsCore = mark !== "mote"
   const wantsStreak = mark === "ember" || mark === "spark" || mark === "flake"
   const wantsOutline = mark === "ember" || mark === "flake"
-  const flareScale = mark === "spark" ? 0.45 : mark === "mote" ? 2.1 : 1
 
   for (const ember of embers) {
     if (!ember.alive) continue
@@ -310,8 +350,7 @@ export function drawEmbers(
     const sx = screenX(view, ember.x)
     const sy = screenY(view, ember.y)
 
-    const physical = (ember.size / 2000) * view.pxPerMetre
-    const core = Math.max(MIN_CORE, physical) * (0.7 + 0.9 * alpha)
+    const core = coreRadius(ember.size, view.pxPerMetre, alpha)
 
     // The halo. Radius grows with brightness, which is veiling glare and is why
     // a hot ember looks bigger than a cool one of the same size.
@@ -324,8 +363,10 @@ export function drawEmbers(
     // is the performance control and `count` is not, which is the opposite of
     // what anybody would guess, and is why the dense presets carry a lower
     // flare rather than fewer embers.
-    if (settings.flare > 0 && alpha >= 0.05) {
-      const halo = core * (2.4 + settings.flare * 15) * flareScale * (0.5 + alpha * 0.9)
+    // The dim tail is skipped rather than drawn at an alpha nobody can see: it
+    // is most of the population and all of it costs destination area.
+    const halo = alpha >= 0.05 ? haloRadius(core, alpha, settings.flare, mark) : 0
+    if (halo > 0) {
       const sprite = sheet.glow[bucket * RAMP_STEPS + step]!
       context.globalAlpha = alpha
       context.drawImage(sprite, sx - halo, sy - halo, halo * 2, halo * 2)

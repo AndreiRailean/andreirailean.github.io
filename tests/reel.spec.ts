@@ -48,6 +48,10 @@ type ReelApi = BaseApi & {
  */
 type ReelWindow = Window & { __shown?: string[] }
 
+/** A control with bounds to read, as opposed to a choice or a toggle. */
+const hasATrack = (control: ControlReport): control is Extract<ControlReport, { min: number }> =>
+  control.kind === "slider" || control.kind === "range"
+
 async function recordMiddle(page: Page) {
   await page.addInitScript(() => {
     const shown: string[] = []
@@ -136,20 +140,39 @@ test("the kit publishes which preset is on screen, and forgets when it is nobody
   // is nobody's preset has to be legible as such rather than reported as the
   // first one.
   //
-  // Moved to a value that is demonstrably not the one already held, and the
-  // move is asserted before the attribute is. The midpoint was the obvious
-  // choice and is a trap: on at least one piece it *is* the loaded preset's
-  // value for that key, so nothing moves and the attribute is correct to stay —
-  // the assertion then passes having tested nothing. See #85.
+  // **Moving a setting off its preset is harder than it looks, and this is the
+  // third shape of the same mistake.** The move has to be asserted before the
+  // attribute is, because every way of failing to move leaves the attribute
+  // correctly unchanged and the test passing having tested nothing.
+  //
+  // - The midpoint was the first choice, and on at least one piece it *is* the
+  //   loaded preset's value for that key. #85.
+  // - `+1` on the first numeric setting was the second, and it is a no-op
+  //   wherever that setting's grid is coarser than 1 —
+  //   `normalizeSettings` snaps, so `2200 + 1` comes back as 2200. Embers' first
+  //   numeric setting is a population on a log track with a step of ten, and it
+  //   is the piece that found this.
+  //
+  // So the move is taken from the piece's own control rather than invented: a
+  // slider knows its bounds, and two candidates along its track means one of
+  // them is not whatever is held. Any piece with a slider satisfies this, and a
+  // piece with none says so rather than being quietly skipped.
   const before = await experiment.api(({ api }) => api.get())
-  const key = Object.keys(before).find((name) => typeof before[name] === "number")
-  if (key === undefined) throw new Error("no numeric setting to move")
+  // Narrowed out here rather than inside the page: `api()` serialises its result,
+  // so a discriminated union comes back as the whole union whatever the callback
+  // did with it.
+  const track = (await experiment.api(({ api }) => api.controls())).find(hasATrack)
+  if (track === undefined) throw new Error("no slider to move — this piece needs its own version of this check")
+
+  const held = before[track.key]
+  const candidates = [0.37, 0.63].map((along) => track.min + (track.max - track.min) * along)
+  const wanted = candidates.find((value) => value !== held) ?? candidates[0]!
 
   const moved = await experiment.api(({ api, arg }) => api.set({ [arg.key]: arg.value } as never), {
-    key,
-    value: (before[key] as number) + 1,
+    key: track.key,
+    value: wanted,
   })
-  expect(moved[key], `${key} did not take the new value, so nothing was tested`).not.toBe(before[key])
+  expect(moved[track.key], `${track.key} did not take the new value, so nothing was tested`).not.toBe(held)
   expect(await sceneIndex(page)).toBeUndefined()
 })
 

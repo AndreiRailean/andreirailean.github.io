@@ -81,6 +81,30 @@ A third, found by the debug overlay rather than by numbers:
   nothing. Pairing fixed it and is the actual physics. The field now settles
   around a dozen.
 
+## Two shared tests this piece broke, and what they assumed
+
+Both were fixed rather than worked around, and both assumed something the
+section's own rules do not promise. Told to the steward, since `tests/` is shared
+ground.
+
+- **`tests/kit.spec.ts` and `tests/reel.spec.ts` both nudged a numeric setting by
+  `+1`** to reach a scene that is nobody's preset. Every numeric setting in the
+  section lands on a grid — `../docs/adr/20260906-a-setting-lands-on-a-grid.md` —
+  and where that grid is coarser than 1, `normalizeSettings` snaps the nudge
+  straight back. This piece's first varying setting is a population on a log
+  track with a step of ten, so `2600 + 1` came back as 2600 and both checks
+  failed. Four pieces had been passing on the coincidence that their own first
+  varying setting was stored in whole units. The reel's version now moves a value
+  along a control's own track; the kit's uses interior points between preset
+  values, because a kit-wide assertion may only lean on what every piece promises
+  and `controls()` is not part of that.
+
+- **`tests/reel.spec.ts` picks `slugs[0]`**, the first plate on the index, which
+  is whichever piece was touched most recently. Adding a piece therefore moves
+  which piece the whole interactive-view suite runs against — deliberately, and
+  worth knowing when a reel test starts failing for no reason connected to the
+  reel.
+
 ## Traps
 
 - **`flare` is the performance control, and `count` is not.** Compositing a
@@ -90,6 +114,17 @@ A third, found by the debug overlay rather than by numbers:
   what anybody guesses, which is why the dense presets carry a lower flare rather
   than fewer embers. `experiment.debug(true)` prints `drawMs` separately from
   `fps` precisely so the two can be told apart.
+
+  The relationship is held by `tests/unit/embers/mark.test.ts`, on `haloRadius`,
+  and **not** by a timing assertion — which was tried and was genuinely flaky.
+  The section's own advice is that a headless run's absolute frame times are
+  pessimistic and its _ratios_ are trustworthy, and that does not survive four
+  parallel workers: contention is added to both halves of a wall-clock ratio, so
+  it approaches 1 at enough load. The same comparison gives 8 ms against 1.6 ms
+  run alone and 30.7 ms against 15.5 ms under load — it failed one run in three
+  and passed every time it was run by itself. The magnitudes above are the
+  record; the mechanism is the test.
+
 - **The picture accumulates.** Every preset has `trail` above zero, so what is on
   the glass is built from the last couple of dozen frames rather than being a
   function of the current state. **A fast-forward that draws only its final frame

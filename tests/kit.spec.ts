@@ -253,15 +253,45 @@ for (const slug of PIECES) {
 
     // A value no preset uses for this key, so the attribute has to go absent
     // rather than land on a neighbour by coincidence.
+    //
+    // **`+1` was the third attempt and it is wrong for the same reason as the
+    // first two: it can silently fail to move anything.** Every numeric setting
+    // in the section lands on a grid — `docs/adr/20260906-a-setting-lands-on-a-grid.md`
+    // — and where that grid is coarser than 1, `normalizeSettings` snaps the
+    // nudge straight back. Embers' first varying setting is a population on a
+    // log track with a step of ten, so `2600 + 1` came back as 2600 and the
+    // assertion below fired. Four pieces had passed on the coincidence that
+    // their own first varying setting was stored in whole units.
+    //
+    // So the candidates are **interior points between preset values**, which is
+    // the one construction that needs neither bounds nor a grid: `key` was
+    // chosen for varying across the presets, so there are at least two distinct
+    // legal values with room between them, and nothing here can clamp. What is
+    // asserted is the value that came *back* — snapping is expected, landing on
+    // a preset's value is what has to be ruled out.
     const taken = new Set(scenes.map((each) => each[key] as number))
-    let free = (scene[key] as number) + 1
-    while (taken.has(free)) free += 1
+    const distinct = [...taken].sort((a, b) => a - b)
+    const candidates = distinct.flatMap((value, index) =>
+      index === 0
+        ? []
+        : [0.25, 0.5, 0.75].map((along) => distinct[index - 1]! + (value - distinct[index - 1]!) * along),
+    )
 
-    const moved = await experiment.api(({ api, arg }) => api.set({ [arg.key]: arg.value } as never), {
-      key,
-      value: free,
-    })
-    expect(moved[key], `${slug}: setting ${key} did not take, so nothing was tested`).toBe(free)
+    let moved: Record<string, unknown> | undefined
+    for (const candidate of candidates) {
+      moved = await experiment.api(({ api, arg }) => api.set({ [arg.key]: arg.value } as never), {
+        key,
+        value: candidate,
+      })
+      if (!taken.has(moved[key] as number)) break
+      moved = undefined
+    }
+
+    expect(
+      moved,
+      `${slug}: no value between its presets' ${key} survived normalisation as something no preset ` +
+        `holds, so nothing was tested. Tried ${candidates.join(", ")} against ${distinct.join(", ")}.`,
+    ).toBeDefined()
     expect(await shown(), `${slug} still claims a preset after ${key} moved`).toBeUndefined()
   })
 
