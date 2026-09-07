@@ -29,7 +29,10 @@
  * A commit hash is also the harder number to be honest about: a runner bundles a
  * piece *and* whatever section-level code it imports, so no single commit
  * describes it. The manifest records the commit anyway, for tracing a runner
- * back to a tree.
+ * back to a tree — **the commit at which these runners were built**, which is
+ * why the manifest is rewritten only when a runner hash actually changes. It
+ * used to be written unconditionally, and therefore recorded the commit at which
+ * somebody last started a dev server. See `manifestUnchanged` below and #163.
  *
  * ## Output, and which half is committed
  *
@@ -102,6 +105,52 @@ function commit(): string {
   }
 }
 
+type Manifest = { commit: string; runners: Record<string, string> }
+
+/** What is committed, or `null` if there is nothing readable there yet. */
+async function currentManifest(path: string): Promise<Manifest | null> {
+  try {
+    const parsed = JSON.parse(await readFile(path, "utf8")) as Manifest
+    return parsed.runners && typeof parsed.runners === "object" ? parsed : null
+  } catch {
+    // Absent, or corrupt. Either way the right answer is to write a fresh one.
+    return null
+  }
+}
+
+/**
+ * Whether the manifest on disk already names exactly these runners.
+ *
+ * **This is what stops `pnpm test` writing a tracked file**, and the field it
+ * protects is `commit`. `pnpm run dev` is `pnpm run runners && astro dev`, so
+ * the browser suite's `globalSetup` runs this script every time it starts a
+ * server — and an unconditional write stamped HEAD into a committed file on
+ * every run, leaving the tree dirty for a change nobody made.
+ *
+ * That is forbidden outright by `src/experiments/AGENTS.md` ("not `pnpm test`,
+ * which must never write tracked files") and it made the field a lie besides:
+ * `commit` is documented as being "for tracing a runner back to a tree", and
+ * what it actually recorded was the commit at which somebody last started a dev
+ * server. The two coincide only by luck. #163 is the case — the field moved two
+ * commits while the runner hash beside it, `starry-night.490e5f9452c8.js`, did
+ * not move at all.
+ *
+ * It also mattered more here than the churn suggests. `public/showcase/` is the
+ * one directory where misreading `git status` is expensive: a runner is
+ * committed *because* GitHub Pages keeps no history, and a session that saw a
+ * stray modification in here was once on the point of gitignoring the lot.
+ *
+ * **Compared on the runners map alone**, deliberately. Comparing whole files
+ * would include `commit` and so always differ, which is the bug.
+ */
+async function manifestUnchanged(path: string, runners: Record<string, string>): Promise<boolean> {
+  const existing = await currentManifest(path)
+  if (!existing) return false
+  const same = (a: Record<string, string>, b: Record<string, string>) =>
+    Object.keys(a).length === Object.keys(b).length && Object.entries(a).every(([slug, name]) => b[slug] === name)
+  return same(existing.runners, runners)
+}
+
 async function main() {
   // **Nothing is deleted here, ever.** A runner's name is the hash of its own
   // bytes and a published page pins that name, so removing an old one breaks a
@@ -126,7 +175,15 @@ async function main() {
   await writeFile(resolve(out, "embed.js"), loader.outputFiles[0]!.contents)
   console.log(`loader    ${"embed.js".padEnd(14)} ${kb(loader.outputFiles[0]!.contents.byteLength)}`)
 
-  await writeFile(resolve(out, "manifest.json"), `${JSON.stringify({ commit: commit(), runners }, null, 2)}\n`)
+  // **Written only when a runner actually changed**, which is what makes the
+  // `commit` field mean what it claims. See `manifestUnchanged` above and #163.
+  const path = resolve(out, "manifest.json")
+  if (await manifestUnchanged(path, runners)) {
+    console.log(`manifest  ${"unchanged".padEnd(14)} still built at ${(await currentManifest(path))?.commit ?? "?"}`)
+    return
+  }
+  await writeFile(path, `${JSON.stringify({ commit: commit(), runners }, null, 2)}\n`)
+  console.log(`manifest  ${"written".padEnd(14)} at ${commit()}`)
 }
 
 await main()

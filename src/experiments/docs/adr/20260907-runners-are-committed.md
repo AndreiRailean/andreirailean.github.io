@@ -37,6 +37,35 @@ The manifest is committed for a duller reason: it is what tells anything in the
 Astro build which runner is a piece's current one, and leaving it generated would
 put a build-order dependency in front of `astro check`.
 
+**Being committed means it is only written when it changes**, which was an
+amendment rather than part of the original decision — see #163. `pnpm run dev` is
+`pnpm run runners && astro dev`, so the browser suite ran the script every time
+its `globalSetup` started a server, and an unconditional write stamped HEAD into
+`manifest.json` on every run. That broke the rule in `AGENTS.md` that `pnpm test`
+must never write tracked files, and it made the `commit` field untrue besides:
+documented as tracing a runner back to a tree, it recorded the commit at which
+somebody last started a dev server. The field now means **the commit these
+runners were built at**, and the manifest is left alone when the runner map is
+unchanged — which is the property the content-addressed naming already promised
+one section up. `tests/unit/showcase-runners.test.ts` runs the script and fails
+if a committed file moved.
+
+**And the untruth had already landed, which is the part worth keeping.** Not a
+working-copy observation: `ee57788` — a documentation-only commit, "the
+superseded record no longer reads as live", in PR #160 — carries
+
+```diff
+-  "commit": "1b6c6e48e2ba2f4ab1486b14b3e1cc780fd5372a",
++  "commit": "bd5b4b7d1f02ba706a450779a646f67b6f89142f",
+```
+
+and nothing else. `starry-night.490e5f9452c8.js` is unchanged across both, so the
+provenance stamp moved in a commit that touched no runner and no code. `bd5b4b7`
+is simply what HEAD happened to be when somebody last ran the browser suite. A
+field that records something other than what it claims is worse than no field,
+which is why the semantics are the more important half of this amendment and the
+tracked-file rule is the more visible one.
+
 **Committed by hand, in the change that alters the piece.** `pnpm run runners`
 writes them; a human or an agent commits what it wrote. The precedent is
 `20260828-posters-are-captured-by-hand.md`, and the reasoning transfers: this is

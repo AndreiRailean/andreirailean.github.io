@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { resolve } from "node:path"
@@ -73,6 +74,49 @@ describe("committed runners", () => {
       ).toContain(`${slug}.${hash}.js`)
       expect(manifest.runners[slug], `the manifest still names an older runner for ${slug}`).toBe(`${slug}.${hash}.js`)
     })
+  })
+})
+
+/**
+ * **Running the script must not change a tracked file.**
+ *
+ * `pnpm run dev` is `pnpm run runners && astro dev`, so the browser suite runs
+ * this script every time `globalSetup` starts a server. That made every full
+ * `pnpm run test:browser` leave `public/showcase/manifest.json` modified —
+ * forbidden outright by `src/experiments/AGENTS.md` ("not `pnpm test`, which
+ * must never write tracked files"), and in the one directory where a stray
+ * modification is expensive to misread: a previous steward, seeing one, was on
+ * the point of gitignoring the published pins. #163.
+ *
+ * The cause was an unconditional write of a `commit` field nothing reads, which
+ * also made it untrue — it recorded the commit at which somebody last started a
+ * dev server rather than the one these runners were built at.
+ *
+ * **This runs the real script rather than reasoning about it**, because the
+ * property is about what the script does to the disk. A rebuild is
+ * byte-deterministic, so on a clean tree — which is what CI has — the runner
+ * files come back identical and the manifest is not rewritten at all.
+ *
+ * On a tree where a piece genuinely changed, the first run brings the runner up
+ * to date and this fails. **That failure is the instruction this file already
+ * gives**: run `pnpm run runners` and commit what it writes.
+ */
+describe("running the script", () => {
+  const tracked = [resolve(root, "public/showcase/manifest.json"), ...committed.map((name) => resolve(runners, name))]
+
+  it("leaves every committed file byte-identical", () => {
+    const before = new Map(tracked.map((path) => [path, readFileSync(path)]))
+
+    execFileSync("node", ["scripts/runners.ts"], { cwd: root, encoding: "utf8" })
+
+    const changed = tracked.filter((path) => !before.get(path)!.equals(readFileSync(path)))
+
+    expect(
+      changed.map((path) => path.slice(root.length + 1)),
+      `\`pnpm run runners\` rewrote a committed file. If a piece changed, that is this file's ` +
+        `usual instruction — commit what the script wrote. If nothing changed, the script is ` +
+        `writing unconditionally again, which makes every browser run dirty the tree. See #163.`,
+    ).toEqual([])
   })
 })
 
