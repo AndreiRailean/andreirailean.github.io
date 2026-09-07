@@ -427,7 +427,17 @@ for (const slug of PIECES) {
    */
   test(`${slug}: both handles of a bound pair sit on one track and can be dragged`, async ({ page }) => {
     const experiment = await openExperiment<BaseApi>(page, slug, { idle: false })
-    await experiment.api(({ api }) => api.panel(true))
+
+    // **Held, and that is worth 35x on every round trip.** This test is about
+    // the chrome, and a running piece starves the main thread it shares with
+    // Playwright: ten `boundingBox()` calls on flotsam cost 9,934ms with the
+    // water running and 279ms held. Nothing stalls — everything is uniformly
+    // slow, which is why it reads as a mystery rather than as contention. See
+    // the note in `tests/AGENTS.md`.
+    await experiment.api(({ api }) => {
+      api.pause(true)
+      api.panel(true)
+    })
 
     const spans = page.locator(".panel .span")
     const count = await spans.count()
@@ -477,10 +487,15 @@ for (const slug of PIECES) {
         )
         expect(under, `${slug}: handle ${index} of row ${i} is covered by something`).toBe("input")
 
+        // **One move, not eight.** Every step of a drag is a settings change,
+        // and a settings change can be expensive: flotsam's size pair is in
+        // `needsScatter`, so eight steps rebuilt 8,500 specks eight times per
+        // handle. The assertion below is what proves one move is enough — it
+        // fails if the handle did not take.
         const before = await experiment.api(({ api }) => api.get())
         await page.mouse.move(x, y)
         await page.mouse.down()
-        await page.mouse.move(x + direction * 24, y, { steps: 8 })
+        await page.mouse.move(x + direction * 24, y)
         await page.mouse.up()
         const after = await experiment.api(({ api }) => api.get())
 
