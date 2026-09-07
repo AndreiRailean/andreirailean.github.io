@@ -1,14 +1,7 @@
-import { createBaseApi, type BaseApi } from "@/experiments/kit/api"
+import { createBaseApi, reportControls, type BaseApi, type ControlReport } from "@/experiments/kit/api"
 import type { Controls } from "@/experiments/kit/controls"
 import type { WakeLock } from "@/experiments/kit/wakelock"
-import {
-  CONTROLS,
-  keysOf,
-  normalizeSettings,
-  PRESETS,
-  type Settings,
-  settingsFromQuery,
-} from "@/experiments/walkers/settings"
+import { CONTROLS, normalizeSettings, PRESETS, type Settings, settingsFromQuery } from "@/experiments/walkers/settings"
 import type { Walkers, WalkersStats } from "@/experiments/walkers/walkers"
 import { reroll } from "@/experiments/walkers/reroll"
 
@@ -41,11 +34,6 @@ export type ExperimentApi = BaseApi<Settings> & {
   /** Goals, bodies and gaze rays over the top. */
   debug: (on?: boolean) => boolean
 }
-
-export type ControlReport =
-  | { kind: "slider" | "range"; key: string; label: string; hint: string; group?: string; min: number; max: number }
-  | { kind: "choice" | "set"; key: string; label: string; hint: string; group?: string; options: string[] }
-  | { kind: "toggle"; key: string; label: string; hint: string; group?: string }
 
 /**
  * Printed once on load rather than on devtools opening, which cannot be
@@ -92,34 +80,15 @@ export function createApi(controls: Controls<Settings>, wakeLock: WakeLock, park
     }),
 
     /**
-     * One entry per **settings key**, flattened over `keysOf`.
+     * The kit's, since #130 — this switch was written out here and in Starry
+     * Night, the two differing by one optional field.
      *
-     * A range control owns two keys and has `keys` rather than a `key`, so a
-     * piece mapping `control.key` straight through reports `undefined` for it —
-     * see #85, where generic code did exactly that, wrote its patch to a setting
-     * no piece has, and passed because nothing had moved. `pace` is a range
-     * here, so this piece would have hit it.
+     * The reasons it has to be a union rather than a flat record are this
+     * piece's: `pace` is a range, so it owns two settings and carries `keys`
+     * rather than a `key` (#85), and four of its rows are a `choice` or a
+     * `toggle` with no track for a bound to come from.
      */
-    controls: () =>
-      CONTROLS.flatMap((control): ControlReport[] =>
-        keysOf(control).map((key): ControlReport => {
-          const shared = { key: String(key), label: control.label, hint: control.hint, group: control.group }
-          switch (control.kind) {
-            case "choice":
-              return { kind: "choice", ...shared, options: control.options.map(({ value }) => value) }
-            case "toggle":
-              return { kind: "toggle", ...shared }
-            // Nothing here uses a set yet. It reports like a choice because
-            // that is what it is — several answers from a fixed list — and the
-            // `default:` below would otherwise read `min` and `max` off a
-            // control that has neither.
-            case "set":
-              return { kind: "set", ...shared, options: control.options.map(({ value }) => value) }
-            default:
-              return { kind: control.kind, ...shared, min: control.min, max: control.max }
-          }
-        }),
-      ),
+    controls: () => reportControls(CONTROLS),
 
     stats: () => park.stats(),
 

@@ -1,4 +1,4 @@
-import type { Controls, Preset } from "@/experiments/kit/controls"
+import { keysOf, type Control, type Controls, type Preset } from "@/experiments/kit/controls"
 import { setFullscreen, toggleFullscreen } from "@/experiments/kit/fullscreen"
 import type { WakeLock } from "@/experiments/kit/wakelock"
 
@@ -50,14 +50,27 @@ export type Holdable = {
 /**
  * The minimum surface, less the parts that are genuinely the piece's.
  *
- * `controls()` is **not** here on purpose. The pieces legitimately disagree
- * about its fields — Starry Night carries a `kind` discriminant, Psyxels zeroes
- * the bounds a choice row does not have, the other two carry `group` — and
- * `AGENTS.md` blesses that: extra fields are fine, and `key` is the part
- * everything else may rely on. Nor are `stats()`, `debug()` or a piece's own
- * verbs like `settle()` and `run()`.
+ * `stats()`, `debug()` and a piece's own verbs like `settle()` and `run()` are
+ * not here, and will not be: they differ because the pieces differ.
  *
- * `tests/support/experiment.ts` declares the same list a third time, loosely
+ * **`controls()` is not a method on this handle either, and that is now a
+ * narrower statement than it used to be.** It cannot be, because building the
+ * report needs the piece's `CONTROLS` array and `createBaseApi` is given a
+ * validator and a scene rather than a control list. But its *shape* and the
+ * mapping that produces it are the kit's now — `ControlReport` and
+ * `reportControls` below — so a piece's `controls()` is one call rather than a
+ * switch of its own.
+ *
+ * This docblock used to say `controls()` was excluded because "the pieces
+ * legitimately disagree about its fields", and listed the disagreement: Starry
+ * Night carrying a `kind` discriminant, Psyxels zeroing the bounds a choice row
+ * does not have, the other two carrying `group`. #130 took that list apart.
+ * Walkers' and Starry Night's unions differed by one optional field, and the
+ * three "flat" shapes were not a third design but the same type written three
+ * times — the one that cannot tell the truth about a trackless control. None of
+ * that was a disagreement worth protecting.
+ *
+ * `tests/support/experiment.ts` declares the base list a third time, loosely
  * typed, because a Playwright fixture cannot know a piece's `Settings`. That one
  * is a mirror for the harness; this one is the implementation.
  */
@@ -91,6 +104,94 @@ export type BaseApi<S> = {
   fullscreen: (on?: boolean) => Promise<boolean>
   /** Whether the screen is currently being held awake. */
   awake: () => boolean
+}
+
+/**
+ * One entry per **settings key**, as every piece's `controls()` reports it.
+ *
+ * A discriminated union rather than a flat record, because **not every control
+ * has a track and a flat shape forces one to invent a bound.** `slider` and
+ * `range` carry `min`/`max`, `choice` and `set` carry their `options`, `toggle`
+ * carries neither. A caller switches on `kind` before reading, and TypeScript
+ * stops it doing anything else.
+ *
+ * `group` is optional: three pieces file their rows under headings and two do
+ * not, which is a real difference and the only one left.
+ *
+ * ### Why this is the kit's, and why it took three faults to get here
+ *
+ * This report is a cross-piece contract — `tests/kit.spec.ts` holds all five
+ * pieces to it — that lived nowhere. It existed as five hand-written shapes and
+ * has now produced the same class of fault three times:
+ *
+ * - **#85**: three pieces reported three ways, nothing said which was the
+ *   contract, and generic code reading `.key` off a range entry got `undefined`,
+ *   wrote its patch to a setting no piece has, and passed because nothing moved.
+ * - **#127**: two pieces had a `default:` branch reading `control.min` off a
+ *   control with no `min`, so the field was present-and-`undefined` and every
+ *   consumer's arithmetic came out `NaN`.
+ * - **#130**: Psyxels' flat type requires `min` and `max`, so its `glyphs` set —
+ *   a setting whose value is a *list of five names* — reported `min: 0, max: 0`.
+ *   A valid number and a complete untruth, which is why no tightening of the
+ *   `#127` assertion could reach it.
+ *
+ * It is `kit/` and not the section level on the ADR's discriminating test —
+ * whether a piece could take it without taking the chrome. It could not: the
+ * union is written in terms of the kit's own control kinds, so taking it means
+ * taking the kit's control vocabulary. See
+ * `docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.md` and
+ * `docs/adr/20260907-the-controls-report-is-the-kits.md`.
+ */
+export type ControlReport =
+  | { kind: "slider" | "range"; key: string; label: string; hint: string; group?: string; min: number; max: number }
+  | { kind: "choice" | "set"; key: string; label: string; hint: string; group?: string; options: string[] }
+  | { kind: "toggle"; key: string; label: string; hint: string; group?: string }
+
+/**
+ * A piece's control list, as `controls()` should report it.
+ *
+ * **Flattened over `keysOf`**, so a range's two ends arrive as two entries. A
+ * range owns two settings and carries `keys` rather than a `key`; a piece
+ * mapping `control.key` straight through reports `undefined` for it, which is
+ * #85 exactly.
+ *
+ * **The switch is exhaustive on purpose — there is no `default:` branch.** That
+ * is the whole mechanical value of hoisting the mapping rather than only the
+ * type. Every previous instance of this fault came out of a `default:` reading
+ * `min` and `max` off whatever fell through it, and `tests/kit.spec.ts` had
+ * already predicted the next one: "the day the kit gains a kind that has no
+ * track, the default hands back `min: control.min` off a control with no `min`".
+ * With one exhaustive switch here, that day is a compile error in this file
+ * instead of five silent untruths in the pieces.
+ *
+ * **Offered, like the rest of the kit.** A piece that needs a different report
+ * writes its own and says why in a `kit-opt-out:` line; `tests/kit.spec.ts`
+ * still holds whatever it produces to `key` and to an honest bound.
+ */
+export function reportControls<K>(controls: readonly Control<K>[]): ControlReport[] {
+  return controls.flatMap((control): ControlReport[] =>
+    keysOf(control).map((key): ControlReport => {
+      // `group` is spread in only when the piece has one, rather than written as
+      // `group: control.group`. Present-and-`undefined` is the signature of #127
+      // and it costs nothing to not reintroduce it one field over.
+      const shared = {
+        key: String(key),
+        label: control.label,
+        hint: control.hint,
+        ...(control.group === undefined ? {} : { group: control.group }),
+      }
+      switch (control.kind) {
+        case "slider":
+        case "range":
+          return { kind: control.kind, ...shared, min: control.min, max: control.max }
+        case "choice":
+        case "set":
+          return { kind: control.kind, ...shared, options: control.options.map(({ value }) => value) }
+        case "toggle":
+          return { kind: "toggle", ...shared }
+      }
+    }),
+  )
 }
 
 export type BaseApiOptions<S> = {

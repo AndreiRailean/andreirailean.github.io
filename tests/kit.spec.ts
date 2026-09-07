@@ -314,24 +314,26 @@ for (const slug of PIECES) {
    * sweep every control, so the value written is `NaN` and the assertion after
    * it passes, having moved nothing. That is exactly how #85 was missed.
    *
-   * **Absence is the correct answer, not a lesser one.** Starry Night's
-   * `ControlReport` is a discriminated union — `slider | range` carry the
-   * bounds, `choice` carries `options`, `toggle` carries neither — and its spec
-   * switches on `kind` before reading. Walkers does the same for its four
-   * trackless controls. They are the shape to copy; the flat
-   * `{ key, group, label, min, max, hint }` the other three declare is what
-   * *forces* a trackless control to invent a bound.
+   * **Absence is the correct answer, not a lesser one.** The report is the kit's
+   * `ControlReport` since #130 — a discriminated union where `slider | range`
+   * carry the bounds, `choice | set` carry `options` and `toggle` carries
+   * neither — so a trackless control has nowhere to invent one. Before that,
+   * three pieces declared a flat `{ key, group, label, min, max, hint }`, which
+   * is what *forced* the invention.
    *
    * So this asserts the narrow thing and nothing more: report a bound or do
    * not, but do not report one that is not a number.
    *
    * **What it cannot catch, said here so nobody reads it as wider than it is.**
    * A piece forced to fill the field can put a *plausible* number there rather
-   * than an absent one, and this passes it. Psyxels does exactly that today: its
-   * `glyphs` set reports `min: 0, max: 0` for a setting whose value is a list of
-   * five names. That is not a number problem — it is the flat report type having
-   * nowhere to say "no track" — so tightening this assertion would not reach it.
-   * See #130.
+   * than an absent one, and this passes it — Psyxels' `glyphs` set reported
+   * `min: 0, max: 0` for a setting whose value is a list of five names, and no
+   * tightening of this assertion reaches a valid `0`. The fault is a field that
+   * should not be present, so the check has to be about **presence**, and it is
+   * `tests/unit/experiments-controls-report.test.ts`. That one runs over every
+   * piece's real `CONTROLS` in milliseconds; this one is still what holds a
+   * piece that builds its own report at runtime. See #130 and
+   * `src/experiments/docs/adr/20260907-the-controls-report-is-the-kits.md`.
    */
   test(`${slug}: reports a real bound, or none at all`, async ({ page }) => {
     const experiment = await openExperiment<BaseApi & { controls: () => Record<string, unknown>[] }>(page, slug, {

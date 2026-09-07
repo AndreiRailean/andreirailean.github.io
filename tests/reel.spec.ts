@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test"
 
+import type { ControlReport } from "@/experiments/kit/api"
 import { expect, openExperiment, test, type BaseApi } from "./support/experiment.ts"
 
 /**
@@ -24,9 +25,13 @@ import { expect, openExperiment, test, type BaseApi } from "./support/experiment
  * wants it, so it is declared where it is used rather than pushed onto every
  * piece — the arrangement `tests/support/experiment.ts` describes for a spec that
  * knows more about a piece than the harness does.
+ *
+ * It names the kit's `ControlReport` rather than writing a shape out. This said
+ * `{ key: string; min: number; max: number }[]` until #130, which was a lie for
+ * any trackless row and the sixth copy of a shape that existed nowhere.
  */
 type ReelApi = BaseApi & {
-  controls: () => { key: string; min: number; max: number }[]
+  controls: () => ControlReport[]
 }
 
 /**

@@ -79,13 +79,35 @@ test("settings survive the round trip through the query string", async ({ page }
   // clamping and the rounding, so the expectation is whatever the piece
   // actually holds and the test needs to know nothing about which keys are
   // integers.
+  //
+  // **The skipped list is returned rather than ignored.** Every one of Dangler's
+  // rows is a slider, so this sweep covers all of them — and if it gains a
+  // choice or a toggle, the arithmetic below has no bound to work from and the
+  // honest outcome is that this test says so. Narrowing and moving on is the
+  // shape that quietly stops covering the new row; the round trip would still
+  // pass, having never carried it. That was #130's lesson one layer up: the flat
+  // report let Psyxels *invent* a bound here rather than admit it had none.
   const applied = await experiment.api(({ api }) => {
     const patch: Record<string, number> = {}
-    for (const control of api.controls()) patch[control.key] = control.min + (control.max - control.min) * 0.37
+    const skipped: string[] = []
+    for (const control of api.controls()) {
+      if (control.kind === "slider" || control.kind === "range") {
+        patch[control.key] = control.min + (control.max - control.min) * 0.37
+      } else {
+        skipped.push(`${control.key} (${control.kind})`)
+      }
+    }
     // Kept small for runtime only; a small count round-trips the same code.
     api.set({ ...patch, strands: 5, segments: 12, beads: 4 })
-    return { settings: api.get(), url: api.url() }
+    return { settings: api.get(), url: api.url(), skipped }
   })
+
+  expect(
+    applied.skipped,
+    "dangler has gained a control with no track, and this sweep cannot move it. Extend the loop " +
+      "to set it the way tests/starry-night.spec.ts does for its choice and toggle rows, rather " +
+      "than leaving the round trip silently not covering it.",
+  ).toEqual([])
 
   await page.goto(applied.url)
   await page.waitForFunction(() => Boolean(window.experiment))
