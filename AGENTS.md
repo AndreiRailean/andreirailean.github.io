@@ -18,7 +18,7 @@ in the queue, and do not ask before taking one:
   fix is to move the code, not to remember the trap.
 - **Waiting that buys nothing.** A full browser suite over five pieces to
   approve a paragraph of prose is friction with no verification in it —
-  `.github/workflows/test.yml` and `tests/unit/ci-paths.test.ts`.
+  `.github/workflows/test-browser.yml` and `tests/unit/ci-paths.test.ts`.
 - **A rule that depends on being remembered.** Where a check can hold it
   instead, that is the higher-leverage version of writing it down. This repo
   keeps producing documented rules broken by their own author within the hour.

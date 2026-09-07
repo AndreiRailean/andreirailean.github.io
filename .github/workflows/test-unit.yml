@@ -1,0 +1,71 @@
+name: Unit tests
+
+# **This one has no path filter, and that is the point.**
+#
+# It used to share `test.yml`'s `paths-ignore` with the browser suite, and that
+# combination produced a check which could not fail on the only pull requests
+# where it had anything to say. `tests/unit/adr-format.test.ts` reads exactly
+# `docs/adr` and `src/experiments/docs/adr`, and both were on the ignore list —
+# so an ADR added with no frontmatter, or a `date` disagreeing with its filename,
+# landed green. #166.
+#
+# That was the fault `tests/unit/ci-paths.test.ts` exists to prevent, arriving
+# one directory over from the `about.md`-is-content case it was written for. It
+# was invisible because #161, the pull request that added the ADR check, also
+# touched `tests/unit/adr-format.test.ts` — which is not ignored — so the suite
+# ran and went green over seven real records. The hole opened for every
+# ADR-only pull request after it, which is the ordinary shape of a records change.
+#
+# **So the unit job is unfiltered rather than filtered more carefully.** A better
+# ignore list is a list somebody has to keep correct as tests grow, and the
+# section's own rule is that a rule depending on being remembered is the weakest
+# kind. Removing the filter closes the class instead: no unit test can be skipped
+# by a path filter, because there is no path filter.
+#
+# The saving the split was for is intact. Measured on #138: unit 2m24s, browser
+# 8m0s, lint 58s. The eight minutes was the whole complaint — "a full browser
+# suite over five pieces to approve a paragraph of prose" — and
+# `test-browser.yml` still carries the filter that removes it. What a prose pull
+# request pays now is a little over two minutes, in parallel with lint, and none
+# of it blocks: `lint` is the only required check.
+#
+# Nothing under `tests/unit/` opens a page, which is why this can be cheap enough
+# to run always. If that ever stops being true the split is what has to change,
+# not this filter, because there is not one.
+
+on:
+  - pull_request
+
+# A second push to the same branch supersedes the first, so an iterative session
+# does not leave a queue of runs testing commits nobody will merge. Keyed on the
+# ref rather than the workflow alone, or one branch's push would cancel another's.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # See lint.yml for why this is pnpm/setup rather than actions/setup-node,
+      # why `.node-version` is read into an output, and why the install is a step
+      # of its own rather than the action's `require-lockfile`.
+      - name: Read the Node version
+        id: node
+        run: echo "version=$(cat .node-version)" >> "$GITHUB_OUTPUT"
+      - uses: pnpm/setup@v2
+        with:
+          runtime: node@${{ steps.node.outputs.version }}
+          install: false
+          cache: true
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # No Playwright browsers here: nothing under tests/unit/ opens a page, and
+      # that is the whole point of the split from test-browser.yml.
+      - name: Unit tests
+        run: pnpm run test:unit
