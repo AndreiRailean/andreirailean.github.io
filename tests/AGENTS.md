@@ -139,6 +139,31 @@ handle. One move is enough when the assertion that follows proves the handle
 took. Holding the piece and dropping to one move measured 14,945ms to 6,232ms
 for the same sequence.
 
+**Holding the piece does nothing for a test that asks it to simulate.** The two
+levers are for different shapes and it is worth knowing which you have. A chrome
+test makes many cheap round trips and pays the contention above — holding it is
+worth 2.4x. A test that calls `run()` or `settle()` makes a few expensive calls,
+and `api.pause(true)` changed flotsam's raft sequence from 14,455ms to 14,151ms,
+which is nothing. The work is synchronous arithmetic and parking the frame loop
+cannot touch it.
+
+**And the simulated duration is often not the cost either.** #133 asks for these
+to be measured, so: flotsam's `a raft ignores the chop` costs the same at
+`run(0.5)`, `run(1)` and `run(3)` — 14.4s in all three. Phase-timed, the cost is
+**speck size**, not seconds:
+
+|           | with 4mm specks | with 1.2m rafts |
+| --------- | --------------- | --------------- |
+| `run(3)`  | 346ms           | 6,892ms         |
+| `stats()` | 217ms           | 5,747ms         |
+
+A raft that spans a wave has to be sampled across its own footprint, so it is
+20x the arithmetic to advance and 26x to measure. That is the piece's physics
+rather than a test's waste, it is identical in either runner, and it is why
+**moving that test to a headless harness would not make it cheap** — the same
+thing #131 measured for walkers, now confirmed on a second piece. What a harness
+buys is the page, and a shorter serial chain; it does not buy the arithmetic.
+
 **Do not read a single whole-test timing as a measurement.** This box is shared
 with other sessions, and the same test measured 24s, 29s and 41-55s within an
 hour with no code change — overlapping ranges for conditions that differ by

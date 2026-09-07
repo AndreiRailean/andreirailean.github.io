@@ -343,7 +343,14 @@ test("a raft ignores the chop a speck beside it is tracing", async ({ page }) =>
   await experiment.api(({ api }) => api.run(3))
   const rafts = await experiment.api(({ api }) => api.stats())
 
-  expect(specks.orbit).toBeGreaterThan(rafts.orbit * 50)
+  // **Twenty, against a measured fifty-one.** The threshold was 50 and the ratio
+  // comes out 51 to 52 — two per cent of headroom on the headline assertion of
+  // the piece's slowest test, which is a flake waiting for anything that touches
+  // wave sampling. The claim is qualitative and survives intact: a raft ignores
+  // the chop by more than an order of magnitude. Measured 2026-09-07 at
+  // run(0.5), run(1) and run(3), which all give 51-52 — see the note about
+  // simulated duration in `tests/AGENTS.md`.
+  expect(specks.orbit).toBeGreaterThan(rafts.orbit * 20)
   expect(specks.dispersion).toBeGreaterThan(2)
   // The rafts are left where a flat sea would have left them.
   expect(rafts.dispersion).toBeCloseTo(UNGATHERED, 0)
