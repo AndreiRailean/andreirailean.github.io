@@ -132,9 +132,38 @@ the time — mean RGB 35, 33, 33, matching the file on disk. **When a report
 contradicts something already verified, compare the served bytes against the
 file before doubting the code.** Half a morning went the other way.
 
+**A third sibling: after editing `astro.config.mjs`, clear `node_modules/.vite`
+before trusting a run.** Changing the config makes Vite re-optimise the site's
+dependencies, which changes the `?v=<hash>` on every pre-bundled dep URL. A
+server restarted across that edit serves the new hash while anything holding the
+old one gets **`504 (Outdated Optimize Dep)`**, and the suite reports each as a
+page problem rather than as a build failure:
+
+```
+console.error: Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep)
+request failed: .../node_modules/.vite/deps/lucide-react.js?v=afd1dc91 (net::ERR_ABORTED)
+```
+
+Measured while turning the dev toolbar off: **five failures, all in
+`showcase.spec.ts`**, which is the one spec driving the site's own React pages
+rather than an experiment. `rm -rf node_modules/.vite`, restart, and the same
+commit went 172-passed-5-failed to 177-passed. **Nothing was wrong with the
+code.** The tell is that every reported problem names `/node_modules/.vite/deps/`
+and none names anything you changed.
+
+Worth knowing because it does not look like a cache: `problems` is the fixture
+that catches real console errors, so a stale dep arrives wearing the same
+clothes as a genuine regression, and it lands on whichever spec touches the
+site's React deps rather than on the thing you edited.
+
 The suite also serves the Astro dev toolbar's module empty, since it is part of
 the dev server rather than the site and injects four extra `h1`s into every page.
-`tests/harness.spec.ts` checks that suppression still works.
+**`astro.config.mjs` now disables the toolbar project-wide as well**, so on a
+server started from this checkout there is nothing to suppress — but the suite
+**adopts** a running server rather than insisting on its own, and one from an
+older worktree still serves it, which is what the fixture is for.
+`tests/harness.spec.ts` checks the end state and says which of the two achieved
+it.
 
 ## A running piece starves the thread Playwright is talking to
 

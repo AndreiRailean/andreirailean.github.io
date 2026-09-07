@@ -129,16 +129,36 @@ export const test = base.extend<{ problems: string[]; noDevToolbar: void }>({
    *
    * The suite runs against a dev server, and the toolbar is part of the dev
    * server rather than part of the site — it injects a `<astro-dev-toolbar>`
-   * into every page, and with it five more `h1` elements, which is how this was
-   * found: a `page.locator("h1")` on a note resolved to Astro's audit panel as
-   * well as the note's own title.
+   * into every page, and with it **four** more `h1` elements, which is how this
+   * was found: a `page.locator("h1")` on a note resolved to Astro's audit panel
+   * as well as the note's own title.
+   *
+   * Counted rather than remembered, on Astro 7.2.4: with the toolbar on,
+   * `document.querySelectorAll("h1")` returns **1** — the page's own — and
+   * walking shadow roots returns **5**. This said five, which was the total
+   * including the page's own title; `tests/AGENTS.md` said four and was right.
+   *
+   * **The difference between those two numbers is the whole trap.** The toolbar's
+   * headings live in nested shadow roots, so a plain `querySelectorAll` cannot
+   * see them and neither can a person reading the page source — while
+   * Playwright's locators pierce shadow DOM and count all five. That is why this
+   * was invisible until a locator returned the wrong element.
    *
    * Stopping its module from arriving, rather than deleting the element
    * afterwards, because the element is only the part that is easy to see. It
-   * also styles, measures and highlights the page. And it cannot be turned off
-   * in `astro.config.mjs` without turning it off for the human whose dev server
-   * this may well be — the suite adopts a running server rather than insisting
-   * on its own, so it has no say in how that one was configured.
+   * also styles, measures and highlights the page.
+   *
+   * **`astro.config.mjs` now disables the toolbar project-wide, and this stays
+   * anyway.** The reason it used to give for not doing that in config — it would
+   * turn the toolbar off for the human whose dev server this may well be — was
+   * answered by Andrei asking for exactly that. What survives is the other half:
+   * the suite **adopts** a running dev server rather than insisting on its own,
+   * so it has no say in how that one was configured. A server started from an
+   * older worktree, cut before the config landed, still serves the toolbar and
+   * this is what keeps it off the page.
+   *
+   * So the two are not redundant: the config covers a server this checkout
+   * started, and this covers one it merely found.
    */
   noDevToolbar: [
     async ({ page }, use) => {
