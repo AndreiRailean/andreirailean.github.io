@@ -1,13 +1,12 @@
 /**
  * The showcase viewer: one published scene on screen, and a way to the next.
  *
- * **One mount at a time, never a feed.** The obvious reading of "scroll through
- * published work like Instagram" is a column of live embeds, and it is not
- * survivable: every piece here is a full-viewport 2d canvas with its own
- * animation loop, and twenty of them mounted at once is twenty backing stores
- * and twenty loops competing for one main thread. Pausing the off-screen ones
- * does not help — a paused canvas still holds its pixels. So the wall is a
- * sequence, not a column, and exactly one entry is mounted.
+ * **One mount at a time, never a column.** The obvious way to build a scrolling
+ * gallery is a column of live embeds, and it is not survivable here: every piece
+ * is a full-viewport 2d canvas with its own animation loop, and twenty of them
+ * mounted at once is twenty backing stores and twenty loops competing for one
+ * main thread. Pausing the off-screen ones does not help — a paused canvas still
+ * holds its pixels. So the wall is a sequence, and exactly one entry is mounted.
  *
  * ## Why it does not go through `embed.js`
  *

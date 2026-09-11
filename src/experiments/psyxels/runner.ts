@@ -17,12 +17,13 @@
  * ordinary way.
  *
  * Fixing it properly means deciding how a frozen runner carries an asset, and
- * that is a real question rather than an oversight: an artefact is data and
- * never code (`workspace` decision #3), an image is data, and the runner is
- * content-addressed while the image would not be. Inlining the portrait as a
- * data URI would make it part of the runner's hash, which is defensible and
- * roughly triples this bundle. Nothing is decided, so nothing is done, and the
- * wall simply does not carry the one scene that needs it.
+ * that is a real question rather than an oversight. A runner is named by the
+ * hash of its own bytes, and a scene pins that name; an image fetched beside it
+ * is not covered by that hash, so the pair could drift apart while the address
+ * claimed otherwise. Inlining the portrait as a data URI would fold it into the
+ * hash and keep the guarantee, at roughly triple this bundle. Neither has been
+ * chosen, so nothing is done here and the one scene that needs it is simply not
+ * published.
  *
  * A piece opts in by having this file. Nothing looks for one that does not.
  */
