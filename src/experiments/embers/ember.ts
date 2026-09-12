@@ -160,6 +160,8 @@ export type Ember = {
   phase: number
   /** Which of the pre-made outlines this one wears. */
   shape: number
+  /** Its own burning temperature, as a ratio on `heat`. See `BURN_SPREAD`. */
+  richness: number
   /** Its own hue, as a position in 0…1 across the spread. */
   tone: number
   /** Seconds since it left the fire. Only the stats read it. */
@@ -191,6 +193,7 @@ export function blankEmber(): Ember {
     fuel: 1,
     phase: 0,
     shape: 0,
+    richness: 1,
     tone: 0.5,
     age: 0,
     path: new Float64Array(TAIL * 2),
@@ -259,23 +262,28 @@ const CONVECTION = 0.55
 const FAN_SPEED = 2.5
 
 /**
- * The temperature the burning cannot push an ember past, kelvin.
+ * How sharp the knee is where combustion gives out.
  *
- * Combustion of char is **diffusion-limited**: the reaction is faster than the
- * oxygen can reach the surface, so the heat release is set by what the boundary
- * layer can deliver and not by how hot the ember already is. Measured burning
- * char surfaces sit between 1100 and 1600 K, and nothing anybody has put a
- * pyrometer on runs away.
- *
- * Without a ceiling the model does run away, and it is the one place where three
- * separately reasonable terms compound into an unreasonable answer: an ember
- * fanned hard inside the hot column gets extra release *and* loses its
- * convective sink, and the probe found embers at 3600 K — hotter than the
- * hottest part of an oxy-acetylene flame, which is not a temperature a piece of
- * wood attains. The knee is eighth-order so it is nearly absent at 1500 K and
- * decisive by 2000.
+ * Eighth order, so burning is nearly unimpeded a couple of hundred kelvin below
+ * the ember's own burning temperature and decisive a couple of hundred above —
+ * which is what makes that temperature something an ember actually *sits* at
+ * rather than passes through.
  */
-const BURN_CEILING = 1900
+const BURN_KNEE = 8
+
+/**
+ * How much embers disagree about their own burning temperature, as a standard
+ * deviation in the ratio.
+ *
+ * **Without this the field is one colour.** Every ember settles where its
+ * combustion balances its losses, and with one burning temperature for all of
+ * them that is one place — so the population traced the Planck curve in
+ * lockstep and the picture had a colour rather than a gradient. Real char does
+ * not agree with itself: porosity, what is left to burn and how much of the
+ * surface is still alight all move it. A fifth is enough that a fire holds deep
+ * red and yellow-white at the same moment, which is what a fire looks like.
+ */
+const BURN_SPREAD = 0.2
 
 /**
  * Heat the remaining fuel can put back, in kelvin per second at full fuel.
@@ -290,6 +298,31 @@ const BURN_CEILING = 1900
  */
 const COMBUSTION = 1300
 
+/** The diameter the three rate constants above are quoted at, in mm. */
+const THERMAL_REFERENCE = 2
+
+/**
+ * How quickly an ember answers a change in its own heat, against a 2 mm one.
+ *
+ * **Thermal inertia is mass over surface area, which for a compact body is
+ * diameter** — every one of the three terms above is a flux through the surface
+ * divided by a heat capacity in the volume, so all three carry the same factor.
+ * A 14 mm ember therefore has thirty-five times the time constant of a 0.4 mm
+ * one: the big one holds whatever temperature it left the fire at for seconds,
+ * and the small one forgets it in a tenth of a second.
+ *
+ * **This was missing, and it is why `heat` appeared to do nothing.** With a
+ * single rate for every size, the whole population relaxed to one equilibrium
+ * within a fraction of a second and the birth temperature was gone before
+ * anybody could see it — so the control that names the colour of an ember
+ * changed only the brightness of the first few centimetres above the coals.
+ * With it, size sorts the population across the Planck curve, which is where a
+ * fire's colour actually comes from: the hot small sparks and the slow cooling
+ * flakes are at different temperatures *at the same moment*, rather than every
+ * ember tracing the same curve a little out of step.
+ */
+const thermalRate = (sizeMm: number): number => THERMAL_REFERENCE / Math.max(0.06, sizeMm)
+
 export type Physics = {
   /** `flutter` from the settings. */
   flutter: number
@@ -297,6 +330,19 @@ export type Physics = {
   burn: number
   /** `breath`. */
   breath: number
+  /**
+   * `heat` — **the temperature an ember's own burning holds it at**, not merely
+   * the one it is born at.
+   *
+   * It used to be only the latter, and the difference is the whole reason the
+   * control appeared to do nothing: an ember relaxes to wherever combustion
+   * balances its losses, and with that balance fixed by three constants the
+   * birth temperature was forgotten in a fraction of a second. `heat` moved the
+   * brightness of the first few centimetres above the coals and nothing else.
+   * Now it is where the balance sits, so it moves the whole population along the
+   * Planck curve — which is what a control named for colour should do.
+   */
+  heat: number
 }
 
 /**
@@ -372,10 +418,16 @@ export function stepEmber(ember: Ember, air: Float64Array, gas: number, dt: numb
   // rate rather than a Stefan–Boltzmann coefficient — which would need the
   // ember's mass and specific heat, two more numbers with no better provenance
   // than this one.
-  const radiated = RADIATION * 1500 * ((ember.temp / 1500) ** 4 - (gas / 1500) ** 4)
-  const convected = CONVECTION * excess * fanning
+  // Every term is a surface flux over a bulk heat capacity, so every term
+  // carries the same size factor. See `thermalRate`.
+  const rate = thermalRate(ember.size)
+  const radiated = rate * RADIATION * 1500 * ((ember.temp / 1500) ** 4 - (gas / 1500) ** 4)
+  const convected = rate * CONVECTION * excess * fanning
   const released =
-    ember.fuel > 0 ? (COMBUSTION * physics.burn * ember.fuel * fanning) / (1 + (ember.temp / BURN_CEILING) ** 8) : 0
+    ember.fuel > 0
+      ? (rate * COMBUSTION * physics.burn * ember.fuel * fanning) /
+        (1 + (ember.temp / (physics.heat * ember.richness)) ** BURN_KNEE)
+      : 0
 
   if (Math.abs(excess) < 1) {
     ember.temp += released * dt
@@ -391,8 +443,10 @@ export function stepEmber(ember: Ember, air: Float64Array, gas: number, dt: numb
 
   // Fuel goes with the burning, and faster when it is being fanned. A gust
   // brightens the field and then thins it, which is the same line.
+  // Fuel goes the same way: a small ember is nearly all surface and spends
+  // itself quickly, which is why sparks are brief and flakes ride for a while.
   if (ember.fuel > 0) {
-    ember.fuel = Math.max(0, ember.fuel - physics.burn * 0.16 * fanning * dt)
+    ember.fuel = Math.max(0, ember.fuel - rate * physics.burn * 0.16 * fanning * dt)
   }
 
   ember.age += dt
@@ -416,6 +470,7 @@ export function dress(ember: Ember, rng: Rng, sizeMin: number, sizeMax: number, 
   ember.fuel = 0.6 + rng() * 0.4
   ember.phase = rng() * Math.PI * 2
   ember.shape = Math.floor(rng() * SHAPES)
+  ember.richness = Math.exp(gaussian(rng) * BURN_SPREAD)
   ember.tone = tone
   ember.age = 0
   // A fresh ember has no past, so it has no tail until it has travelled one.

@@ -152,6 +152,55 @@ had no scene until enough frames had gone into it, so `settle` had to _draw_ its
 last stretch and the poster, the note's backdrop and the reduced-motion still all
 fell into that together. All of that machinery is gone.
 
+## Why the fire was one colour, which was three faults wearing one coat
+
+Reported as _"heat claims to set the colour but doesn't — hue is the only thing
+that changes it, and hue makes it flat"_. All three of these were true at once.
+
+**Measured first, because the numbers settle it.** Across the band embers
+actually occupy — roughly 1050 K to 1800 K — the ramp delivers **14° of hue,
+saturation pinned at 1.00, and lightness pinned at 0.50**. Saturation is stuck
+because blue goes negative below about 1900 K and clips to zero; lightness is
+stuck because red saturates at 1.0 and blue is 0, so `L = (1+0)/2` whatever the
+temperature. Every yellow and every white on the Planck curve lives above 1900 K,
+and nothing reached it. Print the table again before touching any of this —
+`blackbodyXyz` and a HSL conversion, nine temperatures, twenty lines.
+
+1. **`heat` was a birth temperature the dynamics forgot.** An ember relaxes to
+   wherever its combustion balances its losses, and that balance was three
+   constants, so the whole population converged to one equilibrium in well under
+   a second. `heat` moved the brightness of the first few centimetres above the
+   coals and nothing else. It now sets the knee where combustion gives out — the
+   temperature an ember's burning _holds_ it at — so it moves the population
+   along the Planck curve, which is what a control named for colour should do.
+2. **Nothing had thermal inertia.** All three rate constants were per-second and
+   size-independent, so a 0.4 mm spark and a 14 mm flake forgot their heat at the
+   same rate. Thermal inertia is mass over surface area, which is diameter, so
+   they differ by thirty-five times. `thermalRate` carries it, and it is why big
+   embers now visibly cool through the range while small ones snap.
+3. **One burning temperature for every ember is one colour.** `BURN_SPREAD`
+   gives each its own, a fifth either way, which is where a fire's _simultaneous_
+   range of colour comes from — deep red and yellow-white in the same frame
+   rather than the whole field tracing one curve in lockstep.
+
+And the two rendering halves, which matter more than any of the above:
+
+- **The white wash has to reach every mark kind.** Overexposure walking a mark
+  toward white is where the top of a fire's colour range actually comes from,
+  since the locus itself barely moves in hue. It used to be a white dot at six
+  tenths of the core — a pinprick on a two-pixel mark, and **absent entirely on a
+  `mote`**, which has no core. So a `mote` scene had no route to white at any
+  temperature or exposure, which is exactly the scene this was reported from.
+- **The response curve is not linear, and cannot be.** Visible output spans five
+  orders of magnitude across `heat`'s range, so mapped straight through, `heat`
+  and `exposure` fight: 2200 K went to a solid white blob and the fix put
+  exposure at the bottom of its own track. Normalising against the fire's own
+  heat was tried and is worse — it references the ceiling while a low `burn`
+  leaves embers far beneath it, and the picture went black. `RESPONSE` is a film
+  characteristic curve at 0.4: eighty-fold across the range instead of half a
+  million. Flattening the brightness range without touching the chromaticity is
+  what trades a light-to-dark gradient for a red-to-yellow-to-white one.
+
 ## `churn` is the one control whose right value depends on the framing
 
 The fire sheds eddies at its own puffing frequency, `f ≈ 1.5/√D` — so a

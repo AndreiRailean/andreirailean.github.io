@@ -256,7 +256,12 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
     air.step(dt)
     bed.step(dt, air, emit)
 
-    const physics: Physics = { flutter: settings.flutter, burn: settings.burn, breath: settings.breath }
+    const physics: Physics = {
+      flutter: settings.flutter,
+      burn: settings.burn,
+      breath: settings.breath,
+      heat: settings.heat,
+    }
     const luminance = sheet.ramps[0]!.luminance
 
     for (let at = 0; at < pool.length; at++) {

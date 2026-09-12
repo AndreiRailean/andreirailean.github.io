@@ -73,6 +73,20 @@ const MIN_CORE = 0.42
 
 export type Sheet = {
   ramps: Ramp[]
+  /**
+   * One uncoloured halo, for washing an overexposed mark toward white.
+   *
+   * Additive, so laying this over a coloured halo raises every channel together
+   * and walks the mark up its own saturation — orange to yellow to white — which
+   * is what an overexposed point does on film and is where the top of a fire's
+   * colour range actually comes from. The blackbody locus barely moves in hue
+   * across the band an ember lives in: 14° between 1050 K and 1800 K, with
+   * saturation pinned at 1 because blue clips to zero the whole way. So the
+   * gradient a fire *looks* like is mostly this, and it used to be a white dot at
+   * six tenths of the core — invisible on a small mark and absent altogether on
+   * a `mote`, which has no core.
+   */
+  white: HTMLCanvasElement
   /** `hueBucket * RAMP_STEPS + temperatureStep`. */
   glow: HTMLCanvasElement[]
   /** Unit-radius outlines, as flat `x, y` pairs. */
@@ -94,6 +108,37 @@ export function bucketHue(hue: number, hueSpread: number, bucket: number): numbe
 /** Which bucket an ember's tone falls in. */
 export const toneBucket = (tone: number): number =>
   Math.min(HUE_BUCKETS - 1, Math.max(0, Math.round(tone * (HUE_BUCKETS - 1))))
+
+/**
+ * The response curve, from emitted light to what the plate makes of it.
+ *
+ * **Film is not linear in exposure and neither is this, for the same reason.**
+ * A blackbody's visible output spans five orders of magnitude across the range
+ * `heat` offers — 1000 K to 2200 K is a factor of half a million — and mapped
+ * straight through, `heat` and `exposure` fight: nudging the fire's colour up
+ * blows the picture to a solid white blob, and nudging it down leaves nothing on
+ * screen. Both were measured, at the two ends, and neither is a picture.
+ *
+ * A power law compresses that the way an emulsion's characteristic curve does.
+ * At 0.4 the 1000 K to 2200 K range comes out as a factor of about eighty rather
+ * than half a million: still unmistakably a gradient from dull cinder to
+ * white-hot spark, and one that fits inside a picture at a single exposure.
+ *
+ * It also moves the piece the way it was asked to. An ember's *colour* is its
+ * temperature and its brightness is this — so flattening the brightness range
+ * without touching the chromaticity trades a light-to-dark gradient for a
+ * red-to-yellow-to-white one, which is what a fire looks like and what a linear
+ * response could not give.
+ */
+const RESPONSE = 0.4
+
+const response = (luminance: number): number => luminance ** RESPONSE
+
+/** How fast an overexposed mark walks toward white. Larger is more gradual. */
+const WHITE_KNEE = 3
+
+/** How white a mark of this brightness has gone, 0…1. */
+export const whiteness = (raw: number): number => (raw <= 1 ? 0 : (raw - 1) / (raw - 1 + WHITE_KNEE))
 
 function makeSprite(r: number, g: number, b: number): HTMLCanvasElement {
   const canvas = document.createElement("canvas")
@@ -154,7 +199,7 @@ export function makeSheet(hue: number, hueSpread: number, seed: number): Sheet {
     }
   }
 
-  return { ramps, glow, outlines: makeOutlines(seed), hue, hueSpread }
+  return { ramps, glow, white: makeSprite(255, 255, 255), outlines: makeOutlines(seed), hue, hueSpread }
 }
 
 /** Whether a sheet still describes these settings. */
@@ -349,7 +394,7 @@ export function drawEmbers(
     const facing = Math.abs(Math.cos(ember.phase))
     const area = 1 - flat * 0.62 * (1 - facing)
 
-    const raw = settings.exposure * ramp.luminance[step]! * area
+    const raw = settings.exposure * response(ramp.luminance[step]!) * area
     if (raw > peak) peak = raw
     // Reinhard: the whole visible range of a cooling ember is five orders of
     // magnitude, so something has to compress it, and this is the cheapest curve
@@ -360,7 +405,6 @@ export function drawEmbers(
     // Counted here rather than where the white centre is drawn, so the number a
     // `stats()` reports means "marks past clipping" for every mark kind — a
     // `mote` has no core to whiten and used to report none at all.
-    if (raw > 1) clipped++
 
     const sx = screenX(view, ember.x)
     const sy = screenY(view, ember.y)
@@ -381,10 +425,20 @@ export function drawEmbers(
     // The dim tail is skipped rather than drawn at an alpha nobody can see: it
     // is most of the population and all of it costs destination area.
     const halo = alpha >= 0.05 ? haloRadius(core, alpha, settings.flare, mark) : 0
+    const white = whiteness(raw)
+    if (white > 0) clipped++
     if (halo > 0) {
       const sprite = sheet.glow[bucket * RAMP_STEPS + step]!
       context.globalAlpha = alpha
       context.drawImage(sprite, sx - halo, sy - halo, halo * 2, halo * 2)
+      // **Every mark kind, not just the ones with a body.** A `mote` is nothing
+      // but this halo, so washing only the core left it with no route to white
+      // at any temperature or exposure — one flat colour however hard the fire
+      // was driven.
+      if (white > 0) {
+        context.globalAlpha = alpha * white
+        context.drawImage(sheet.white, sx - halo, sy - halo, halo * 2, halo * 2)
+      }
     }
 
     if (wantsTail && ember.pathLength > 0) {
@@ -435,19 +489,17 @@ export function drawEmbers(
         context.fill()
       }
 
-      // Highlight clipping. Past an exposure of one the middle of the mark goes
-      // white and the wings keep their colour, which is what an overexposed
-      // point does on film and on a sensor, and is the last of the way to
-      // white-hot that temperature alone cannot reach.
-      if (raw > 1) {
-        const over = raw - 1
-        context.globalAlpha = Math.min(1, over / (1 + over))
+      // Highlight clipping, over the whole body rather than a dot in the middle
+      // of it. Past an exposure of one a point goes white from the centre out,
+      // and on a mark two pixels across a dot at six tenths of that was a
+      // pinprick nobody could read as colour.
+      if (white > 0) {
+        context.globalAlpha = white
         context.fillStyle = "rgb(255 255 255)"
-        const white = core * 0.6
-        if (white <= 1.1) context.fillRect(sx - white, sy - white, white * 2, white * 2)
+        if (core <= 1.1) context.fillRect(sx - core, sy - core, core * 2, core * 2)
         else {
           context.beginPath()
-          context.arc(sx, sy, white, 0, Math.PI * 2)
+          context.arc(sx, sy, core, 0, Math.PI * 2)
           context.fill()
         }
       }

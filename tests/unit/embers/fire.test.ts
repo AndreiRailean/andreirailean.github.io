@@ -60,7 +60,12 @@ function burn(settings: Settings, seconds: number): Outcome {
   const pool: Ember[] = Array.from({ length: Math.round(settings.count) }, () => blankEmber())
   const free = pool.map((_, at) => at).reverse()
   const sample = new Float64Array(3)
-  const physics = { flutter: settings.flutter, burn: settings.burn, breath: settings.breath }
+  const physics = {
+    flutter: settings.flutter,
+    burn: settings.burn,
+    breath: settings.breath,
+    heat: settings.heat,
+  }
 
   const fates: Fates = { top: 0, side: 0, fellBack: 0, burnedOut: 0 }
   const temperatures: number[] = []

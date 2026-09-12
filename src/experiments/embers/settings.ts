@@ -303,7 +303,7 @@ export const CONTROLS: Control[] = [
     max: 2200,
     step: 10,
     format: (v) => `${Math.round(v)}K`,
-    hint: "How hot an ember is when it leaves the fire, in kelvin. Colour and brightness both come out of Planck's law, so this is the only thing that decides them — around 1200 K is a dull red, 1500 an orange spark, above 1900 it clips white in the middle. It does not last: an ember settles within a second to whatever its own burning and the air around it agree on.",
+    hint: "The temperature an ember's own burning holds it at, in kelvin — which is what decides its colour, because the colour is a blackbody's at that temperature. Around 1200 K is a dull red fire, 1500 an orange one, above 1900 the hottest of them wash out to yellow-white. Embers disagree with each other about it by a fifth or so, which is where a fire's simultaneous range of colour comes from, and a large one holds its heat far longer than a small one because thermal inertia goes as diameter. Exposure is quoted against this, so moving it changes the colour and not the brightness.",
   },
   {
     kind: "slider",
@@ -371,7 +371,7 @@ export const CONTROLS: Control[] = [
     step: 0.01,
     scale: "log",
     format: (v) => `${v.toFixed(2)}x`,
-    hint: "How much light the picture is gathering, against a 1500 K ember. The visible output of a cooling ember falls by orders of magnitude, not by a fraction, so this decides how far down that curve you can still see — a long exposure keeps dull red cinders visible all the way to the ground, a short one leaves only the hottest sparks.",
+    hint: "How much light the picture is gathering, against a 1500 K ember. What it really decides is how far down the dying curve you can still see — a long exposure keeps dull cinders visible all the way to the ground, a short one leaves only the hottest sparks. It runs through a film-like response rather than straight through, because a blackbody's visible output spans five orders of magnitude across the heat control's range and a linear picture of that is either a white blob or an empty frame.",
   },
   {
     kind: "slider",
