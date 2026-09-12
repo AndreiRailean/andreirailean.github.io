@@ -1,0 +1,348 @@
+---
+/**
+ * The showcase document: one published scene, full-bleed, and the furniture
+ * around it.
+ *
+ * A bare document like an experiment's own page — no Layout, no globals.css,
+ * no Tailwind. The work owns the viewport and shares no chrome with the rest of
+ * the site.
+ *
+ * Every entry renders the *same* document with a different starting index, so
+ * `/showcase/<id>/` is a real address that a link, a share or a reload lands on
+ * exactly, and moving between entries afterwards is `history.pushState` rather
+ * than a navigation. That is the whole reason the viewer holds a runner handle:
+ * a page load per scene would be a page load per scene.
+ */
+import { WALL } from "@/showcase/wall"
+
+type Props = { start: number }
+const { start } = Astro.props
+const entry = WALL[start]!
+---
+
+<!doctype html>
+<html lang="en" data-framed="false">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{entry.title} — Showcase</title>
+    <meta name="description" content={entry.note} />
+    <meta name="robots" content="noindex" />
+    <style is:global>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #07080c;
+        color: rgb(255 255 255 / 88%);
+        font:
+          400 14px/1.5 ui-sans-serif,
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      body {
+        overflow: hidden;
+        overscroll-behavior: none;
+      }
+
+      #showcase {
+        position: fixed;
+        inset: 0;
+      }
+
+      /* Full-bleed: the piece is the page. The pieces were tuned for a viewport
+         and this is a viewport. */
+      .stage {
+        position: absolute;
+        inset: 0;
+        display: block;
+      }
+
+      canvas.piece {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      /* Framed: the same scene letterboxed into a 4:5 card, for comparison.
+         Not the default — see the note in viewer.ts. */
+      #showcase[data-framed="true"] .stage {
+        inset: 0;
+        margin: auto;
+        width: min(100vw - 2rem, calc((100dvh - 6rem) * 0.8));
+        height: min(100dvh - 6rem, calc((100vw - 2rem) * 1.25));
+        border-radius: 6px;
+        overflow: hidden;
+        box-shadow: 0 12px 48px rgb(0 0 0 / 55%);
+      }
+
+      /* --- furniture ------------------------------------------------------ */
+
+      /*
+       * The placard, and the scrim it needs to be readable at all.
+       *
+       * A gentle gradient is not enough over these pieces. Flotsam puts bright
+       * dots at full density right where the text sits, and at phone size the
+       * first attempt was illegible — the words and the work occupying the same
+       * pixels with neither winning. So: a taller, heavier scrim, and a shadow
+       * on the glyphs themselves, because a scrim alone still loses against a
+       * dot that lands inside a letter.
+       *
+       * The framed look does not need any of this — its text sits on the page's
+       * own ground rather than on the piece — which is an argument for the frame
+       * that had nothing to do with how a scene renders.
+       */
+      .placard {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        padding: 3.5rem 1.5rem calc(1.25rem + env(safe-area-inset-bottom));
+        background: linear-gradient(to top, rgb(4 5 8 / 92%) 0%, rgb(4 5 8 / 72%) 45%, rgb(4 5 8 / 0%) 100%);
+        pointer-events: none;
+        transition: opacity 0.5s ease;
+        opacity: 1;
+        text-shadow: 0 1px 3px rgb(0 0 0 / 90%);
+      }
+
+      /* On the page's own ground, the scrim is only in the way. */
+      #showcase[data-framed="true"] .placard {
+        padding-top: 1.25rem;
+        background: none;
+        text-shadow: none;
+      }
+
+      .placard[data-going="true"] {
+        opacity: 0;
+      }
+
+      .placard .scene {
+        font-size: 1.05rem;
+        font-weight: 500;
+        letter-spacing: 0.01em;
+      }
+
+      .placard .piece {
+        color: rgb(255 255 255 / 52%);
+        margin-left: 0.5rem;
+        font-size: 0.85rem;
+      }
+
+      .placard .note {
+        margin: 0.35rem 0 0;
+        max-width: 46ch;
+        color: rgb(255 255 255 / 62%);
+        font-size: 0.82rem;
+        line-height: 1.45;
+      }
+
+      .counter {
+        position: absolute;
+        top: calc(1rem + env(safe-area-inset-top));
+        right: 1.25rem;
+        font-variant-numeric: tabular-nums;
+        font-size: 0.78rem;
+        color: rgb(255 255 255 / 62%);
+        text-shadow: 0 1px 4px rgb(0 0 0 / 95%);
+        pointer-events: none;
+      }
+
+      #showcase[data-framed="true"] .counter {
+        text-shadow: none;
+        color: rgb(255 255 255 / 45%);
+      }
+
+      /* Arrows, for the desktop. Hidden on a touch device, where the swipe is
+         the whole interface and an arrow is a thing to fat-finger. */
+      .arrows button,
+      [data-frame-toggle],
+      [data-fullscreen-toggle] {
+        position: absolute;
+        display: grid;
+        place-items: center;
+        width: 2.5rem;
+        height: 2.5rem;
+        border: 1px solid rgb(255 255 255 / 14%);
+        border-radius: 999px;
+        background: rgb(10 12 18 / 55%);
+        color: inherit;
+        font-size: 1rem;
+        cursor: pointer;
+        opacity: 0.5;
+        transition: opacity 0.2s ease;
+        backdrop-filter: blur(6px);
+      }
+
+      .arrows button:hover,
+      [data-frame-toggle]:hover,
+      [data-fullscreen-toggle]:hover {
+        opacity: 1;
+      }
+
+      .arrows [data-go="-1"] {
+        top: 50%;
+        right: 1.25rem;
+        transform: translateY(-3.25rem);
+      }
+
+      .arrows [data-go="1"] {
+        top: 50%;
+        right: 1.25rem;
+        transform: translateY(0.25rem);
+      }
+
+      [data-frame-toggle] {
+        top: calc(1rem + env(safe-area-inset-top));
+        left: 1.25rem;
+        font-size: 0.75rem;
+      }
+
+      /* Fullscreen is the one control a touch device keeps: a phone has no `f`
+         to press, and showing a piece on a tablet is the same wish as showing
+         it on a projector. */
+      [data-fullscreen-toggle] {
+        top: calc(1rem + env(safe-area-inset-top));
+        left: 4.5rem;
+        font-size: 0.9rem;
+      }
+
+      @media (hover: none) and (pointer: coarse) {
+        .arrows,
+        [data-frame-toggle] {
+          display: none;
+        }
+
+        [data-fullscreen-toggle] {
+          left: 1.25rem;
+        }
+      }
+
+      /* In fullscreen the furniture is the only thing between the work and the
+         room, so it recedes further than it does in a window. */
+      #showcase[data-fullscreen="true"] .arrows button,
+      #showcase[data-fullscreen="true"] [data-frame-toggle],
+      #showcase[data-fullscreen="true"] [data-fullscreen-toggle] {
+        opacity: 0.22;
+      }
+
+      /* The marks, and the failure. All middle-of-screen. */
+      .mark,
+      .trouble {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        pointer-events: none;
+      }
+
+      /*
+       * Both marks go, rather than the held one staying put.
+       *
+       * A persistent hold indicator would sit over the work for as long as you
+       * looked at it, and holding a piece to look at one frame is a thing a
+       * gallery is for — the same reason the placard fades. So the mark reports
+       * the change and leaves, which also makes play and pause symmetrical
+       * rather than one being a state and the other an event.
+       */
+      .mark span {
+        font-size: 2.5rem;
+        color: rgb(255 255 255 / 80%);
+        text-shadow: 0 2px 20px rgb(0 0 0 / 70%);
+        transition: opacity 0.45s ease;
+        opacity: 1;
+      }
+
+      .mark[data-going="true"] span {
+        opacity: 0;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .mark span {
+          transition: none;
+        }
+      }
+
+      .trouble div {
+        max-width: 28ch;
+        padding: 1rem 1.25rem;
+        border: 1px solid rgb(255 255 255 / 12%);
+        border-radius: 8px;
+        background: rgb(10 12 18 / 82%);
+        text-align: center;
+        color: rgb(255 255 255 / 70%);
+      }
+
+      .trouble .why {
+        margin: 0.4rem 0 0;
+        font-size: 0.8rem;
+        color: rgb(255 255 255 / 45%);
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .placard {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="showcase" data-framed="false" data-state="loading" data-paused="false">
+      <div class="stage"></div>
+
+      <div class="counter"></div>
+
+      <div class="placard" data-going="false">
+        <span class="scene">{entry.title}</span><span class="piece">{entry.pieceTitle}</span>
+        <p class="note">{entry.note}</p>
+      </div>
+
+      <div class="arrows" data-showcase-furniture>
+        <button type="button" data-go="-1" aria-label="Previous">↑</button>
+        <button type="button" data-go="1" aria-label="Next">↓</button>
+      </div>
+
+      <button type="button" data-frame-toggle data-showcase-furniture aria-label="Toggle frame">frame</button>
+      <button
+        type="button"
+        data-fullscreen-toggle
+        data-showcase-furniture
+        aria-label="Toggle fullscreen (f)"
+        title="Fullscreen (f)">⛶</button
+      >
+
+      {
+        /* Both marks, in one slot. Whichever is shown replaces the other rather
+          than racing it, so a fast double-tap cannot leave both up. */
+      }
+      <div class="mark held" hidden><span>❙❙</span></div>
+      <div class="mark playing" hidden><span>▶</span></div>
+
+      <div class="trouble" hidden>
+        <div>
+          <p class="what"></p>
+          <p class="why">The rest of the wall is unaffected — keep going.</p>
+        </div>
+      </div>
+    </div>
+
+    {
+      /* The wall travels as data rather than as a global: a JSON script tag is
+        inert, needs no declaration merged into `Window`, and is the same shape
+        whether the page was prerendered or served. */
+    }
+    <script type="application/json" id="showcase-data" set:html={JSON.stringify({ wall: WALL, start })} />
+
+    <script>
+      import { mountViewer } from "@/showcase/viewer"
+
+      mountViewer()
+    </script>
+  </body>
+</html>

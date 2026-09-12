@@ -1,0 +1,11 @@
+---
+/**
+ * The wall's front door: the newest published scene.
+ *
+ * `/showcase/` is entry zero and nothing else — the same document every
+ * `/showcase/<id>/` renders, started at the top of the wall.
+ */
+import Wall from "@/showcase/Wall.astro"
+---
+
+<Wall start={0} />
