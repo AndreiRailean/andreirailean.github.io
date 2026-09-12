@@ -158,7 +158,8 @@ const entry = WALL[start]!
       /* Arrows, for the desktop. Hidden on a touch device, where the swipe is
          the whole interface and an arrow is a thing to fat-finger. */
       .arrows button,
-      [data-frame-toggle] {
+      [data-frame-toggle],
+      [data-fullscreen-toggle] {
         position: absolute;
         display: grid;
         place-items: center;
@@ -176,7 +177,8 @@ const entry = WALL[start]!
       }
 
       .arrows button:hover,
-      [data-frame-toggle]:hover {
+      [data-frame-toggle]:hover,
+      [data-fullscreen-toggle]:hover {
         opacity: 1;
       }
 
@@ -198,11 +200,32 @@ const entry = WALL[start]!
         font-size: 0.75rem;
       }
 
+      /* Fullscreen is the one control a touch device keeps: a phone has no `f`
+         to press, and showing a piece on a tablet is the same wish as showing
+         it on a projector. */
+      [data-fullscreen-toggle] {
+        top: calc(1rem + env(safe-area-inset-top));
+        left: 4.5rem;
+        font-size: 0.9rem;
+      }
+
       @media (hover: none) and (pointer: coarse) {
         .arrows,
         [data-frame-toggle] {
           display: none;
         }
+
+        [data-fullscreen-toggle] {
+          left: 1.25rem;
+        }
+      }
+
+      /* In fullscreen the furniture is the only thing between the work and the
+         room, so it recedes further than it does in a window. */
+      #showcase[data-fullscreen="true"] .arrows button,
+      #showcase[data-fullscreen="true"] [data-frame-toggle],
+      #showcase[data-fullscreen="true"] [data-fullscreen-toggle] {
+        opacity: 0.22;
       }
 
       /* The marks, and the failure. All middle-of-screen. */
@@ -286,6 +309,13 @@ const entry = WALL[start]!
       </div>
 
       <button type="button" data-frame-toggle data-showcase-furniture aria-label="Toggle frame">frame</button>
+      <button
+        type="button"
+        data-fullscreen-toggle
+        data-showcase-furniture
+        aria-label="Toggle fullscreen (f)"
+        title="Fullscreen (f)">⛶</button
+      >
 
       {
         /* Both marks, in one slot. Whichever is shown replaces the other rather

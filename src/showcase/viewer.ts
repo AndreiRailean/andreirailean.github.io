@@ -327,6 +327,74 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
 
   // --- the gesture ---------------------------------------------------------
 
+  // --- showing it on a big screen ------------------------------------------
+
+  /**
+   * Fullscreen, and keeping the machine awake while in it.
+   *
+   * **Both belong to the showcase rather than to a piece.** A piece draws; how
+   * it is presented is the room's business, exactly as play and pause are. The
+   * builder has no equivalent and does not want one — there you are working on
+   * a scene with a panel open, and the reason to go fullscreen is the reason
+   * this surface exists.
+   *
+   * **The wake lock is tied to fullscreen rather than to playing**, which is
+   * the conservative half of the choice. Every entry animates forever, so a
+   * lock held whenever something is running would inhibit sleep for anyone who
+   * merely left the tab open — rude, and not what was asked for. Entering
+   * fullscreen is the unambiguous "I am showing this to a room" gesture, and it
+   * is the one that should cost the battery.
+   */
+  let wakeLock: WakeLockSentinel | null = null
+
+  async function holdWake() {
+    // Not supported on every browser, and refused outright when the document is
+    // not visible. Either way the showcase still works; it just will not stop
+    // the screensaver, which is a degradation rather than a failure.
+    if (wakeLock || !("wakeLock" in navigator)) return
+    try {
+      wakeLock = await navigator.wakeLock.request("screen")
+      // The browser drops it on tab switch or lock without telling the caller
+      // through any other channel, so the sentinel has to be forgotten here or
+      // the next `holdWake` sees a live lock that is not live.
+      wakeLock.addEventListener("release", () => {
+        wakeLock = null
+      })
+    } catch {
+      wakeLock = null
+    }
+  }
+
+  async function dropWake() {
+    const held = wakeLock
+    wakeLock = null
+    await held?.release().catch(() => {})
+  }
+
+  const isFullscreen = () => document.fullscreenElement !== null
+
+  async function toggleFullscreen() {
+    try {
+      if (isFullscreen()) await document.exitFullscreen()
+      else await document.documentElement.requestFullscreen()
+    } catch (error) {
+      // Refused when the gesture was not user-initiated, and unavailable in
+      // some embedded contexts. Nothing to recover: the wall is unchanged.
+      console.warn("[showcase] fullscreen refused", error)
+    }
+  }
+
+  document.addEventListener("fullscreenchange", () => {
+    root.dataset.fullscreen = String(isFullscreen())
+    if (isFullscreen()) void holdWake()
+    else void dropWake()
+    // Every piece re-measures on window resize and nothing else, and entering
+    // fullscreen changes the viewport without always emitting one.
+    requestAnimationFrame(() => window.dispatchEvent(new Event("resize")))
+  })
+
+  // --- the gesture ---------------------------------------------------------
+
   let from: { x: number; y: number; at: number; id: number } | null = null
   let axis: Axis | null = null
 
@@ -396,6 +464,11 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
         event.preventDefault()
         setPaused(!paused)
         break
+      case "f":
+      case "F":
+        event.preventDefault()
+        void toggleFullscreen()
+        break
       case "Home":
         event.preventDefault()
         go(0)
@@ -460,6 +533,9 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
 
   const frameToggle = root.querySelector<HTMLElement>("[data-frame-toggle]")
   frameToggle?.addEventListener("click", () => setFramed(root.dataset.framed !== "true"))
+
+  const fullscreenToggle = root.querySelector<HTMLElement>("[data-fullscreen-toggle]")
+  fullscreenToggle?.addEventListener("click", () => void toggleFullscreen())
   try {
     if (localStorage.getItem("showcase-framed") === "true") setFramed(true)
   } catch {
@@ -471,6 +547,11 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) mounted?.setPaused(true)
     else if (!paused) mounted?.setPaused(false)
+    // A wake lock does not survive the tab being hidden — the browser releases
+    // it and will not give it back on its own. Coming back to a fullscreen wall
+    // that has quietly stopped holding the screen awake is the failure nobody
+    // would notice until the screensaver arrived mid-showing.
+    if (!document.hidden && isFullscreen()) void holdWake()
   })
 
   window.addEventListener("popstate", (event) => {
