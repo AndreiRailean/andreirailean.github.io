@@ -118,11 +118,13 @@ is the room's business, exactly as play and pause are.
 - **`wall.ts` is hand-curated and nothing regenerates it.** It was seeded once
   from the pieces' `PRESETS` and is an ordinary source file from then on.
   Editing a preset does not republish anything, which is the point.
-- **An entry pins a runner by filename, never by manifest lookup.** The manifest
-  says what a piece's runner is _now_; an entry says what a scene was published
-  _against_. Reading the manifest here would move every published scene onto the
-  newest build the moment a piece changed — exactly the failure the freeze
-  exists to prevent.
+- **An entry pins a runner by filename, and that pin is what publishes it.** An
+  entry says what a scene was published _against_, and nothing moves it. There is
+  no index of current builds to consult and there deliberately is not: reading
+  one would move every published scene onto the newest bytes the moment a piece
+  changed, which is the failure the freeze exists to prevent. The manifest that
+  used to be one was dropped —
+  `docs/adr/20260912-the-store-holds-published-runners-only.md`.
 - **One entry is mounted at a time.** A column of live embeds is the obvious way
   to build a scrolling gallery and is not survivable: every piece is a
   full-viewport 2d canvas with its own loop, and a paused canvas still holds its
@@ -138,13 +140,14 @@ is the room's business, exactly as play and pause are.
 **When you change a piece, you have changed what its next runner will be.** Two
 separate things follow, and only the first is automatic:
 
-1. **Rebuild.** `pnpm run runners` and commit what it writes.
-   `tests/unit/showcase-runners.test.ts` fails until you do, and that failure is
-   an instruction rather than a bug. This part is enforced.
+1. **Rebuild.** `pnpm run runners` writes the new bytes into
+   `public/showcase/runners/` as an untracked file. Nothing obliges you to commit
+   it — building is not publishing.
 2. **Decide whether published scenes move.** Nothing forces this and nothing can,
    because leaving them is legitimate — a pinned scene keeps rendering the bytes
    it was published against, which is the guarantee. **So it is a question you
-   have to actually ask**, and the answer is usually no.
+   have to actually ask**, and the answer is usually no. Answering yes means
+   editing the entry to name the new runner, and _that_ is what commits it.
 
 **Why a check cannot replace step 2, so nobody re-proposes one.** The _noticing_
 is already mechanical: `showcase-runners.test.ts` forces the rebuild and the
