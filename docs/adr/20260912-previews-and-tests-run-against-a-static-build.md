@@ -91,9 +91,38 @@ a presence so the check cannot pass by matching nothing.
 
 `astro preview` has the **same** one-daemon-per-project behaviour that killed the
 derived-port design for `astro dev` — asking for a second port while one runs
-reports the running server and starts nothing. Verified, not assumed. That is a
-limit per _worktree_, not per machine, so previews in different worktrees run
-side by side; it is only the number they cannot share.
+reports the running server and starts nothing. Verified, not assumed.
+
+**So why does the same derivation work here when `20260828` says it cannot?**
+That is the question the next person arrives with, having found that record, and
+"nothing insists on a port" is only half an answer — the objection there was
+mechanical rather than about insisting.
+
+The real difference is **how many servers each scheme asks one directory for.**
+The rejected design wanted a _second_ server in a checkout that already had one:
+a human's dev server on 4354, and the suite then asking for its derived 4437 in
+the same directory. Astro reports the running server, nothing ever answers on
+4437, and the wait times out. The review port asks for **the only server in its
+own worktree**, and takes the slot when something already holds it. That is not
+the same demand, and the singleton never refuses it.
+
+Which leaves the one thing the old record genuinely cannot settle, because it is
+about a different binary: is the singleton per _directory_, or shared across the
+worktrees of one repo? If the latter, nine worktrees could not hold nine
+previews and this collapses into the same 120s hang.
+
+**Measured rather than reasoned about.** A second worktree was created, built,
+and told to preview while this one was already serving:
+
+```
+4707 -> 200    ways-of-working
+4423 -> 200    (probe worktree)
+379 MB total, two daemons, one .astro/preview.json each
+```
+
+Both answered at the same moment, on their own derived ports, from their own
+state files — and the pair together cost less than a third of one `astro dev`.
+The daemon is per directory. Nine worktrees can hold nine previews.
 
 ### "Someone is reviewing" is a live process, not a flag
 

@@ -69,7 +69,9 @@ another branch's server.
 contradiction.** `pnpm run preview` builds and serves on a port hashed from the
 checkout path, so every worktree has its own and keeps it — one bookmark per
 branch, several pieces on screen at once. Astro's one-server limit is per
-_worktree_, not per machine, so the previews themselves do not contend.
+_worktree_, not per machine, so the previews themselves do not contend —
+measured, because `20260828` reads as though it might be otherwise: two
+worktrees, two derived ports, both answering at once, 379 MB for the pair.
 
 The same derivation is **safe for review and unsafe for the suite**, and that is
 the distinction to not flatten. `20260828` failed because the suite _insisted_ on
