@@ -10,6 +10,7 @@
     "check:links": "node scripts/check-links.mts",
     "preview": "node scripts/preview.ts",
     "posters": "node scripts/posters.ts",
+    "prune": "node scripts/prune-runners.ts",
     "astro": "astro",
     "prettier": "prettier . --check",
     "prettier:write": "prettier . --write",

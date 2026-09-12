@@ -1,30 +1,35 @@
 name: Runner store
 
-# **A committed runner is never deleted, modified or renamed.** Additions are the
-# whole point and pass; everything else fails.
+# **A committed runner is never modified or renamed. Removing an unreferenced one
+# is allowed.** Additions are the whole point and pass.
 #
-# `public/showcase/runners/` is retention rather than build output. A published
-# page pins a runner by the hash of its own bytes, GitHub Pages keeps no history,
-# so git *is* the archive — and the failure when one goes missing is silent: the
-# loader empties its container and the host's own background shows, which looks
-# deliberate. See `src/experiments/docs/adr/20260907-runners-are-committed.md`.
+# ## What changed, and why the D came out
 #
-# ## Why this watches history, when two checks already watch the tree
+# This forbade deletion too, because nobody could prove who still held a runner.
+# That was right while the consuming set was unknowable. It is knowable —
+# everything that names a runner is in this repo — and
+# `tests/unit/showcase-runners.test.ts` now fails when a *named* one goes
+# missing, whoever names it, found by scanning every tracked file rather than
+# from a list of destinations that would go stale.
 #
-# `tests/unit/showcase-runners.test.ts` verifies integrity (a runner's name is
-# the hash of its bytes, so the directory checks itself) and existence (every
-# name in `public/showcase/ledger.json` is present). Both read the working tree,
-# and both are defeated the same way: **delete a runner and its ledger line in
-# one commit and the repo is self-consistent and quietly missing a published
-# pin.** Nothing in the tree can close that, because the evidence that the runner
-# used to exist is only in history. #175.
+# So the property worth enforcing stopped being "nothing leaves" and became
+# "nothing needed leaves", and that one is checked in the tree, where the
+# evidence is. Keeping a runner nothing names, against a reader nobody can
+# identify, is insurance against a risk that does not exist — and git already
+# holds every deleted file, so the recovery it was buying was already bought.
+# `pnpm run prune` removes them; `pnpm run prune --list` only names them.
 #
-# This is not aimed at a malicious committer — nothing in-repo can be. It closes
-# the gap between "a tidying session is stopped" and "a tidying session that also
-# tidied the ledger is stopped", and #47 is a session that read this directory as
-# clutter. The structural answer is an object store with write-once semantics,
-# where the property cannot be violated rather than merely detected; all of this
-# is a bridge to that.
+# **This becomes wrong the moment a runner URL can leave this repo.** A
+# copy-embed button would put one on a page nobody here controls, and no runner
+# would ever again be provably unreferenced. Put the D back that day.
+#
+# ## Why M, R and T stay, when a unit test already checks integrity
+#
+# Two of them are belt and braces: a runner is named by the hash of its bytes, so
+# an edited or renamed one already fails `showcase-runners.test.ts`. **T is the
+# one that is not redundant** — replacing a runner with a symlink to another is a
+# deletion wearing a disguise, and a test that reads the file follows the link
+# and finds bytes that hash correctly.
 #
 # ## Why a workflow of its own
 #
@@ -62,7 +67,7 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: No runner was deleted, modified or renamed
+      - name: No runner was modified or renamed
         run: |
           set -euo pipefail
 
@@ -81,15 +86,43 @@ jobs:
           echo "base (HEAD^1)  $base"
           echo "head (HEAD^2)  $head"
 
-          # D deleted, M modified, R renamed, T type changed — the last because
-          # replacing a runner with a symlink is a deletion wearing a disguise.
-          # A (added) is absent on purpose: growing the store is the point.
-          changed="$(git diff --diff-filter=DMRT --name-only "$base" HEAD -- public/showcase/runners/)"
+          # M modified, R renamed, T type changed — the last because replacing a
+          # runner with a symlink is a deletion wearing a disguise that a test
+          # reading the file would follow and find correct.
+          #
+          # **D is absent on purpose.** Removing a runner nothing names is
+          # `pnpm run prune` doing its job, and the case that matters — a runner
+          # something still names going missing — is caught in the tree by
+          # `tests/unit/showcase-runners.test.ts`.
+          #
+          # A (added) is absent because growing the store is the point.
+          changed="$(git diff --diff-filter=MRT --name-only "$base" HEAD -- public/showcase/runners/)"
 
           if [ -n "$changed" ]; then
-            echo "::error title=A committed runner changed::A published page pins a runner by the hash of its own bytes and GitHub Pages keeps no history, so git is the only archive. Deleting or editing one breaks that page silently. Add runners; never touch the ones already there."
+            echo "::error title=A committed runner changed::A runner is named by the hash of its own bytes, so editing or renaming one silently changes what every page pinning it renders. Publish a new runner instead of editing one that is already there."
             printf '%s\n' "$changed"
             exit 1
           fi
 
-          echo "No runner was deleted, modified or renamed."
+          echo "No runner was modified or renamed."
+
+      # **A warning, never a failure.** A runner nothing names costs 22kb and is
+      # visible to `ls`; the failure this repo needs checks for is the silent one,
+      # and that is the tree check above. Failing here would fail on something
+      # that is not a defect, and the instruction would be the same every time —
+      # which is a command rather than a check, and the command is `pnpm run
+      # prune`.
+      #
+      # It is here so that a session reading a CI run sees the store growing
+      # without anyone having to remember to look.
+      - name: Unreferenced runners
+        run: |
+          set -euo pipefail
+
+          unpruned="$(node scripts/prune-runners.ts --list)"
+          printf '%s\n' "$unpruned"
+
+          if printf '%s' "$unpruned" | grep -q '^unpruned'; then
+            summary="$(printf '%s' "$unpruned" | grep '^prune:' || true)"
+            echo "::warning title=Unreferenced runners::${summary:-Some runners are unreferenced.} Not a failure — nothing points at them, git still holds them, and removing them is optional."
+          fi
