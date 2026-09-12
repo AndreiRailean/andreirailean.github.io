@@ -59,6 +59,12 @@ export type WallEntry = {
  * crossing pieces tears one down and mounts another. Judged worth it, and the
  * order is a source edit away from any other opinion.
  *
+ * **Embers leads, because it is the newest published scene and `/showcase/` is
+ * entry zero.** Its piece is also the one that has changed most since any of
+ * its neighbours were pinned, which is the freeze doing its job rather than a
+ * reason to move them: `winter blues` renders the bytes it was published
+ * against, and what Embers does next cannot reach it.
+ *
  * **Twenty-three of the twenty-four presets are here.** The one missing is
  * Psyxels' `maker`, the only scene in any piece whose subject is a photograph
  * rather than a glyph. Its runner has no way to be handed an image, and how a
@@ -67,6 +73,15 @@ export type WallEntry = {
  * nothing and are here.
  */
 export const WALL: readonly WallEntry[] = [
+  {
+    id: "embers-winter-blues",
+    title: "winter blues",
+    piece: "embers",
+    pieceTitle: "Embers",
+    note: "A fire four metres across, seen from a metre away, so there is no column to look at — only what crosses: white-hot where an ember is burning hardest, deep blue as it cools, and the splinters arriving in fans. Its colours are a blackbody's, rotated off the Planck curve rather than chosen.",
+    runner: "embers.9d1c6417cb63.js",
+    scene: "____-0AW29AnEGQE_EY9a0YGERRZLojAtkAMMqLEI",
+  },
   {
     id: "flotsam-offing",
     title: "offing",
