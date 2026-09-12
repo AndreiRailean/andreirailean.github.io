@@ -19,14 +19,6 @@ import { test as base, expect, type JSHandle, type Page } from "@playwright/test
 const SHOT_DIR = ".scratch/shots"
 
 /**
- * The dev toolbar's own module, which the dev server adds to every page.
- *
- * Served empty rather than aborted: an abort shows up as a failed request, and
- * the `problems` fixture below would rightly fail the test for it.
- */
-const DEV_TOOLBAR_MODULE = "**/@id/astro/runtime/client/dev-toolbar/entrypoint.js"
-
-/**
  * The minimum surface `src/experiments/AGENTS.md` requires of every piece.
  *
  * Not a union of the real APIs, for the same reason `window.experiment` is typed
@@ -123,49 +115,56 @@ export type Experiment<Api> = {
  * to provoke an error asserts on the contents and then empties the array —
  * `problems.length = 0` — to say so out loud.
  */
-export const test = base.extend<{ problems: string[]; noDevToolbar: void }>({
+export const test = base.extend<{ problems: string[]; noAnalytics: string[] }>({
   /**
-   * No Astro dev toolbar on any page the suite looks at.
+   * No analytics beacon leaves this machine.
    *
-   * The suite runs against a dev server, and the toolbar is part of the dev
-   * server rather than part of the site — it injects a `<astro-dev-toolbar>`
-   * into every page, and with it **four** more `h1` elements, which is how this
-   * was found: a `page.locator("h1")` on a note resolved to Astro's audit panel
-   * as well as the note's own title.
+   * **This fixture exists because the suite moved onto a static build**, and it
+   * is the change earning its keep on the first run. `GoogleAnalytics.astro`
+   * gates itself on `import.meta.env.PROD`, so `astro dev` never loaded it and
+   * nothing here ever saw it. A build does load it, and the suite immediately
+   * started talking to Google on every page that has a footer.
    *
-   * Counted rather than remembered, on Astro 7.2.4: with the toolbar on,
-   * `document.querySelectorAll("h1")` returns **1** — the page's own — and
-   * walking shadow roots returns **5**. This said five, which was the total
-   * including the page's own title; `tests/AGENTS.md` said four and was right.
+   * Two separate problems, and the second is the one that matters:
    *
-   * **The difference between those two numbers is the whole trap.** The toolbar's
-   * headings live in nested shadow roots, so a plain `querySelectorAll` cannot
-   * see them and neither can a person reading the page source — while
-   * Playwright's locators pierce shadow DOM and count all five. That is why this
-   * was invisible until a locator returned the wrong element.
+   * 1. **It is flaky.** The beacon is a network round trip from a sandboxed
+   *    box, so it fails or does not depending on the network and on whether the
+   *    page outlived it. It took down exactly one test out of 177 —
+   *    `showcase.spec.ts` — which is the signature of a race rather than a rule.
+   * 2. **It was reporting test traffic as real traffic.** Every `page.goto("/")`
+   *    in this suite is a `page_view` against the live property. Nobody would
+   *    choose that, and nothing would have said it was happening.
    *
-   * Stopping its module from arriving, rather than deleting the element
-   * afterwards, because the element is only the part that is easy to see. It
-   * also styles, measures and highlights the page.
+   * Fulfilled with `204` rather than aborted, for the same reason the dev
+   * toolbar's module used to be served empty: an abort surfaces as a failed
+   * request, and the `problems` fixture below would rightly fail the test for
+   * it. A 204 is what a beacon endpoint answers anyway.
    *
-   * **`astro.config.mjs` now disables the toolbar project-wide, and this stays
-   * anyway.** The reason it used to give for not doing that in config — it would
-   * turn the toolbar off for the human whose dev server this may well be — was
-   * answered by Andrei asking for exactly that. What survives is the other half:
-   * the suite **adopts** a running dev server rather than insisting on its own,
-   * so it has no say in how that one was configured. A server started from an
-   * older worktree, cut before the config landed, still serves the toolbar and
-   * this is what keeps it off the page.
+   * Both hosts are listed because they are two different steps — the tag
+   * manager serves the script, the analytics host takes the measurement — and
+   * blocking only the first leaves the second reachable the moment anything
+   * caches or inlines the script.
    *
-   * So the two are not redundant: the config covers a server this checkout
-   * started, and this covers one it merely found.
+   * **It hands back what it actually intercepted**, and that is not a
+   * convenience. The first version of the test guarding this asserted that no
+   * analytics request *failed*, which passed with the matcher deliberately
+   * broken: a request allowed through is still in flight when the test ends, so
+   * there is nothing to observe. A blocker that matches nothing looks exactly
+   * like a blocker that works. Counting fulfilments is the reading that cannot
+   * be faked by timing — see `tests/harness.spec.ts`.
    */
-  noDevToolbar: [
+  noAnalytics: [
     async ({ page }, use) => {
-      await page.route(DEV_TOOLBAR_MODULE, (route) =>
-        route.fulfill({ status: 200, contentType: "text/javascript", body: "" }),
-      )
-      await use()
+      const intercepted: string[] = []
+      // A RegExp rather than a glob. Playwright's globs are matched against the
+      // whole URL including the scheme, and a pattern that has to cross `://`
+      // is one that silently matches nothing — which for a *blocker* looks
+      // exactly like working.
+      await page.route(/googletagmanager\.com|google-analytics\.com/, (route) => {
+        intercepted.push(route.request().url())
+        return route.fulfill({ status: 204, body: "" })
+      })
+      await use(intercepted)
     },
     { auto: true },
   ],

@@ -453,10 +453,11 @@ block that eslint was perfectly happy with. Run `pnpm run prettier` too, or
   invisible in a screenshot. Stills land in `.scratch/shots/` for a human to look
   at and nothing diffs them.
 - **Reach for the unit runner while working.** `pnpm exec vitest rope` answers in
-  milliseconds where the browser suite needs seconds and a dev server.
+  milliseconds where the browser suite needs seconds, a build and a server.
 - **Do not give the browser suite a fixed port, or one derived per worktree.**
-  Both fail, the first silently — see the dev-server section of
-  `tests/AGENTS.md`.
+  Both fail, the first silently — see "The server the browser suite drives" in
+  `tests/AGENTS.md`. The suite drives a static build now rather than `astro dev`,
+  and that rule survived the change unaltered.
 - Use `/root/bin/webcheck` (see the machine's global notes) to sweep many pages
   at once for console errors and stills. It cannot evaluate JS; that is the one
   thing `pnpm test` adds.

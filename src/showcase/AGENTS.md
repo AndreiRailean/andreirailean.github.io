@@ -30,17 +30,30 @@ seed, no way to alter a scene. That is the whole distinction from
 
 ## The boundary, and who owns what
 
-`src/experiments/` has a **steward** — one session tending the shared piece and
-kit code while others build. **The steward's remit does not extend here**, and
-that is deliberate rather than territorial:
+The repo has a **steward** — one session tending its shared surface while others
+build. **The remit excludes the showcase, and the reason is not geography.**
 
-- The steward's job is to keep five pieces coherent with each other. The
-  showcase is not a sixth piece; it is a consumer, and the one whose needs are
-  least like a piece's.
+That distinction is load-bearing, because the reason changed. The scope was
+`src/experiments/`, so this directory was outside it for free. It is now a
+_property_ — shared, mechanical, verifiable work, wherever it lives — and a
+directory clause is no longer an argument for anything. The exclusion that
+applies here is that **another session owns this surface end to end**, which is
+the only one of the role's three that depends on somebody actually being
+accountable for it.
+
+So the boundary is asserted rather than inherited, and these are what assert it:
+
+- The steward keeps the pieces coherent with each other. The showcase is not
+  another piece; it is a consumer, and the one whose needs are least like a
+  piece's.
 - Nearly every good generalisation across the pieces would be a bad
-  generalisation across the pieces _and_ the showcase. See below.
+  generalisation across the pieces _and_ the showcase. See below — four of them,
+  each of which looks like duplication and is not.
 - The dependency runs one way and a shared owner would erode that by being
   helpful.
+
+**If nobody is tending this, the exclusion lapses** and the work is the
+steward's like anything else. It is not a reservation.
 
 So: **changes in here are the showcase's; changes to a piece, the kit, the
 gallery or a runner's contract are the steward's.** If you need something from a
