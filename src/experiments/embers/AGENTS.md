@@ -299,9 +299,28 @@ honest answers.
   set of outlines in `draw.ts`, so a recaptured poster gets the same silhouettes.
   A consequence worth knowing: **no capture of this piece is reproducible**, for
   the same reason Starry Night's is not.
-- **No `runner.ts`.** The piece is not published as a background anywhere yet, and
-  a runner is opt-in by having the file. Adding one is a small job — `read`,
-  `mount`, and the piece's own scene modules — but it commits a frozen bundle, so
-  do it when something wants to embed the piece rather than in advance.
-- **No `playback`.** The other pieces have one; this has `pause` and nothing
-  needed a slow-motion fire enough to spend a slot on it.
+
+It used to say two other things here and both are now wrong, which is worth
+leaving a mark for rather than quietly deleting:
+
+- **It had no `playback`**, on the reasoning that nothing needed a slow-motion
+  fire enough to spend a slot on it. That was wrong on first contact with a
+  reviewer, and wrong in a way worth remembering: the speeds in this piece are
+  _correct_ — a campfire's updraft really is about 4.5 m/s — so being unable to
+  slow it down is not a physics problem with a physics fix. It needed a camera
+  control. See the clock section above.
+- **It had no `runner.ts`**, on the reasoning that a runner commits a frozen
+  bundle and should wait for something that wants to embed the piece. Fair, and
+  the something arrived. Two notes for whoever touches it next:
+  - `mount` **settles the fire** before handing it back. Every surface that asks
+    this piece to arrive somewhere does — the poster, the note's backdrop, the
+    reduced-motion still — because an ember takes a second or two to cross the
+    frame and an unsettled mount is a black rectangle filling in while somebody
+    watches.
+  - A published scene is **frozen against the runner it was pinned to**, which
+    matters more here than for a settled piece. Embers has moved a great deal
+    under review: `trail` was retired for `shutter`, `heat` changed what it
+    means, and the response curve is not what it was. `winter blues` on the wall
+    renders the bytes it was published against and none of that reaches it. If
+    you want it to, that is a deliberate re-pin in `src/showcase/wall.ts` — see
+    `src/showcase/AGENTS.md`, which is emphatic that the default answer is no.
