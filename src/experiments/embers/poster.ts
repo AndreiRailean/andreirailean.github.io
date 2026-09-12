@@ -24,19 +24,29 @@ const poster: PosterRecipe<ExperimentApi> = {
   preset: "winter blues",
 
   /**
-   * The primary, wound up a little — and no longer re-framed.
+   * The primary, with only its events wound up.
    *
-   * This used to override `span`, because the primary was a narrow fire and a
-   * 16:9 still of a vertical column is mostly empty picture. Every primary since
-   * has been a bed wider than the frame, which fills a wide still by itself, so
-   * the only thing left to wind up is how busy the fire is: a shutter catching a
-   * thin moment reads as a sparse piece rather than as a quiet second of a busy
-   * one.
+   * This used to override `span` and `sputter`, and both had gone stale: it
+   * re-framed because an older primary was a narrow fire and a 16:9 still of a
+   * vertical column is mostly empty picture, and it *lowered* sputter from a
+   * value tuned for a different scene while the comment claimed to be raising
+   * it. Every primary since has been a bed wider than the frame, which fills a
+   * wide still by itself, and `winter blues` is already busy.
+   *
+   * So the only thing left to ask for is more of what a single frame is least
+   * likely to catch. A shutter landing between bursts photographs a quiet second
+   * of a lively piece, which is nothing wrong with that second — just not the
+   * one worth hanging.
    */
-  settings: { sputter: 1.6, bursts: 12, playback: 0.35 },
+  settings: { bursts: 12 },
 
-  dwellMs: 1_400,
-  attempts: 8,
+  // Wider sampling than a piece with a fixed arrangement needs, and for a
+  // reason particular to a windy scene: the crosswind wanders on its own slow
+  // clock, so eight frames 1.4 s apart all land inside one phase of it and can
+  // all be lopsided the same way. Ten frames 2.2 s apart covers twenty-two
+  // seconds and gets a choice.
+  dwellMs: 2_200,
+  attempts: 10,
 }
 
 export default poster

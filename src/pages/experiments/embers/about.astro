@@ -2,6 +2,7 @@
 import { getCollection } from "astro:content"
 import Note, { type NoteTheme } from "@/experiments/gallery/Note.astro"
 import { PRESETS } from "@/experiments/embers/settings"
+import { groundColour } from "@/experiments/embers/draw"
 
 // The note's furniture is the gallery's; only the paint is this piece's. See
 // docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.
@@ -11,19 +12,28 @@ if (!entry) throw new Error("Embers: missing about.md")
 // Read off the primary rather than written down, so promoting a preset moves the
 // note's accent along with the poster and the landing scene. Every instance of
 // this fault in the section was a hue typed as a literal, correct on the day.
+//
+// **And not only the accent.** The rest of the sheet was a set of warm
+// near-blacks and creams, which was right while every preset was a fire and
+// wrong the moment the primary was `winter blues` — a blue one. A derived accent
+// on furniture that cannot move with it is the same staleness the section
+// already refuses, one field over: the note came out warm brown around a cold
+// blue piece. So the whole theme turns with the hue now, and `bg` is the piece's
+// own ground colour rather than a second opinion about it.
 const primary = PRESETS[0]!.settings
+const { hue } = primary
 ---
 
 <Note
   entry={entry}
   theme={{
-    bg: "#0a0605",
-    sheet: "rgb(10 6 5 / 74%)",
-    fg: "#e2d6cd",
-    bright: "#fbf5f0",
-    muted: "#9b8479",
-    edge: "rgb(255 235 215 / 12%)",
-    accent: `hsl(${primary.hue} 82% 62%)`,
+    bg: groundColour(hue),
+    sheet: `hsl(${hue} 45% 4% / 76%)`,
+    fg: `hsl(${hue} 16% 85%)`,
+    bright: `hsl(${hue} 24% 96%)`,
+    muted: `hsl(${hue} 13% 57%)`,
+    edge: `hsl(${hue} 30% 82% / 12%)`,
+    accent: `hsl(${hue} 82% 62%)`,
   } satisfies NoteTheme}
   backdrop={0.5}
 >
@@ -33,35 +43,34 @@ const primary = PRESETS[0]!.settings
 
     const canvas = document.getElementById("backdrop")
     if (canvas instanceof HTMLCanvasElement) {
-      // Calmer than the piece proper: this one is scenery, not the subject. The
-      // only things held to the primary are its hue and its *framing* —
-      // everything else here is a deliberate turning-down, and taking the whole
-      // preset would undo it.
+      // **The primary, turned down — spread rather than sampled.**
       //
-      // **The framing is not optional and is why it is read rather than
-      // chosen.** A narrow fire makes a column up the middle of the page, which
-      // is exactly where the note's sheet sits, so the backdrop was a piece you
-      // could not see. The primary is a bed wider than the frame for that
-      // reason: it lays light along the bottom of the page, under the text
-      // rather than behind it.
+      // This used to pick six fields off the primary and write the rest out,
+      // and that quietly stopped being the primary at all: `winter blues` is
+      // soft blue motes at a flare of 0.5, and the backdrop was drawing tailed
+      // embers at 1.5 with a different size range, a different heat and a hue
+      // spread the scene does not have. A visitor met one piece on the note and
+      // another behind it.
+      //
+      // So everything comes from the primary and only the *busyness* is turned
+      // down. This is scenery: it sits under a sheet of text, it should not
+      // compete with it, and it should still be recognisably the thing the page
+      // is about.
+      //
+      // The framing in particular is not optional. A narrow fire makes a column
+      // up the middle of the page, which is exactly where the sheet sits — so
+      // the backdrop was a piece you could not see. A bed wider than the frame
+      // lays light along the bottom instead, under the text rather than behind
+      // it.
       const primary = PRESETS[0]!.settings
       const fire = createEmbers(
         canvas,
         normalizeSettings({
-          hue: primary.hue,
-          span: primary.span,
-          bed: primary.bed,
-          hearth: primary.hearth,
-          sputter: 0.4,
-          pops: 0.15,
-          bursts: 2,
-          updraft: 2.2,
-          count: 700,
-          firelight: 0.05,
-          wind: -1.1,
-          gust: 0.3,
-          exposure: 2,
-          shutter: 0.06,
+          ...primary,
+          count: Math.round(primary.count * 0.55),
+          sputter: primary.sputter * 0.35,
+          pops: primary.pops * 0.25,
+          bursts: primary.bursts * 0.4,
           playback: 0.12,
         }),
       )

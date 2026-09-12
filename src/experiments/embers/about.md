@@ -3,7 +3,7 @@ slug: embers
 title: Embers
 summary: Sparks off an unseen fire, riding a buoyant plume and the vortices it sheds, glowing at whatever colour their temperature says.
 started: 2026-09-07
-updated: 2026-09-07
+updated: 2026-09-12
 poster: ./poster.webp
 tags:
   - canvas
