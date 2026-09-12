@@ -48,7 +48,9 @@ async function releaseTheSlot(): Promise<void> {
   try {
     await run("pnpm", ["exec", "astro", "preview", "stop"])
   } catch {
-    // Nothing was running, which is the ordinary case.
+    // Not for the empty case — `astro preview stop` exits 0 and says "No preview
+    // server is running", so the ordinary path never throws. This is for a stop
+    // that genuinely fails, which must not stop us trying to start one.
   }
 }
 

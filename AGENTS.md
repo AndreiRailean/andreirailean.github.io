@@ -40,6 +40,17 @@ Never `astro dev`: it costs seven times the memory and has twice shown him stale
 work he then reported as broken. Invoked with `/preview`. See
 `docs/adr/20260912-previews-and-tests-run-against-a-static-build.md`.
 
+### Wrapping up a session
+
+**Most of what a session leaves behind, it did not choose to start.** A poster
+capture and a browser run each build and leave a preview server up by design, and
+a merged branch will refuse to delete while its upstream ref is stale. Neither is
+found by remembering. `/wrap-up` clears what is yours — servers, branches, probe
+worktrees — and reports what is not safe to touch, because `astro preview stop`
+and the stash are per-worktree and shared respectively. It is best-effort by
+nature: a session that ends abruptly never runs it, which is why leftovers
+announce themselves through `.astro/*.json` instead.
+
 ### Issue tracker
 
 GitHub issues. `.scratch/` is gitignored private scratch space, never a tracker. See `docs/agents/issue-tracker.md`.
