@@ -72,6 +72,11 @@ That acts on `.astro/preview.json`, which is per-worktree. So it is safe to run
 in your own checkout without checking on anyone, and it is **never** the right
 way to tidy up another worktree's server.
 
+`/wrap-up` does this alongside everything else a session leaves behind, and knows
+the difference that matters: a preview on **this worktree's derived review port**
+may have somebody looking at it, while one on any other port is a script's
+leftover and safe to stop.
+
 ## Never `astro dev` for this
 
 It costs seven times the memory, and it is not the artefact that deploys. It has
