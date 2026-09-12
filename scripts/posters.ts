@@ -105,6 +105,14 @@ async function main(): Promise<void> {
   // recaptured poster fail to reach a reviewer: a build emits content-hashed
   // `_astro/` names, where the dev `<Image>` endpoint keyed a year-long cache on
   // the file path and could not change the address when the bytes changed.
+  //
+  // **This is also why no capture intercepts the dev toolbar any more.** It used
+  // to, because the toolbar renders over the bottom of every page and the first
+  // run of this script put it in both posters. A build emits no toolbar under
+  // any configuration — it is something the dev server injects — so the route
+  // matched nothing and read as protection while providing none. If a toolbar
+  // ever appears in a poster again, the thing that broke is this line, not the
+  // interception that used to follow it.
   const baseUrl = await startPreviewServer()
 
   const browser = await chromium.launch({ executablePath: resolveChromium() })
@@ -132,14 +140,6 @@ async function capture(
     reducedMotion: "no-preference",
   })
   const page = await context.newPage()
-
-  // The dev toolbar is part of the dev server, not the site, and it renders over
-  // the bottom of every page — the first run of this script put it in both
-  // posters. Its module is served empty so it never arrives; deleting the
-  // element afterwards left a window in which a capture could still catch it.
-  await page.route("**/@id/astro/runtime/client/dev-toolbar/entrypoint.js", (route) =>
-    route.fulfill({ status: 200, contentType: "text/javascript", body: "" }),
-  )
 
   const problems: string[] = []
   page.on("pageerror", (error) => problems.push(`uncaught: ${error.message}`))
