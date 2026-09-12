@@ -1,0 +1,84 @@
+---
+import "@/experiments/kit/controls.css"
+
+import Reel from "@/experiments/gallery/Reel.astro"
+
+// A deliberately bare document: no Layout, no globals.css, no Tailwind. The
+// experiment owns the whole viewport and shares no chrome with the rest of the
+// site.
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Embers</title>
+    <style is:global>
+      html {
+        /* Both overridden from JS on every change; the fallbacks keep the page
+           sane before the first paint and without script. `--ground` is the
+           same near-black the canvas fades toward, so a cold landing is not a
+           black rectangle inside a warm document. */
+        --hue: 25;
+        --ground: hsl(25 55% 2.6%);
+
+        --accent: hsl(var(--hue) 78% 58%);
+        --ui-text: rgb(255 255 255 / 72%);
+        --ui-label: rgb(255 255 255 / 50%);
+        --ui-heading: hsl(var(--hue) 40% 66%);
+        --ui-panel: rgb(14 8 6 / 84%);
+        --ui-chip: rgb(18 11 8 / 74%);
+        --ui-edge: rgb(255 235 215 / 13%);
+        --ui-edge-hover: rgb(255 235 215 / 32%);
+        --ui-on-bg: hsl(var(--hue) 62% 34%);
+        --ui-on-text: hsl(var(--hue) 70% 94%);
+        --ui-on-edge: rgb(255 225 195 / 40%);
+        --track: rgb(255 235 215 / 15%);
+        --ui-fade: 0.35s;
+
+        /* The kit's measures, which the pieces legitimately disagree about:
+           twenty-seven rows in four groups want a wider panel than fifteen. */
+        --ui-label-col: 6.5rem;
+        --ui-value-col: 5.25rem;
+        --ui-panel-min: 23rem;
+        --ui-row-gap: 0.38rem;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: var(--ground);
+      }
+
+      body {
+        overflow: hidden;
+      }
+
+      canvas {
+        position: fixed;
+        inset: 0;
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="fire"></canvas>
+    {
+      /* The interactive view: full-bleed piece, two axes of swipe, on a touch device.
+        Between the canvas and `#ui` because DOM order is the whole stacking
+        arrangement here — see the note in Reel.astro. */
+    }
+    <Reel slug="embers" />
+    <div id="ui"></div>
+
+    <script>
+      import { boot } from "@/experiments/embers/page"
+
+      boot()
+    </script>
+  </body>
+</html>

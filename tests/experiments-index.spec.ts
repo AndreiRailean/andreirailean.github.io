@@ -15,6 +15,7 @@ import { expect, test } from "./support/experiment.ts"
 
 const EXPECTED = [
   { slug: "dangler", title: "Dangler" },
+  { slug: "embers", title: "Embers" },
   { slug: "flotsam", title: "Flotsam" },
   { slug: "psyxels", title: "Psyxels" },
   { slug: "starry-night", title: "Starry Night" },

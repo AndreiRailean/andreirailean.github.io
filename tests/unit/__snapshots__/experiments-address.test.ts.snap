@@ -33,6 +33,40 @@ exports[`dangler > has not edited a slot in place 1`] = `
 ]
 `;
 
+exports[`embers > has not edited a slot in place 1`] = `
+[
+  "count num grid=10 origin=100 bits=10",
+  "sputter num grid=0.05 origin=0 bits=7",
+  "pops num grid=0.1 origin=0 bits=7",
+  "bursts num grid=0.5 origin=0 bits=6",
+  "bed num grid=0.01 origin=0.08 bits=9",
+  "hearth num grid=0.02 origin=0 bits=7",
+  "firelight num grid=0.02 origin=0 bits=6",
+  "updraft num grid=0.1 origin=0 bits=8",
+  "spread num grid=0.01 origin=0.01 bits=6",
+  "swirl num grid=0.05 origin=0 bits=6",
+  "churn num grid=0.05 origin=0 bits=6",
+  "mixing num grid=0.05 origin=0 bits=5",
+  "wind num grid=0.05 origin=-4 bits=8",
+  "gust num grid=0.05 origin=0 bits=7",
+  "sizeMin num grid=0.1 origin=0.4 bits=8",
+  "sizeMax num grid=0.1 origin=0.4 bits=8",
+  "flutter num grid=0.05 origin=0 bits=6",
+  "heat num grid=10 origin=900 bits=8",
+  "burn num grid=0.05 origin=0.1 bits=7",
+  "breath num grid=0.05 origin=0 bits=6",
+  "span num grid=0.01 origin=0.6 bits=12",
+  "hue num grid=1 origin=0 bits=9",
+  "hueSpread num grid=1 origin=0 bits=7",
+  "exposure num grid=0.01 origin=0.05 bits=11",
+  "flare num grid=0.05 origin=0 bits=6",
+  "trail num grid=0.02 origin=0 bits=6 RETIRED",
+  "mark enum ember|spark|mote|flake",
+  "shutter num grid=0.005 origin=0 bits=7",
+  "playback num grid=0.01 origin=0.05 bits=8",
+]
+`;
+
 exports[`flotsam > has not edited a slot in place 1`] = `
 [
   "seed num grid=1 origin=0 bits=20",
