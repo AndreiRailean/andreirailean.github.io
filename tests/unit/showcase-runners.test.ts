@@ -46,6 +46,52 @@ async function hashOf(slug: string): Promise<string> {
   return createHash("sha256").update(built.outputFiles[0]!.contents).digest("hex").slice(0, 12)
 }
 
+/**
+ * A runner holds the bytes its name claims, and until now nothing said so.
+ *
+ * **The name is the hash**, which makes this directory self-verifying and makes
+ * the check a recompute rather than a lookup. Nothing else is needed: no
+ * history, no second file, no base revision.
+ *
+ * Every other check here concerns a piece's **current** runner — that it is
+ * committed, that the manifest names it, that rebuilding changes nothing. So
+ * the moment a runner stops being current, nothing in this repo names it, and
+ * editing one was free. Measured rather than assumed, before this was added:
+ * appending a byte to a superseded runner left the whole suite green.
+ *
+ * **Deliberately no filename here.** A runner named in prose is still a runner
+ * named in this repo, and anything that decides what is still referenced by
+ * looking for its name would keep that file alive forever on the strength of a
+ * comment. Examples belong in the commit message, which nothing scans.
+ *
+ * Those are exactly the runners that matter most. A current runner is covered
+ * by the rebuild check; a superseded one is a published pin and nothing else,
+ * which makes it simultaneously the valuable case and the one that looks most
+ * like clutter. #47 is a session that read it as clutter.
+ *
+ * **This is true whatever the store turns out to be.** Whether runners are kept
+ * forever or collected once nothing references them, a file that does not hash
+ * to its own name is corrupt either way — so this check does not depend on that
+ * question and does not wait for it. Deletion is the half that does: it is
+ * covered by the `Runner store` workflow for now, and what should replace that
+ * is undecided.
+ */
+describe("the runner store", () => {
+  it.each(committed)("%s holds the bytes its name claims", (name) => {
+    const claimed = name.split(".")[1]
+    const actual = createHash("sha256")
+      .update(readFileSync(resolve(runners, name)))
+      .digest("hex")
+      .slice(0, 12)
+    expect(
+      actual,
+      `${name} does not hash to ${String(claimed)}. A runner is named by its own bytes, so either the ` +
+        `file was edited — which silently changes what every page pinning it renders — or it was renamed. ` +
+        `Neither is recoverable from here: restore it from git rather than renaming it to match.`,
+    ).toBe(claimed)
+  })
+})
+
 describe("committed runners", () => {
   it("there is at least one, or every check here passes vacuously", () => {
     expect(committed.length).toBeGreaterThan(0)
