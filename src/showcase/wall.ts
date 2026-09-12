@@ -65,6 +65,14 @@ export type WallEntry = {
  * reason to move them: `winter blues` renders the bytes it was published
  * against, and what Embers does next cannot reach it.
  *
+ * It was pinned twice before it ever shipped, and the second pin is the only
+ * kind that needs no argument: **a scene inside an unmerged branch has not been
+ * published**, so there is nothing frozen to disturb. The first runner retired
+ * embers *above* the exposure at which it still painted them, so they winked out
+ * while faintly lit — see `SEEN` in the piece's `palette.ts`. Shipping that on
+ * day one would have been publishing a known defect and then owing it the
+ * freeze.
+ *
  * **Twenty-three of the twenty-four presets are here.** The one missing is
  * Psyxels' `maker`, the only scene in any piece whose subject is a photograph
  * rather than a glyph. Its runner has no way to be handed an image, and how a
@@ -79,7 +87,7 @@ export const WALL: readonly WallEntry[] = [
     piece: "embers",
     pieceTitle: "Embers",
     note: "A fire four metres across, seen from a metre away, so there is no column to look at — only what crosses: white-hot where an ember is burning hardest, deep blue as it cools, and the splinters arriving in fans. Its colours are a blackbody's, rotated off the Planck curve rather than chosen.",
-    runner: "embers.9d1c6417cb63.js",
+    runner: "embers.da2cfdf8bf93.js",
     scene: "____-0AW29AnEGQE_EY9a0YGERRZLojAtkAMMqLEI",
   },
   {
