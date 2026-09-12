@@ -55,6 +55,18 @@ directory-independent half that was already doing the work.**
   longer an argument for anything, and the only thing that keeps a surface out
   of this role is that another session is accountable for it.
 
+  **So the exclusion lapses when the owner does.** An unattended surface is
+  shared, mechanical work like any other and it is the steward's — there is no
+  reservation, because a property scope cannot hold one open on nobody's behalf.
+  Under the old directory scope the showcase was outside the remit whether or not
+  anyone was tending it; under this one that is no longer true, and the
+  difference only shows up on the day it matters.
+
+  This corollary is `showcase-8d`'s, written into its own file first. It is
+  restated here because it is general — it governs every owned-surface exclusion,
+  not that one — and because a rule about what the steward inherits should not
+  live only in the doc of the session that would be handing it over.
+
 ### The cost this carries, stated so it can be watched
 
 A wider remit makes the steward a bottleneck and tempts it to generalise across

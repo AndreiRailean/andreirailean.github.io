@@ -66,6 +66,13 @@ anything, so the only thing keeping a surface out of this role is that somebody
 else is accountable for it. A boundary that was free now has to be asserted and
 maintained, which is a real cost of widening the scope.
 
+**And it lapses when the owner does.** An unattended surface is shared,
+mechanical work like any other and falls to the steward; a property scope cannot
+hold a reservation open on nobody's behalf, which a directory scope did for free.
+The corollary is `showcase-8d`'s, found while restating its own boundary against
+this decision — which is the exclusion working as intended rather than an
+objection to it.
+
 ## Consequences
 
 - `docs/agents/experiments-steward.md` becomes `docs/agents/steward.md`, and the
