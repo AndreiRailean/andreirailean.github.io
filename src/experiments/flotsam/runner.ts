@@ -46,12 +46,11 @@ export function mount(canvas: HTMLCanvasElement, scene: string, _options: MountO
      * without unwinding anything. So a runner's `destroy` is `stop`, and the
      * piece needs no new method to be freezable.
      *
-     * **One listener outlives it**: `stillOnly.addEventListener("change", …)`,
-     * the reduced-motion watcher, which `stop()` does not remove. Harmless for
-     * a page that mounts once and harmless here — the callback only wakes a
-     * loop that is no longer running — but it is a genuine leak for a host that
-     * mounts and unmounts repeatedly, and it belongs to the piece rather than
-     * to this file.
+     * It drops every listener it took, which it did not when this file was
+     * written: the reduced-motion watcher stayed subscribed and held the whole
+     * closure — canvas, settings, 8,500 specks — for each mount torn down. Real
+     * only for a host that mounts repeatedly, which is what a wall is. Fixed in
+     * #168 and checked by `tests/unit/experiments-listeners.test.ts`.
      */
     destroy: sea.stop,
   }

@@ -52,8 +52,10 @@ export function mount(canvas: HTMLCanvasElement, scene: string, _options: MountO
      * `stop()` is this piece's teardown, not merely its pause — the type says
      * so, and `setPaused` is the one that parks the frame without unwinding.
      *
-     * The same reduced-motion listener leak noted in flotsam's runner applies
-     * here; it belongs to the piece rather than to this file.
+     * It drops every listener it took, which it did not when this file was
+     * written. This piece's case was the more interesting of the two: the
+     * reduced-motion handler was an inline arrow, so no reference existed and
+     * the `removeEventListener` was *unwritable* rather than forgotten. #168.
      */
     destroy: strands.stop,
   }
