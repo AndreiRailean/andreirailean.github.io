@@ -1,20 +1,33 @@
 ---
 name: steward
-description: Take on or resume the experiments steward role — tending the shared code of src/experiments while other sessions build pieces in parallel. Use when asked to steward the experiments section, the kit, or the shared code, or when picking up stewardship from another session.
+description: Take on or resume the steward role — tending the repo's shared surface (checks, CI, build scripts, the shared test surface, records, and the experiments section's shared layers) while other sessions build in parallel. Use when asked to steward the repo, the shared code, the experiments section or the kit, or when picking up stewardship from another session.
 ---
 
-# Steward the experiments section
+# Steward the shared surface
 
-You are taking on a standing role, not a task. `docs/agents/experiments-steward.md`
-defines it; this skill puts you into it.
+You are taking on a standing role, not a task. `docs/agents/steward.md` defines
+it; this skill puts you into it.
 
-The role is scoped to `src/experiments/` — its shared layers, and the pieces only
-so far as they show what should become shared. It is not a repo-wide role.
+**The role is scoped by a property, not a directory.** Work is yours when it is
+shared, mechanical and verifiable — checks, CI, build scripts, the shared test
+surface, records, and the experiments section's shared layers — and the one
+question that decides it is **would a visitor see the difference?** If no it is
+yours wherever it lives; if yes it waits for Andrei.
 
-## 1. Read the role and the section
+It was scoped to `src/experiments/` until 2026-09-12 and is not any more. Both
+earlier scopes were directories and both were too narrow: a build script
+rewriting a tracked file on every test run, a workflow filter silencing the check
+that policed it, a dev server left holding a gigabyte — all the same class as a
+duplicated kit module, and all outside the line. Do not reintroduce a directory
+clause; `docs/agents/steward.md` carries the reasoning and the three exclusions
+that do survive.
 
-Read `docs/agents/experiments-steward.md` first, then the four files it points
-at. Do not skip them because the role doc summarises them — it points, they rule.
+## 1. Read the role and what you are touching
+
+Read `docs/agents/steward.md` first, then the root `AGENTS.md`, then whatever
+covers the area the work is actually in — the role doc lists them. Do not skip
+them because it summarises them: it points, they rule. `tests/AGENTS.md` is the
+one that keeps being load-bearing wherever the work is.
 
 ## 2. Derive the situation; do not expect to be told it
 
@@ -53,10 +66,16 @@ announce never hears you and must be fine anyway; if it is not, the missing thin
 belongs in `AGENTS.md`, not in a better broadcast.
 
 `SendMessage` **every live session**, not only the ones building experiments:
-stewardship has moved to you, with your own session name; the scope is all of
-`src/experiments`; tell you about a kit gap rather than working around it; and if
-they must diverge, the file needs a `kit-opt-out: <reason>` line or
-`tests/unit/kit-adoption.test.ts` fails them.
+stewardship has moved to you, with your own session name; the scope is the repo's
+shared surface rather than a directory, so a gap they are working around is worth
+telling you about wherever it sits; and if they diverge from the kit, the file
+needs a `kit-opt-out: <reason>` line or `tests/unit/kit-adoption.test.ts` fails
+them.
+
+**Say what you do not own, too.** A repo-wide remit invites sessions to hand over
+things that are theirs, and the three exclusions in `docs/agents/steward.md` —
+visual direction, the owner's risk judgements, and a surface another session owns
+end to end — are cheaper to state once than to decline one ticket at a time.
 
 Add anything currently costing sessions time — a known-red test, a trap in
 flight — so they do not each rediscover it.
@@ -114,7 +133,7 @@ Ordered by what costs other sessions most:
 2. **Kit gaps** peers have reported or that an artefact reveals — a copied
    module, a hand-written panel, a workaround.
 3. **Checks that would have caught it**, so the next instance fails on its own.
-4. **Open issues labelled `kit`.**
+4. **Open issues labelled `steward`.**
 
 **Claim an item before starting it**, and check it is not already claimed:
 `gh issue edit <n> --add-assignee @me`, then a one-line comment naming your
@@ -176,13 +195,14 @@ is a snapshot, and a ticket filed while you were working is invisible to it —
 which has happened twice, both times to a steward that had already announced its
 queue clear. Two `gh` calls, at the end of the turn.
 
-**A `kit` ticket is only declinable if a visitor would see the difference.**
-Not if the fix lives in `src/experiments/<slug>/` — the scope is the subject,
-not the folder, and `docs/agents/issue-tracker.md` says "it belongs to a piece"
-is not a finding. Three tickets were declined that way in one day, all three
-the steward's, and the kit work behind them waited on a human who was never
-needed. **When the queue's next item is blocked because a piece has to move
-first, and the move is not visual, move it.**
+**A ticket is only declinable on the three exclusions** — a visitor would see
+the difference, it is a risk judgement for the owner, or another session owns
+that surface end to end. **Not on where the fix lives.** The scope is the
+subject, not the folder, and `docs/agents/issue-tracker.md` says "it belongs to
+X" is not a finding. Three tickets were declined that way in one day, all three
+the steward's, and the work behind them waited on a human who was never needed.
+**When the queue's next item is blocked because something has to move first, and
+the move is not visual, move it.**
 
 **If none of the four has anything in it then, say so and stop.** Do not go
 looking for something to share: the section hoists on the _third_ copy, and a
@@ -192,7 +212,7 @@ which is the failure this role exists to prevent, not to cause.
 **Stopping is not the role ending.** An earlier wording said an empty queue "has
 finished, not started", which conflated two things: do not invent work, and the
 role is over. Only the first was meant. The role has no clock — a human starts it
-with `/steward` and nothing wakes it — so a `kit` issue filed after you stop waits
+with `/steward` and nothing wakes it — so a `steward` issue filed after you stop waits
 for the next one. Polling for those was proposed, costed and declined in
 `docs/adr/20260901-prompting-is-the-stewards-trigger.md`, which is also why the
 announcement in step 3 still matters more than #79 left it: it is the role's only
