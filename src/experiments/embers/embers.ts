@@ -45,7 +45,7 @@ import { createAir, type Air } from "@/experiments/embers/air"
 import { createBed, type Bed, type Spawn } from "@/experiments/embers/bed"
 import { blankEmber, dress, samplePath, stepEmber, type Ember, type Physics } from "@/experiments/embers/ember"
 import { clearFrame, drawEmbers, drawFirelight, makeSheet, sheetMatches, type Sheet } from "@/experiments/embers/draw"
-import { DARK_TEMP, rampStep } from "@/experiments/embers/palette"
+import { rampStep, SEEN } from "@/experiments/embers/palette"
 import { needsSheet, type Settings } from "@/experiments/embers/settings"
 import { beyond, makeView, screenX, screenY, type View } from "@/experiments/embers/view"
 
@@ -285,7 +285,8 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
       breath: settings.breath,
       heat: settings.heat,
     }
-    const luminance = sheet.ramps[0]!.luminance
+    // Hue does not change how much light an ember makes, so any ramp answers.
+    const responded = sheet.ramps[0]!.response
 
     for (let at = 0; at < pool.length; at++) {
       const ember = pool[at]!
@@ -300,11 +301,21 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
         kill(at)
         continue
       }
-      // Retired at exactly the temperature the renderer stops being able to
-      // show, which `DARK_TEMP` derives from the draw's own cutoff. The grace
-      // period is for an ember born cool that its own combustion is still
-      // lighting.
-      if (ember.age > GRACE && ember.temp < DARK_TEMP && luminance[rampStep(ember.temp)]! < 2e-4) {
+      /**
+       * Retired just *below* where the renderer stops painting it, never above.
+       *
+       * Both numbers come from `SEEN` so the two cannot drift, and they are
+       * measured through the same response curve the drawing uses — which is the
+       * thing that went wrong when this was a temperature. `DARK_TEMP` was
+       * bisected for the luminance a *linear* response put at the paint cutoff,
+       * and the film curve silently invalidated the derivation without touching
+       * the constant: embers were being killed at an alpha of 0.21 at long
+       * exposures, winking out while plainly lit.
+       *
+       * The grace period is for an ember born cool that its own combustion is
+       * still lighting.
+       */
+      if (ember.age > GRACE && settings.exposure * responded[rampStep(ember.temp)]! < SEEN.keep) {
         kill(at)
       }
     }
@@ -508,6 +519,22 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
 
     settle(seconds) {
       advance(seconds)
+      /**
+       * Drawn **synchronously**, before returning.
+       *
+       * The section's `tests/unit/draw-time-stats.test.ts` accepts a `settle()`
+       * as standing in for a frame wait, on the grounds that a settle draws
+       * rather than racing whichever animation frame comes next. That was true
+       * here until the tail stopped accumulating and `advance` lost its drawing
+       * loop — at which point `settle` advanced the simulation and left the
+       * picture and every draw-time stat a frame behind, silently.
+       *
+       * It showed up as `drawn` exceeding `alive`, which is impossible in one
+       * frame and obvious in two. Anything that asks this piece to arrive
+       * somewhere — the poster, the note's backdrop, the runner on the wall —
+       * wants the picture it arrived at, not the one before.
+       */
+      draw()
       dirty = true
       wake()
     },

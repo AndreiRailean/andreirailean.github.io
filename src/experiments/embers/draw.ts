@@ -48,7 +48,7 @@
  */
 
 import { hashSeed, makeRng } from "@/experiments/random"
-import { makeRamp, RAMP_STEPS, rampStep, type Ramp } from "@/experiments/embers/palette"
+import { makeRamp, RAMP_STEPS, rampStep, SEEN, type Ramp } from "@/experiments/embers/palette"
 import { SHAPES, type Ember } from "@/experiments/embers/ember"
 import { screenX, screenY, type View } from "@/experiments/embers/view"
 import type { Air } from "@/experiments/embers/air"
@@ -108,31 +108,6 @@ export function bucketHue(hue: number, hueSpread: number, bucket: number): numbe
 /** Which bucket an ember's tone falls in. */
 export const toneBucket = (tone: number): number =>
   Math.min(HUE_BUCKETS - 1, Math.max(0, Math.round(tone * (HUE_BUCKETS - 1))))
-
-/**
- * The response curve, from emitted light to what the plate makes of it.
- *
- * **Film is not linear in exposure and neither is this, for the same reason.**
- * A blackbody's visible output spans five orders of magnitude across the range
- * `heat` offers — 1000 K to 2200 K is a factor of half a million — and mapped
- * straight through, `heat` and `exposure` fight: nudging the fire's colour up
- * blows the picture to a solid white blob, and nudging it down leaves nothing on
- * screen. Both were measured, at the two ends, and neither is a picture.
- *
- * A power law compresses that the way an emulsion's characteristic curve does.
- * At 0.4 the 1000 K to 2200 K range comes out as a factor of about eighty rather
- * than half a million: still unmistakably a gradient from dull cinder to
- * white-hot spark, and one that fits inside a picture at a single exposure.
- *
- * It also moves the piece the way it was asked to. An ember's *colour* is its
- * temperature and its brightness is this — so flattening the brightness range
- * without touching the chromaticity trades a light-to-dark gradient for a
- * red-to-yellow-to-white one, which is what a fire looks like and what a linear
- * response could not give.
- */
-const RESPONSE = 0.4
-
-const response = (luminance: number): number => luminance ** RESPONSE
 
 /** How fast an overexposed mark walks toward white. Larger is more gradual. */
 const WHITE_KNEE = 3
@@ -394,13 +369,13 @@ export function drawEmbers(
     const facing = Math.abs(Math.cos(ember.phase))
     const area = 1 - flat * 0.62 * (1 - facing)
 
-    const raw = settings.exposure * response(ramp.luminance[step]!) * area
+    const raw = settings.exposure * ramp.response[step]! * area
     if (raw > peak) peak = raw
     // Reinhard: the whole visible range of a cooling ember is five orders of
     // magnitude, so something has to compress it, and this is the cheapest curve
     // that never clips to black at the bottom.
     const alpha = raw / (1 + raw)
-    if (alpha < 0.004) continue
+    if (raw < SEEN.paint) continue
 
     // Counted here rather than where the white centre is drawn, so the number a
     // `stats()` reports means "marks past clipping" for every mark kind — a

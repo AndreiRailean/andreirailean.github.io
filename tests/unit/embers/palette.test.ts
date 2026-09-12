@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 import {
   blackbodyRgb,
+  RESPONSE,
+  response,
+  SEEN,
   makeRamp,
   NATURAL_HUE,
   planckianXy,
@@ -110,5 +113,54 @@ describe("the ramp", () => {
         expect(channel).toBeLessThanOrEqual(1)
       }
     }
+  })
+})
+
+/**
+ * The two thresholds that decide what is painted and what is kept.
+ *
+ * **They have to stay in that order, and they silently did not.** Retirement
+ * used to be a temperature bisected for the luminance that a *linear* response
+ * put at the paint cutoff. Adding a film response curve invalidated the
+ * derivation without touching the constant, so embers were being retired
+ * *above* the point at which they were still being painted — killed at an alpha
+ * of 0.21 at a long exposure, winking out while plainly lit.
+ *
+ * Nothing in a still shows an ember that should be there. What caught it was
+ * `tests/embers.spec.ts` asserting that fewer embers are drawn than are alive,
+ * which had quietly become impossible: retire above the paint cutoff and every
+ * live ember is painted by construction. That is a browser test failing for an
+ * arithmetic reason, which is exactly the trade this file exists to avoid.
+ */
+describe("what is seen and what is kept", () => {
+  it("keeps an ember past the point it stops being painted, never before", () => {
+    expect(SEEN.keep).toBeLessThan(SEEN.paint)
+  })
+
+  it("leaves a band where an ember is alive and unpainted, which is how a life ends", () => {
+    // Some exposure must put an ember between the two. Without that band an
+    // ember's last visible frame is also its last frame.
+    const between = (SEEN.paint + SEEN.keep) / 2
+    expect(between).toBeLessThan(SEEN.paint)
+    expect(between).toBeGreaterThan(SEEN.keep)
+  })
+
+  it("compresses the range `heat` offers into something a single exposure can hold", () => {
+    // 1000 K to 2200 K is a factor of about half a million in emitted light and
+    // must not be that on the plate: at either end of a linear mapping the
+    // picture is a white blob or an empty frame, and both were measured.
+    const raw = relativeLuminance(2200) / relativeLuminance(1000)
+    expect(raw).toBeGreaterThan(100_000)
+
+    const seen = response(relativeLuminance(2200)) / response(relativeLuminance(1000))
+    expect(seen).toBeLessThan(500)
+    // Still a gradient, though — flattening it away would be the other failure.
+    expect(seen).toBeGreaterThan(20)
+  })
+
+  it("is a compressing curve rather than an expanding one", () => {
+    expect(RESPONSE).toBeGreaterThan(0)
+    expect(RESPONSE).toBeLessThan(1)
+    expect(response(1)).toBeCloseTo(1, 9)
   })
 })

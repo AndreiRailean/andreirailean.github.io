@@ -142,26 +142,58 @@ export function relativeLuminance(kelvin: number): number {
 }
 
 /**
- * The temperature at which an ember stops being visible at any exposure the
- * piece offers, in kelvin — found rather than chosen.
+ * The response curve, from emitted light to what the plate makes of it.
  *
- * The draw cuts a mark at an alpha of 0.004, and the longest exposure is 20x, so
- * the dimmest ember that can put anything on the glass is one whose relative
- * luminance is about 2e-4. Bisecting for it means the simulation retires an
- * ember at exactly the point the renderer stops being able to show it, and the
- * two cannot drift apart when either number is changed.
+ * **Film is not linear in exposure and neither is this, for the same reason.** A
+ * blackbody's visible output spans five orders of magnitude across the range
+ * `heat` offers — 1000 K to 2200 K is a factor of half a million — and mapped
+ * straight through, `heat` and `exposure` fight: nudging the fire's colour up
+ * blows the picture to a solid white blob, and nudging it down leaves nothing on
+ * screen. Both were measured, at the two ends, and neither is a picture.
+ *
+ * A power law compresses that the way an emulsion's characteristic curve does.
+ * At 0.4 the 1000 K to 2200 K range comes out as a factor of about eighty rather
+ * than half a million: still unmistakably a gradient from dull cinder to
+ * white-hot spark, and one that fits inside a picture at a single exposure.
+ *
+ * It also moves the piece the way it was asked to. An ember's *colour* is its
+ * temperature and its brightness is this — so flattening the brightness range
+ * without touching the chromaticity trades a light-to-dark gradient for a
+ * red-to-yellow-to-white one, which is what a fire looks like and what a linear
+ * response could not give.
+ *
+ * **It lives here rather than in `draw.ts` because two things read it**, and
+ * they have to agree: the renderer, deciding what to paint, and the scene,
+ * deciding what to retire. They did not agree when this was a private constant
+ * in the drawing code, and the consequence is under `SEEN` below.
  */
-export const DARK_TEMP = (() => {
-  const target = 2e-4
-  let low = TEMP_MIN
-  let high = TEMP_REFERENCE
-  for (let step = 0; step < 40; step++) {
-    const middle = (low + high) / 2
-    if (relativeLuminance(middle) < target) low = middle
-    else high = middle
-  }
-  return Math.round((low + high) / 2)
-})()
+export const RESPONSE = 0.4
+
+export const response = (luminance: number): number => luminance ** RESPONSE
+
+/**
+ * The exposure below which a mark is not worth painting, and the one below
+ * which an ember is not worth simulating.
+ *
+ * **Two numbers, deliberately, with the retirement strictly lower.** An ember
+ * between them is alive and unpainted, which is the correct end of a life: it
+ * has cooled past visibility and is on its way out. If the two were equal an
+ * ember would wink out on the frame it stopped being drawn; if retirement were
+ * *higher*, it would vanish while still lit.
+ *
+ * Which is what happened. The retirement used to be a temperature —
+ * `DARK_TEMP`, bisected for the luminance that a linear response put at the
+ * paint cutoff — and adding the response curve above silently broke the
+ * derivation without touching the constant. At 975 K an ember's `raw` went from
+ * 0.004 to `exposure × 0.0132`, so at any exposure over about 0.3 it was being
+ * killed while plainly visible: at 20x it was being killed at an alpha of 0.21.
+ *
+ * Nothing in a still shows that. What showed it was `tests/embers.spec.ts`
+ * asserting that fewer embers are drawn than are alive — which had quietly
+ * become impossible, because retiring above the paint cutoff means every live
+ * ember is painted.
+ */
+export const SEEN = { paint: 0.004, keep: 0.002 }
 
 /* ------------------------------------------------------------------ *
  * Hue rotation
@@ -226,6 +258,14 @@ export type Ramp = {
   bytes: Uint8Array
   /** Visible light emitted at each step, relative to `TEMP_REFERENCE`. */
   luminance: Float64Array
+  /**
+   * That light through `response`, precomputed.
+   *
+   * A `**` per ember per frame is not free and the answer only has
+   * `RAMP_STEPS` distinct values, so it is table not arithmetic — and having one
+   * table is what keeps the renderer and the scene reading the same number.
+   */
+  response: Float64Array
 }
 
 /** Which ramp step a temperature falls in. */
@@ -251,6 +291,7 @@ export function makeRamp(hue: number): Ramp {
   const css: string[] = []
   const bytes = new Uint8Array(RAMP_STEPS * 3)
   const luminance = new Float64Array(RAMP_STEPS)
+  const responded = new Float64Array(RAMP_STEPS)
 
   for (let step = 0; step < RAMP_STEPS; step++) {
     const kelvin = rampTemperature(step)
@@ -267,7 +308,8 @@ export function makeRamp(hue: number): Ramp {
     bytes[step * 3 + 2] = b8
     css.push(`rgb(${r8} ${g8} ${b8})`)
     luminance[step] = relativeLuminance(kelvin)
+    responded[step] = response(luminance[step]!)
   }
 
-  return { css, bytes, luminance }
+  return { css, bytes, luminance, response: responded }
 }
