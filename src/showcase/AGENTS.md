@@ -47,6 +47,21 @@ gallery or a runner's contract are the steward's.** If you need something from a
 piece, ask rather than reach — that is how #168 got fixed properly instead of
 being worked around here.
 
+**The boundary is deliberately permeable inward, and that is the point rather
+than a concession.** A consumer finds bugs in what it consumes: #168 was four
+pieces sharing a listener leak that only a host mounting and unmounting
+repeatedly could ever surface, and nothing inside the section would have found
+it. Reporting upward is the strongest argument that the split is right — the
+showcase is the section's first real load test, and it can only be that while it
+stays a separate consumer rather than becoming part of what it tests.
+
+**"Your directory / my directory" is not quite the rule**, and the place it
+misleads is the hoist. When a third consumer of the pausing appears, the copy
+that triggers it may live here, but the destination is `gallery/` — so the
+decision to hoist and where it lands are the steward's, on a count taken here.
+That is the one move where the right answer is a change on their side prompted
+by something on ours.
+
 **The one import from their side is `gallery/gesture.ts`**, for the swipe
 arithmetic, so the wall and the interactive view cannot drift to different
 thresholds by accident. If that ever needs to change, it is a conversation, not
@@ -117,6 +132,20 @@ separate things follow, and only the first is automatic:
    because leaving them is legitimate — a pinned scene keeps rendering the bytes
    it was published against, which is the guarantee. **So it is a question you
    have to actually ask**, and the answer is usually no.
+
+**Why a check cannot replace step 2, so nobody re-proposes one.** The _noticing_
+is already mechanical: `showcase-runners.test.ts` forces the rebuild and the
+commit, so a moved hash always lands in somebody's diff. What is left is a
+judgement whose legitimate default is _no_, and a check would have to fail on
+the right answer.
+
+The tempting shape is a `kit-opt-out`-style marker on an entry pinned to a
+superseded runner, making a stale pin legible rather than forbidden. **It does
+not transfer, and the reason is polarity.** That pattern works where adoption is
+the norm and divergence is rare, so the marker marks the exception. Here it is
+inverted — a stale pin is the ordinary case, because the freeze is the point —
+so per-entry markers would be noise on the common path and silence on the rare
+one. Exactly backwards.
 
 Re-pin when the new runner fixes something the old one gets wrong _for the
 wall_. It happened once already and is the worked example: #169 fixed a listener

@@ -33,17 +33,13 @@ Six of those records are rules you will otherwise rediscover the hard way:
   content hash, so deleting it breaks that page silently. Run `pnpm run runners`
   after changing a piece and commit what it writes;
   `tests/unit/showcase-runners.test.ts` fails when the bytes a piece now builds
-  to are not committed, and that failure is an instruction rather than a bug. See
-  `docs/adr/20260907-runners-are-committed.md`.
-- **Rebuilding a runner is enforced; republishing onto it is a question you have
-  to ask.** The check above proves the new bytes are committed. It cannot tell
-  you whether anything already published should _move_ to them, because leaving a
-  scene where it is stays legitimate — that is the freeze, and no check can fail
-  on a correct answer. So when you change a piece, ask: does this fix something a
-  published scene gets wrong? Usually no. It was yes for #169, whose listener fix
-  only bites a host that mounts and unmounts repeatedly. `src/showcase/AGENTS.md`
-  holds the full version and the worked example; this bullet exists so the
-  question gets asked from the side where the piece is actually being changed.
+  to are not committed, and that failure is an instruction rather than a bug.
+  **Rebuilding is enforced; republishing onto the result is a question.** The
+  check proves the new bytes are committed and cannot tell you whether anything
+  already published should move to them — leaving a scene where it is stays
+  legitimate, because that is the freeze. Ask it when you change a piece; the
+  answer is usually no, and was yes for #169. `src/showcase/AGENTS.md` has the
+  worked example. See `docs/adr/20260907-runners-are-committed.md`.
 - **A published scene is a packed address string plus a frozen runner.** A page outside the
   section gets a piece through two URLs and no imports: a content-addressed
   runner built from `src/experiments/<slug>/runner.ts`, and an artefact naming
