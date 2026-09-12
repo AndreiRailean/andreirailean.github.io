@@ -116,3 +116,45 @@ by removing the pin. Same objection.
 - **Byte-reproducibility is now load-bearing.** It rests on esbuild being pinned
   in the lockfile. If a future esbuild changes its output, every runner's hash
   moves at once and the check will say so loudly on the first PR after the bump.
+
+## "Never pruned" is enforced, and was not
+
+The rule above was convention for its whole first week. Measured on `main` rather
+than assumed, by the session that found it: **deleting a superseded runner left
+every check green, and so did appending a byte to one.** The reason is structural
+— every check here concerns a piece's _current_ runner, so the moment one stops
+being current, nothing in the repo names it. Superseded runners are therefore
+simultaneously the case the rule exists for and the ones that look most like
+clutter, which is exactly how #47 read them.
+
+Three layers now, and they fail differently on purpose:
+
+- **Integrity** — a runner's name is the hash of its own bytes, so the directory
+  verifies itself with no history and no index. #174.
+- **Existence** — `public/showcase/ledger.json` names every runner ever
+  committed, written by `scripts/runners.ts` as a union so a run on a tree where
+  one was removed keeps naming it. #174.
+- **History** — `.github/workflows/runners-append-only.yml` fails on any `D`,
+  `M`, `R` or `T` under `public/showcase/runners/` relative to the base branch.
+  #175.
+
+**The third exists because the first two share one weakness**: the ledger is an
+ordinary tracked file, so deleting a runner and its ledger line in one commit
+leaves the repo self-consistent and quietly missing a published pin. Nothing in
+the working tree can close that — the evidence that the runner used to exist is
+only in history — which is why that layer is a workflow rather than a test.
+
+**None of this is aimed at a malicious committer**, and nothing in-repo could be.
+It closes the gap between stopping a tidying session and stopping a tidying
+session that also tidied the ledger. The structural answer remains the object
+store with write-once semantics named in the options above, where the property
+cannot be violated rather than merely detected; all three layers are a bridge to
+it rather than a substitute.
+
+**What the history check assumes, and why it is safe to.** On a `pull_request`
+event `actions/checkout` checks out the merge ref, whose first parent is the base
+branch tip — so `fetch-depth: 2` is enough and full history buys nothing. That
+assumption is load-bearing and silent if wrong, so the step **proves it before
+comparing**: no second parent means no merge ref, and it fails rather than
+passing. "No output" being the success condition is precisely what makes a
+misconfigured checkout look clean.
