@@ -48,6 +48,7 @@ import { describe, expect, it } from "vitest"
 
 const BROWSER = ".github/workflows/test-browser.yml"
 const UNIT = ".github/workflows/test-unit.yml"
+const RUNNER_STORE = ".github/workflows/runners-append-only.yml"
 
 /**
  * GitHub's path filters, as much of them as this file needs.
@@ -176,6 +177,39 @@ describe("the browser workflow's path filter", () => {
         `ADR-only change. If this job has become too slow to run always, split it rather than ` +
         `filtering it.`,
     ).toEqual([])
+  })
+
+  /**
+   * **The runner-store workflow has no filter either, for a sharper reason.**
+   *
+   * Its whole subject is `public/showcase/runners/`, and `public/**` is on the
+   * browser filter's ignore list. So a pull request whose entire diff is a
+   * deleted runner touches nothing that would trigger a filtered job — filter
+   * this one on any list resembling the browser's and it becomes unable to fire
+   * on the only change it cares about.
+   *
+   * The tempting edit is the opposite polarity: an *allow*-list narrowing it to
+   * `public/showcase/runners/**` so it runs only when relevant. That is the
+   * allow-list direction `test-browser.yml`'s own comment rejects — a path
+   * nobody remembered to add silently stops being checked — and here it would be
+   * worse than usual, because the job takes seconds and the thing it protects is
+   * unrecoverable: Pages keeps no history, so git is the only archive. #175.
+   */
+  it("does not filter the runner-store workflow, whose subject the browser filter ignores", () => {
+    expect(
+      ignoredBy(RUNNER_STORE),
+      `${RUNNER_STORE} has a path filter. It must not: its subject is ` +
+        `public/showcase/runners/, and \`public/**\` is on ${BROWSER}'s ignore list — so a ` +
+        `pull request that only deletes a runner would skip a filtered job entirely, which is ` +
+        `the one case this workflow exists for.`,
+    ).toEqual([])
+
+    // Not just `paths-ignore`: an allow-list is the other way to stop it firing,
+    // and `ignoredBy` reads only the ignore form.
+    expect(
+      /^\s*paths:/m.test(readFileSync(RUNNER_STORE, "utf8")),
+      `${RUNNER_STORE} has an allow-list \`paths:\` trigger. Same objection, opposite spelling.`,
+    ).toBe(false)
   })
 
   /**
