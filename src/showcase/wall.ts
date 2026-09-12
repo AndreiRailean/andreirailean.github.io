@@ -9,18 +9,22 @@
  *
  * ## What an entry pins, and why it pins the runner by name
  *
- * `runner` is a filename under `public/showcase/runners/`, not a piece's
- * current runner looked up in the manifest. Those are different things and the
- * difference is the freeze: the manifest says what a piece's runner is *now*,
- * and an entry says what this scene was published *against*. Reading the
- * manifest here would move every published scene onto the newest build the
- * moment a piece changed, which is exactly the "new defaults changed my piece"
- * failure the showcase exists to escape.
+ * `runner` is a filename under `public/showcase/runners/` — the exact bytes this
+ * scene was published against, and never a lookup of whatever the piece builds
+ * to now. Resolving it at build time would move every published scene onto the
+ * newest bytes the moment a piece changed, which is exactly the "new defaults
+ * changed my piece" failure the showcase exists to escape.
+ *
+ * **Naming a runner here is also what publishes it.** `pnpm run runners` builds
+ * every piece into that directory as an untracked file; a runner joins the store
+ * because an entry like these names it, and `pnpm run prune` removes tracked
+ * ones nothing does. See
+ * `src/experiments/docs/adr/20260912-the-store-holds-published-runners-only.md`.
  *
  * The cost is that changing a piece's code and rebuilding leaves entries
  * pointing at the previous runner. That is correct — they keep rendering what
  * they always rendered — and moving one is a deliberate edit here.
- * `tests/unit/showcase-wall.test.ts` fails if an entry names a runner that is
+ * `tests/unit/showcase-runners.test.ts` fails if an entry names a runner that is
  * not committed, because the alternative is silent: the container empties, and
  * an empty container looks like a design decision.
  *

@@ -1,9 +1,8 @@
 import { execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
-import { readdirSync, readFileSync } from "node:fs"
+import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 
-import { build } from "esbuild"
 import { describe, expect, it } from "vitest"
 
 /**
@@ -23,28 +22,20 @@ import { describe, expect, it } from "vitest"
 
 const root = resolve(import.meta.dirname, "../..")
 const runners = resolve(root, "public/showcase/runners")
-const experiments = resolve(root, "src/experiments")
 
-const committed = readdirSync(runners).filter((name) => name.endsWith(".js"))
-const manifest = JSON.parse(readFileSync(resolve(root, "public/showcase/manifest.json"), "utf8")) as {
-  commit: string
-  runners: Record<string, string>
-}
-
-/** The same recipe `scripts/runners.ts` uses. Deliberately duplicated: a check
- * that imported the script would pass by agreeing with itself. */
-async function hashOf(slug: string): Promise<string> {
-  const built = await build({
-    entryPoints: [resolve(experiments, slug, "runner.ts")],
-    bundle: true,
-    format: "esm",
-    target: "es2022",
-    minify: true,
-    alias: { "@": resolve(root, "src") },
-    write: false,
-  })
-  return createHash("sha256").update(built.outputFiles[0]!.contents).digest("hex").slice(0, 12)
-}
+/**
+ * The store is what git tracks, not what is on disk.
+ *
+ * `pnpm run runners` writes every piece's current build into the same
+ * directory, so an unpublished piece's newest build sits there untracked. That
+ * is build output rather than store contents and nothing here should assert
+ * anything about it. See
+ * `src/experiments/docs/adr/20260912-the-store-holds-published-runners-only.md`.
+ */
+const committed = execFileSync("git", ["ls-files", "public/showcase/runners"], { cwd: root, encoding: "utf8" })
+  .split("\n")
+  .filter((path) => path.endsWith(".js"))
+  .map((path) => path.slice("public/showcase/runners/".length))
 
 /**
  * A runner holds the bytes its name claims, and until now nothing said so.
@@ -53,10 +44,9 @@ async function hashOf(slug: string): Promise<string> {
  * the check a recompute rather than a lookup. Nothing else is needed: no
  * history, no second file, no base revision.
  *
- * Every other check here concerns a piece's **current** runner — that it is
- * committed, that the manifest names it, that rebuilding changes nothing. So
- * the moment a runner stops being current, nothing in this repo names it, and
- * editing one was free. Measured rather than assumed, before this was added:
+ * Nothing else checked a runner's bytes. The other checks here concern the
+ * store as a whole, so an individual file could be edited freely once it was in
+ * it. Measured rather than assumed, before this was added:
  * appending a byte to a superseded runner left the whole suite green.
  *
  * **Deliberately no filename here.** A runner named in prose is still a runner
@@ -98,8 +88,7 @@ describe("the runner store", () => {
  * **The property is about references, not about destinations.** A runner is
  * needed because something still points at it, and what that something *is*
  * should not be this file's business: the home page pins one, the wall pins
- * five, the manifest names each piece's current build, and the next consumer is
- * not yet written. Three separate hand-written checks used to assert this, one
+ * six, and the next consumer is not yet written. Three separate hand-written checks used to assert this, one
  * per destination, and a fourth destination would have needed a fourth check
  * that nobody would remember to add.
  *
@@ -181,25 +170,6 @@ describe("committed runners", () => {
   it("there is at least one, or every check here passes vacuously", () => {
     expect(committed.length).toBeGreaterThan(0)
   })
-
-  /**
-   * The one that catches "changed the piece, forgot to publish".
-   *
-   * Rebuilds from source and insists the current bytes are already committed
-   * under their own name. **A failure here is not a broken test** — it means
-   * `pnpm run runners` needs running and its output committing.
-   */
-  describe.each(Object.keys(manifest.runners))("%s", (slug) => {
-    it("is committed at the hash its source currently produces", async () => {
-      const hash = await hashOf(slug)
-      expect(
-        committed,
-        `${slug}/runner.ts now builds to ${slug}.${hash}.js, which is not committed. ` +
-          `Run \`pnpm run runners\` and commit what it writes.`,
-      ).toContain(`${slug}.${hash}.js`)
-      expect(manifest.runners[slug], `the manifest still names an older runner for ${slug}`).toBe(`${slug}.${hash}.js`)
-    })
-  })
 })
 
 /**
@@ -213,21 +183,21 @@ describe("committed runners", () => {
  * modification is expensive to misread: a previous steward, seeing one, was on
  * the point of gitignoring the published pins. #163.
  *
- * The cause was an unconditional write of a `commit` field nothing reads, which
- * also made it untrue — it recorded the commit at which somebody last started a
- * dev server rather than the one these runners were built at.
+ * That manifest is gone, and with it the unconditional write that caused it.
+ * The property it protected is not gone, which is why this stays: the script
+ * still writes into a directory holding tracked files, and a rebuild that
+ * rewrote one would dirty the tree on every browser run.
  *
  * **This runs the real script rather than reasoning about it**, because the
  * property is about what the script does to the disk. A rebuild is
- * byte-deterministic, so on a clean tree — which is what CI has — the runner
- * files come back identical and the manifest is not rewritten at all.
+ * byte-deterministic, so a published runner comes back byte-identical.
  *
- * On a tree where a piece genuinely changed, the first run brings the runner up
- * to date and this fails. **That failure is the instruction this file already
- * gives**: run `pnpm run runners` and commit what it writes.
+ * A piece that has changed since it was published builds to a *new* name, which
+ * is a new untracked file rather than a modification — so this stays green, and
+ * correctly: not republishing is the ordinary case.
  */
 describe("running the script", () => {
-  const tracked = [resolve(root, "public/showcase/manifest.json"), ...committed.map((name) => resolve(runners, name))]
+  const tracked = committed.map((name) => resolve(runners, name))
 
   it("leaves every committed file byte-identical", () => {
     const before = new Map(tracked.map((path) => [path, readFileSync(path)]))

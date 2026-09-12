@@ -102,11 +102,17 @@ rewrote `public/showcase/manifest.json` unconditionally, so **every full
 `pnpm run test:browser` left the tree dirty** at a committed file — breaking the
 rule in `src/experiments/AGENTS.md` that `pnpm test` must never write tracked
 files, and doing it in the one directory where a stray modification is expensive
-to misread, since a runner is committed because Pages keeps no history. It writes
-only when a runner hash actually changes now, and
-`tests/unit/showcase-runners.test.ts` runs the script and fails if a committed
-file moved. **So a modified `manifest.json` after a run is a real change**: a
-piece's runner has moved and wants committing.
+to misread, since a published runner is committed because Pages keeps no
+history.
+
+That manifest has since been dropped altogether
+(`20260912-the-store-holds-published-runners-only.md`), and the property it
+forced is now structural rather than conditional: **a rebuilt piece builds to a
+new filename, so a run adds an untracked file and never modifies a tracked
+one.** `tests/unit/showcase-runners.test.ts` still runs the script and fails if a
+committed file moves, because that would mean a published runner had been
+rewritten — which is the thing that must never happen. An untracked runner
+appearing after a run is ordinary build output, not a change wanting a commit.
 
 `BASE_URL` is not a constant. The port is unknown until `globalSetup` has run, so
 it is published as an environment variable that workers read through

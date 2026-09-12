@@ -34,14 +34,21 @@
  * So: prune here, verify there, and if the two ever disagree the test is the one
  * that is right.
  *
+ * ## Tracked only
+ *
+ * The store is what git is tracking. `pnpm run runners` writes every piece's
+ * current build into the same directory, so an unpublished piece's newest build
+ * sits there untracked — build output, not store contents, and not this file's
+ * business. Deleting it would delete exactly what a publish is about to commit.
+ *
  * ```
- * pnpm run prune          delete unreferenced runners
+ * pnpm run prune          delete tracked runners nothing names
  * pnpm run prune --list   name them and change nothing
  * ```
  */
 
 import { execFileSync } from "node:child_process"
-import { readdirSync, readFileSync, rmSync, statSync } from "node:fs"
+import { readFileSync, rmSync, statSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -82,9 +89,27 @@ function referenced(): Set<string> {
   return names
 }
 
+/**
+ * The runners git is tracking, which is what "the store" means.
+ *
+ * **Untracked ones are build output and are left alone.** `pnpm run runners`
+ * writes every piece's current build into this directory whether or not anything
+ * publishes it, so the newest build of a piece nobody has published sits here
+ * untracked — and deleting what a publish is about to commit would be the
+ * opposite of helpful. See
+ * `src/experiments/docs/adr/20260912-the-store-holds-published-runners-only.md`.
+ */
+function tracked(): string[] {
+  const listed = execFileSync("git", ["ls-files", "public/showcase/runners"], { cwd: root, encoding: "utf8" })
+  return listed
+    .split("\n")
+    .filter((path) => path.endsWith(".js"))
+    .map((path) => path.slice("public/showcase/runners/".length))
+}
+
 function main() {
   const list = process.argv.includes("--list")
-  const committed = readdirSync(store).filter((name) => name.endsWith(".js"))
+  const committed = tracked()
   const names = referenced()
 
   /*

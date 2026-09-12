@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs"
-import { resolve } from "node:path"
-
 import { describe, expect, it } from "vitest"
 
 import { runnerUrl, WALL } from "@/showcase/wall"
@@ -8,11 +5,11 @@ import { runnerUrl, WALL } from "@/showcase/wall"
 /**
  * What must be true about the published wall.
  *
- * The wall and `public/showcase/manifest.json` are two committed indexes that
- * answer different questions — the manifest says what a piece's runner is
- * *now*, an entry says what a scene was published *against* — so they are
- * allowed to disagree, and an entry left on an older runner is the freeze
- * working rather than rot.
+ * **The wall is the index of published scenes, and now the only one.** An entry
+ * says what a scene was published *against*, so an entry left on an older
+ * runner is the freeze working rather than rot — there is nothing left for it
+ * to disagree with, since the manifest that named each piece's current build
+ * has been dropped.
  *
  * **What is not allowed is an entry naming a runner nobody committed**, because
  * that failure is the silent one. The import rejects, the stage stays empty,
@@ -26,11 +23,6 @@ import { runnerUrl, WALL } from "@/showcase/wall"
  * scene decodes is the runner's business and is covered where the registries
  * live.
  */
-
-const root = resolve(import.meta.dirname, "../..")
-const manifest = JSON.parse(readFileSync(resolve(root, "public/showcase/manifest.json"), "utf8")) as {
-  runners: Record<string, string>
-}
 
 describe("the published wall", () => {
   it("is not empty", () => {
@@ -77,14 +69,6 @@ describe("the published wall", () => {
   it("carries a scene for every entry", () => {
     for (const entry of WALL) {
       expect(entry.scene.length, `${entry.id} has no scene`).toBeGreaterThan(0)
-    }
-  })
-
-  it("knows every piece it names", () => {
-    for (const entry of WALL) {
-      expect(entry.piece in manifest.runners, `${entry.id} names piece "${entry.piece}", which has no runner`).toBe(
-        true,
-      )
     }
   })
 
