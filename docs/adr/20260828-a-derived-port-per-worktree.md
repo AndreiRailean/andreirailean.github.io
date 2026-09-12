@@ -2,7 +2,7 @@
 type: ADR
 status: rejected
 date: 2026-08-28
-summary: Deriving the browser suite's dev-server port from the checkout path fixes worktree collisions and then hangs, because Astro allows one background dev server per project.
+summary: Deriving the browser suite's dev-server port from the checkout path fixes worktree collisions and then hangs, because Astro allows one background dev server per checkout and the suite was asking for a second.
 ---
 
 # A port per worktree, derived from the checkout path
@@ -57,6 +57,27 @@ which is what `playwright.config.ts` needs, since the config is evaluated before
 **Astro 7 allows one background dev server per project, and reports the running
 one instead of starting a second.**
 
+> **"Project" means the checkout, not the repository — and the difference is not
+> academic.** Read as "the repository", this record says no two worktrees can
+> hold a background server at once, which is false: three have run
+> simultaneously on this machine, on 4354, 4329 and 4355, each with its own
+> `.astro/dev.json`. Measured again from the other side in #178, where two
+> worktrees held `astro preview` daemons on their own derived ports at the same
+> instant.
+>
+> The reasoning below is correct under the narrow reading and the example
+> demonstrates it — 4370 refused while 4360 was up **in the same checkout**. But
+> the wording sent a steward to the wrong premise in September 2026: it read as a
+> cross-worktree singleton, which made any derived-port scheme look doomed
+> everywhere rather than doomed in the one place it actually is.
+>
+> **What is genuinely contested is the daemon slot in one directory**, so the
+> question to ask of a new scheme is not "does it derive a port" but **how many
+> servers does it ask one checkout for?** This design asked for a _second_ —
+> the suite's derived port in a worktree where a human already had one, which is
+> the common case and why it hung. A scheme asking for the only server in its own
+> worktree takes the slot instead of being refused by it.
+
 ```
 $ npx astro dev --port 4370 --background
 Dev server already running at http://localhost:4360 (pid 955876)
@@ -70,8 +91,8 @@ Error: The dev server did not answer on http://127.0.0.1:4437 within 120s.
 ```
 
 This is worse than the bug it fixes. The old failure was silent and wrong; this
-one is a two-minute hang whenever any dev server for the project is already up —
-including the one a human is working in, which is the common case.
+one is a two-minute hang whenever a dev server is already up **in the same
+checkout** — including the one a human is working in, which is the common case.
 
 The hash is not the problem. Any scheme that picks a port _and then insists on
 it_ has the same fault, because the daemon slot, not the port, is the contested
@@ -79,8 +100,9 @@ resource.
 
 ## What would make it viable
 
-Nothing, while Astro runs its dev server as a per-project daemon. The resource to
-reason about is that daemon, not a number.
+Nothing, while Astro runs its dev server as a per-checkout daemon. The resource
+to reason about is that daemon, not a number — and specifically how many of them
+a scheme asks one checkout for.
 
 What replaced it (`fe3ef77`) reads `.astro/dev.json`, Astro's own record of the
 server it is running. That file lives inside the worktree, so it is incapable of
