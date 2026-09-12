@@ -680,7 +680,7 @@ because nothing said a duplicate existed.
   piece had a primary; see `tests/unit/opt-out.ts`, which owns what satisfies a
   marker and carries the history.
 
-- **Or say the kit is short**, by opening an issue labelled `kit`. A control kind
+- **Or say the kit is short**, by opening an issue labelled `steward`. A control kind
   it has no row for, a behaviour it hardcodes, a token it does not expose: those
   are gaps, and the next piece will hit them too. `scale: "log"` arrived exactly
   this way — Flotsam's `span` runs from a puddle to open water and a linear track
@@ -689,7 +689,7 @@ because nothing said a duplicate existed.
 **File it; do not go looking for whoever is stewarding.** One session is
 sometimes asked to tend this shared code, and you do not need to know whether
 that is true today, who it is, or whether there are two of them. An issue
-labelled `kit` reaches the role rather than a session: stewards come and go and
+labelled `steward` reaches the role rather than a session: stewards come and go and
 the queue does not. A message reaches whoever happened to be live when you sent
 it, which on at least one day was two sessions and on most days is none. If a
 steward messages you first, answer — it will be carrying something that is not in

@@ -48,6 +48,6 @@ Multi-context. `CONTEXT-MAP.md` at the root names each context and points at its
 
 `main` moves often and nothing forces a branch to keep up. Fetch and branch from `origin/main`, never from local `main`; fetch and merge `origin/main` before opening a PR. Nothing in between. See `docs/agents/working-with-branches.md`.
 
-### The experiments steward
+### The steward
 
-When several sessions build experiments at once, one of them tends the shared code of `src/experiments/` so the others do not. A standing role, invoked with `/steward`. See `docs/agents/experiments-steward.md`.
+When several sessions build at once, one of them tends the **shared surface** so the others do not. Its scope is a property rather than a directory: work that is shared, mechanical and verifiable, decided by one question — **would a visitor see the difference?** If no it is the steward's, wherever it lives; if yes it waits for Andrei. A standing role, invoked with `/steward`. See `docs/agents/steward.md`.

@@ -1,15 +1,14 @@
-# The experiments steward
+# The steward
 
-Several sessions build visual experiments in `src/experiments/` at once. One of
-them is asked to steward the **shared code**, so the others do not spend their
-attention on it: notice what is being duplicated, change the shared thing, land
-it, and tell them.
+Several sessions build in this repo at once. One of them is asked to steward the
+**shared surface**, so the others do not spend their attention on it: notice what
+is being duplicated, change the shared thing, land it, and tell them.
 
 Invoke the role with `/steward`. That skill reads this file, then derives the
 current situation rather than being told it.
 
 **A human is the trigger, and there is no other one.** The role has no clock:
-nothing wakes a steward when a `kit` issue is filed or a branch lands, so one
+nothing wakes a steward when a `steward` issue is filed or a branch lands, so one
 filed after a steward stops waits for the next `/steward`. Polling for it was
 proposed, costed and declined —
 `docs/adr/20260901-prompting-is-the-stewards-trigger.md`, which also records what
@@ -19,19 +18,82 @@ not the role ending.
 
 ## Scope
 
-**All of `src/experiments/`**, not only `kit/`. The scope was widened once,
-deliberately: control-surface patterns emerge inside the pieces before anyone
-names them, and a steward watching only `kit/` misses them.
+**The shared surface of the whole repo, defined by a property rather than a
+directory.** Work is the steward's when it is _shared_, _mechanical_ and
+_verifiable_ — and it matters most when its failure is **silent**. A check that
+cannot fail. A test that writes a tracked file. A listener nobody removes. A
+record whose premise a later record falsified.
 
-Read before acting, in this order — they are the ground truth this file only
-points at:
+**The test is the one question, and nothing else decides it: would a visitor see
+the difference?** If no, it is the steward's, wherever it lives. If yes, it waits
+for Andrei. Not which directory the file sits in, and not whether something
+"belongs" to somebody.
+
+### The scope was a directory twice, and both times it was too narrow
+
+It was `kit/` first, then all of `src/experiments/`, and each widening happened
+because the faults did not respect the line. They never did: a build script
+rewriting a tracked file on every test run, a workflow filter silencing the
+check that polices it, a config change nobody owned, a dev server left holding a
+gigabyte. Those are the same class as a duplicated kit module — shared,
+mechanical, silent — and the directory clause simply meant nobody had them.
+
+So the clause is gone and the visitor test is the whole of it. **It is the
+directory-independent half that was already doing the work.**
+
+### What is not the steward's, deliberately
+
+- **Product and visual direction.** What a piece draws, what it should look
+  like, what to build next. That is the half of ADR-0002 that survives intact
+  and it is Andrei's.
+- **Risk judgements that are the owner's to make**, dependency policy being the
+  standing example: report a vulnerable transitive dependency with what pins it
+  and what it would cost to force; do not pick his tolerance for him.
+- **A surface somebody else owns end to end.** `src/showcase/AGENTS.md` draws
+  one such line and it holds. Note the reason it holds is **ownership, not
+  geography** — now that the scope is not a directory, "outside `src/`" is no
+  longer an argument for anything, and the only thing that keeps a surface out
+  of this role is that another session is accountable for it.
+
+  **So the exclusion lapses when the owner does.** An unattended surface is
+  shared, mechanical work like any other and it is the steward's — there is no
+  reservation, because a property scope cannot hold one open on nobody's behalf.
+  Under the old directory scope the showcase was outside the remit whether or not
+  anyone was tending it; under this one that is no longer true, and the
+  difference only shows up on the day it matters.
+
+  This corollary is `showcase-8d`'s, written into its own file first. It is
+  restated here because it is general — it governs every owned-surface exclusion,
+  not that one — and because a rule about what the steward inherits should not
+  live only in the doc of the session that would be handing it over.
+
+### The cost this carries, stated so it can be watched
+
+A wider remit makes the steward a bottleneck and tempts it to generalise across
+things that should stay different — which is precisely the argument
+`src/showcase/AGENTS.md` makes, and it is a good one. Two things hold it in
+check, and both are already required below: peers keep their own surfaces, and
+the steward claims work **publicly on issues** so the queue is visible rather
+than living in one session's head.
+
+### Reading
+
+Read `AGENTS.md` at the root first — the repo's own priorities are the same
+priorities this role serves, and item two of that list is the failure this role
+mostly exists to catch.
+
+Then read what covers the area you are actually touching, rather than all of it
+every time. When the work is in the experiments section, that is:
 
 1. `src/experiments/AGENTS.md` — the section's rules.
 2. `src/experiments/CONTEXT.md` — the glossary. _Piece, gallery, kit, placard,
    chrome, panel, note_ all have precise meanings; use them.
 3. `src/experiments/docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.md`
    — the three layers, and where the kit's bound sits.
-4. `tests/AGENTS.md` — how the two runners split, and the hazards.
+
+And whatever the work touches, **`tests/AGENTS.md`** — how the two runners
+split, and the hazards. It is the one that keeps being load-bearing wherever the
+work is, because the shared test surface is where silent faults surface.
 
 ## What a steward can and cannot see
 
@@ -42,7 +104,7 @@ idle — the only push channel, and it is one-shot.
 
 **So watch the repo, not the sessions.** A kit gap that costs anything leaves an
 artefact: a copied module, a hand-written panel, a workaround. One that leaves no
-artefact cost nobody anything. Branches, PRs, and issues labelled `kit` are the
+artefact cost nobody anything. Branches, PRs, and issues labelled `steward` are the
 signal.
 
 **Better still, prefer a check that fails on its own.**
@@ -57,7 +119,7 @@ rule a test enforces is one no future steward has to remember.
 
 - **Announce yourself, to everyone.** Not to hand peers the contract — that is in
   `src/experiments/AGENTS.md` now, and peers are told to file an issue labelled
-  `kit` rather than find you, precisely so a handover costs nobody anything.
+  `steward` rather than find you, precisely so a handover costs nobody anything.
   Announce to deliver what the repo does not have yet: what is red, a trap in
   flight, a check you have just found vacuous. Tell **every live session**, with
   your own session name — not only the ones building experiments. Starting a second steward does
@@ -91,14 +153,11 @@ rule a test enforces is one no future steward has to remember.
 
 ## What the role does not do
 
-**The bound is the subject, not the folder.** Ask one question of a piece of
-work: **would a visitor see the difference?** If no, it is the steward's
-wherever it lives, `src/experiments/<slug>/` included. If yes, it waits for
-Andrei. Nothing else decides it — not which directory the file sits in, and not
-whether a piece "belongs" to somebody.
+**The bound is the subject, not the folder** — the visitor test under _Scope_
+above, which is the whole of it and is stated once there on purpose.
 
-This needs stating because the cautious misreading is expensive and has
-happened. A steward declined three `kit` tickets in one session as "a piece's
+What belongs here is why the **cautious** misreading is the expensive one, and
+it has happened. A steward declined three tickets in one session as "a piece's
 work" on the strength of their file paths: a `controls()` report shape, which is
 a section contract enforced across every piece by `tests/kit.spec.ts`, and two
 headless test harnesses, which the same role doc claims outright two bullets
