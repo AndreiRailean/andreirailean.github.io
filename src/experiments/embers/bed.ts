@@ -71,6 +71,17 @@ const BURST_SPILL = 0.55
  * of these are in pixels and none of them know how big the window is.
  */
 export type Spawn = {
+  /**
+   * Which of the three this is, so the scene can tell an *event* from the
+   * background when the population ceiling binds.
+   *
+   * The bed already knows; it used not to say, and the cost was that `splinters`
+   * and `bursts` competed with `sputter` for slots first-come. On a wide fire
+   * asking for thousands of lifted flakes a second, the rare interesting thing
+   * lost every race — measured at 1.4% of splinter fragments ever being born
+   * with the control at maximum.
+   */
+  kind: "lift" | "splinter" | "burst"
   x: number
   y: number
   vx: number
@@ -128,6 +139,7 @@ export function createBed(initial: Settings, seed: number): Bed {
   function lift(air: Air, emit: (spawn: Spawn) => void): void {
     const x = air.axisAt(0) + acrossBed()
     emit({
+      kind: "lift",
       x,
       y: 0.02 + rng() * 0.05,
       // Barely any speed of its own: a lifted flake starts by going wherever
@@ -152,6 +164,7 @@ export function createBed(initial: Settings, seed: number): Bed {
       const angle = heading + gaussian(rng) * spread
       const fast = speed * (0.55 + rng() * 0.75)
       emit({
+        kind: "splinter",
         x: x + gaussian(rng) * 0.01,
         y: 0.01 + rng() * 0.02,
         vx: Math.cos(angle) * fast,
@@ -175,6 +188,7 @@ export function createBed(initial: Settings, seed: number): Bed {
   function fromBurst(air: Air, emit: (spawn: Spawn) => void): void {
     const x = air.axisAt(0) + acrossBed() * 1.3
     emit({
+      kind: "burst",
       x,
       y: 0.02 + rng() * 0.08,
       vx: gaussian(rng) * 0.5,

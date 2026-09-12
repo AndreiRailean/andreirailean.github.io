@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { createAir } from "@/experiments/embers/air"
-import { createBed } from "@/experiments/embers/bed"
+import { createBed, type Spawn } from "@/experiments/embers/bed"
 import { blankEmber, dress, stepEmber, terminalSpeed, type Ember } from "@/experiments/embers/ember"
 import { DEFAULT_SETTINGS, PRESETS, type Settings } from "@/experiments/embers/settings"
 import { beyond, makeView } from "@/experiments/embers/view"
@@ -37,6 +37,8 @@ type Outcome = {
   /** Mean population over the run, sampled twice a second after it has settled. */
   alive: number
   vortices: number
+  /** Splinter fragments that were actually born, as against merely thrown. */
+  splinters: number
   temperatures: number[]
   heights: number[]
 }
@@ -68,15 +70,20 @@ function burn(settings: Settings, seconds: number): Outcome {
   }
 
   const fates: Fates = { top: 0, side: 0, fellBack: 0, burnedOut: 0 }
+  /** Slots the steady sputter may not take, mirroring `EVENT_RESERVE` in the scene. */
+  const reserve = Math.min(pool.length - 1, Math.max(24, Math.round(pool.length * 0.08)))
+  let splinters = 0
   const temperatures: number[] = []
   const heights: number[] = []
   const counts: number[] = []
   let alive = 0
   let born = 0
 
-  const emit = (spawn: { x: number; y: number; vx: number; vy: number; heat: number; size: number }) => {
+  const emit = (spawn: Spawn) => {
+    if (spawn.kind === "lift" && free.length <= reserve) return
     const at = free.pop()
     if (at === undefined) return
+    if (spawn.kind === "splinter") splinters++
     const ember = pool[at]!
     const low = settings.sizeMin * spawn.size
     dress(ember, rng, low, Math.max(low, settings.sizeMax * spawn.size), settings.heat * spawn.heat, 0.5)
@@ -135,6 +142,7 @@ function burn(settings: Settings, seconds: number): Outcome {
     born,
     alive: counts.reduce((total, count) => total + count, 0) / Math.max(1, counts.length),
     vortices: air.vortices.length,
+    splinters,
     temperatures,
     heights,
   }
@@ -208,11 +216,29 @@ describe.each(PRESETS.map((preset) => [preset.label, preset.settings] as const))
     // the same one. What this rules out is a scene that is simply empty — which
     // is what the piece was when the emission rate had been guessed.
     expect(outcome.alive, `${label} holds ${outcome.alive.toFixed(0)} embers`).toBeGreaterThan(60)
-    // Against the ceiling means embers are being dropped at birth, and the
-    // scene stops responding to `sputter` at all.
-    expect(outcome.alive, `${label} holds ${outcome.alive.toFixed(0)} of ${settings.count}`).toBeLessThan(
-      settings.count * 0.95,
+    expect(outcome.alive, `${label} holds ${outcome.alive.toFixed(0)} of ${settings.count}`).toBeLessThanOrEqual(
+      settings.count,
     )
+  })
+
+  /**
+   * **A scene at its ceiling must still be able to spit.**
+   *
+   * This replaced an upper bound on the population, and the swap is the finding.
+   * That bound existed because a full pool used to starve the events: the steady
+   * sputter and the splinters raced for slots first-come, and on a wide fire the
+   * sputter asks for thousands a second, so `splinters` at maximum produced
+   * 1.4% of what it was set to. Sitting below the ceiling was a proxy for "the
+   * events can still get in".
+   *
+   * It is a bad proxy now that the scene reserves slots for them, and it was
+   * always the wrong question — `winter blues` is deliberately run at its
+   * ceiling. So this asks the real one instead, of every preset rather than of
+   * the one that happened to fail.
+   */
+  it("throws splinters that actually reach the air", () => {
+    if (settings.pops <= 0) return
+    expect(outcome.splinters, `${label} threw splinters but none were born`).toBeGreaterThan(10)
   })
 
   /**

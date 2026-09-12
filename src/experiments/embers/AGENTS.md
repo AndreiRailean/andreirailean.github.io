@@ -201,6 +201,28 @@ And the two rendering halves, which matter more than any of the above:
   million. Flattening the brightness range without touching the chromaticity is
   what trades a light-to-dark gradient for a red-to-yellow-to-white one.
 
+## `count` is a drawing budget, and a budget spent first-come is spent on noise
+
+Reported as _"I don't understand how splinters works — I slid it up and down and
+it doesn't seem to change anything."_ It did not. The bed offers three kinds of
+ember and the least interesting one outnumbers the others by orders of magnitude:
+a four-metre fire at `sputter` 2.75 asks for **5,720 lifted flakes a second**
+against a ceiling of a thousand, so every splinter and every burst arrived to
+find the pool full. Measured with `splinters` at maximum: **1.4% of fragments
+were ever born**, 21 out of 1,530 in twenty seconds.
+
+Nothing about that is visible in a frame. The fragments that do get through look
+exactly as they should; there are simply a fiftieth as many as asked for.
+
+`EVENT_RESERVE` holds back a share of the pool that the steady sputter may not
+take. It is a **reservation and not an eviction**, deliberately: taking a slot
+back from a live ember would shorten every ember's life the moment the sputter
+went past the ceiling, which is a far stranger thing for a density control to do
+than simply stop adding. `tests/unit/embers/bed.test.ts` holds it, and
+`fire.test.ts` now asks every preset whether its splinters actually reach the air
+— which replaced an upper bound on the population that was only ever a proxy for
+this, and a bad one, since a scene is allowed to sit at its ceiling.
+
 ## `churn` is the one control whose right value depends on the framing
 
 The fire sheds eddies at its own puffing frequency, `f ≈ 1.5/√D` — so a

@@ -42,7 +42,7 @@
 
 import { gaussian, hashSeed, makeRng } from "@/experiments/random"
 import { createAir, type Air } from "@/experiments/embers/air"
-import { createBed, type Bed } from "@/experiments/embers/bed"
+import { createBed, type Bed, type Spawn } from "@/experiments/embers/bed"
 import { blankEmber, dress, samplePath, stepEmber, type Ember, type Physics } from "@/experiments/embers/ember"
 import { clearFrame, drawEmbers, drawFirelight, makeSheet, sheetMatches, type Sheet } from "@/experiments/embers/draw"
 import { DARK_TEMP, rampStep } from "@/experiments/embers/palette"
@@ -73,6 +73,24 @@ const MAX_STEPS = 4
 
 /** How long the fire is run before a reduced-motion still is taken, in seconds. */
 const STILL_SECONDS = 14
+
+/**
+ * The share of the pool the steady sputter may not take.
+ *
+ * **`count` is a drawing budget, and a budget spent first-come is spent on
+ * whatever is most numerous.** The bed offers three kinds of ember and the
+ * uninteresting one outnumbers the others by orders of magnitude: a four-metre
+ * fire at `sputter` 2.75 asks for 5,720 lifted flakes a second against a ceiling
+ * of a thousand, so every splinter and every burst arrived to find the pool
+ * full. Measured with `splinters` at maximum: 1.4% of fragments were ever born,
+ * and the control did nothing anybody could see.
+ *
+ * So the background yields and the events do not. It is a reservation rather
+ * than an eviction, deliberately — taking a slot back from a live ember would
+ * shorten every ember's life the moment the sputter went past the ceiling, which
+ * is a far stranger thing for a density control to do than simply stop adding.
+ */
+const EVENT_RESERVE = 0.08
 
 /** An ember younger than this is never retired for being dark: it may still be lighting. */
 const GRACE = 0.25
@@ -214,9 +232,11 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
     }
   }
 
-  function emit(spawn: { x: number; y: number; vx: number; vy: number; heat: number; size: number }): void {
+  function emit(spawn: Spawn): void {
+    // The background yields to the events when the budget is tight; see
+    // `EVENT_RESERVE`. Both still drop rather than evict.
+    if (spawn.kind === "lift" && free.length <= reserve()) return
     const at = free.pop()
-    // Dropped rather than evicting a live one; see the note at the top.
     if (at === undefined) return
 
     const ember = pool[at]!
@@ -244,6 +264,9 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
     ember.vy = sample[1]! * 0.85 + spawn.vy
     alive++
   }
+
+  /** Slots held back for splinters and bursts. Never the whole pool. */
+  const reserve = () => Math.min(pool.length - 1, Math.max(24, Math.round(pool.length * EVENT_RESERVE)))
 
   function kill(at: number): void {
     pool[at]!.alive = false

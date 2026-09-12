@@ -21,16 +21,17 @@ import type { PosterRecipe } from "@/experiments/poster"
  * the one worth hanging.
  */
 const poster: PosterRecipe<ExperimentApi> = {
-  preset: "wide hearth",
+  preset: "winter blues",
 
   /**
    * The primary, wound up a little — and no longer re-framed.
    *
    * This used to override `span`, because the primary was a narrow fire and a
-   * 16:9 still of a vertical column is mostly empty picture. The primary is now
-   * a bed wider than the frame, which fills a wide still by itself, so the only
-   * thing left to wind up is how busy the fire is: a shutter catching a thin
-   * moment reads as a sparse piece rather than as a quiet second of a busy one.
+   * 16:9 still of a vertical column is mostly empty picture. Every primary since
+   * has been a bed wider than the frame, which fills a wide still by itself, so
+   * the only thing left to wind up is how busy the fire is: a shutter catching a
+   * thin moment reads as a sparse piece rather than as a quiet second of a busy
+   * one.
    */
   settings: { sputter: 1.6, bursts: 12, playback: 0.35 },
 
