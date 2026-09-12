@@ -1,6 +1,6 @@
 import { defineConfig } from "@playwright/test"
 import { resolveChromium } from "./tests/support/chromium"
-import { BASE_URL_ENV } from "./tests/support/dev-server"
+import { BASE_URL_ENV } from "./tests/support/preview-server"
 
 /**
  * Playwright is here to *drive* the experiments, not to diff their pixels.
@@ -32,17 +32,21 @@ export default defineConfig({
   // rather than accumulated, so a failure here is a real difference and not
   // weather. A retry would only hide it.
   retries: 0,
-  // Settling a large scene is the slow part, and a cold Astro dev server
-  // compiles the experiment on first request.
+  // Settling a large scene is the slow part. Nothing compiles on first request
+  // any more — the suite drives a static build, so that cost was paid once by
+  // `astro build` before any test ran.
   timeout: 60_000,
   expect: { timeout: 10_000 },
-  // Astro 7 runs its dev server as a daemon, which Playwright's `webServer`
-  // cannot supervise. See tests/support/dev-server.ts.
-  globalSetup: "./tests/support/dev-server.ts",
+  // Builds the site and serves `dist/` with `astro preview`, rather than running
+  // `astro dev`: the dev server is not the artefact that ships, and this repo
+  // has shipped a 404 that every gate called green because of it. Astro 7 runs
+  // both servers as daemons, which Playwright's `webServer` cannot supervise.
+  // See tests/support/preview-server.ts.
+  globalSetup: "./tests/support/preview-server.ts",
   use: {
     // Set by `globalSetup`, which is the only thing that knows the port — see
-    // tests/support/dev-server.ts. Workers re-read this config after it has run
-    // and inherit the environment, so by the time a test navigates it is here.
+    // tests/support/preview-server.ts. Workers re-read this config after it has
+    // run and inherit the environment, so by the time a test navigates it is here.
     baseURL: process.env[BASE_URL_ENV],
     // Fixed, because the piece divides by depth: field of view and therefore
     // what is on screen at all follow the viewport's aspect ratio.

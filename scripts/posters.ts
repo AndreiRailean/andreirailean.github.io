@@ -4,7 +4,7 @@ import { chromium, type Page } from "playwright"
 import sharp from "sharp"
 import type { PosterRecipe } from "../src/experiments/poster.ts"
 import { resolveChromium } from "../tests/support/chromium.ts"
-import startDevServer from "../tests/support/dev-server.ts"
+import startPreviewServer from "../tests/support/preview-server.ts"
 
 /**
  * Capturing the still that represents each experiment on `/experiments/`.
@@ -100,7 +100,12 @@ export function slugsFrom(argv: string[]): string[] {
 async function main(): Promise<void> {
   const slugs = slugsFrom(process.argv.slice(2))
 
-  const baseUrl = await startDevServer()
+  // Builds first, so a recapture shoots the piece as it will ship rather than
+  // as the dev server renders it. It also removes the trap that made a
+  // recaptured poster fail to reach a reviewer: a build emits content-hashed
+  // `_astro/` names, where the dev `<Image>` endpoint keyed a year-long cache on
+  // the file path and could not change the address when the bytes changed.
+  const baseUrl = await startPreviewServer()
 
   const browser = await chromium.launch({ executablePath: resolveChromium() })
   try {
