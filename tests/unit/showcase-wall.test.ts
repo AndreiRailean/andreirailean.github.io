@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs"
+import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 
 import { describe, expect, it } from "vitest"
@@ -54,18 +54,13 @@ describe("the published wall", () => {
     }
   })
 
-  it("pins a runner that is actually committed", () => {
-    for (const entry of WALL) {
-      const file = resolve(root, "public/showcase/runners", entry.runner)
-      expect(
-        existsSync(file),
-        `${entry.id} pins ${entry.runner}, which is not in public/showcase/runners. ` +
-          `Either run \`pnpm run runners\` and commit what it writes, or point the entry at a runner that exists. ` +
-          `A missing runner fails silently in the browser: the stage stays empty and looks like it is still loading.`,
-      ).toBe(true)
-    }
-  })
-
+  /**
+   * That every pin names a committed runner is checked in
+   * `showcase-runners.test.ts`, along with every other reference in the repo —
+   * the wall is one referencer among several and does not need its own copy of
+   * that assertion. What remains here is what only the wall can say about
+   * itself.
+   */
   it("names a runner belonging to the piece it claims", () => {
     // A content-addressed name starts with its slug, so a mismatch here is an
     // entry that would mount the wrong piece's code against this scene — which
