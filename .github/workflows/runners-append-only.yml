@@ -1,0 +1,95 @@
+name: Runner store
+
+# **A committed runner is never deleted, modified or renamed.** Additions are the
+# whole point and pass; everything else fails.
+#
+# `public/showcase/runners/` is retention rather than build output. A published
+# page pins a runner by the hash of its own bytes, GitHub Pages keeps no history,
+# so git *is* the archive — and the failure when one goes missing is silent: the
+# loader empties its container and the host's own background shows, which looks
+# deliberate. See `src/experiments/docs/adr/20260907-runners-are-committed.md`.
+#
+# ## Why this watches history, when two checks already watch the tree
+#
+# `tests/unit/showcase-runners.test.ts` verifies integrity (a runner's name is
+# the hash of its bytes, so the directory checks itself) and existence (every
+# name in `public/showcase/ledger.json` is present). Both read the working tree,
+# and both are defeated the same way: **delete a runner and its ledger line in
+# one commit and the repo is self-consistent and quietly missing a published
+# pin.** Nothing in the tree can close that, because the evidence that the runner
+# used to exist is only in history. #175.
+#
+# This is not aimed at a malicious committer — nothing in-repo can be. It closes
+# the gap between "a tidying session is stopped" and "a tidying session that also
+# tidied the ledger is stopped", and #47 is a session that read this directory as
+# clutter. The structural answer is an object store with write-once semantics,
+# where the property cannot be violated rather than merely detected; all of this
+# is a bridge to that.
+#
+# ## Why a workflow of its own
+#
+# **It cannot live in `test-browser.yml`**, and that is a fact rather than a
+# preference: `public/**` is on that workflow's `paths-ignore`. A pull request
+# whose whole diff is a deleted runner touches nothing else, so the job would not
+# run — the check would be structurally unable to fire on exactly the change it
+# polices. That is #166 one directory over.
+#
+# **Nor in `lint`**, which is the only required status check on `main` and so the
+# one job whose latency everybody pays. It should stay boring and fast rather
+# than grow a deeper checkout to serve one directory.
+#
+# It also needs a checkout configuration no other job wants, which is its own
+# argument for isolation. **And it carries no path filter**, deliberately: the
+# direction where forgetting is cheap, per `test-unit.yml` and #166.
+on:
+  - pull_request
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  append-only:
+    name: Runner store is append-only
+    runs-on: ubuntu-latest
+    steps:
+      # **Two, not zero.** On a `pull_request` event `actions/checkout` checks
+      # out the *merge ref* — a merge commit whose first parent is the base
+      # branch tip and whose second is the pull request head. So the base is one
+      # commit away and full history buys nothing. `fetch-depth: 0` was the
+      # obvious form and would grow with the repo forever.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      - name: No runner was deleted, modified or renamed
+        run: |
+          set -euo pipefail
+
+          # **Establish the base before asserting anything about it.** "No output"
+          # is this check's success condition, so a checkout that cannot reach the
+          # base reads as a clean pass — the vacuous-check shape this repo keeps
+          # producing. HEAD^1 is only the base branch on the merge ref, so prove
+          # we are on one by requiring a second parent.
+          if ! git rev-parse --verify --quiet 'HEAD^2' >/dev/null; then
+            echo "::error title=Cannot establish a base::HEAD has no second parent, so this is not the pull request merge ref and HEAD^1 is not the base branch. Refusing to pass without comparing anything."
+            exit 1
+          fi
+
+          base="$(git rev-parse 'HEAD^1')"
+          head="$(git rev-parse 'HEAD^2')"
+          echo "base (HEAD^1)  $base"
+          echo "head (HEAD^2)  $head"
+
+          # D deleted, M modified, R renamed, T type changed — the last because
+          # replacing a runner with a symlink is a deletion wearing a disguise.
+          # A (added) is absent on purpose: growing the store is the point.
+          changed="$(git diff --diff-filter=DMRT --name-only "$base" HEAD -- public/showcase/runners/)"
+
+          if [ -n "$changed" ]; then
+            echo "::error title=A committed runner changed::A published page pins a runner by the hash of its own bytes and GitHub Pages keeps no history, so git is the only archive. Deleting or editing one breaks that page silently. Add runners; never touch the ones already there."
+            printf '%s\n' "$changed"
+            exit 1
+          fi
+
+          echo "No runner was deleted, modified or renamed."
