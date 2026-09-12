@@ -28,6 +28,18 @@ spent on the thing being looped over, and neither needs asking for.
 
 ## Agent skills
 
+### Showing Andrei the work
+
+**He approves what he sees in a browser, not what you describe**, so putting
+visual work on screen is part of finishing it rather than something to ask
+permission for. `pnpm run preview` builds and serves in about eight seconds;
+hand him the **tailscale or LAN** address it prints, never `localhost`. A
+rebuild is `pnpm run build:quick` and does not restart the server, so his URL
+and his bookmark keep working — the port is derived per worktree and is stable.
+Never `astro dev`: it costs seven times the memory and has twice shown him stale
+work he then reported as broken. Invoked with `/preview`. See
+`docs/adr/20260912-previews-and-tests-run-against-a-static-build.md`.
+
 ### Issue tracker
 
 GitHub issues. `.scratch/` is gitignored private scratch space, never a tracker. See `docs/agents/issue-tracker.md`.

@@ -43,37 +43,62 @@ cheap half of `pnpm run build` and takes seconds. The failure mode is not a
 broken build — it is a red pull request after you thought you were done, which is
 the most expensive place to find a one-word mistake.
 
-## The dev server the browser suite drives
+## The server the browser suite drives
 
-**Do not give it a fixed port, and do not make it insist on one.** Both are
-tried-and-failed, and the second has now been rederived in a separate session —
-which is what this section is for.
+**It is a static build, not `astro dev`.** `globalSetup` runs
+`pnpm run build:quick` and then serves `dist/` with `astro preview` —
+`tests/support/preview-server.ts`. The reasoning, the measurements and what it
+cost to learn are in
+`docs/adr/20260912-previews-and-tests-run-against-a-static-build.md`. The short
+version: the dev server is not the artefact that ships, and this repo has put a
+404 into production that every gate called green because of it.
 
-`tests/support/dev-server.ts` reads `.astro/dev.json`, Astro's own record of the
-server it is running for this checkout. That file lives inside the worktree, so
-it cannot name another branch's server, and it reports whichever port Astro
-actually settled on. A server already up — a human's included — is adopted rather
-than fought for.
+It is also **seven times smaller**. Measured with both up at the same instant
+serving the same suite: dev 1311 MB, preview 179 MB, and the run went 4.9 minutes
+to 2.8 with 177 passing either way and no test changed.
 
-**The suite leaves one running, and "stop the dev server when you are done" does
-not cover it.** `globalSetup` starts a server and deliberately does not stop it,
-so the next run reuses it instead of paying the startup again. The consequence
-is that **any full `pnpm run test:browser` leaves a server behind whether or not
-the session ever started one on purpose** — about 700MB to 1GB of it, on a box
-several worktrees share.
+**Do not give the suite a fixed port, and do not make it insist on one.** That
+has not changed and the reasons have not either — `astro preview` has the _same_
+one-daemon-per-project behaviour as `astro dev`, verified rather than assumed, so
+anything that picks a port and insists on it hangs whenever a server is already
+up. The suite names no port at all: it reads `.astro/preview.json`, Astro's own
+record for this checkout. That file lives inside the worktree, so it cannot name
+another branch's server.
 
-So a stray server is not evidence anybody forgot anything, and two sessions here
-each mistook the other's for a forgotten one. What tells them apart is
-`.astro/dev.json` in each worktree: it names the pid, `kill -0` says whether that
-pid is alive, and `pnpm exec astro dev stop` acts on that file alone — so it is
-safe to run in your own worktree without checking on anyone else, and is never
-the right way to tidy up someone else's. A `dev.json` naming a dead pid is a
-session that stopped its server cleanly, not a leak.
+**There is a second port, it is derived per worktree, and that is not a
+contradiction.** `pnpm run preview` builds and serves on a port hashed from the
+checkout path, so every worktree has its own and keeps it — one bookmark per
+branch, several pieces on screen at once. Astro's one-server limit is per
+_worktree_, not per machine, so the previews themselves do not contend —
+measured, because `20260828` reads as though it might be otherwise: two
+worktrees, two derived ports, both answering at once, 379 MB for the pair.
 
-**Starting that server runs `pnpm run runners`, so the browser suite builds the
-showcase runners whether or not it cares about them.** `pnpm run dev` is
-`pnpm run runners && astro dev`. Until #163 the script rewrote
-`public/showcase/manifest.json` unconditionally, so **every full
+The same derivation is **safe for review and unsafe for the suite**, and that is
+the distinction to not flatten. `20260828` failed because the suite _insisted_ on
+its port and _adopted_ whatever answered. `scripts/preview.ts` does neither: it
+stops its own preview, takes the slot — under three seconds, a preview holds no
+compile cache — and then believes `.astro/preview.json`. The two must stay
+separate, and `tests/unit/preview-ports.test.ts` fails if they are collapsed.
+
+**`astro build` clears `dist/` before writing it.** So a suite run in the
+worktree somebody is reviewing blanks their page and then serves them a different
+build. The suite warns when it is about to do that. The warning is derived from a
+preview actually answering on the review port — checked by pid _and_ by a
+request, since `kill -0` is true for any process that inherited the number — and
+never from a flag anybody writes, because a session that dies cannot clear its
+own flag and a guard everyone has learned to clear is worse than none.
+
+**The suite leaves the preview running**, so a repeat run skips the start. At
+179 MB that is a much smaller thing to leave behind than it was, but it is still
+yours to stop: `pnpm exec astro preview stop` acts on `.astro/preview.json`
+alone, so it is safe in your own worktree and is never the right way to tidy up
+someone else's. A state file naming a dead pid is a session that stopped cleanly,
+not a leak.
+
+**The build runs `pnpm run runners` first**, so the browser suite builds the
+showcase runners whether or not it cares about them — and it must, or a piece
+changed in the same commit is served by a stale runner. Until #163 the script
+rewrote `public/showcase/manifest.json` unconditionally, so **every full
 `pnpm run test:browser` left the tree dirty** at a committed file — breaking the
 rule in `src/experiments/AGENTS.md` that `pnpm test` must never write tracked
 files, and doing it in the one directory where a stray modification is expensive
@@ -83,48 +108,41 @@ only when a runner hash actually changes now, and
 file moved. **So a modified `manifest.json` after a run is a real change**: a
 piece's runner has moved and wants committing.
 
-Two things bite anyone who changes this:
+`BASE_URL` is not a constant. The port is unknown until `globalSetup` has run, so
+it is published as an environment variable that workers read through
+`use.baseURL`.
 
-- **Worktrees share a machine.** A fixed port means a run here can find _another
-  worktree's_ server answering and drive that branch for the whole run. It
-  passes, because the pages exist there too, and nothing in the output says so.
-  That happened; posters captured in the same run were stills of the wrong code.
-- **Astro allows one background dev server per project**, and reports the running
-  one rather than starting a second. So a port derived per worktree — the obvious
-  fix for the first problem — hangs for the full 120s timeout whenever any server
-  for the project is already up. Recorded, with the code that failed, in
-  `docs/adr/20260828-a-derived-port-per-worktree.md`.
+The Astro dev toolbar cannot reach these pages at all now — it is something the
+dev server injects, and there is no dev server. `tests/harness.spec.ts` still
+asserts its absence and **its docblock says plainly that it has become a revert
+detector**: it can no longer fail for the reason it was written, only if someone
+puts the suite back on `astro dev`. The `noDevToolbar` fixture is gone with the
+thing it was covering.
 
-`BASE_URL` is therefore not a constant. The port is unknown until `globalSetup`
-has run, so it is published as an environment variable that workers read through
-`use.baseURL`. `PW_PORT` still overrides the port to _ask_ for.
+## If you are running a dev server
+
+**These still happen. They have stopped happening to the suite, which is not the
+same thing.** `pnpm run dev` exists and people use it — Andrei does — so every
+diagnosis below is live for a person even though no check meets it any more. They
+are kept because each cost somebody real time to find once.
 
 **A long-running dev server serves a stale content store, and that changes which
-piece some tests drive.** Astro builds the store at startup, so an `about.md`
+piece you are looking at.** Astro builds the store at startup, so an `about.md`
 edited afterwards is not seen — which `src/experiments/AGENTS.md` says for
 _adding_ a note, and is worth knowing for editing one too, because
-`gallery/order.ts` sorts the wall by `updated` descending. Any test whose subject
-comes from `wall(page)` — most of `reel.spec.ts` — therefore drives whichever
-piece the **server's** store thinks is newest, not whichever the working tree
-does. Bumping `updated` on one note reorders the wall and silently changes the
-subject of a dozen checks.
-
-That cost real time while diagnosing #119: a run against a server started before
-an `updated` bump drove psyxels, the same run against a fresh one drove flotsam,
-and the two have different preset counts and different scenes. **Restart the dev
-server before trusting a measurement that depends on the wall order**, and read
-the order off the page rather than from `EXPECTED` in
-`tests/experiments-index.spec.ts` — that list pins the index's _contents_ and is
-written in a fixed order which is **not** the order the page renders.
+`gallery/order.ts` sorts the wall by `updated` descending. Bumping `updated` on
+one note reorders the wall. That cost real time while diagnosing #119: a dev
+server started before an `updated` bump showed psyxels where a fresh one showed
+flotsam, and the two have different preset counts and different scenes. A build
+has no such window — it reads the tree every time.
 
 **Its sibling is a recaptured poster that does not reach the browser**, for a
 different reason with the same shape — Astro's dev `<Image>` endpoint caches by
 file path with no content hash, so the bytes change and the address cannot. The
-mechanism is in `src/experiments/AGENTS.md`, under Posters, because that is what
-somebody running a recapture reads. What belongs here is the diagnosis, since
-this is the section you land in when a measurement disagrees with the tree:
-**restarting the dev server fixes the content store and does nothing for the
-reviewer's cache**, so the two look identical from here and are not.
+mechanism is in `src/experiments/AGENTS.md`, under Posters. **Restarting the dev
+server fixes the content store and does nothing for the reviewer's cache**, so
+the two look identical from here and are not. A build emits content-hashed
+`_astro/` names and has neither problem, which is why review moved onto one.
 
 Walkers, 2026-09-04: a poster recaptured from a daylight park to a night scene
 was reported as still green, and the endpoint was serving the correct image at
@@ -136,8 +154,7 @@ file before doubting the code.** Half a morning went the other way.
 before trusting a run.** Changing the config makes Vite re-optimise the site's
 dependencies, which changes the `?v=<hash>` on every pre-bundled dep URL. A
 server restarted across that edit serves the new hash while anything holding the
-old one gets **`504 (Outdated Optimize Dep)`**, and the suite reports each as a
-page problem rather than as a build failure:
+old one gets **`504 (Outdated Optimize Dep)`**:
 
 ```
 console.error: Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep)
@@ -149,21 +166,11 @@ Measured while turning the dev toolbar off: **five failures, all in
 rather than an experiment. `rm -rf node_modules/.vite`, restart, and the same
 commit went 172-passed-5-failed to 177-passed. **Nothing was wrong with the
 code.** The tell is that every reported problem names `/node_modules/.vite/deps/`
-and none names anything you changed.
+and none names anything you changed. It cost a session two full suite runs.
 
-Worth knowing because it does not look like a cache: `problems` is the fixture
-that catches real console errors, so a stale dep arrives wearing the same
-clothes as a genuine regression, and it lands on whichever spec touches the
-site's React deps rather than on the thing you edited.
-
-The suite also serves the Astro dev toolbar's module empty, since it is part of
-the dev server rather than the site and injects four extra `h1`s into every page.
-**`astro.config.mjs` now disables the toolbar project-wide as well**, so on a
-server started from this checkout there is nothing to suppress — but the suite
-**adopts** a running server rather than insisting on its own, and one from an
-older worktree still serves it, which is what the fixture is for.
-`tests/harness.spec.ts` checks the end state and says which of the two achieved
-it.
+Worth knowing because it does not look like a cache: a stale dep arrives wearing
+the same clothes as a genuine regression. There is no Vite in front of a static
+build, so this one is now a person's problem only.
 
 ## A running piece starves the thread Playwright is talking to
 

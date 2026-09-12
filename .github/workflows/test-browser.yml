@@ -114,7 +114,15 @@ jobs:
       - name: Install Chromium for Playwright
         run: pnpm exec playwright install --with-deps chromium
 
-      # Starts its own Astro dev server; see tests/support/dev-server.ts.
+      # Builds the site and serves dist/ with `astro preview`; it does not run
+      # `astro dev`. See tests/support/preview-server.ts and
+      # docs/adr/20260912-previews-and-tests-run-against-a-static-build.md.
+      #
+      # So this job now exercises the artefact that deploys. That is not a
+      # nicety: a page once referenced an `_astro/` asset the build never wrote,
+      # and the suite passed because `astro dev` serves imports off disk. The
+      # only symptom was a 404 in production, found by a person.
+      #
       # PW_USE_BUNDLED_CHROMIUM so this tests the build installed above rather
       # than whatever the runner image happens to ship.
       - name: Browser tests
