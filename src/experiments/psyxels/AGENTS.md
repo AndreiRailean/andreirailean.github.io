@@ -406,6 +406,17 @@ stylesheet would be. It reaches the client script as a `data-avatar` attribute
 rather than by import, because only the page's frontmatter gets Astro's resolved
 asset URL.
 
+**And the `avatar` subject is on its way out of this piece.** It is the only
+subject in the section that needs a file rather than a number, which is why
+`runner.ts` cannot publish a scene that uses it. #173 asked how a frozen runner
+should be handed an image; the answer is that it should not be — the image
+becomes an input supplied by whatever embeds the piece, and this subject leaves
+psyxels for a standalone experiment or some other form. **Do not build an asset
+channel for it**, and do not spend effort making `maker` publishable as it
+stands. What is settled, what is open, and the measurements — including that
+inlining costs 1.2x rather than the 3x `runner.ts` estimates — are in
+`../docs/adr/20260912-the-image-is-an-input-not-a-subject.md`.
+
 ## Verifying a change
 
 `pnpm run build` covers `astro check` and `pnpm run lint` covers eslint. Neither
