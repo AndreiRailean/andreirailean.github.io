@@ -72,11 +72,56 @@ type RunnerModule = { mount: (canvas: HTMLCanvasElement, scene: string) => Mount
  */
 const IDLE_MS = 2500
 
+/**
+ * How long each entry holds the screen when `?play` asked for autoplay but not
+ * for a number.
+ *
+ * Thirty seconds is long enough for a piece that takes a moment to become
+ * itself — embers builds up, psyxels is immediately what it is — and short
+ * enough that a room notices the wall is a wall. It is a starting point rather
+ * than a finding: `?play=45` is the control, which is the whole reason there is
+ * no control.
+ */
+const PLAY_MS = 30_000
+
+/** The shortest autoplay anyone can ask for, so `?play=0.01` cannot thrash a mount. */
+const PLAY_FLOOR_MS = 1000
+
 /** How long a play or pause mark holds before it starts going, matching `gallery/reel.ts`. */
 const MARK_MS = 850
 
 /** How long it takes to go, matching the transition in `Wall.astro`. */
 const MARK_GOING_MS = 450
+
+/**
+ * How long each entry holds the screen, read off `?play`. Zero is off.
+ *
+ * **One parameter doing both jobs**, rather than a switch and a number: a wall
+ * on a kiosk is configured entirely by its address, and `?play=45&autoplay=1`
+ * would be two things to get wrong where one will do.
+ *
+ * - absent — off. This has to be the default, or every link anybody has shared
+ *   becomes a slideshow that walks away from the scene it was sent for.
+ * - `?play` — on, at `PLAY_MS`.
+ * - `?play=45` — on, at forty-five seconds.
+ * - `?play=0`, or anything at or below zero — off, said out loud.
+ *
+ * **An unreadable number is on rather than off**, which is the one choice here
+ * worth stating. `?play=thirty` is unambiguously somebody asking for autoplay,
+ * and the failure that matters is the silent one: a kiosk that shows a single
+ * frozen scene all week looks exactly like a kiosk nobody configured.
+ *
+ * Exported because it is a string in and a number out, which per
+ * `tests/AGENTS.md` is the unit runner's and not a browser's.
+ */
+export function playInterval(asked: string | null): number {
+  if (asked === null) return 0
+  if (asked.trim() === "") return PLAY_MS
+  const seconds = Number(asked)
+  if (!Number.isFinite(seconds)) return PLAY_MS
+  if (seconds <= 0) return 0
+  return Math.max(PLAY_FLOOR_MS, seconds * 1000)
+}
 
 /** Runner modules already fetched, by URL. The browser caches the bytes; this caches the evaluation. */
 const modules = new Map<string, Promise<RunnerModule>>()
@@ -141,6 +186,8 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
   let canvas: HTMLCanvasElement | null = null
   let showing: WallEntry | null = null
   let paused = false
+  /** How long each entry holds before the wall moves on, or 0 for a wall that does not. */
+  let playMs = 0
   /** Bumped on every move, so a slow mount that lost the race cannot install itself. */
   let generation = 0
 
@@ -241,11 +288,12 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
   // --- the placard ---------------------------------------------------------
 
   /**
-   * What the furniture says, and the moment it has something new to say.
+   * A scene has arrived: name it, wake the furniture, start its turn.
    *
-   * A scene arriving is a sign of life in its own right, so this wakes rather
-   * than being woken: otherwise the name of a scene that took a second to load
-   * would get whatever was left of a clock started before it.
+   * All three hang off the same moment on purpose. A scene arriving is a sign
+   * of life in its own right, so this wakes rather than being woken — otherwise
+   * the name of a scene that took a second to load would get whatever was left
+   * of a clock started before it, and the same goes for its turn on screen.
    */
   function say(shown: WallEntry) {
     if (sceneName) sceneName.textContent = shown.title
@@ -253,6 +301,7 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
     if (noteText) noteText.textContent = shown.note
     if (counter) counter.textContent = `${at + 1} / ${wall.length}`
     goActive()
+    schedulePlay()
   }
 
   // --- mounting ------------------------------------------------------------
@@ -342,6 +391,10 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
       if (what) what.textContent = `${which.title} could not be loaded.`
     }
     console.warn("[showcase] runner failed", which.id, error)
+    // A wall left running steps past a dead runner instead of parking on the
+    // card, which is autoplay paying for itself: the failure that needed
+    // somebody to walk over and press an arrow now lasts one interval.
+    schedulePlay()
   }
 
   /**
@@ -376,6 +429,41 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
     root.dataset.paused = String(paused)
     flashMark(paused ? held : playing)
     goActive()
+    // Holding the piece holds the wall. Looking at one frame is a thing a
+    // gallery is for, and having it slide away in twenty seconds would make the
+    // hold useless exactly when somebody is using it.
+    schedulePlay()
+  }
+
+  // --- autoplay, for a screen nobody is standing at ------------------------
+
+  /**
+   * Stepping through the wall on a timer, for a kiosk.
+   *
+   * **The wrap belongs here and not to `go()`.** A person pressing ↓ on the
+   * last entry should stop, because they asked for the next one and there is
+   * not one; a wall left running should come round, because the alternative is
+   * a screen showing the final scene until somebody walks over to it — which is
+   * the bug this exists to fix, one entry later than the original.
+   *
+   * **The clock is per scene, not a metronome.** Every arrival reschedules, so
+   * an entry that took two seconds to fetch still gets its full turn, and
+   * pressing ↓ halfway through gives the next one a whole interval rather than
+   * the remainder of this one.
+   *
+   * Nothing else restarts it. A mouse moving wakes the furniture and that is
+   * feedback enough; a stray cursor on a kiosk should not be able to stall the
+   * wall indefinitely.
+   */
+  let playTimer = 0
+
+  function schedulePlay() {
+    window.clearTimeout(playTimer)
+    // A held piece, a hidden tab and a wall of one all mean there is nothing to
+    // count down to. The hidden-tab case matters most: the piece is already
+    // paused there, and advancing invisibly would burn the wall for nobody.
+    if (!playMs || paused || document.hidden || wall.length < 2) return
+    playTimer = window.setTimeout(() => go((at + 1) % wall.length), playMs)
   }
 
   // --- the gesture ---------------------------------------------------------
@@ -629,6 +717,9 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) mounted?.setPaused(true)
     else if (!paused) mounted?.setPaused(false)
+    // The wall waits with the piece. Coming back to a tab that had quietly
+    // walked nine entries on while nobody could see it is not a slideshow.
+    schedulePlay()
     // A wake lock does not survive the tab being hidden — the browser releases
     // it and will not give it back on its own. Coming back to a fullscreen wall
     // that has quietly stopped holding the screen awake is the failure nobody
@@ -644,8 +735,10 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
   // --- boot ----------------------------------------------------------------
 
   // Read before the path is rewritten below, which is what drops the query.
-  const asked = new URLSearchParams(location.search).get("idle")
+  const params = new URLSearchParams(location.search)
+  const asked = params.get("idle")
   if (asked !== null) pinnedIdle = asked !== "0"
+  playMs = playInterval(params.get("play"))
 
   history.replaceState({ at }, "", location.pathname)
   goActive()
