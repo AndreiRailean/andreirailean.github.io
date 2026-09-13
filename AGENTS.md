@@ -13,6 +13,41 @@ in the queue, and do not ask before taking one:
   `.astro` files past the third-copy rule while `kit-adoption.test.ts` scanned
   only `.ts` —
   `src/experiments/docs/adr/20260906-a-page-holds-no-logic.md`.
+
+  **The principle is easy and recognising it in the moment is not**, which is why
+  the shapes are listed rather than left as an exercise. All of these have
+  happened here, most of them more than once:
+
+  - a pattern that **matches nothing** — a grep, a glob, a lint rule, a route
+    matcher that stopped matching when the thing it guarded was renamed;
+  - an assertion of **absence with no paired presence**, which passes when the
+    subject has been deleted as readily as when it is well behaved;
+  - a test of something **structurally impossible**, which can never fail for the
+    reason it was written;
+  - a **timing-dependent negative** — "nothing failed" measured over a window too
+    short for anything to fail in;
+  - a **declared fact nobody can clear**, which outlives the session that wrote
+    it and then reads as current.
+
+- **Derive it; do not declare it.** A fact a session writes down is a fact that
+  dies with the session, and **dying is the case that matters** — abruptly is how
+  most sessions end. So the corpse, not the truth, becomes the default state,
+  and once people learn to clear corpses they cannot tell one from a live claim.
+  Prefer a fact that is the thing it asserts: a server answering on a port, a pid
+  that `kill -0` can test. `.astro/dev.json` is the pattern.
+
+- **Measure it; do not argue it.** Three disagreements this repo could not settle
+  in prose took minutes to settle with a number, and two were settled the other
+  way than expected. Compare conditions inside one run on this shared box; a
+  single whole-suite timing is not a measurement.
+
+**And the habit that makes the rest trustworthy: break it and watch it fail.**
+A check nobody has seen fail is a claim, not a check — that is what every shape
+above has in common. `tests/unit/browser-suite.test.ts` and
+`tests/unit/opt-out.test.ts` go further and test the gate itself against cases
+the repo does not contain, which is the version to copy when a check reads
+source rather than behaviour.
+
 - **Work the tools cannot reach.** Code a grep of its own section does not find,
   or a type checker does not type, will be refactored wrongly eventually. The
   fix is to move the code, not to remember the trap.
