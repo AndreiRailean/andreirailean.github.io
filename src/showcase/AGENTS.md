@@ -22,7 +22,9 @@ src/showcase/viewer.ts        mounts one scene, swaps in place, owns the room's 
 src/showcase/Wall.astro       the document and all of its chrome.
 src/pages/showcase/           /showcase/ and a page per entry. Both render Wall.astro.
 tests/unit/showcase-wall.test.ts   every pin names a committed runner of the right piece.
+tests/unit/showcase-play.test.ts   what `?play` asks for, as a number.
 tests/showcase-wall.spec.ts   the furniture: up while somebody is moving, gone when nobody is.
+tests/showcase-autoplay.spec.ts   the wall stepping through itself, wrapping, and holding when held.
 ```
 
 **The furniture is hidden by default.** The placard, the counter, the arrows and
@@ -31,6 +33,40 @@ the two toggles all come and go on one state — `#showcase[data-idle]`, set by
 goes with them. Anything at all brings the lot back. `?idle=0` pins it on and
 `?idle=1` pins it away, which is the only reason a check can click a toggle
 without racing a fade.
+
+## The address is the only control
+
+Two query parameters, and **deliberately no UI for either**. The case both were
+built for is a kiosk: a TV on a dedicated machine with no keyboard and nobody
+standing at it, configured once by the address it boots to. A panel would be
+furniture on the surface whose whole recent history is having less of it.
+
+| | |
+| --- | --- |
+| `?idle=0` / `?idle=1` | pin the furniture on, or away. Off by default — the timer decides. |
+| `?play` / `?play=45` | step through the wall, at `PLAY_MS` or at the seconds given. `?play=0` is off, which is also the default. |
+
+**Autoplay wraps, and `go()` still does not.** A person pressing ↓ on the last
+entry has asked for a next one that does not exist and should stop; a wall left
+running has to come round, or a kiosk shows the last scene until somebody walks
+over to it — the bug the feature exists to fix, one entry later. Keeping the
+wrap in the timer is what lets both be true.
+
+The clock is per scene rather than a metronome: every arrival reschedules, so a
+slow fetch does not eat an entry's turn, and moving by hand gives the next one a
+whole interval. A held piece, a hidden tab and a failed runner each interact
+with it, and `viewer.ts` says why at `schedulePlay`. The failure is the one
+worth knowing about here: **with autoplay on, a dead runner costs one interval
+instead of lasting until somebody notices**.
+
+`playInterval` is exported and unit-tested, because what `?play=thirty` means is
+a string in and a number out and does not need a page. It reads as *on* — the
+silent failure is a kiosk showing one frozen scene all week, which looks exactly
+like a kiosk nobody configured.
+
+**No wake lock rides on autoplay**, and that was asked and answered rather than
+overlooked: the kiosk this was built for does not sleep, and a desktop showing
+the wall to a room presses `f`, which already holds one.
 
 **A visitor here is looking, not working.** There is no panel, no slider, no
 seed, no way to alter a scene. That is the whole distinction from
