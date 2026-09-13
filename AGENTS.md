@@ -48,6 +48,27 @@ above has in common. `tests/unit/browser-suite.test.ts` and
 the repo does not contain, which is the version to copy when a check reads
 source rather than behaviour.
 
+**A rule written in prose has the same failure and a different test.** A rule can
+be true, agreed and unfollowable — when it assumes something the reader was never
+in a position to record. `/wrap-up` said "delete only branches this session
+created", which nothing can establish afterwards, so the first session to follow
+it globbed and swept up somebody else's work. That is not a smaller version of
+the rule; it is a different one, and it reads as compliance.
+
+**The discriminator is whether the next clause hands over something local and
+decidable.** An unverifiable property is fine when it is immediately paired with
+a proxy the reader can actually check, and fatal when the reader is left to
+bridge the gap themselves. Both known instances left the bridge to the reader.
+
+**And the test is to run it without the rule and watch what gets invented.** A
+reviewer reads for whether a rule is correct; only an executor discovers whether
+it is followable, and those are different properties. What an agent invents where
+the prose runs out is the finding. The control run is the load-bearing half and
+the one that feels skippable: a dotfiles session measured 2 of 4 agents deriving
+a rule unaided, which said the text was under-specified rather than wrong and
+changed the fix from a prohibition to a clarification. Off the fixed version
+alone it would have read as 4 of 4 saved.
+
 - **Work the tools cannot reach.** Code a grep of its own section does not find,
   or a type checker does not type, will be refactored wrongly eventually. The
   fix is to move the code, not to remember the trap.
@@ -85,6 +106,14 @@ worktrees — and reports what is not safe to touch, because `astro preview stop
 and the stash are per-worktree and shared respectively. It is best-effort by
 nature: a session that ends abruptly never runs it, which is why leftovers
 announce themselves through `.astro/*.json` instead.
+
+**Keep a note of every branch, worktree and stash entry you create, as you
+create it.** That is the half `/wrap-up` cannot supply, because it is read at the
+end and the record has to start at the beginning — and none of it is recoverable
+afterwards: a branch does not carry its author and a worktree does not carry its
+purpose. Without the note the skill's "delete only what you created" degrades
+into a glob, which is not a smaller version of the rule but a different one; the
+first session to follow it swept up two branches belonging to somebody else.
 
 ### Issue tracker
 
