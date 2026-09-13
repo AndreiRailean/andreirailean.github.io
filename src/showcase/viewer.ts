@@ -40,15 +40,27 @@
  */
 
 import { axisOf, commits, type Axis } from "@/experiments/gallery/gesture"
+import { hashSeed, makeRng, type Rng } from "@/experiments/random"
 import { runnerUrl, type WallEntry } from "@/showcase/wall"
 
 /**
- * The gesture arithmetic is the gallery's, imported rather than copied.
+ * Two imports from the section, and both are pure arithmetic.
  *
- * It is pure, needs no DOM and knows nothing about a piece, and a wall that
- * committed to different swipe thresholds than the section's interactive view
- * would be a difference nobody chose. If the showcase is ever lifted out of
- * this repo, this is the one import that has to travel with it.
+ * **The gesture** is the gallery's: a wall that committed to different swipe
+ * thresholds than the section's interactive view would be a difference nobody
+ * chose.
+ *
+ * **The generators** are the section's, by the same test that put them there —
+ * `../experiments/docs/adr/20260829-a-third-copy-of-the-generators-moves-to-the-section.md`
+ * hoisted them out of three pieces precisely so the fourth caller would not
+ * write mulberry32 again. Shuffling a wall is that fourth caller. Copying them
+ * in here to honour the letter of "the showcase imports nothing from a piece"
+ * would have broken the rule that clause exists to serve.
+ *
+ * Neither is a piece, neither touches a DOM, and both are tested in the node
+ * suite. That is the line: **the showcase imports the section's arithmetic and
+ * never a piece's behaviour.** If the showcase is ever lifted out of this repo,
+ * these two travel with it.
  */
 
 /** What every runner hands back, whatever piece it holds. */
@@ -93,34 +105,102 @@ const MARK_MS = 850
 /** How long it takes to go, matching the transition in `Wall.astro`. */
 const MARK_GOING_MS = 450
 
+/** How long an entry may hold the screen, in milliseconds. `max` of 0 is off. */
+export type PlaySpan = { min: number; max: number }
+
+const OFF: PlaySpan = { min: 0, max: 0 }
+
 /**
- * How long each entry holds the screen, read off `?play`. Zero is off.
+ * How long each entry holds the screen, read off `?play`.
  *
- * **One parameter doing both jobs**, rather than a switch and a number: a wall
- * on a kiosk is configured entirely by its address, and `?play=45&autoplay=1`
- * would be two things to get wrong where one will do.
+ * **One parameter doing all of it**, rather than a switch, a number and a
+ * spread: a wall on a kiosk is configured entirely by its address, and
+ * `?play=30&autoplay=1&jitter=15` would be three things to get wrong where one
+ * will do.
  *
  * - absent — off. This has to be the default, or every link anybody has shared
  *   becomes a slideshow that walks away from the scene it was sent for.
- * - `?play` — on, at `PLAY_MS`.
- * - `?play=45` — on, at forty-five seconds.
+ * - `?play` — on, at `PLAY_MS` exactly.
+ * - `?play=45` — on, at forty-five seconds exactly.
+ * - `?play=20-45` — on, somewhere in between, drawn afresh for every scene.
  * - `?play=0`, or anything at or below zero — off, said out loud.
+ *
+ * **A range rather than a jitter percentage**, because a range is the thing
+ * being asked for and a percentage is a thing to convert. Reversed ends are
+ * taken as written and sorted: `?play=45-20` is nobody's mistake worth failing.
  *
  * **An unreadable number is on rather than off**, which is the one choice here
  * worth stating. `?play=thirty` is unambiguously somebody asking for autoplay,
  * and the failure that matters is the silent one: a kiosk that shows a single
  * frozen scene all week looks exactly like a kiosk nobody configured.
  *
- * Exported because it is a string in and a number out, which per
+ * Exported because it is a string in and two numbers out, which per
  * `tests/AGENTS.md` is the unit runner's and not a browser's.
  */
-export function playInterval(asked: string | null): number {
-  if (asked === null) return 0
-  if (asked.trim() === "") return PLAY_MS
-  const seconds = Number(asked)
-  if (!Number.isFinite(seconds)) return PLAY_MS
-  if (seconds <= 0) return 0
-  return Math.max(PLAY_FLOOR_MS, seconds * 1000)
+export function playSpan(asked: string | null): PlaySpan {
+  if (asked === null) return OFF
+  const text = asked.trim()
+  if (text === "") return { min: PLAY_MS, max: PLAY_MS }
+
+  // Split before parsing, or `Number("20-45")` is `NaN` and a range reads as
+  // unreadable. Two non-empty halves or it is not a range — which is also what
+  // keeps a bare `-45` out of here and on the single-number path, where it is
+  // negative and therefore off.
+  const halves = text.split("-")
+  if (halves.length === 2 && halves[0]!.trim() !== "" && halves[1]!.trim() !== "") {
+    const low = seconds(halves[0]!)
+    const high = seconds(halves[1]!)
+    if (low !== null && high !== null && low > 0 && high > 0) {
+      return { min: Math.min(low, high), max: Math.max(low, high) }
+    }
+  }
+
+  const only = seconds(text)
+  if (only === null) return { min: PLAY_MS, max: PLAY_MS }
+  if (only <= 0) return OFF
+  return { min: only, max: only }
+}
+
+/** One end of a span, in milliseconds, floored — or `null` if it is not a number at all. */
+function seconds(text: string): number | null {
+  const value = Number(text)
+  if (!Number.isFinite(value)) return null
+  if (value <= 0) return value
+  return Math.max(PLAY_FLOOR_MS, value * 1000)
+}
+
+/** A fresh draw from a span. Exact when the span has no width, so `?play=30` means thirty. */
+export function pickInterval(span: PlaySpan, rng: Rng): number {
+  if (!span.max) return 0
+  if (span.max === span.min) return span.min
+  return span.min + rng() * (span.max - span.min)
+}
+
+/**
+ * One lap of the wall in a shuffled order, as a permutation of its indices.
+ *
+ * **A shuffled lap rather than a random jump**, and the difference is the whole
+ * point of asking for this. Picking uniformly at random each time repeats: on a
+ * wall of twenty-four it shows the same scene twice running about one step in
+ * twenty-four, and clusters visibly over an evening — which is *more* repetitive
+ * than the fixed order it was meant to relieve, in the one way a viewer
+ * actually notices. A lap shows every scene exactly once and then reshuffles,
+ * the way a music player does.
+ *
+ * `after` is the entry currently on screen, kept out of the first position so
+ * the seam between two laps is not the one place a repeat is allowed to happen.
+ */
+export function lap(length: number, rng: Rng, after = -1): number[] {
+  const order = Array.from({ length }, (_, index) => index)
+  for (let index = length - 1; index > 0; index--) {
+    const swap = Math.floor(rng() * (index + 1))
+    ;[order[index], order[swap]] = [order[swap]!, order[index]!]
+  }
+  if (length > 1 && order[0] === after) {
+    const other = 1 + Math.floor(rng() * (length - 1))
+    ;[order[0], order[other]] = [order[other]!, order[0]!]
+  }
+  return order
 }
 
 /** Runner modules already fetched, by URL. The browser caches the bytes; this caches the evaluation. */
@@ -186,8 +266,23 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
   let canvas: HTMLCanvasElement | null = null
   let showing: WallEntry | null = null
   let paused = false
-  /** How long each entry holds before the wall moves on, or 0 for a wall that does not. */
-  let playMs = 0
+  /** How long each entry holds before the wall moves on. `max` of 0 is a wall that does not. */
+  let span: PlaySpan = OFF
+  /** Whether the wall plays its curated order or a shuffled lap of it. */
+  let shuffling = false
+  /**
+   * The randomness, seeded once.
+   *
+   * **Seeded rather than `Math.random`**, for the reason `playwright.config.ts`
+   * gives about the pieces: a failure has to be a real difference and not
+   * weather. `?seed=7` pins the sequence, which is what lets a browser test
+   * assert anything about a shuffled wall at all — and incidentally what lets a
+   * run that looked good be run again.
+   */
+  let rng: Rng = makeRng(hashSeed(Date.now()))
+  /** The lap in progress when shuffling, and how far into it the wall has got. */
+  let order: number[] = []
+  let orderAt = 0
   /** Bumped on every move, so a slow mount that lost the race cannot install itself. */
   let generation = 0
 
@@ -403,21 +498,45 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
    * Evaluating a module is cheap; mounting is not. This is what makes crossing
    * into a new piece feel like a scene change rather than a page load, and it
    * is the whole of the "preload" idea — no second canvas, no second loop.
+   *
+   * **It asks where the wall is actually going**, which is not `at + 1` once
+   * shuffling is on. Warming `at + 1` while playing a lap would prefetch a
+   * runner nobody is about to want and leave the one that plays next cold — the
+   * stutter between pieces that the prefetch exists to remove, restored by a
+   * feature that never mentioned it. `peekNext()` is the same thing the timer
+   * will use, so the two cannot drift.
    */
   async function prefetchNeighbours() {
-    for (const step of [1, -1]) {
-      const neighbour = wall[at + step]
+    // A set, because the three overlap whenever the wall is in its plain order.
+    for (const index of new Set([peekNext(), at + 1, at - 1])) {
+      const neighbour = wall[index]
       if (neighbour) void load(runnerUrl(neighbour)).catch(() => {})
     }
   }
 
   // --- moving --------------------------------------------------------------
 
-  function go(to: number, push = true) {
+  /**
+   * Moves the wall, and says what that does to the back button.
+   *
+   * **A step the wall took by itself replaces rather than pushes**, which is a
+   * fix to the autoplay that shipped before it. A person pressing ↓ is
+   * navigating and should be able to go back; a kiosk stepping on its own is
+   * not, and pushing there piles up an entry every interval — a screen left
+   * running for a week accumulates twenty thousand of them and a back button
+   * that can no longer reach anything a person actually chose. Replacing keeps
+   * the address honest, so a reload still lands on the scene on screen.
+   *
+   * `"none"` is the `popstate` case, where the history has already moved and
+   * writing to it again would fight the browser.
+   */
+  function go(to: number, how: "push" | "replace" | "none" = "push") {
     const clamped = Math.min(wall.length - 1, Math.max(0, to))
     if (clamped === at && showing) return
     at = clamped
-    if (push) history.pushState({ at }, "", `/showcase/${entry().id}/`)
+    const address = `/showcase/${entry().id}/`
+    if (how === "push") history.pushState({ at }, "", address)
+    else if (how === "replace") history.replaceState({ at }, "", address)
     document.title = `${entry().title} — Showcase`
     void show(entry())
   }
@@ -457,13 +576,52 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
    */
   let playTimer = 0
 
+  /**
+   * Where the wall goes next, without going there.
+   *
+   * The prefetch and the timer both need this and must agree, so there is one
+   * of it. Refilling an exhausted lap here rather than at the moment of moving
+   * is deliberate: it means the first entry of the next lap is warmed a whole
+   * interval before it plays, exactly like any other.
+   */
+  function peekNext(): number {
+    if (!shuffling) return (at + 1) % wall.length
+    if (orderAt >= order.length) {
+      order = lap(wall.length, rng, at)
+      orderAt = 0
+    }
+    return order[orderAt]!
+  }
+
+  /**
+   * The same, consumed.
+   *
+   * **The skip is not paranoia.** A person can navigate by hand into an entry
+   * that is still ahead in the current lap, and that position then comes round
+   * naming the scene already on screen. `go()` returns early on a move to where
+   * it already is, so nothing would call `say()`, nothing would reschedule, and
+   * the wall would stop for good — a hang rather than a glitch. One skip is
+   * enough because a lap holds each index once; the fallback is there so this
+   * can never be the thing that stops a kiosk.
+   */
+  function takeNext(): number {
+    if (!shuffling) return (at + 1) % wall.length
+    for (let tries = 0; tries < 2; tries++) {
+      const next = peekNext()
+      orderAt += 1
+      if (next !== at) return next
+    }
+    return (at + 1) % wall.length
+  }
+
   function schedulePlay() {
     window.clearTimeout(playTimer)
     // A held piece, a hidden tab and a wall of one all mean there is nothing to
     // count down to. The hidden-tab case matters most: the piece is already
     // paused there, and advancing invisibly would burn the wall for nobody.
-    if (!playMs || paused || document.hidden || wall.length < 2) return
-    playTimer = window.setTimeout(() => go((at + 1) % wall.length), playMs)
+    if (!span.max || paused || document.hidden || wall.length < 2) return
+    // Drawn per scene rather than once, which is the whole of `?play=20-45`.
+    playTimer = window.setTimeout(() => go(takeNext(), "replace"), pickInterval(span, rng))
   }
 
   // --- the gesture ---------------------------------------------------------
@@ -729,7 +887,7 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
 
   window.addEventListener("popstate", (event) => {
     const state = event.state as { at?: number } | null
-    if (typeof state?.at === "number") go(state.at, false)
+    if (typeof state?.at === "number") go(state.at, "none")
   })
 
   // --- boot ----------------------------------------------------------------
@@ -738,7 +896,27 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
   const params = new URLSearchParams(location.search)
   const asked = params.get("idle")
   if (asked !== null) pinnedIdle = asked !== "0"
-  playMs = playInterval(params.get("play"))
+  span = playSpan(params.get("play"))
+
+  /*
+   * The shuffle, and the seed under it.
+   *
+   * **Shuffling is opt-in and the curated order stays the default.** `wall.ts`
+   * is hand-ordered and nothing regenerates it; a `?play` address somebody
+   * already has should keep meaning what it meant yesterday. `?shuffle` is one
+   * word to add for a kiosk, which is the only place the order was ever the
+   * problem.
+   *
+   * The seed is the clock unless `?seed=` says otherwise, so two kiosks side by
+   * side do not play in step — and so one sequence can be asked for again.
+   * `hashSeed` rather than the raw value because mulberry32 takes the low bits
+   * of what it is given, and `?seed=1` beside `?seed=2` should be two different
+   * walls rather than two walks through nearly the same one.
+   */
+  const shuffleAsked = params.get("shuffle")
+  shuffling = shuffleAsked !== null && shuffleAsked !== "0"
+  const seedAsked = Number(params.get("seed"))
+  rng = makeRng(hashSeed(Number.isFinite(seedAsked) && params.get("seed") !== null ? seedAsked : Date.now()))
 
   history.replaceState({ at }, "", location.pathname)
   goActive()
