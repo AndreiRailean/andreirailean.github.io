@@ -41,10 +41,10 @@ built for is a kiosk: a TV on a dedicated machine with no keyboard and nobody
 standing at it, configured once by the address it boots to. A panel would be
 furniture on the surface whose whole recent history is having less of it.
 
-| | |
-| --- | --- |
-| `?idle=0` / `?idle=1` | pin the furniture on, or away. Off by default — the timer decides. |
-| `?play` / `?play=45` | step through the wall, at `PLAY_MS` or at the seconds given. `?play=0` is off, which is also the default. |
+| parameter             | what it does                                                                                     |
+| --------------------- | ------------------------------------------------------------------------------------------------ |
+| `?idle=0` / `?idle=1` | Pin the furniture on, or away. Absent by default — the timer decides.                            |
+| `?play` / `?play=45`  | Step through the wall, at `PLAY_MS` or at the seconds given. `?play=0` is off, and so is absent. |
 
 **Autoplay wraps, and `go()` still does not.** A person pressing ↓ on the last
 entry has asked for a next one that does not exist and should stop; a wall left
@@ -60,7 +60,7 @@ worth knowing about here: **with autoplay on, a dead runner costs one interval
 instead of lasting until somebody notices**.
 
 `playInterval` is exported and unit-tested, because what `?play=thirty` means is
-a string in and a number out and does not need a page. It reads as *on* — the
+a string in and a number out and does not need a page. It reads as _on_ — the
 silent failure is a kiosk showing one frozen scene all week, which looks exactly
 like a kiosk nobody configured.
 
