@@ -22,9 +22,9 @@ src/showcase/viewer.ts        mounts one scene, swaps in place, owns the room's 
 src/showcase/Wall.astro       the document and all of its chrome.
 src/pages/showcase/           /showcase/ and a page per entry. Both render Wall.astro.
 tests/unit/showcase-wall.test.ts   every pin names a committed runner of the right piece.
-tests/unit/showcase-play.test.ts   what `?play` asks for, as a number.
+tests/unit/showcase-play.test.ts   what `?play` asks for, and the order a shuffled wall plays in.
 tests/showcase-wall.spec.ts   the furniture: up while somebody is moving, gone when nobody is.
-tests/showcase-autoplay.spec.ts   the wall stepping through itself, wrapping, and holding when held.
+tests/showcase-autoplay.spec.ts   the wall stepping through itself: wrapping, shuffling, holding when held.
 ```
 
 **The furniture is hidden by default.** The placard, the counter, the arrows and
@@ -36,21 +36,44 @@ without racing a fade.
 
 ## The address is the only control
 
-Two query parameters, and **deliberately no UI for either**. The case both were
-built for is a kiosk: a TV on a dedicated machine with no keyboard and nobody
-standing at it, configured once by the address it boots to. A panel would be
-furniture on the surface whose whole recent history is having less of it.
+Four query parameters, and **deliberately no UI for any of them**. The case they
+were built for is a kiosk: a TV on a dedicated machine with no keyboard and
+nobody standing at it, configured once by the address it boots to. A panel would
+be furniture on the surface whose whole recent history is having less of it.
 
 | parameter             | what it does                                                                                     |
 | --------------------- | ------------------------------------------------------------------------------------------------ |
 | `?idle=0` / `?idle=1` | Pin the furniture on, or away. Absent by default — the timer decides.                            |
 | `?play` / `?play=45`  | Step through the wall, at `PLAY_MS` or at the seconds given. `?play=0` is off, and so is absent. |
+| `?play=20-45`         | The same, drawing a fresh interval per scene. A range, not a jitter percentage.                  |
+| `?shuffle`            | Play a shuffled lap rather than the curated order. Off by default.                               |
+| `?seed=7`             | Pin the randomness. The clock otherwise, so two kiosks do not play in step.                      |
+
+The kiosk address, for the record: `/showcase/?play=20-45&shuffle`.
+
+**Shuffling is opt-in and `wall.ts`'s order is the default.** The wall is
+hand-curated and nothing regenerates it, and a `?play` address somebody already
+has should keep meaning what it meant yesterday. One word is a low price for the
+one place the order was ever the problem.
+
+**A lap, not a random jump**, and that is the whole reason this is worth a
+mechanism. Picking uniformly each time repeats — on twenty-four entries it shows
+the same scene twice running about one step in twenty-four, and clusters visibly
+over an evening. That is _more_ repetitive than the fixed order it was meant to
+relieve, in the one way a viewer notices. So `lap()` deals the whole wall,
+plays it out, and reshuffles — and it will not open a new lap on the entry
+already showing, because the seam is where a repeat would be most visible.
 
 **Autoplay wraps, and `go()` still does not.** A person pressing ↓ on the last
 entry has asked for a next one that does not exist and should stop; a wall left
 running has to come round, or a kiosk shows the last scene until somebody walks
 over to it — the bug the feature exists to fix, one entry later. Keeping the
 wrap in the timer is what lets both be true.
+
+**A step the wall takes by itself replaces rather than pushes.** A person
+navigating should be able to go back; a kiosk stepping on its own should not
+pile up an entry every interval — twenty thousand in a week, and a back button
+that can no longer reach anything anyone chose.
 
 The clock is per scene rather than a metronome: every arrival reschedules, so a
 slow fetch does not eat an entry's turn, and moving by hand gives the next one a
@@ -59,18 +82,32 @@ with it, and `viewer.ts` says why at `schedulePlay`. The failure is the one
 worth knowing about here: **with autoplay on, a dead runner costs one interval
 instead of lasting until somebody notices**.
 
-`playInterval` is exported and unit-tested, because what `?play=thirty` means is
-a string in and a number out and does not need a page. It reads as _on_ — the
-silent failure is a kiosk showing one frozen scene all week, which looks exactly
-like a kiosk nobody configured.
+**The prefetch asks where the wall is actually going.** It warmed `at ± 1`,
+which stops being where the wall goes the moment a lap is running — a cold
+runner at every piece boundary, which is the stutter the prefetch exists to
+remove, reintroduced by a feature that never mentioned it. It and the timer both
+call `peekNext()` so they cannot drift.
+
+`playSpan`, `pickInterval` and `lap` are exported and unit-tested, because all
+of it is numbers in and numbers out and needs no page: what `?play=thirty` means,
+that a lap is a permutation, that an interval varies across its range. The
+browser suite keeps only what a page can answer — that the wall steps, wraps,
+holds when held, and does not repeat inside the first few entries of a lap.
+`?play=thirty` reads as _on_: the silent failure is a kiosk showing one frozen
+scene all week, which looks exactly like a kiosk nobody configured.
 
 **No wake lock rides on autoplay**, and that was asked and answered rather than
 overlooked: the kiosk this was built for does not sleep, and a desktop showing
 the wall to a room presses `f`, which already holds one.
 
-**A visitor here is looking, not working.** There is no panel, no slider, no
-seed, no way to alter a scene. That is the whole distinction from
+**A visitor here is looking, not working.** There is no panel, no slider, and
+no way to alter a scene. That is the whole distinction from
 `/experiments/<slug>/`, which is the same pieces with every control exposed.
+
+`?seed=` is not a counter-example and the difference is worth keeping straight:
+it seeds the **order the wall plays in**, never a scene. Every scene on this
+wall is frozen bytes pinned by an entry, and nothing in the address can move
+one. A seed that reached a piece would be a control, and there are none here.
 
 ## The boundary, and who owns what
 
@@ -119,10 +156,23 @@ decision to hoist and where it lands are the steward's, on a count taken here.
 That is the one move where the right answer is a change on their side prompted
 by something on ours.
 
-**The one import from their side is `gallery/gesture.ts`**, for the swipe
-arithmetic, so the wall and the interactive view cannot drift to different
-thresholds by accident. If that ever needs to change, it is a conversation, not
-an edit.
+**Two imports from their side, and the rule is the shape of them rather than
+the count.** `gallery/gesture.ts` for the swipe arithmetic, so the wall and the
+interactive view cannot drift to different thresholds by accident;
+`experiments/random.ts` for the seeded generators, so a shuffled wall is not the
+fourth place in this repo to write mulberry32.
+
+The line both sit on: **the showcase may import the section's arithmetic and
+never a piece's behaviour.** Pure, no DOM, no knowledge of what a scene means,
+and tested in the node suite — that is the test, and it is the same one
+`20260829-a-third-copy-of-the-generators-moves-to-the-section.md` used to hoist
+the generators out of three pieces in the first place. Copying them in here to
+honour the letter of "nothing here imports a piece" would have broken the rule
+that clause exists to serve.
+
+It was one import until the shuffle wanted a generator, and the count is
+expected to stay small. **Adding a third is still a conversation, not an edit** —
+and so is any change to these two.
 
 ## What must not be generalised
 
@@ -177,6 +227,10 @@ shared layer, which makes it the steward's call on a count taken here.
   viewer dynamic-imports the **built artefact** at
   `/showcase/runners/<slug>.<hash>.js`, the way `gallery/embed.ts` does. See
   `docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.md`.
+  **A piece, not the section**: `gallery/gesture.ts` and `experiments/random.ts`
+  are pure arithmetic at the section level and are imported — see
+  [the boundary](#the-boundary-and-who-owns-what) for why that is the same rule
+  rather than an exception to it.
 - **`wall.ts` is hand-curated and nothing regenerates it.** It was seeded once
   from the pieces' `PRESETS` and is an ordinary source file from then on.
   Editing a preset does not republish anything, which is the point.

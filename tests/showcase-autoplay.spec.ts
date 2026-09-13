@@ -139,3 +139,60 @@ test("a scene that cannot load is stepped past rather than parked on", async ({ 
   expect(problems.some((problem) => problem.includes("/showcase/runners/"))).toBe(true)
   problems.length = 0
 })
+
+test("`?shuffle` plays a lap rather than the curated order", async ({ page }) => {
+  // Seeded, so this asserts a property of the shuffle and not of one lucky
+  // draw — `playwright.config.ts` takes the same line about the pieces: a
+  // failure here has to be a real difference and not weather.
+  await openWall(page, FIRST, "?play=1&shuffle&seed=7&idle=0")
+
+  // Five is enough to see both ways this can be wrong, and costs five seconds
+  // rather than the twenty-four a full lap would add to the suite. That a lap
+  // is a whole permutation is asserted in `tests/unit/showcase-play.test.ts`,
+  // where it costs microseconds and can be run three hundred times.
+  const visited = await page.evaluate(
+    () =>
+      new Promise<number[]>((resolve) => {
+        const wall = (window as unknown as WallWindow).showcaseWall!
+        const seen = [wall.at()]
+        const tick = () => {
+          const at = wall.at()
+          if (seen.at(-1) !== at) seen.push(at)
+          if (seen.length >= 5) resolve(seen)
+          else requestAnimationFrame(tick)
+        }
+        tick()
+      }),
+  )
+
+  // Not the curated order — which is the ask — and no repeats, which is the
+  // half a naive `Math.random()` jump would fail and be *more* repetitive for.
+  expect(visited).not.toEqual([0, 1, 2, 3, 4])
+  expect(new Set(visited).size).toBe(visited.length)
+})
+
+test("`?play=1-2` is a range and still steps", async ({ page }) => {
+  await openWall(page, FIRST, "?play=1-2&idle=0")
+
+  // That the draw actually varies is `pickInterval`'s, in the unit suite, over
+  // five hundred samples. What needs a page is only that a range parses into
+  // something the wall will act on at all.
+  await page.waitForFunction(() => (window as unknown as WallWindow).showcaseWall!.at() !== 0)
+})
+
+test("a wall stepping by itself does not fill the back button", async ({ page }) => {
+  await openWall(page, FIRST, "?play=1&idle=0")
+  const before = await page.evaluate(() => history.length)
+
+  await page.waitForFunction(() => (window as unknown as WallWindow).showcaseWall!.at() >= 2)
+
+  // A kiosk pushing an entry every interval accumulates twenty thousand of them
+  // in a week and leaves a back button that cannot reach anything a person
+  // chose. The address still follows, so a reload lands on what is on screen.
+  expect(await page.evaluate(() => history.length)).toBe(before)
+  expect(page.url()).not.toContain(FIRST)
+
+  // And a person moving by hand is navigation, which still pushes.
+  await page.keyboard.press("ArrowUp")
+  expect(await page.evaluate(() => history.length)).toBe(before + 1)
+})
