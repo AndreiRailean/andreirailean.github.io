@@ -33,6 +33,10 @@
  * is rarely an off-screen instance to pause. Failure handling is deliberately
  * *not* a second copy: a dead runner on a host page means leave the host's own
  * background alone, and here the runner is the page, so it has to say so.
+ *
+ * **Idle-hiding is the second of them**, against `kit/controls.ts` — same
+ * number, same `?idle=` hatch, no shared code. `src/showcase/AGENTS.md` says
+ * what would move on the third.
  */
 
 import { axisOf, commits, type Axis } from "@/experiments/gallery/gesture"
@@ -57,8 +61,16 @@ type Mounted = {
 
 type RunnerModule = { mount: (canvas: HTMLCanvasElement, scene: string) => Mounted }
 
-/** How long the scene's name stays up after it arrives. */
-const PLACARD_MS = 2600
+/**
+ * How long the furniture stays up after the last sign of life.
+ *
+ * 2500 is `IDLE_MS` in `kit/controls.ts`, and this is a **second copy rather
+ * than an import**: nothing here reaches into a piece or the kit, and a wall
+ * that receded on a different clock from the experiments would be a difference
+ * nobody chose. The section hoists on the third copy, not the second — see the
+ * note in `src/showcase/AGENTS.md` about what would have to move.
+ */
+const IDLE_MS = 2500
 
 /** How long a play or pause mark holds before it starts going, matching `gallery/reel.ts`. */
 const MARK_MS = 850
@@ -116,7 +128,6 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
   // narrowing as far as the checker is concerned.
   const root: HTMLElement = found
   const stage: HTMLElement = foundStage
-  const placard = root.querySelector<HTMLElement>(".placard")
   const sceneName = root.querySelector<HTMLElement>(".placard .scene")
   const pieceName = root.querySelector<HTMLElement>(".placard .piece")
   const noteText = root.querySelector<HTMLElement>(".placard .note")
@@ -132,7 +143,6 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
   let paused = false
   /** Bumped on every move, so a slow mount that lost the race cannot install itself. */
   let generation = 0
-  let placardTimer = 0
 
   const entry = () => wall[at]!
 
@@ -182,24 +192,67 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
     markShowing = null
   }
 
+  // --- the furniture, which is up only while somebody is moving -------------
+
+  /**
+   * Anything the wall drew over the piece: it takes its own taps, and it is
+   * what the idle timer waits on when the pointer comes to rest on it.
+   */
+  const isFurniture = (target: EventTarget | null) =>
+    target instanceof Element && Boolean(target.closest("[data-showcase-furniture]"))
+
+  /**
+   * Pinned by `?idle=`, or `null` to let the timer decide.
+   *
+   * The kit's escape hatch, for the same reason it has one: furniture that
+   * fades after two and a half seconds is a target a check has to race, and a
+   * flaky check is worse than no check. `?idle=0` holds it up, `?idle=1` holds
+   * it away. It lives in this closure rather than in the address because
+   * moving along the wall is a `pushState` that rewrites the path.
+   */
+  let pinnedIdle: boolean | null = null
+  let idleTimer = 0
+  /** Where the pointer last was, so it is not taken away from under a cursor resting on it. */
+  let overFurniture = false
+
+  function setIdle(idle: boolean) {
+    root.dataset.idle = String(idle)
+  }
+
+  /**
+   * A sign of life. Everything comes back, and the clock starts again.
+   *
+   * **The timer does not run while the pointer rests on a control.** Idle
+   * furniture takes no clicks, so fading a button out from under a stationary
+   * cursor would turn the next click into a tap on the piece — which pauses it.
+   * The kit holds off for the same reason, on the panel.
+   */
+  function goActive() {
+    window.clearTimeout(idleTimer)
+    if (pinnedIdle !== null) {
+      setIdle(pinnedIdle)
+      return
+    }
+    setIdle(false)
+    if (overFurniture) return
+    idleTimer = window.setTimeout(() => setIdle(true), IDLE_MS)
+  }
+
   // --- the placard ---------------------------------------------------------
 
+  /**
+   * What the furniture says, and the moment it has something new to say.
+   *
+   * A scene arriving is a sign of life in its own right, so this wakes rather
+   * than being woken: otherwise the name of a scene that took a second to load
+   * would get whatever was left of a clock started before it.
+   */
   function say(shown: WallEntry) {
     if (sceneName) sceneName.textContent = shown.title
     if (pieceName) pieceName.textContent = shown.pieceTitle
     if (noteText) noteText.textContent = shown.note
     if (counter) counter.textContent = `${at + 1} / ${wall.length}`
-    if (!placard) return
-    placard.dataset.going = "false"
-    window.clearTimeout(placardTimer)
-    placardTimer = window.setTimeout(() => {
-      placard.dataset.going = "true"
-    }, PLACARD_MS)
-  }
-
-  /** The placard comes back on any sign of life, the way the section's chrome does. */
-  function wakePlacard() {
-    if (showing) say(showing)
+    goActive()
   }
 
   // --- mounting ------------------------------------------------------------
@@ -322,7 +375,7 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
     mounted.setPaused(paused)
     root.dataset.paused = String(paused)
     flashMark(paused ? held : playing)
-    wakePlacard()
+    goActive()
   }
 
   // --- the gesture ---------------------------------------------------------
@@ -398,15 +451,13 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
   let from: { x: number; y: number; at: number; id: number } | null = null
   let axis: Axis | null = null
 
-  /** Anything the wall drew over the piece takes its own taps. */
-  const isFurniture = (target: EventTarget | null) =>
-    target instanceof Element && Boolean(target.closest("[data-showcase-furniture]"))
-
   function onPointerDown(event: PointerEvent) {
+    // A touch is the only sign of life a phone gives — there is no mousemove
+    // there — so this wakes before the swipe guard rather than after it.
+    goActive()
     if (from || isFurniture(event.target)) return
     from = { x: event.clientX, y: event.clientY, at: event.timeStamp, id: event.pointerId }
     axis = null
-    wakePlacard()
   }
 
   function onPointerMove(event: PointerEvent) {
@@ -440,9 +491,39 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
   window.addEventListener("pointerup", onPointerUp, { passive: true })
   window.addEventListener("pointercancel", onPointerUp, { passive: true })
 
+  // --- what counts as somebody being there ---------------------------------
+
+  /**
+   * A mouse moving is the whole of the desktop case, and the target it moves
+   * over is how `goActive` knows whether a cursor has come to rest on a
+   * control. Reading it here rather than from `pointerover`/`pointerout` keeps
+   * the flag exactly as fresh as the last movement, with nothing to go stale.
+   */
+  window.addEventListener(
+    "mousemove",
+    (event) => {
+      overFurniture = isFurniture(event.target)
+      goActive()
+    },
+    { passive: true },
+  )
+
+  // Leaving the window is not resting on a button, whatever the last move said.
+  root.addEventListener("mouseleave", () => {
+    overFurniture = false
+    goActive()
+  })
+
+  // Tabbing to a control has to bring it back, or the focus ring is the only
+  // thing on screen and the button under it is invisible.
+  window.addEventListener("focusin", () => goActive())
+
   // --- the keyboard, which is how this is looked at on a desktop -----------
 
   window.addEventListener("keydown", (event) => {
+    // Before the chord guard: Cmd+Tab back into the window is somebody arriving,
+    // even though it means nothing to the wall.
+    goActive()
     if (event.metaKey || event.ctrlKey || event.altKey) return
     switch (event.key) {
       case "ArrowDown":
@@ -487,6 +568,7 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
   window.addEventListener(
     "wheel",
     (event) => {
+      goActive()
       if (Math.abs(event.deltaY) < 8) return
       window.clearTimeout(wheelTimer)
       wheelTimer = window.setTimeout(() => {
@@ -561,7 +643,12 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
 
   // --- boot ----------------------------------------------------------------
 
+  // Read before the path is rewritten below, which is what drops the query.
+  const asked = new URLSearchParams(location.search).get("idle")
+  if (asked !== null) pinnedIdle = asked !== "0"
+
   history.replaceState({ at }, "", location.pathname)
+  goActive()
   void show(entry())
 
   // A handle for looking at it while it is being built, matching the section's
