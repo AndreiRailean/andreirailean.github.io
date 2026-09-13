@@ -25,6 +25,28 @@ safely.
 This skill is the cheap best-effort on top. Run it when you can; do not build
 anything that depends on it having run.
 
+## Record as you go, because hindsight cannot
+
+**Three of the steps below need to know what _this_ session did**, and none of
+that is recoverable afterwards. A branch does not carry its author, a worktree
+does not carry its purpose, and a server does not say who started it.
+
+So keep a running note, from the moment each thing exists:
+
+- **branches** you create,
+- **worktrees** you add,
+- **stash entries** you push, by their unique tag.
+
+It costs a line each and it is the difference between deleting what is yours and
+guessing. An instruction whose precondition was never recorded is not one a
+session can follow — it degrades into a heuristic that looks exactly like
+compliance, which is how two of somebody else's branches nearly went.
+
+If you reach this skill without having kept that note, say so and clean only
+what you can identify with certainty. **Reporting more and deleting less is
+always the right trade here**, because everything below is shared with sessions
+you cannot see.
+
 ## The one rule that governs all of it
 
 **Act only on your own worktree. Report everything else.**
@@ -76,10 +98,20 @@ pull request merges, but until you prune, git still believes it exists and
 refuses the delete with "not fully merged" — which reads like a real warning and
 is not one.
 
-Delete **only branches this session created**. Branches checked out in another
-worktree show with a `+` and are not yours. The rest belong to other sessions;
-there is a `/clean_gone` command for those, and running it is Andrei's call
-rather than yours.
+Delete **only branches this session created — by name, from the list you wrote
+down when you created them.** Branches checked out in another worktree show with
+a `+` and are not yours. The rest belong to other sessions; there is a
+`/clean_gone` command for those, and running it is Andrei's call rather than
+yours.
+
+**Do not pattern-match to work out which were yours.** This instruction used to
+end at "only branches this session created", and the first session to follow it
+did the obvious thing — globbed `feat/*` — and swept up two branches belonging to
+somebody else. It was caught by listing before deleting, not by the rule.
+
+A glob is what a session reaches for when the rule assumes a record it never
+kept, and the result reads as compliance either way. `git branch --merged` cannot
+tell you who made a branch, and neither can its name.
 
 ## 3. Worktrees you created
 
@@ -88,7 +120,8 @@ git worktree list
 ```
 
 A probe or scratch worktree added during the session must go, or it misleads
-every later `git worktree list` — including the steward's:
+every later `git worktree list` — including the steward's. **From your note**, not
+from guessing which of nine paths looks temporary:
 
 ```bash
 git worktree remove --force <path>

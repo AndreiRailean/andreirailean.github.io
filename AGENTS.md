@@ -86,6 +86,14 @@ and the stash are per-worktree and shared respectively. It is best-effort by
 nature: a session that ends abruptly never runs it, which is why leftovers
 announce themselves through `.astro/*.json` instead.
 
+**Keep a note of every branch, worktree and stash entry you create, as you
+create it.** That is the half `/wrap-up` cannot supply, because it is read at the
+end and the record has to start at the beginning — and none of it is recoverable
+afterwards: a branch does not carry its author and a worktree does not carry its
+purpose. Without the note the skill's "delete only what you created" degrades
+into a glob, which is not a smaller version of the rule but a different one; the
+first session to follow it swept up two branches belonging to somebody else.
+
 ### Issue tracker
 
 GitHub issues. `.scratch/` is gitignored private scratch space, never a tracker. See `docs/agents/issue-tracker.md`.
