@@ -82,6 +82,57 @@ const entry = WALL[start]!
       /* --- furniture ------------------------------------------------------ */
 
       /*
+       * All of it comes and goes together, on one state.
+       *
+       * A visitor here is looking, and everything the wall draws is in the way
+       * of the thing they came for. So the default is that none of it is on
+       * screen: `viewer.ts` sets `data-idle` after a couple of seconds without
+       * a mouse, a key or a touch, and anything at all brings the lot back.
+       *
+       * **One rule for five pieces of furniture**, rather than the three
+       * different behaviours that were here before — a placard on a timer only
+       * a tap could reset, a counter that never left, and three buttons that
+       * dimmed in fullscreen and no further. The arrangement `Reel.astro`
+       * arrived at for the same wish, for the same reason: furniture that
+       * behaves as one thing reads as one thing.
+       *
+       * **Not the marks or the failure card.** Those are events rather than
+       * furniture — they report something and leave on their own clock, and a
+       * play mark that vanished because you stopped moving the mouse would be
+       * reporting the wrong thing.
+       *
+       * `pointer-events` goes with the opacity, or a button nobody can see is
+       * still a button somebody can hit.
+       *
+       * Only the transition is shared. Each piece keeps whatever resting
+       * opacity it had — the buttons sit at 0.5 and brighten on hover — because
+       * going away is the thing they now have in common, not how present they
+       * are while they are here.
+       */
+      .placard,
+      .counter,
+      .arrows,
+      [data-frame-toggle],
+      [data-fullscreen-toggle] {
+        transition: opacity 0.5s ease;
+      }
+
+      #showcase[data-idle="true"] .placard,
+      #showcase[data-idle="true"] .counter,
+      #showcase[data-idle="true"] .arrows,
+      #showcase[data-idle="true"] [data-frame-toggle],
+      #showcase[data-idle="true"] [data-fullscreen-toggle] {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      /* The pointer goes with the controls, the way video chrome does — an
+         arrow parked in the middle of a full-bleed piece is furniture too. */
+      #showcase[data-idle="true"] {
+        cursor: none;
+      }
+
+      /*
        * The placard, and the scrim it needs to be readable at all.
        *
        * A gentle gradient is not enough over these pieces. Flotsam puts bright
@@ -103,8 +154,6 @@ const entry = WALL[start]!
         padding: 3.5rem 1.5rem calc(1.25rem + env(safe-area-inset-bottom));
         background: linear-gradient(to top, rgb(4 5 8 / 92%) 0%, rgb(4 5 8 / 72%) 45%, rgb(4 5 8 / 0%) 100%);
         pointer-events: none;
-        transition: opacity 0.5s ease;
-        opacity: 1;
         text-shadow: 0 1px 3px rgb(0 0 0 / 90%);
       }
 
@@ -113,10 +162,6 @@ const entry = WALL[start]!
         padding-top: 1.25rem;
         background: none;
         text-shadow: none;
-      }
-
-      .placard[data-going="true"] {
-        opacity: 0;
       }
 
       .placard .scene {
@@ -220,13 +265,16 @@ const entry = WALL[start]!
         }
       }
 
-      /* In fullscreen the furniture is the only thing between the work and the
-         room, so it recedes further than it does in a window. */
-      #showcase[data-fullscreen="true"] .arrows button,
-      #showcase[data-fullscreen="true"] [data-frame-toggle],
-      #showcase[data-fullscreen="true"] [data-fullscreen-toggle] {
-        opacity: 0.22;
-      }
+      /*
+       * Fullscreen gets no separate recession any more.
+       *
+       * There used to be an `opacity: 0.22` here, on the argument that in
+       * fullscreen the furniture is the only thing between the work and the
+       * room. That argument was right and the answer was a half-measure: the
+       * furniture now leaves entirely, in a window as well, and two recessions
+       * arguing with each other would only make the fullscreen case dimmer
+       * while awake for no reason anyone could name.
+       */
 
       /* The marks, and the failure. All middle-of-screen. */
       .mark,
@@ -286,19 +334,23 @@ const entry = WALL[start]!
       }
 
       @media (prefers-reduced-motion: reduce) {
-        .placard {
+        .placard,
+        .counter,
+        .arrows,
+        [data-frame-toggle],
+        [data-fullscreen-toggle] {
           transition: none;
         }
       }
     </style>
   </head>
   <body>
-    <div id="showcase" data-framed="false" data-state="loading" data-paused="false">
+    <div id="showcase" data-framed="false" data-state="loading" data-paused="false" data-idle="false">
       <div class="stage"></div>
 
       <div class="counter"></div>
 
-      <div class="placard" data-going="false">
+      <div class="placard">
         <span class="scene">{entry.title}</span><span class="piece">{entry.pieceTitle}</span>
         <p class="note">{entry.note}</p>
       </div>

@@ -22,7 +22,15 @@ src/showcase/viewer.ts        mounts one scene, swaps in place, owns the room's 
 src/showcase/Wall.astro       the document and all of its chrome.
 src/pages/showcase/           /showcase/ and a page per entry. Both render Wall.astro.
 tests/unit/showcase-wall.test.ts   every pin names a committed runner of the right piece.
+tests/showcase-wall.spec.ts   the furniture: up while somebody is moving, gone when nobody is.
 ```
+
+**The furniture is hidden by default.** The placard, the counter, the arrows and
+the two toggles all come and go on one state — `#showcase[data-idle]`, set by
+`viewer.ts` after `IDLE_MS` without a mouse, a key or a touch — and the cursor
+goes with them. Anything at all brings the lot back. `?idle=0` pins it on and
+`?idle=1` pins it away, which is the only reason a check can click a toggle
+without racing a fade.
 
 **A visitor here is looking, not working.** There is no panel, no slider, no
 seed, no way to alter a scene. That is the whole distinction from
@@ -106,6 +114,24 @@ the other.
 **The room's controls.** Fullscreen (`f`) and the screen wake lock live here and
 have no equivalent in the builder. A piece draws; how it is presented to a room
 is the room's business, exactly as play and pause are.
+
+## What is a second copy, and will move
+
+The list above is things that look like duplication and are not. **Idle-hiding
+is the other kind** — real duplication, deliberately left alone for now, and the
+next one to write it down should hoist it instead.
+
+`kit/controls.ts` fades its chrome and hides the cursor after `IDLE_MS` of
+nothing; `viewer.ts` now does the same for the wall's furniture, with the same
+number and the same `?idle=` escape hatch. It is a copy rather than an import
+because nothing here reaches into the kit, and a wall receding on a different
+clock from the experiments would be a difference nobody chose.
+
+So it sits beside the hidden-tab pause as a **known second copy**, under the
+section's rule: hoist on the third, not the second. When a third consumer wants
+it, what moves is a timer, an attribute name and a query parameter — roughly
+twenty lines with no DOM opinion in them — and the destination is the section's
+shared layer, which makes it the steward's call on a count taken here.
 
 ## The rules
 
