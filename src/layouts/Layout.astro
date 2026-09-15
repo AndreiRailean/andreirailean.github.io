@@ -8,6 +8,7 @@ import "@fontsource-variable/rubik"
 import MetaTags from "@/components/MetaTags.astro"
 import Footer from "@/components/Footer.astro"
 import GoogleAnalytics from "@/components/GoogleAnalytics.astro"
+import ThemeScript from "@/components/ThemeScript.astro"
 
 interface Props {
   title?: string | undefined
@@ -25,6 +26,8 @@ const { title, description, ogImage } = Astro.props
       <MetaTags title={title} description={description} ogImage={ogImage} />
     </slot>
     <GoogleAnalytics />
+    {/* Before the body, so the scheme is settled before anything paints in it. */}
+    <ThemeScript />
   </head>
   <body class="flex min-h-screen max-w-full flex-col overflow-x-hidden">
     <div class="flex grow flex-col">

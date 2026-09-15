@@ -71,12 +71,18 @@ test("this page drives the scheme itself, and says so", async ({ page }) => {
 /**
  * The scheme has to be right on the *first* frame, not eventually.
  *
- * `<Footer>` carries the script that puts `.dark` on the document and renders
- * after the page's own slot, so anything here that reads the class while parsing
- * reads it before it exists. Worth a test rather than a comment because the
- * symptom was not a wrong background — it was a *flash*, and then, depending on
- * whether the theme toggle had finished hydrating, sometimes a correction and
- * sometimes not. A test of the settled state passed throughout.
+ * Worth a test rather than a comment because the symptom was not a wrong
+ * background — it was a *flash*, and then, depending on whether the theme
+ * toggle had finished hydrating, sometimes a correction and sometimes not. A
+ * test of the settled state passed throughout.
+ *
+ * **The arrangement this was written against has since been fixed underneath
+ * it, which is why it still earns its place.** The class used to be applied by
+ * a script `<Footer>` carried, at the end of `<body>`, so anything reading it
+ * while parsing read it before it existed; `src/components/ThemeScript.astro`
+ * now runs in `<head>` and the window is gone rather than merely narrow. This
+ * test is what says so, and what would notice if the script drifted back down
+ * the document.
  */
 for (const [name, stored, os] of [
   ["the OS preference, with nothing stored", null, "dark"],
@@ -84,7 +90,10 @@ for (const [name, stored, os] of [
 ] as const) {
   test(`the background starts on ${name}, without passing through the other one`, async ({ page }) => {
     await page.addInitScript((value) => {
-      if (value) localStorage.setItem("theme", value)
+      // `theme-choice`, not the old `theme`: the key was renamed because the old
+      // one could not tell a real click from the write the page made on the
+      // visitor's behalf. See `src/components/ThemeScript.astro`.
+      if (value) localStorage.setItem("theme-choice", value)
       const seen: string[] = []
       ;(window as unknown as { __variants: string[] }).__variants = seen
       new MutationObserver(() => {
