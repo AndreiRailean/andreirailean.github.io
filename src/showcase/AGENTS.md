@@ -70,10 +70,30 @@ running has to come round, or a kiosk shows the last scene until somebody walks
 over to it — the bug the feature exists to fix, one entry later. Keeping the
 wrap in the timer is what lets both be true.
 
-**A step the wall takes by itself replaces rather than pushes.** A person
-navigating should be able to go back; a kiosk stepping on its own should not
-pile up an entry every interval — twenty thousand in a week, and a back button
-that can no longer reach anything anyone chose.
+**A wall playing itself writes no history at all, and the address is left
+exactly as it was given.** This is the third answer to one question and the
+first that survived contact with a real kiosk.
+
+Pushing piled up an entry every interval — twenty thousand in a week, and a
+back button that could not reach anything anyone chose. Replacing fixed that and
+was still wrong, for a reason no desktop browser will show you: **on a kiosk the
+address is the configuration, not a location.** A wrapper enforcing a start URL
+reads a rewrite as the page navigating away and puts its own URL back, so the
+wall played one interval, tried to move, and was reset to the first entry —
+forever, and looking for all the world like a wall that could not navigate.
+
+The boot `replaceState` had the same fault and was the louder half of it: it
+passed `location.pathname`, which deleted the query on the first frame. The
+address bar read `/showcase/` a moment after you typed
+`/showcase/?play=20-45&shuffle`, which looks exactly like a redirect eating your
+parameters — and a reload came back with autoplay off, so a kiosk restarting for
+any reason silently reverted to one frozen scene.
+
+So: an automatic step changes the scene and nothing else, and **a person moving
+still pushes** — carrying the query, or arrowing off a `?play` address would
+quietly switch autoplay off. What this gives up is a reload landing on the scene
+that was showing; on a kiosk a reload is a restart, and it should come back to
+the playlist it was configured with.
 
 The clock is per scene rather than a metronome: every arrival reschedules, so a
 slow fetch does not eat an entry's turn, and moving by hand gives the next one a
