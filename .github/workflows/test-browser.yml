@@ -1,10 +1,22 @@
 name: Browser tests
 
-# Every `.spec.ts` here navigates to `/experiments/...`, so a change that cannot
+# Most `.spec.ts` here navigates to `/experiments/...`, so a change that cannot
 # reach the section cannot break them. Running the browser suite over five pieces
 # to approve a paragraph on the resume is the friction
 # `docs/adr/20260828-experiments-stay-in-the-site-repo.md` named as the cheapest
 # thing to fix. See #143.
+#
+# **"Every" was true when it was written and had stopped being true twice over,
+# which is how three site paths came to be ignored while browser tests read
+# them.** `showcase.spec.ts` and `harness.spec.ts` both navigate to `/`, and
+# `theme.spec.ts` drives the scheme toggle — so `src/components/**`,
+# `src/layouts/**` and `src/pages/index.astro` had to come off the list below.
+# The hole was invisible for the usual reason: a pull request touching one of
+# those paths almost always touches a spec or a config too, so the suite ran
+# anyway and looked correct, and only a diff confined to a component would have
+# revealed it. `tests/unit/ci-paths.test.ts` now names those paths, so the claim
+# in this comment is checked rather than trusted — and the checked list is the
+# reason this paragraph can be believed where the sentence above it could not.
 #
 # **The filter lives here and only here.** It used to sit on a shared `test.yml`
 # and therefore also skipped the unit suite, which is how
@@ -53,11 +65,8 @@ on:
   pull_request:
     paths-ignore:
       - "src/assets/**"
-      - "src/components/**"
-      - "src/layouts/**"
       - "src/lib/**"
       - "src/styles/**"
-      - "src/pages/index.astro"
       - "src/pages/resume.md"
       - "public/**"
       - "docs/**"
