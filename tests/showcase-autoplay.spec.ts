@@ -60,9 +60,11 @@ test("`?play` steps on by itself", async ({ page }) => {
 
   await page.waitForFunction(() => (window as unknown as WallWindow).showcaseWall!.at() !== 0)
 
-  // And it is a real move, not just a counter: the address follows, so the
-  // scene on screen is one a reload would land on.
-  expect(page.url()).not.toContain(FIRST)
+  // And it is a real move rather than a counter ticking: the entry on screen is
+  // a different one, read off the wall rather than off the address — which by
+  // design no longer moves. See the kiosk test below.
+  const entry = await page.evaluate(() => document.querySelector(".placard .scene")?.textContent)
+  expect(entry).not.toBe("winter blues")
 })
 
 test("it wraps at the end rather than parking on the last entry", async ({ page }) => {
@@ -180,19 +182,54 @@ test("`?play=1-2` is a range and still steps", async ({ page }) => {
   await page.waitForFunction(() => (window as unknown as WallWindow).showcaseWall!.at() !== 0)
 })
 
-test("a wall stepping by itself does not fill the back button", async ({ page }) => {
+test("a wall playing itself leaves the address exactly as the kiosk set it", async ({ page }) => {
+  const configured = `/showcase/${FIRST}/?play=1&idle=0`
   await openWall(page, FIRST, "?play=1&idle=0")
   const before = await page.evaluate(() => history.length)
 
+  // The address is a kiosk's *configuration*, not a location, and rewriting it
+  // is what broke the real one: a wrapper enforcing a start URL reads the
+  // rewrite as the page navigating away and puts its own URL back, so the wall
+  // played one interval, tried to move, and was reset to the first entry —
+  // forever, looking exactly like a wall that could not navigate.
+  //
+  // Pushing was the first answer and piled up an entry per interval; replacing
+  // was the second and still rewrote the address. Writing nothing is the third.
   await page.waitForFunction(() => (window as unknown as WallWindow).showcaseWall!.at() >= 2)
 
-  // A kiosk pushing an entry every interval accumulates twenty thousand of them
-  // in a week and leaves a back button that cannot reach anything a person
-  // chose. The address still follows, so a reload lands on what is on screen.
+  expect(new URL(page.url()).pathname + new URL(page.url()).search).toBe(configured)
   expect(await page.evaluate(() => history.length)).toBe(before)
-  expect(page.url()).not.toContain(FIRST)
 
-  // And a person moving by hand is navigation, which still pushes.
+  // A person moving is navigation and still pushes — and carries the query, or
+  // arrowing off a `?play` address would quietly switch autoplay off.
   await page.keyboard.press("ArrowUp")
   expect(await page.evaluate(() => history.length)).toBe(before + 1)
+  expect(page.url()).toContain("play=1")
+  expect(page.url()).toContain("idle=0")
+})
+
+test("a reload comes back to the playlist, not to whichever scene was up", async ({ page }) => {
+  await openWall(page, FIRST, "?play=1&shuffle&idle=0")
+  await page.waitForFunction(() => (window as unknown as WallWindow).showcaseWall!.at() !== 0)
+
+  // What a reload is *for* on a kiosk is a restart, and what it must come back
+  // to is the configuration. Losing the query here is what left a restarted
+  // kiosk on one frozen scene — indistinguishable from one nobody configured.
+  await page.reload()
+  await page.waitForFunction(() => Boolean((window as unknown as WallWindow).showcaseWall))
+
+  /*
+   * **Still moving is the claim, not landing somewhere non-zero.**
+   *
+   * The first version of this asserted `at() !== 0` after the reload, and it
+   * passed against the very regression it was written for: the old code wrote
+   * the scene's bare address, so a reload landed on that scene — a non-zero
+   * index, with autoplay silently off. Trivially true and blind to the fault,
+   * which `AGENTS.md` calls a check that cannot see what it is meant to check.
+   *
+   * Reading from where the reload actually landed and requiring it to leave is
+   * the claim with no way to be accidentally satisfied.
+   */
+  const resumed = await page.evaluate(index)
+  await page.waitForFunction((from) => (window as unknown as WallWindow).showcaseWall!.at() !== from, resumed)
 })

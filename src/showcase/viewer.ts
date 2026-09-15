@@ -517,26 +517,39 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
   // --- moving --------------------------------------------------------------
 
   /**
-   * Moves the wall, and says what that does to the back button.
+   * Moves the wall, and leaves the address alone unless a person moved it.
    *
-   * **A step the wall took by itself replaces rather than pushes**, which is a
-   * fix to the autoplay that shipped before it. A person pressing ↓ is
-   * navigating and should be able to go back; a kiosk stepping on its own is
-   * not, and pushing there piles up an entry every interval — a screen left
-   * running for a week accumulates twenty thousand of them and a back button
-   * that can no longer reach anything a person actually chose. Replacing keeps
-   * the address honest, so a reload still lands on the scene on screen.
+   * **A wall playing itself writes no history at all**, and this is the third
+   * answer to the same question rather than a refinement of the second. Pushing
+   * piled up an entry every interval. Replacing fixed that and was still wrong,
+   * for a reason no browser shows you: **on a kiosk the address is the
+   * configuration, not a location.** A wrapper that enforces a start URL — or
+   * an allow-list, or a "return home" rule — sees the rewrite as the page
+   * navigating away and puts the configured URL back. The wall then plays for
+   * one interval, tries to move, and is reset to the first entry. Forever, and
+   * looking for all the world like the wall cannot navigate.
    *
-   * `"none"` is the `popstate` case, where the history has already moved and
-   * writing to it again would fight the browser.
+   * So an automatic step changes the scene and nothing else. **A person moving
+   * still pushes**, because that is navigation and the back button should
+   * work — and it carries the query with it, so arrowing off a `?play` address
+   * does not quietly switch autoplay off.
+   *
+   * What this gives up is that a reload during autoplay no longer lands on the
+   * scene that was showing. That is the right trade the moment you ask what a
+   * reload is *for* here: on a kiosk it is a restart, and what it should come
+   * back to is the playlist it was configured with, not whichever scene
+   * happened to be up.
+   *
+   * `"none"` is also the `popstate` case, where the history has already moved
+   * and writing to it again would fight the browser.
    */
-  function go(to: number, how: "push" | "replace" | "none" = "push") {
+  function go(to: number, how: "push" | "none" = "push") {
     const clamped = Math.min(wall.length - 1, Math.max(0, to))
     if (clamped === at && showing) return
     at = clamped
-    const address = `/showcase/${entry().id}/`
-    if (how === "push") history.pushState({ at }, "", address)
-    else if (how === "replace") history.replaceState({ at }, "", address)
+    // The query is the wall's configuration and survives a move: `?play`,
+    // `?shuffle`, `?seed` and `?idle` all have to outlive an arrow key.
+    if (how === "push") history.pushState({ at }, "", `/showcase/${entry().id}/${location.search}`)
     document.title = `${entry().title} — Showcase`
     void show(entry())
   }
@@ -621,7 +634,7 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
     // paused there, and advancing invisibly would burn the wall for nobody.
     if (!span.max || paused || document.hidden || wall.length < 2) return
     // Drawn per scene rather than once, which is the whole of `?play=20-45`.
-    playTimer = window.setTimeout(() => go(takeNext(), "replace"), pickInterval(span, rng))
+    playTimer = window.setTimeout(() => go(takeNext(), "none"), pickInterval(span, rng))
   }
 
   // --- the gesture ---------------------------------------------------------
@@ -918,7 +931,22 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
   const seedAsked = Number(params.get("seed"))
   rng = makeRng(hashSeed(Number.isFinite(seedAsked) && params.get("seed") !== null ? seedAsked : Date.now()))
 
-  history.replaceState({ at }, "", location.pathname)
+  /*
+   * Seeds `history.state` so `popstate` has an index to read, and **leaves the
+   * address exactly as it was given**.
+   *
+   * It used to pass `location.pathname`, which quietly deleted the query on the
+   * first frame. Harmless-looking, and two real faults: the address bar read
+   * `/showcase/` a moment after you typed `/showcase/?play=20-45&shuffle`,
+   * which looks precisely like a redirect that ate your parameters — and a
+   * reload then came back with autoplay off, so a kiosk that restarts for any
+   * reason silently reverts to one frozen scene.
+   *
+   * Omitting the URL argument is the documented way to change the state
+   * without touching the address, and it is the only form that leaves a kiosk's
+   * configured URL intact.
+   */
+  history.replaceState({ at }, "")
   goActive()
   void show(entry())
 
