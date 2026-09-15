@@ -120,6 +120,17 @@ const TESTED = [
   "package.json",
   "tests/kit.spec.ts",
   ".github/workflows/test-browser.yml",
+  // The site's own home page and the components it is built from. Not
+  // experiments, and that is the point: the filter was written when every spec
+  // navigated to `/experiments/...`, and these four were ignored for as long as
+  // that sentence outlived its truth. `showcase.spec.ts` and `harness.spec.ts`
+  // both `goto("/")`, and `theme.spec.ts` drives the scheme toggle through the
+  // menu in the footer.
+  "src/pages/index.astro",
+  "src/layouts/Layout.astro",
+  "src/components/ThemeScript.astro",
+  "src/components/DarkModeToggle.tsx",
+  "src/components/GoogleAnalytics.astro",
 ]
 
 /**

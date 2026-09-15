@@ -1,0 +1,101 @@
+---
+/**
+ * Who decides whether the document is dark, and when it decides.
+ *
+ * **This is the only thing that touches the `.dark` class.** It used to be two
+ * things — this script and the React toggle's mount effect — and that was the
+ * bug rather than an untidiness: the control set the class from its own initial
+ * state before correcting itself, a MutationObserver wrote every class change
+ * back to `localStorage`, and so a visitor who never opened the menu had a
+ * concrete `"light"` or `"dark"` recorded for them on their first load. The site
+ * then read that on every later visit and never asked the system again. It
+ * persisted the *outcome* where it meant to persist the *choice*.
+ *
+ * So the split is by concern and not by file size: this owns the document, and
+ * `ThemeToggle.astro` owns the menu and holds no state of its own.
+ *
+ * ## Why it is `is:inline`, and why it is in `<head>`
+ *
+ * `is:inline` keeps it out of the bundle so it runs during parse rather than
+ * after it, and `<head>` is what makes "during parse" early enough to matter.
+ * It was in the footer before, which is the end of `<body>` — the class only
+ * settled once the whole page had been read, so a dark-scheme visitor could see
+ * a light page first. That flash is also what made the old control's
+ * set-then-correct dance invisible enough to survive.
+ *
+ * `src/pages/index.astro` depends on the ordering from the other side: its
+ * module mirrors this class onto the published background, and modules run after
+ * parsing. Moving this earlier only widens that margin.
+ *
+ * ## The stored value is a choice, not a scheme
+ *
+ * `theme-choice` holds `"light"`, `"dark"` or `"system"`, and absent means
+ * system — so the default is to follow the OS, and to keep following it. The
+ * old `theme` key is removed rather than read: it cannot distinguish a real
+ * click from the write the page made on the visitor's behalf, so honouring it
+ * would leave everyone who had ever visited pinned to whatever their OS
+ * happened to say that day. Clearing it costs a deliberate chooser one click
+ * and is the only way the fix reaches anybody.
+ */
+---
+
+<script is:inline>
+  ;(() => {
+    const KEY = "theme-choice"
+    const media = window.matchMedia("(prefers-color-scheme: dark)")
+
+    // Every access is guarded. `localStorage` is not merely empty but *throws*
+    // on access in a blocked-cookies profile and in some embedded webviews, and
+    // an exception here would leave the document on whatever the stylesheet
+    // defaults to with no toggle wired up at all.
+    const read = () => {
+      try {
+        return localStorage.getItem(KEY)
+      } catch {
+        return null
+      }
+    }
+
+    const write = (choice) => {
+      try {
+        localStorage.setItem(KEY, choice)
+      } catch {
+        /* A session-only choice is a better outcome than a broken page. */
+      }
+    }
+
+    // Re-reads the choice every time rather than closing over it, which is what
+    // lets one function serve both the first paint and every later change.
+    const apply = () => {
+      const choice = read() ?? "system"
+      const dark = choice === "dark" || (choice === "system" && media.matches)
+      document.documentElement.classList.toggle("dark", dark)
+    }
+
+    try {
+      localStorage.removeItem("theme")
+    } catch {
+      /* Nothing to migrate if storage is unavailable. */
+    }
+
+    apply()
+
+    // Live, not once at load. Reading `prefers-color-scheme` a single time is
+    // how a session that outlives sunset ends up on the morning's scheme, and it
+    // is the whole of what was asked for. `apply` consults the stored choice, so
+    // an explicit light or dark ignores this and the two cannot fight.
+    media.addEventListener("change", apply)
+
+    // The control's one lever, deliberately narrow: it says which choice was
+    // made and this decides what that means. Shaped like `window.showcase` in
+    // `src/experiments/gallery/embed.ts`, which solved the same problem for the
+    // background and is where the pattern is explained at length.
+    window.theme = {
+      choice: () => read() ?? "system",
+      set: (choice) => {
+        write(choice)
+        apply()
+      },
+    }
+  })()
+</script>
