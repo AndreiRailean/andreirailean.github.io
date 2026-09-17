@@ -140,7 +140,7 @@ test("an explicit choice outranks the system, and survives a reload", async ({ p
   // `localStorage` itself would pass even if the menu had stopped recording
   // anything at all.
   await page.getByRole("button", { name: "Toggle theme" }).click()
-  await page.getByRole("menuitem", { name: "Light" }).click()
+  await page.getByRole("menuitemradio", { name: "Light" }).click()
 
   await expect.poll(async () => await page.evaluate(isDark)).toBe(false)
   expect(await page.evaluate(STORED)).toBe("light")
@@ -162,11 +162,11 @@ test("choosing System hands the page back to the OS, live", async ({ page }) => 
   // nothing — the assertion needs a state to return *from*. This is the paired
   // presence for what is otherwise an assertion about absence.
   await page.getByRole("button", { name: "Toggle theme" }).click()
-  await page.getByRole("menuitem", { name: "Light" }).click()
+  await page.getByRole("menuitemradio", { name: "Light" }).click()
   await expect.poll(async () => await page.evaluate(isDark)).toBe(false)
 
   await page.getByRole("button", { name: "Toggle theme" }).click()
-  await page.getByRole("menuitem", { name: "System" }).click()
+  await page.getByRole("menuitemradio", { name: "System" }).click()
 
   // Back to the OS immediately...
   await expect.poll(async () => await page.evaluate(isDark)).toBe(true)
@@ -176,6 +176,47 @@ test("choosing System hands the page back to the OS, live", async ({ page }) => 
   // the current value" implementation gets wrong while looking correct.
   await page.emulateMedia({ colorScheme: "light" })
   await expect.poll(async () => await page.evaluate(isDark)).toBe(false)
+})
+
+/**
+ * Which option the menu says is in effect.
+ *
+ * Asserted through `aria-checked` on the radio items rather than by looking for
+ * a dot, because that is the half a screen reader gets and the half a CSS change
+ * cannot quietly take away. It is also a paired assertion by construction: one
+ * item checked *and* the other two not, so a build that marked everything, or
+ * nothing, fails either way rather than passing on the one clause that happens
+ * to hold.
+ */
+test("the menu marks the choice that is in effect, and keeps up with a new one", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "dark" })
+  await page.goto("/")
+
+  const checked = async () => {
+    await page.getByRole("button", { name: "Toggle theme" }).click()
+    const items = page.getByRole("menuitemradio")
+    await items.first().waitFor()
+    const marks = await items.evaluateAll((nodes) =>
+      nodes.map((node) => `${node.textContent?.trim()}:${node.getAttribute("aria-checked")}`),
+    )
+    await page.keyboard.press("Escape")
+    return marks
+  }
+
+  // Nothing stored, so the honest answer is System — not "Dark" because the OS
+  // happens to be dark. The distinction is the whole point of the menu now.
+  expect(await checked()).toEqual(["Light:false", "Dark:false", "System:true"])
+
+  await page.getByRole("button", { name: "Toggle theme" }).click()
+  await page.getByRole("menuitemradio", { name: "Light" }).click()
+  await expect.poll(async () => await page.evaluate(isDark)).toBe(false)
+
+  expect(await checked()).toEqual(["Light:true", "Dark:false", "System:false"])
+
+  // And after a reload, which is where a mark rendered from component state
+  // rather than from the stored choice would quietly revert.
+  await page.reload()
+  expect(await checked()).toEqual(["Light:true", "Dark:false", "System:false"])
 })
 
 /**

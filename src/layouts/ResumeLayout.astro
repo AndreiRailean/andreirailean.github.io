@@ -17,8 +17,6 @@ type Props = {
   }
 }
 
-const { FORCE_THEME = "" } = import.meta.env
-
 const { title, noIndex, description } = Astro.props.frontmatter as Props["frontmatter"]
 
 const pubDate = new Date().toLocaleDateString("en-AU", {
@@ -31,7 +29,7 @@ const pageTitle = `${title} - ${pubDate}`
 ---
 
 <!doctype html>
-<html lang="en" class={FORCE_THEME}>
+<html lang="en">
   <head>
     <MetaTags title={pageTitle} description={description || title} noIndex={noIndex} />
     <GoogleAnalytics />

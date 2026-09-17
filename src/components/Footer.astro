@@ -1,11 +1,15 @@
 ---
-import ThemeToggle from "@/components/ThemeToggle.astro"
+import { DarkModeToggle } from "@/components/DarkModeToggle"
 
 // Fixed, so the toggle sits over the page rather than reserving a 4rem strip at
 // the bottom of it. It is a control, not a section, and letting it size a footer
 // meant every page was centred around it.
+//
+// The control is imported directly. `ThemeToggle.astro` used to sit in between
+// and stopped earning the hop once the theme script moved to `<head>` — what
+// was left was a file whose whole body was this one line.
 ---
 
 <footer class="fixed right-2 bottom-2 z-50">
-  <ThemeToggle />
+  <DarkModeToggle client:load />
 </footer>

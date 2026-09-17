@@ -75,7 +75,14 @@ const page = (script: string) => `---
 
 describe("the experiments boundary", () => {
   it.each([
-    ["a component", "@/components/Header.astro"],
+    // Was `Header.astro` until that component was deleted for being unused.
+    // Nothing broke, because the rule matches the path pattern and never
+    // resolves the module — the `logo.svg` entry below is deliberately a file
+    // that does not exist, and proves the same thing on purpose. So this is not
+    // a correctness fix; it is that the case named "a component" reads as
+    // representative, and an example pointing at a deleted file quietly stops
+    // being one.
+    ["a component", "@/components/Footer.astro"],
     ["a layout", "@/layouts/Layout.astro"],
     ["a stylesheet", "@/styles/globals.css"],
     ["a site helper", "@/lib/utils"],
