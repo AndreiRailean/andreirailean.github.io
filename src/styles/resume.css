@@ -10,14 +10,40 @@ article.minimalist {
     size: A4 portrait;
     margin: 1cm;
   }
-  prose-h1,
-  prose-h2,
-  prose-h3,
-  prose-h4,
-  prose-h5 {
+  /* `h1`, not `prose-h1`.
+   *
+   * These were written as the Tailwind *class* names used up in
+   * `article.minimalist`, which as selectors are element types — and there is no
+   * `<prose-h1>` element, so every rule in this block below `@page` matched
+   * nothing. The resume is the one page that exists to be printed, and its
+   * pagination rules had never once applied: the built stylesheet shipped
+   * `prose-h1,prose-h2,…{page-break-after:avoid}` while the page rendered
+   * `<h1>`, `<h2>`, `<h3>` and `<h4>`.
+   *
+   * Nothing marked it because CSS has no such thing as a selector that fails —
+   * an unmatched rule is indistinguishable from a satisfied one.
+   * `tests/unit/resume-print.test.ts` now reads this block and refuses a type
+   * selector that is not a real element.
+   *
+   * Both spellings of each property: `break-*` is current, `page-break-*` is the
+   * legacy alias, and print engines are not uniform about which they honour.
+   * They are aliases rather than rivals, so stating both costs nothing. */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5 {
+    break-after: avoid;
     page-break-after: avoid;
   }
-  prose-p {
+
+  /* `li` as well as `p`: this resume is mostly bullets, so a list item splitting
+   * across a page break is the common case rather than the exotic one. Not `ul`
+   * — holding a whole list together would shove half-empty pages out wherever a
+   * list ran long, which is worse than the thing being fixed. */
+  p,
+  li {
+    break-inside: avoid;
     page-break-inside: avoid;
   }
   article.minimalist {
