@@ -9,6 +9,13 @@ say so explicitly if your work contradicts one rather than quietly overriding
 it. Vocabulary and decisions belonging to a single experiment stay in that
 experiment's own folder.
 
+**Read the piece's own `AGENTS.md` before changing that piece.** Six of them
+exist, they run 130–459 lines, and they are where the traps are. Nothing loads
+them for you — Claude Code reads `CLAUDE.md` and nothing else — so this sentence
+is the pointer, and `tests/unit/agent-docs.test.ts` fails if it goes missing.
+That check covers the six by covering this rule rather than by listing them,
+because a list of piece names is a list that goes stale.
+
 Six of those records are rules you will otherwise rediscover the hard way:
 
 - **A piece under exploration owes its URLs nothing.** Presets, defaults and
