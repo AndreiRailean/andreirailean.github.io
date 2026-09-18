@@ -138,3 +138,7 @@ Multi-context. `CONTEXT-MAP.md` at the root names each context and points at its
 ### The steward
 
 When several sessions build at once, one of them tends the **shared surface** so the others do not. Its scope is a property rather than a directory: work that is shared, mechanical and verifiable, decided by one question — **would a visitor see the difference?** If no it is the steward's, wherever it lives; if yes it waits for Andrei. A standing role, invoked with `/steward`. See `docs/agents/steward.md`.
+
+### The experiment writer
+
+The role that **builds a piece** — from a statement of Andrei's imagination, or a change to one already here — and puts it in front of him. It partitions the far side of the steward's question rather than moving its line: a visitor sees no difference, the steward's; a visitor would see it and something has to be built or isolated before it can be judged, **the experiment writer's**; a visitor would see it and the question is which is better, Andrei's. It builds and never decides. A standing role, invoked with `/experiment-writer`. See `docs/agents/experiment-writer.md`.

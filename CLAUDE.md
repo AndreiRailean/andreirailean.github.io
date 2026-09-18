@@ -42,10 +42,10 @@ the ones that have actually been broken, some by the person who wrote them down.
 
 ## Where the rest lives
 
-| If you are working on           | Read                                      |
-| ------------------------------- | ----------------------------------------- |
-| Anything at all                 | `AGENTS.md`, then `CONTEXT-MAP.md`        |
-| Tests, or the browser suite     | `tests/AGENTS.md`                         |
-| An experiment                   | `src/experiments/AGENTS.md`, then its own |
-| The showcase                    | `src/showcase/AGENTS.md`                  |
-| A decision worth not rederiving | `docs/adr/`, and `/record-decision`       |
+| If you are working on           | Read                                                               |
+| ------------------------------- | ------------------------------------------------------------------ |
+| Anything at all                 | `AGENTS.md`, then `CONTEXT-MAP.md`                                 |
+| Tests, or the browser suite     | `tests/AGENTS.md`                                                  |
+| An experiment                   | `/experiment-writer`, then `src/experiments/AGENTS.md` and its own |
+| The showcase                    | `src/showcase/AGENTS.md`                                           |
+| A decision worth not rederiving | `docs/adr/`, and `/record-decision`                                |
