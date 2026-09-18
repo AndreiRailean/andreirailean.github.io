@@ -26,6 +26,31 @@ import { describe, expect, it } from "vitest"
 
 const SKILLS = ".claude/skills"
 
+/** Directories with nothing authored in them, so walking them only costs time. */
+const SKIPPED = new Set(["node_modules", "dist", ".git", ".astro", ".scratch", "coverage"])
+
+/** Every `AGENTS.md` in the repo, repo-relative, found rather than listed. */
+function agentsDocs(dir = "."): string[] {
+  const found: string[] = []
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.isDirectory()) {
+      if (!SKIPPED.has(entry.name)) found.push(...agentsDocs(dir === "." ? entry.name : `${dir}/${entry.name}`))
+    } else if (entry.name === "AGENTS.md") {
+      found.push(dir === "." ? "AGENTS.md" : `${dir}/AGENTS.md`)
+    }
+  }
+  return found
+}
+
+/**
+ * The ones the root has to name: every `AGENTS.md` except the root's own, which
+ * `CLAUDE.md` imports, and the per-piece ones, which a rule in the section doc
+ * covers without naming — see the assertion below.
+ */
+function sectionAgentsDocs(): string[] {
+  return agentsDocs().filter((path) => path !== "AGENTS.md" && !/^src\/experiments\/[^/]+\/AGENTS\.md$/.test(path))
+}
+
 /** Frontmatter as a flat map, in the shape `tests/unit/adr-format.test.ts` uses. */
 function frontmatter(source: string): Record<string, string> | null {
   if (!source.startsWith("---\n")) return null
@@ -67,12 +92,33 @@ describe("the conventions reach a session that reads nothing", () => {
   it("points at every AGENTS.md that exists, so none becomes unreachable", () => {
     const source = readFileSync("CLAUDE.md", "utf8") + readFileSync("AGENTS.md", "utf8")
 
-    // The per-experiment ones are reached through src/experiments/AGENTS.md,
-    // which says to read the piece's own. These are the section-level entries,
-    // and a new one nobody links is a document that will not be read.
-    for (const path of ["tests/AGENTS.md", "src/experiments/AGENTS.md", "src/showcase/AGENTS.md"]) {
+    // **The list is derived, not written.** This assertion used to name three
+    // paths as constants while its title claimed "every", so a fourth section
+    // could never fail it — the gap
+    // `docs/adr/20260912-claude-md-is-how-the-rules-arrive.md` left open in its
+    // own last consequence, and the same shape as a grep that matches nothing.
+    for (const path of sectionAgentsDocs()) {
       expect(source.includes(path), `nothing at the root points at ${path}`).toBe(true)
     }
+  })
+
+  // The per-piece ones are deliberately not named anywhere. Six experiments
+  // today and a seventh next week, so a list of them at the root is a list that
+  // goes stale — which is the fault this file exists to catch, not to commit. A
+  // generic instruction in the section doc covers all of them at once and does
+  // not drift, so what is asserted is that the instruction is still there.
+  it("tells a session to read the piece's own AGENTS.md, which is what covers the per-piece ones", () => {
+    const section = readFileSync("src/experiments/AGENTS.md", "utf8")
+    const pieces = agentsDocs().filter((path) => /^src\/experiments\/[^/]+\/AGENTS\.md$/.test(path))
+
+    // Guard the guard: if the glob stops finding pieces, the rule below is
+    // protecting nothing and this test would pass by vacuity.
+    expect(pieces.length, "found no per-piece AGENTS.md, so this assertion is vacuous").toBeGreaterThan(0)
+    expect(
+      /read the piece's own `AGENTS\.md`/i.test(section),
+      "src/experiments/AGENTS.md no longer tells anyone to read the piece's own, and nothing else does — " +
+        `${pieces.length} files totalling the section's hardest-won traps become unreachable`,
+    ).toBe(true)
   })
 })
 
