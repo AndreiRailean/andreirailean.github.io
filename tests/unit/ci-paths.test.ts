@@ -92,6 +92,19 @@ function ignoredBy(workflow: string): string[] {
   const lines = yaml.slice(start).split("\n").slice(1)
   const out: string[] = []
   for (const line of lines) {
+    // Comments and blank lines are part of the list, not the end of it.
+    //
+    // This used to `break` on them, and the failure was the quiet kind: adding
+    // an explanatory comment between two entries truncated everything below it,
+    // and the assertions in this file would then pass **vacuously** — a pattern
+    // that is no longer parsed cannot be found covering anything, so "does not
+    // skip the browser suite for X" holds for every X. The `length > 5` guard
+    // below catches wholesale truncation and would not have caught this: the
+    // list is long enough that losing its tail still leaves plenty.
+    //
+    // Found by writing a comment into the list, which is the ordinary thing to
+    // do and cost two failing assertions to notice.
+    if (line.trim() === "" || line.trim().startsWith("#")) continue
     const entry = /^\s+-\s+"([^"]+)"\s*$/.exec(line)
     if (!entry) break
     out.push(entry[1]!)
@@ -131,6 +144,28 @@ const TESTED = [
   "src/components/ThemeScript.astro",
   "src/components/DarkModeToggle.tsx",
   "src/components/GoogleAnalytics.astro",
+  // The browser suite's own harness, and the reason `tests/unit/**` is ignored
+  // rather than `tests/**`. `preview-server.ts` is Playwright's `globalSetup` —
+  // it builds the site and serves `dist/` — and `experiment.ts` carries the
+  // fixtures every spec imports. A glob one level up would skip the suite on a
+  // change to the thing that starts it, which is the failure this file exists
+  // to refuse.
+  "tests/support/preview-server.ts",
+  "tests/support/experiment.ts",
+]
+
+/**
+ * Paths the browser filter **must** cover, with the reason it is safe.
+ *
+ * The mirror image of `TESTED`, and new with `tests/unit/**`. Without it the
+ * ignore entry is a claim in a comment: someone removes it for safety, the
+ * browser suite quietly goes back to running on every unit-test change, and the
+ * seven minutes it costs are paid silently forever. Stating it here means the
+ * saving has to be deleted on purpose.
+ */
+const SKIPPED = [
+  { path: "tests/unit/showcase-play.test.ts", why: "a unit test; the browser suite imports nothing from it" },
+  { path: "tests/unit/walkers/park.ts", why: "a unit harness, reached only from tests/unit" },
 ]
 
 /**
@@ -154,10 +189,53 @@ describe("the browser workflow's path filter", () => {
     expect(ignored.length, `no paths-ignore entries parsed out of ${BROWSER}`).toBeGreaterThan(5)
   })
 
+  /**
+   * The reader, checked past the thing that used to stop it.
+   *
+   * Every assertion here fails *open*: a pattern the parser never saw cannot be
+   * found covering anything, so a short read makes this file green rather than
+   * red. That is the direction that needs a guard, and the count above is too
+   * blunt to give one — losing the tail of a thirteen-entry list still leaves
+   * eight.
+   *
+   * `tests/unit/**` is the last entry and sits below a comment block, so it is
+   * the specific thing a `break`-on-comment reader loses.
+   */
+  it("reads entries written below a comment inside the list", () => {
+    expect(
+      ignored,
+      `${BROWSER}'s paths-ignore is being read only as far as the first comment, so every ` +
+        `assertion in this file about what is *not* covered is passing without looking.`,
+    ).toContain("tests/unit/**")
+
+    // Both sides of the comment, so this cannot be satisfied by a reader that
+    // happens to start at the bottom.
+    expect(ignored).toContain("*.md")
+    expect(ignored).toContain("public/**")
+  })
+
   it("names paths that exist, so a stale entry does not sit there meaning nothing", () => {
-    for (const path of [...TESTED, ...UNIT_READS_IGNORED.map(({ path }) => path)]) {
+    for (const path of [...TESTED, ...SKIPPED.map(({ path }) => path), ...UNIT_READS_IGNORED.map(({ path }) => path)]) {
       expect(() => readFileSync(path, "utf8"), `${path} does not exist`).not.toThrow()
     }
+  })
+
+  /**
+   * The saving, asserted so that removing it has to be a decision.
+   *
+   * Paired with `TESTED` above and not merely the absence of a complaint: one
+   * list says the filter must not cover these, the other that it must cover
+   * those, and the `tests/support/` entries sit in the first precisely because
+   * they are the near miss for this glob.
+   */
+  it.each(SKIPPED)("skips the browser suite for $path, which is $why", ({ path }) => {
+    expect(
+      ignored.filter((pattern) => matches(pattern, path)),
+      `${BROWSER} runs the browser suite for ${path}. Nothing under tests/unit/ can affect a ` +
+        `browser spec — they cross-reference each other in prose and import nothing — so this is ` +
+        `about seven minutes per pull request spent to learn nothing. If it was removed to fix a ` +
+        `real failure, say which here rather than deleting this case.`,
+    ).not.toEqual([])
   })
 
   it.each(TESTED)("does not skip the browser suite for %s", (path) => {

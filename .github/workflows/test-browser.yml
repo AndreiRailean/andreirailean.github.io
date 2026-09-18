@@ -74,6 +74,19 @@ on:
       - "**/AGENTS.md"
       - ".claude/**"
       - "*.md"
+      # The unit suite's own files. `test-unit.yml` is unfiltered, so these still
+      # run on every pull request — what is skipped is the *browser* suite, which
+      # no file under `tests/unit/` can reach: the specs reference them in prose
+      # and import nothing from them, and Playwright collects `*.spec.ts` while
+      # every file here is `*.test.ts`.
+      #
+      # Deliberately not `tests/**`. `tests/support/` is the browser suite's own
+      # harness — `preview-server.ts` is its `globalSetup` and `experiment.ts`
+      # its fixtures — so a glob one level up would skip the suite on changes to
+      # the thing that starts it. Both are named in `ci-paths.test.ts` as paths
+      # that must stay unignored, so the narrower glob is held there rather than
+      # by whoever edits this next.
+      - "tests/unit/**"
 
 # A second push to the same branch supersedes the first, so an iterative session
 # does not leave a queue of runs testing commits nobody will merge. Keyed on the
