@@ -90,11 +90,22 @@ describe("the world travels with the observer", () => {
     // Measured on this exact scene: 99 re-entries a second with the flux-weighted
     // angle, 232 with a uniform one. The threshold sits between them with room
     // either side, so this fails the moment somebody simplifies that `asin` away.
-    const { crowd } = walk({ stream: 1, against: 1, walk: 1.6, pausing: 0, density: 40 }, 150)
-    const perSecond = crowd.stats().reentries / 150
+    //
+    // **Measured over a window, not over the whole run**, for two reasons. The
+    // opening stretch is not steady state — nobody has reached the boundary yet
+    // — so including it drags the rate down toward the threshold from the wrong
+    // side. And the run has to be short: this box is shared, the first version
+    // simulated 150 seconds and passed at 16s alone and timed out at 30s inside
+    // a full suite, which is the flakiness `tests/AGENTS.md` warns about rather
+    // than a slow test.
+    const { crowd, run } = walk({ stream: 1, against: 1, walk: 1.6, pausing: 0, density: 40 }, 30)
+    const from = crowd.stats().reentries
+    run(30)
+    const perSecond = (crowd.stats().reentries - from) / 30
+
     expect(perSecond).toBeGreaterThan(20)
     expect(perSecond, "re-entry angle is no longer weighted by inward flux").toBeLessThan(150)
-  })
+  }, 60_000)
 
   it("keeps its edge too faint to be an edge, in every scene that ships", () => {
     // The budget caps the world, so a scene asking for a long `distance` over a

@@ -50,6 +50,13 @@ a glance rather than as a cut. What gets looked at is mostly whoever is about to
 pass closest, which is also the person the body is already negotiating with, and
 that is why the looking never feels random.
 
+**I do not look at the horizon.** The resting line of sight when you are walking
+is several degrees below level, because the ground you are about to walk on and
+the faces of anybody close enough to matter are both below eye height. **my
+gaze** is that, and it is also the only control over where the crowd sits in the
+frame — with heads and no bodies, every head is within a metre of eye height, so
+the picture is a band and this decides where the band is.
+
 **The frame bobs, and the bob is not decoration.** A walking head rises and falls
 about four and a half centimetres, once per step, and sways about four from side
 to side, once per stride — two steps, because the weight goes over one foot and
@@ -112,7 +119,7 @@ people is as many as the frame can carry, so a scene that asks for a long
 distance over a dense crowd cannot have all the depth it asked for and the crowd
 ends somewhere you can see it end. That is readable rather than hidden:
 `experiment.stats().edge` is how bright a head at the boundary still is, and
-anything over about two per cent is a scene whose **distance** is long for its
+anything over about three per cent is a scene whose **distance** is long for its
 **density**. Fading the last stretch out to disguise it was the obvious fix and
 the wrong one — it would make a scene that cannot afford its depth look exactly
 like one that can.
@@ -130,17 +137,22 @@ set against the crowd's **pace** band, decides the whole character of the walk:
 below the band I am overtaken constantly, above it I am the one doing the
 overtaking.
 
-After that, **my height** is the most underrated control here. At 1.85 m I am
-looking over the crowd and the far heads sit below the middle of the frame; at
-1.50 m I am looking into it; and somewhere around 1.15 m the picture changes
-completely, because I have become a child in it. My stature, my stride and how
-far the frame bobs all follow from that one number.
+After that, **my height** is the most underrated control here, and it is a
+stature rather than an eye height — 1.75 m is a tall-ish adult, not a giant. At
+1.95 m I am looking over the crowd and every head is below the middle of the
+frame; at 1.60 m the horizon runs straight through the tall ones' heads; and
+somewhere around 1.15 m the picture changes completely, because I have become a
+child in it. My eye height, my stride and how far the frame bobs all follow from
+that one number.
 
 **Room** is the one that changes what the crowd _is_ rather than how it looks. It
 scales how much space everybody insists on and how early they start insisting
 together, because those are the same preference. Low is a crowd that tolerates
 being close and resolves everything late. High is a crowd that jams at a density
 a tighter one walks straight through.
+
+All twenty of them are worth a drag, but those are the four that change what you
+are looking at rather than how it looks.
 
 There are five scenes and all of them were found with the sliders. **Market** is
 the piece as it was asked for. **Concourse** is one axis with half of it coming at
