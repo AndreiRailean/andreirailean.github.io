@@ -33,9 +33,6 @@
 
 import { gaussian, type Rng } from "@/experiments/random"
 
-/** Metres per second squared. Only used for the pendulum speed below. */
-const G = 9.81
-
 /**
  * Adult stature, as a mixture of two normals rather than one.
  *
@@ -129,11 +126,16 @@ export const legLength = (stature: number): number => 0.53 * stature
  * steps. An adult of 1.75 m walks at 1.34 m/s, which is the anchor; everybody
  * else is that scaled by `sqrt(stature / 1.75)`.
  *
+ * **Gravity is absent on purpose, and a `sqrt(g / 9.81)` factor was here doing
+ * nothing.** Froude scaling is `v ∝ sqrt(g·L)`, but this is anchored on a
+ * measured human speed rather than derived from first principles, so `g` divides
+ * out exactly. Writing it anyway made the line look like physics it was not
+ * doing, and it multiplied by one.
+ *
  * `vigour` is the person's own deviation from it, a multiplier the crowd draws
  * per person so that two people of the same height are not the same walker.
  */
-export const freeSpeed = (stature: number, vigour: number): number =>
-  1.34 * Math.sqrt(stature / 1.75) * vigour * Math.sqrt(G / 9.81)
+export const freeSpeed = (stature: number, vigour: number): number => 1.34 * Math.sqrt(stature / 1.75) * vigour
 
 /**
  * Stride length in metres at a given speed — two steps, left and right.
