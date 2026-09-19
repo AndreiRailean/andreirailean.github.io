@@ -76,10 +76,16 @@ then the camera, and wire up a page once the simulation is worth looking at.
 
 Observed on `crowd`, which had this file's first version and did it anyway:
 `body.ts`, `camera.ts` and `steering.ts` were written first and `settings.ts`
-fourth, and at sixteen minutes there was no route, no panel, no preview server
-and nothing anyone could look at. Every one of those modules encodes assumptions
-about how the crowd should read, and testing those requires exactly the thing
-that had not been built.
+fourth, and at twenty-two minutes there was still no route, no panel, no preview
+server and nothing anyone could look at.
+
+**And that session was working unattended** — Andrei invoked it, asked for
+something to interact with in the morning, and stepped away. That is what makes
+it evidence rather than an anecdote about one session being hasty. The gate was
+the literal deliverable, nobody was waiting to be shown anything, and the build
+_still_ went bottom-up. An instruction that loses under those conditions is not
+an instruction that was ignored; it is one that was too weak, which is why it is
+a stopping condition here and not a bullet in a list.
 
 **The sizes were not the problem and neither was the care taken** — embers'
 `settings.ts` was 31,689 bytes in its own first commit, larger than crowd's at
@@ -226,6 +232,32 @@ found, which is exactly why showing it early costs nothing later.
 practical reason the panel is not a finishing step — a build he cannot drive
 returns you an impression, where one he can returns you a setting, a number and a
 direction.
+
+### When he is not there
+
+He will sometimes start a piece and step away — "something I can interact with in
+the morning" is a real brief and it has already happened. **The gate does not
+relax; it becomes the deliverable.** What he opens first is the thing you were
+going to show him anyway, so build to interactable and leave it there running.
+
+What changes is everything after the gate, because the correction loop is gone:
+
+- **Substitute measurement for the glance, and expect a different catch.** A
+  session that ran unattended on `crowd` reported that measuring found things a
+  look would not have: a force term deleted by an edit, a docblock claiming
+  something the code no longer did, a check passing against broken code, and a
+  crash. Assert on numbers — that is what the section's runners are for, and
+  almost every bug here was invisible in a screenshot anyway.
+- **Bias toward the choices that are cheap to reverse**, and leave the expensive
+  ones for him. With nobody to correct a wrong guess, a guess costs the whole
+  night rather than two minutes. A piece under exploration owes its URLs nothing,
+  so the cheap direction is usually "make it adjustable" rather than "pick well".
+- **Spend the time on correctness and range, not on polish.** Polish is the part
+  he would have redirected, and it is the part most likely to be thrown away by
+  his first sentence.
+- **Leave him the questions you could not answer**, in the piece where he will
+  meet them — a preset per candidate answer beats a paragraph, because it is
+  answered by dragging rather than by replying.
 
 **A visual complaint is a mechanism to find, not a number to tune.** When he says
 something looks wrong, the useful response is to work out what in the physics or

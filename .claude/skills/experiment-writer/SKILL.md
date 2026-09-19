@@ -147,6 +147,14 @@ on guesses.
 number and a direction.** That is the practical reason the panel is not a
 finishing step, and why "it renders" is not the gate.
 
+**If he has stepped away** — "something I can interact with in the morning" is a
+real brief and has happened — the gate does not relax, it becomes the
+deliverable. Build to interactable, leave it running, then substitute
+measurement for the glance: assert on numbers, prefer choices that are cheap to
+reverse over choices that are merely good, skip polish, and leave open questions
+as extra presets rather than as a paragraph. `docs/agents/experiment-writer.md`
+has the reasoning under _When he is not there_.
+
 **When the question is a mechanism rather than a taste, build the comparison that
 isolates it** before asking him again. A control that moves two things at once
 cannot settle anything — #117 is the worked case, where every comparison the UI
@@ -156,10 +164,19 @@ failed, one of them backwards.
 ## 5. Verify before you claim anything
 
 ```bash
+pnpm exec astro check                # run this after every edit — seconds, not minutes
 pnpm run prettier && pnpm run lint   # what CI actually runs; `lint` alone is not
-pnpm run build                        # covers astro check, which types .astro files
-pnpm exec vitest <name>               # milliseconds, while working
+pnpm exec vitest <name>              # milliseconds, while working
+pnpm run build                       # the full thing, including astro check
 ```
+
+**`pnpm exec astro check` is the one to reach for constantly.** `pnpm test` types
+nothing — vitest strips types and Playwright compiles per file — so in CI the
+lint job's `astro check` is the only thing that types anything at all, and it is
+the only thing that types `.astro` files. It is the cheap half of
+`pnpm run build` and takes seconds. `tests/AGENTS.md` says to run it before
+pushing; run it far more often than that. The failure mode is not a broken build,
+it is a red pull request after you thought you were done.
 
 Both runners assert on numbers, not pixels — almost every bug in this section was
 invisible in a screenshot. Test output buffers: wait for the run to exit rather
