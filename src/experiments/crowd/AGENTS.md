@@ -132,7 +132,7 @@ rows, not because 120 is an uninteresting crowd. The cost is the anticipation:
 every person inside `DETAIL` against every neighbour, every step, and the count
 of those goes as the density.
 
-Three things bought the headroom, and the third is the one that is easy to undo:
+Two things bought the headroom, and a third is in the code that did not:
 
 - **`Math.sqrt` of the sum, never `Math.hypot`**, in anything inside the step
   loop. `hypot` guards against an intermediate overflow on numbers this piece
@@ -140,13 +140,19 @@ Three things bought the headroom, and the third is the one that is easy to undo:
 - **The gait is only advanced inside `DETAIL`.** `cadence` costs a `Math.pow`,
   and a head's rise at 24 m is six tenths of a pixel. A frozen phase resumes
   where it was left and phase is arbitrary, so the boundary is invisible.
-- **One `fill()` per brightness, not one per head.** `draw.ts` quantises alpha
-  into 160 logarithmic steps and batches; because the heads are already sorted by
-  depth the alpha is monotonic, so each bucket is one contiguous run and the
-  number of fills is bounded by the buckets however many people there are. About
-  105 fills for 1,200 heads. Logarithmic because the fade is exponential —
-  linear buckets put 99% of their resolution in the first two metres and band the
-  far crowd into visible shells, which is where all the heads are.
+- **One `fill()` per brightness, not one per head — and this is the one that
+  did not.** `draw.ts` batches by a logarithmic alpha bucket, 108 fills for 1,200
+  heads. Its docblock claimed one fill per head would be "several frames' worth
+  of work"; measured with `stats().drawMs` it is **1.50 ms against 1.09**, a 27%
+  saving on a draw that is a fifteenth of a frame. Keep it — four lines, and it
+  scales with the head count rather than against it — but **do not come here
+  looking for headroom.** The frame is the anticipation, by an order of
+  magnitude.
+
+  The general lesson is worth more than the number: **`fps` cannot answer any
+  question about the draw**, because a loop capped by the display reports 60
+  whether a frame paints in 1 ms or 10. Every "this made it faster" in this
+  section wants a stat that is not `fps`.
 
 **The step stays at 1/120.** 1/60 is exactly half the cost and was measured: it
 opens overlaps of up to 13 cm in the densest counterflow where 1/120 keeps
@@ -177,7 +183,7 @@ filled during the draw is stale until a frame has run and comes back as an
 ordinary plausible number.
 
 - **Filled while drawing**, so wait a frame after a `set()`: `drawn`, `fills`,
-  `largest`, `fps`.
+  `largest`, `drawMs`, `fps`.
 - **Computed in `stats()`**, so good immediately: everything from the crowd —
   `people`, `avoiding`, `world`, `edge`, `children`, `grouped`, `closest`,
   `overlaps`, `overlapsSeen`, `nearest`, `clock`, `reentries` — plus `me`,

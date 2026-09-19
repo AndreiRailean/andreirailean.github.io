@@ -116,9 +116,17 @@ test("a head passing close is large and a head at the back is a speck", async ({
   expect(stats.largest).toBeGreaterThan(12)
   // And far more heads than that reaching the glass, which are the far ones.
   expect(stats.drawn).toBeGreaterThan(120)
-  // The batching is the whole reason a thousand heads is affordable: one fill
-  // per brightness rather than one per head.
+  // The batching holds: one fill per brightness rather than one per head. Worth
+  // 1.50ms to 1.09 at this head count, which is real and is not what makes the
+  // piece affordable — see the measurement in `draw.ts`.
   expect(stats.fills).toBeLessThan(stats.drawn / 3)
+
+  // **The draw is a small part of the frame, and `fps` cannot say so.** A loop
+  // capped by the display reports 60 whether a frame paints in 1ms or 10, so a
+  // regression that doubled the paint would be invisible to every other
+  // assertion here. Generous, because this runs headless without a GPU.
+  expect(stats.drawMs).toBeGreaterThan(0)
+  expect(stats.drawMs).toBeLessThan(8)
 })
 
 test("how tall the observer is decides who is above the horizon", async ({ page }) => {

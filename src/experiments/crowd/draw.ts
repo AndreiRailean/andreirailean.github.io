@@ -8,15 +8,30 @@
  * optional: without it a head twenty metres off shows *through* the head of
  * somebody passing at arm's length, and the crowd stops having any depth at all.
  *
- * ## One fill per brightness, not one per head
+ * ## One fill per brightness, not one per head — and it is a smaller win than it looks
  *
- * Four thousand `fill()` calls is several frames' worth of work. Four thousand
- * `arc()` calls into a handful of paths is about a millisecond. The alpha is
- * quantised into 160 logarithmic steps — a little over 3% apart, which is below
- * where a step between two isolated specks is visible — and because the heads
- * are already sorted by depth the alpha is monotonic, so each bucket is one
- * contiguous run and the number of fills is bounded by the number of buckets
- * however many people there are.
+ * The alpha is quantised into 160 logarithmic steps and the heads, already
+ * sorted by depth, come out with a monotonic alpha — so each bucket is one
+ * contiguous run, and the number of `fill()` calls is bounded by the buckets
+ * however many people there are. About 108 fills for 1,200 heads.
+ *
+ * **This docblock used to say that one fill per head was "several frames' worth
+ * of work", and that is simply untrue.** Measured with `stats().drawMs`, at
+ * 1,207 heads on a market scene:
+ *
+ * | fills | draw time |
+ * | ----- | --------- |
+ * | 108   | 1.09 ms   |
+ * | 1,207 | 1.50 ms   |
+ *
+ * A 27% saving on a draw that is a fifteenth of a frame. Worth keeping, because
+ * it costs four lines and scales with the head count rather than against it —
+ * but **not what makes this piece affordable, and nobody should come here
+ * looking for headroom.** The frame is the simulation: at the same scene the
+ * anticipation is an order of magnitude more expensive than everything in this
+ * file put together. `fps` cannot show that, because a frame loop capped by the
+ * display reports 60 whether the draw takes 1 ms or 10, which is why `drawMs`
+ * exists at all.
  *
  * **The quantisation is logarithmic because the fade is exponential.** Linear
  * buckets put 99% of their resolution in the first two metres and band the far

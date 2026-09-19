@@ -62,6 +62,17 @@ export type CrowdStats = ThrongStats & {
   fills: number
   /** Screen radius of the nearest head drawn, in CSS pixels. */
   largest: number
+  /**
+   * Milliseconds the last frame spent drawing, as a rolling average.
+   *
+   * Here because `fps` cannot answer the only question worth asking about the
+   * draw. A frame loop is capped by the display, so a piece drawing in 1 ms and
+   * a piece drawing in 10 both report 60 — and "is the frame the simulation or
+   * the paint" is not a question anybody can settle by looking.
+   *
+   * Filled while drawing, like `drawn`, `fills` and `largest`.
+   */
+  drawMs: number
   /** The ceiling on the population, so a reader can tell a budgeted world from a fogged one. */
   budget: number
   /** Rolling average, so a heavy setting shows up as a number. */
@@ -143,6 +154,7 @@ export function createCrowd(canvas: HTMLCanvasElement, initial: Settings): Crowd
   let drawn = 0
   let fills = 0
   let largest = 0
+  let drawMs = 0
   /** Set when the picture needs repainting without anybody having moved. */
   let dirty = true
 
@@ -188,6 +200,7 @@ export function createCrowd(canvas: HTMLCanvasElement, initial: Settings): Crowd
 
   function draw(): void {
     context.setTransform(dpr, 0, 0, dpr, 0, 0)
+    const started = performance.now()
     const result = drawFrame(context, {
       people: crowd.people,
       camera: eyeCamera(),
@@ -196,6 +209,7 @@ export function createCrowd(canvas: HTMLCanvasElement, initial: Settings): Crowd
       height,
       scratch,
     })
+    drawMs += (performance.now() - started - drawMs) * 0.1
     drawn = result.drawn
     fills = result.fills
     largest = result.largest
@@ -336,6 +350,7 @@ export function createCrowd(canvas: HTMLCanvasElement, initial: Settings): Crowd
         drawn,
         fills,
         largest,
+        drawMs,
         budget: MAX_PEOPLE,
         fps,
         running,
