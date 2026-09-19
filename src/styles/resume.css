@@ -1,6 +1,83 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 @custom-variant dark (&:is(.dark *));
+
+/**
+ * Everything below this comment used to arrive from `globals.css`, which
+ * `ResumeLayout.astro` imported alongside this file.
+ *
+ * **The resume is a printable document and the site is a themed website, and one
+ * stylesheet was serving both.** That is what made "the resume needs a different
+ * theme" feel like it needed a different repository: the page was inheriting the
+ * site's tokens, its `.dark` variants and its background, so any change to its
+ * look had to be negotiated against a page it has nothing to do with. It is a
+ * stylesheet boundary, not a repository boundary, and this is the boundary.
+ *
+ * **Ported by measurement rather than by reading.** Computed styles were captured
+ * from the built page before and after dropping the import, across eleven
+ * properties on the eleven elements the resume actually uses; the diff named
+ * exactly three things globals was contributing, and they are the three below.
+ * Re-measured afterwards to nothing. What is *not* here was verified to make no
+ * difference — the colour tokens, the animation plugin, the social-icon
+ * utilities, and `html { font-sans }`, which never reached this page at all
+ * because this file's own Tailwind preflight is imported second and wins.
+ *
+ * Written as plain declarations rather than as re-created theme tokens: the
+ * resume now states its own typography instead of borrowing a name defined
+ * somewhere else. Redesigning it is a matter of editing this file.
+ */
+
+/* The heading faces. Sizes and weights come from `prose` below and were
+ * unaffected; only the families and `h1`'s tracking came from globals. */
+@layer base {
+  h1,
+  h3 {
+    font-family:
+      "Exo Variable", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+      "Noto Color Emoji";
+  }
+
+  h1 {
+    letter-spacing: -0.025em;
+  }
+
+  h2 {
+    font-family:
+      "Rubik Variable", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+      "Noto Color Emoji";
+  }
+
+  /* The page behind the sheet. The article carries its own white; this is what
+   * shows in the margins beside it, and the horizontal rule is that `@page`
+   * suppresses backgrounds in print anyway, so none of it reaches paper. */
+  body {
+    background-color: hsl(0 0% 100%);
+    background-image: url("/bg.svg");
+    color: hsl(0 0% 3.9%);
+  }
+}
+
+/* The side gutter, and only the gutter.
+ *
+ * `ResumeLayout` wraps the article in a `container`, and globals redefined that
+ * utility with `padding-inline: 2rem`. Without it the text meets the screen edge
+ * on a phone — the article's own `sm:px-24` starts only at the `sm` breakpoint.
+ *
+ * **Not `@utility container`, which is what the first attempt used and what
+ * globals had.** Redefining the utility replaces Tailwind's built-in one, and
+ * the measurement caught it: `max-width` went from 1280px to none. The original
+ * page was getting its padding from globals' redefinition and its max-width from
+ * the built-in, because this file is imported second and won — a split nobody
+ * designed and only a diff would show. Adding one declaration in `base` leaves
+ * the built-in intact and changes exactly the property that was missing.
+ *
+ * In `base` rather than bare, so the print block's `px-0` still wins: utilities
+ * outrank base, and on paper the gutter is the `@page` margin's job. */
+@layer base {
+  .container {
+    padding-inline: 2rem;
+  }
+}
 article.minimalist {
   @apply prose prose-sm prose-stone dark:prose-invert prose-h1:text-3xl prose-h1:uppercase prose-h2:mb-2 prose-h2:mt-6 prose-h2:border-b-2 prose-h2:border-stone-200 prose-h2:text-sm prose-h2:uppercase prose-h2:text-stone-500 prose-h3:text-sm prose-h3:uppercase prose-h3:leading-snug prose-h4:text-sm prose-h4:font-extrabold prose-h4:leading-snug prose-p:text-xs prose-p:leading-snug prose-p:tracking-tight prose-a:font-bold hover:prose-a:text-stone-400 prose-li:text-sm prose-h4:dark:text-stone-400 m-0 max-w-fit bg-white pt-20 sm:px-24 sm:py-14 lg:max-w-4xl dark:bg-stone-800;
 }
