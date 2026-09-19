@@ -38,6 +38,7 @@ import { describe, expect, it } from "vitest"
  */
 
 const RESUME_CSS = "src/styles/resume.css"
+const RESUME_LAYOUT = "src/layouts/ResumeLayout.astro"
 
 /**
  * The body of `@media print`, by brace matching.
@@ -208,5 +209,65 @@ describe("the resume's print stylesheet", () => {
     // `article.minimalist .container` contributes `article` and nothing else.
     const compound = "@media print { article.minimalist .container { padding: 0; } }"
     expect(typeSelectors(printBlock(compound))).toEqual(["article"])
+  })
+})
+
+/**
+ * The resume dresses itself.
+ *
+ * `ResumeLayout.astro` used to import `globals.css` as well as this page's own
+ * stylesheet, so a printable document was inheriting a themed website's tokens,
+ * its `.dark` variants and its background image. That is what made "the resume
+ * needs a different theme" feel like it needed a different *repository*: its
+ * appearance could not be changed without arguing with a page it has nothing to
+ * do with. The boundary it actually wanted was a stylesheet.
+ *
+ * **Asserted because re-adding the import is silent and plausible.** It would
+ * not fail a build, a type check or a test; the resume would simply start
+ * inheriting the site again, and the next person to wonder why the two fight
+ * would be back where this started. It is the rule-that-depends-on-being-
+ * remembered shape, and a check is the cheaper half.
+ *
+ * This constrains nothing about how the resume *looks* — it can be rewritten
+ * entirely, or moved to its own repository, without touching this. It says only
+ * that the resume owns its own appearance.
+ */
+describe("the resume's stylesheet independence", () => {
+  const layout = readFileSync(RESUME_LAYOUT, "utf8")
+
+  it("imports its own stylesheet, so an empty read cannot pass for a clean one", () => {
+    expect(
+      layout,
+      `${RESUME_LAYOUT} no longer imports ${RESUME_CSS} — the assertion below would then pass ` +
+        `for a page with no styles at all rather than for a decoupled one.`,
+    ).toContain("styles/resume.css")
+  })
+
+  it("does not pull in the site's stylesheet", () => {
+    expect(
+      layout.includes("styles/globals.css"),
+      `${RESUME_LAYOUT} imports globals.css again. The resume is a printable document and the ` +
+        `site is a themed website; sharing one stylesheet is what made the resume's look ` +
+        `impossible to change on its own. What globals was actually contributing — the heading ` +
+        `faces, the container's side gutter, the body background — was measured and moved into ` +
+        `${RESUME_CSS}, so this import adds nothing but the coupling.`,
+    ).toBe(false)
+  })
+
+  /**
+   * The three things the measurement found, named so that losing one is a
+   * failure rather than a silent change of typeface.
+   *
+   * Without this the check above is satisfied by a stylesheet that dropped the
+   * ported rules entirely — absence with no paired presence, and the resume
+   * would quietly revert to system fonts with nothing to say so.
+   */
+  it.each([
+    ["the display face for h1 and h3", /Exo Variable/],
+    ["the subtitle face for h2", /Rubik Variable/],
+    ["the container's side gutter", /\.container\s*\{[^}]*padding-inline/],
+    ["the page background behind the sheet", /background-image:\s*url\("\/bg\.svg"\)/],
+  ])("keeps %s, which came from globals", (_what, pattern) => {
+    expect(readFileSync(RESUME_CSS, "utf8")).toMatch(pattern)
   })
 })
