@@ -1,0 +1,73 @@
+---
+import { getCollection } from "astro:content"
+import Note, { type NoteTheme } from "@/experiments/gallery/Note.astro"
+import { PRESETS } from "@/experiments/crowd/settings"
+
+// The note's furniture is the gallery's; only the paint is this piece's. See
+// docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.
+const entry = (await getCollection("experiments")).find(({ data }) => data.slug === "crowd")
+if (!entry) throw new Error("Crowd: missing about.md")
+
+// Read off the primary rather than written down, so promoting a preset moves the
+// note's accent along with the poster and the landing scene. Every instance of
+// this fault in the section was a hue typed as a literal, correct on the day.
+//
+// The piece itself is white on black — every preset is `tint: 0` — so the hue
+// reaches nothing a visitor sees in the canvas. It is still the right thing to
+// derive from: it is the one colour the piece states, and the alternative is a
+// literal here, which is the exact mechanism this section keeps being bitten by.
+const { hue } = PRESETS[0]!.settings
+---
+
+<Note
+  entry={entry}
+  theme={{
+    bg: "#000",
+    sheet: `hsl(${hue} 22% 5% / 80%)`,
+    fg: `hsl(${hue} 10% 86%)`,
+    bright: `hsl(${hue} 14% 97%)`,
+    muted: `hsl(${hue} 9% 58%)`,
+    edge: `hsl(${hue} 20% 84% / 12%)`,
+    accent: `hsl(${hue} 42% 76%)`,
+  } satisfies NoteTheme}
+  backdrop={0.42}
+>
+  <script>
+    import { createCrowd } from "@/experiments/crowd/crowd"
+    import { normalizeSettings, PRESETS } from "@/experiments/crowd/settings"
+
+    const canvas = document.getElementById("backdrop")
+    if (canvas instanceof HTMLCanvasElement) {
+      // **The primary, turned down — spread rather than sampled.** Picking a few
+      // fields off the primary and writing the rest out is how a backdrop
+      // quietly stops being the piece the page is about; see embers/about.astro,
+      // where it had become a different scene entirely.
+      //
+      // What is turned down is the *busyness*, not the scene. This sits under a
+      // sheet of text: it should not compete with it and it should still be
+      // recognisably the thing the page is about. The walk is slowed rather than
+      // stopped, because a still field of dots says nothing about a piece whose
+      // whole subject is negotiating a crowd.
+      const primary = PRESETS[0]!.settings
+      const square = createCrowd(
+        canvas,
+        normalizeSettings({
+          ...primary,
+          density: primary.density * 0.6,
+          looking: primary.looking * 0.5,
+          playback: 0.4,
+        }),
+      )
+      square.start()
+      // A backdrop of a crowd that has not yet done anything is a scatter. The
+      // walk has to have been going before the sheet lands on it — the same
+      // reason the poster recipe settles, one surface over.
+      //
+      // **Four seconds, not forty-five.** A settle is synchronous: this is
+      // wall-clock the reader waits before the note paints, at roughly a fifth
+      // of a second per second of walk at this density. Forty-five was a
+      // nine-second blank page for a backdrop nobody is reading.
+      square.settle(4)
+    }
+  </script>
+</Note>
