@@ -17,25 +17,69 @@ and the three gates are the whole of the boundary:
 | Yes, and something has to be built or isolated before it can be judged | **Yours.**                                        |
 | Yes, and the question is which of them is better                       | Andrei's.                                         |
 
-## 1. Read what you are working in, before anything else
+## 0. The bias, which decides what you do next at every point
 
-**This step is the reason the skill exists.** Claude Code loads `CLAUDE.md` and
+**All of Andrei's feedback follows interaction with the work in progress.** He
+drags a slider and tells you what he sees. He does not review a description, a
+plan or a still.
+
+**So the first goal is not a correct piece. It is an interactable one**, however
+thin — a page that boots, one mark, a panel with two settings that move. Until
+that exists and he has touched it, nothing else you could write is the most
+valuable next thing.
+
+- **Do not write a second module before the first is on screen.** The failure
+  this stops is bottom-up construction, which is the natural instinct rather than
+  a careless one: model the bodies, then the forces, then the camera, and wire up
+  a page once the simulation is worth looking at. Observed on `crowd`, which had
+  this file and did it anyway — `body.ts`, `camera.ts`, `steering.ts` first and
+  `settings.ts` fourth, and at sixteen minutes no route, no panel, no preview
+  server, nothing to look at. **Not a size problem**: embers' `settings.ts` was
+  31,689 bytes in its own first commit. Only the order was wrong.
+- **The panel ships with the first render**, not after. A piece with no chrome
+  cannot be interacted with, so it cannot be reviewed. `CONTROLS` in
+  `settings.ts` generates it, so two settings are enough.
+- **Write no spec and no plan document for a piece.** A general-purpose process
+  skill will tell you to explore, ask, propose options and get a design approved
+  before implementing. For an experiment here that order is wrong, and repo
+  conventions take precedence over a skill's default workflow. The artefact _is_
+  the design conversation: he cannot tell you whether a crowd reads as a shoal or
+  a queue until he is watching one move. Measured once —
+  `docs/superpowers/specs/2026-08-24-dangler-design.md` is 342 lines, and the
+  first commit that drew anything came 52 minutes after it.
+- **Ask him questions through the work, not before it.** A question you could
+  have answered with ten minutes and a slider is not worth his attention.
+
+## 1. Read what the step you are on needs — not all of it
+
+**Delivery is the reason this skill exists.** Claude Code loads `CLAUDE.md` and
 nothing else, so every file below is opt-in — a session sees one only if it goes
 looking, and nothing anywhere reports that it did not. Andrei has been
 hand-delivering these by mouth at the start of each piece. Stop making him.
 
-Read, in order, and do not skip them because the role doc summarises the
-sequence — it points, they rule:
+**But reading is not building, and this content runs to about 100KB.** Reading
+all of it before writing anything costs the first interactable build its whole
+head start, which section 0 says is the thing that matters. So stage it.
+
+**Before the first interactable build**, which is all you need to get there:
 
 1. `docs/agents/experiment-writer.md` — the role.
-2. `AGENTS.md` at the root, then `CONTEXT-MAP.md`.
-3. **`src/experiments/AGENTS.md`** — the one that matters most. Presets, the
-   packed address, `## Adding a piece`, posters, the console API, the three
-   layers, verifying.
+2. **`src/experiments/AGENTS.md`**: the `## Presets` section, `## Adding a piece`
+   and the layout block at the top. Those cover `settings.ts`, the primary, what
+   registers a slug, and what must never land in `src/pages/`.
+
+**Then, as you reach each area**, and before changing anything already decided:
+
+3. The rest of `src/experiments/AGENTS.md` — the packed address, posters, the
+   console API, the three layers, verifying.
 4. `src/experiments/CONTEXT.md` — the glossary, which is precise.
 5. **The piece's own `AGENTS.md`**, when changing one rather than starting one.
-   130–459 lines each, and they are where the traps are.
-6. `tests/AGENTS.md` if you will touch a test, which is most changes.
+   130–459 lines each, they are where the traps are, and this one is **not**
+   deferrable: it is what stops you rediscovering a trap the hard way.
+6. `AGENTS.md` at the root and `CONTEXT-MAP.md` for anything outside the section;
+   `tests/AGENTS.md` when you touch a test.
+
+It points, they rule.
 
 ## 2. Derive the situation; do not expect to be told it
 
@@ -55,14 +99,24 @@ reconstruct it.
 If a ticket names the work, read it in full including comments. The reasoning
 that did not fit in the title lives there, and on #117 it is most of the issue.
 
-## 3. Build
+## 3. Build to the gate first, then past it
 
-**Starting a new piece: the order is in the role doc and two of its edges bite.**
-`settings.ts` first with `TRACKS` written out and a preset inheriting from
-nothing; position one is the primary and three other surfaces read it; the four
-registration points; and **capture the poster _before_ adding `poster:` to
-`about.md`**, because the collection resolves that path through `image()` and a
-missing file 500s the index.
+**Everything up to the gate, in this order** — nothing here is optional and
+nothing below it starts until he has driven the result:
+
+1. `src/experiments/<slug>/settings.ts` — `TRACKS` written out, `BOUNDS` narrowed
+   from it, a preset stating every setting and inheriting from nothing. Position
+   one is the primary; three other surfaces read it.
+2. The smallest thing that draws. One mark is enough.
+3. `src/pages/experiments/<slug>/index.astro` — markup, a `<style>` block and
+   `import { boot } from "@/experiments/<slug>/page"`. No logic in the `.astro`.
+4. The kit's panel, from `CONTROLS`. **Now go to step 4 and stop.**
+
+**Then, after he has interacted with it:** the about page reading its theme off
+`PRESETS[0]`, `about.md` without its `poster:` line, the four registration points
+(`SLUGS`, `PIECES`, `EXPECTED`, `NOTES`), and **capture the poster _before_
+adding `poster:` to `about.md`** — the collection resolves that path through
+`image()` and a missing file 500s the index.
 
 **Changing a piece:** read its own `AGENTS.md` first, and expect the trap you are
 about to hit to be described in it.
@@ -84,10 +138,14 @@ pnpm run build:quick  # rebuild without restarting, so his URL keeps working
 `astro dev`** for a review: seven times the memory, and it has twice shown him
 stale work he then reported as broken. `/preview` owns the lifecycle.
 
-**Show the smallest thing that renders, early.** He starts from imagination, and
-the first render is what turns his statement into something he can react to.
-Building to completion before the first look spends the solution space on
-guesses.
+**Show the smallest thing he can drive, early.** He starts from imagination, and
+the first interactable build is what turns his statement into something he can
+react to. Building to completion before the first look spends the solution space
+on guesses.
+
+**A build he cannot drive returns an impression; one he can returns a setting, a
+number and a direction.** That is the practical reason the panel is not a
+finishing step, and why "it renders" is not the gate.
 
 **When the question is a mechanism rather than a taste, build the comparison that
 isolates it** before asking him again. A control that moves two things at once
