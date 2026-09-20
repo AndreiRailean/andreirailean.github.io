@@ -69,6 +69,24 @@ export const MAX_PEOPLE = 9000
 /** Metres. Inside this people avoid each other; outside it they walk. See the docblock. */
 export const DETAIL = 24
 
+/**
+ * Where somebody walking with the observer keeps station, in metres.
+ *
+ * **Placed to be at the edge of vision rather than squarely beside.** Two people
+ * walking and talking are abreast, and abreast is 90° off your line of travel —
+ * past what a neck holds, and outside the frame at any sane field of view, so a
+ * companion placed there is somebody you can only ever see by turning your whole
+ * body. These numbers put them at about 40° and 0.94 m away, which is inside the
+ * frame's corner at the fields of view this piece uses: **there, at the edge of
+ * vision, without being looked at** — which is what having somebody with you is
+ * — and squarely centred by a glance.
+ */
+const COMPANION_SIDE = 0.6
+const COMPANION_AHEAD = 0.72
+
+/** How firmly a companion holds their place, per second squared. Stiffer than a crowd group's. */
+const COMPANION_SPRING = 3.4
+
 /** Spatial hash cell, in metres. A shade over the 3.5 m at which a pair is worth testing. */
 const CELL = 4
 
@@ -123,6 +141,17 @@ export type Person = {
   slotBack: number
   child: boolean
   standing: boolean
+  /**
+   * Walking with the observer, and therefore not part of the traffic.
+   *
+   * A companion keeps station rather than being met and passed, and is never
+   * re-entered — the whole point of them is that they are the one person who is
+   * still there in a minute's time.
+   */
+  companion: boolean
+  /** Their place beside the observer, in the observer's frame. Only meaningful for a companion. */
+  besideRight: number
+  besideAhead: number
 }
 
 export type Group = {
@@ -152,6 +181,8 @@ export type ThrongStats = {
   children: number
   /** How many are in a group with somebody. */
   grouped: number
+  /** How many are walking with the observer. */
+  companions: number
   /** Metres of clearance at the closest pair in the detail radius. Negative means an overlap. */
   closest: number
   /**
@@ -191,6 +222,8 @@ export type Observer = {
   vy: number
   /** The line the crowd's stream is laid along, in radians. */
   axis: number
+  /** Which way the observer's body is pointing, so a companion can keep station in that frame. */
+  course: number
   radius: number
 }
 
@@ -295,6 +328,41 @@ export function createThrong(settings: Settings, observer: Observer) {
       else low = mid
     }
     return low
+  }
+
+  /**
+   * Bind the first few people to the observer as companions.
+   *
+   * Taken from the crowd rather than made specially, so they are ordinary people
+   * — their height, their age and their gait are drawn the same way as anybody
+   * else's, which is what stops a companion reading as a different kind of
+   * object from everyone around them.
+   */
+  function pairUp(): void {
+    for (const person of people) {
+      person.companion = false
+      person.besideRight = 0
+      person.besideAhead = 0
+    }
+    const wanted = Math.min(Math.round(current.companions), people.length)
+    for (let i = 0; i < wanted; i++) {
+      const mate = people[i]!
+      const side = i % 2 === 0 ? 1 : -1
+      const rank = Math.floor(i / 2)
+      mate.companion = true
+      mate.besideRight = side * (COMPANION_SIDE + rank * 0.62)
+      mate.besideAhead = COMPANION_AHEAD - rank * 0.25
+      mate.standing = false
+      mate.group = -1
+      // Beside the observer from the first frame, rather than converging on them
+      // across the square over the opening minute.
+      const cos = Math.cos(observer.axis)
+      const sin = Math.sin(observer.axis)
+      mate.x = observer.x + cos * mate.besideAhead - sin * mate.besideRight
+      mate.y = observer.y + sin * mate.besideAhead + cos * mate.besideRight
+      mate.vx = observer.vx
+      mate.vy = observer.vy
+    }
   }
 
   function restock(): void {
@@ -433,6 +501,9 @@ export function createThrong(settings: Settings, observer: Observer) {
       slotBack: 0,
       child,
       standing,
+      companion: false,
+      besideRight: 0,
+      besideAhead: 0,
     }
     people.push(person)
     return person
@@ -562,6 +633,14 @@ export function createThrong(settings: Settings, observer: Observer) {
 
   /** What one person would like to be doing, before anybody is in the way. */
   function desired(person: Person, out: { x: number; y: number }): void {
+    if (person.companion) {
+      // Matching the observer rather than pursuing their own errand. A companion
+      // who drew their own preferred speed would spend the walk drifting ahead
+      // or behind and being hauled back by the formation spring.
+      out.x = observer.vx
+      out.y = observer.vy
+      return
+    }
     if (person.group >= 0) {
       const group = groups[person.group]!
       if (group.standing) {
@@ -619,6 +698,17 @@ export function createThrong(settings: Settings, observer: Observer) {
       const near = fromObserverSq <= detailSq
 
       if (near) {
+        // A companion is pulled toward their place beside the observer, in the
+        // observer's own frame, so the pair turns as a pair.
+        if (person.companion) {
+          const cos = Math.cos(observer.course)
+          const sin = Math.sin(observer.course)
+          const slotX = observer.x + cos * person.besideAhead - sin * person.besideRight
+          const slotY = observer.y + sin * person.besideAhead + cos * person.besideRight
+          force.x += (slotX - person.x) * COMPANION_SPRING
+          force.y += (slotY - person.y) * COMPANION_SPRING
+        }
+
         // A group member is pulled toward its place in the formation. A spring
         // rather than a hard constraint, so the formation gives way when the
         // crowd presses on it — which is why a wide group narrows to get through
@@ -692,9 +782,13 @@ export function createThrong(settings: Settings, observer: Observer) {
         person.phase += cadence(person.stature, speed, person.preferred) * dt * Math.PI * 2
       }
 
-      const ndx = person.x - observer.x
-      const ndy = person.y - observer.y
-      if (ndx * ndx + ndy * ndy > worldSq) reenter(person)
+      // A companion is never re-entered: being the one person still there in a
+      // minute's time is the whole of what they are.
+      if (!person.companion) {
+        const ndx = person.x - observer.x
+        const ndy = person.y - observer.y
+        if (ndx * ndx + ndy * ndy > worldSq) reenter(person)
+      }
     }
 
     nearest = Math.sqrt(nearestSq)
@@ -716,6 +810,7 @@ export function createThrong(settings: Settings, observer: Observer) {
 
   restock()
   regroup()
+  pairUp()
   hash()
 
   /** Scratch for `neighbours`, reused: this is called twice per step. */
@@ -736,6 +831,17 @@ export function createThrong(settings: Settings, observer: Observer) {
     },
 
     /** Half the corridor, so the observer is held inside the same walls the crowd is. */
+    /**
+     * The people walking with the observer, for the gaze to find.
+     *
+     * Filtered rather than held as a second array, because there are at most
+     * three of them and a second array is a second thing to keep in step with
+     * `restock` popping people off the end.
+     */
+    get companions() {
+      return people.filter((person) => person.companion)
+    },
+
     get halfWidth() {
       return halfWidth
     },
@@ -782,7 +888,10 @@ export function createThrong(settings: Settings, observer: Observer) {
       for (const person of people) {
         person.radius = bodyRadius(person.stature) * current.spacing
       }
-      if (before.grouping !== current.grouping) regroup()
+      if (before.grouping !== current.grouping) {
+        regroup()
+        pairUp()
+      }
     },
 
     /** Change how big the world is and how many people are in it. */
@@ -795,14 +904,17 @@ export function createThrong(settings: Settings, observer: Observer) {
       cut = makeRng(hashSeed(current.seed, 3))
       restock()
       regroup()
+      pairUp()
     },
 
     stats(): ThrongStats {
       let children = 0
       let grouped = 0
+      let withMe = 0
       for (const person of people) {
         if (person.child) children++
         if (person.group >= 0) grouped++
+        if (person.companion) withMe++
       }
       return {
         people: people.length,
@@ -813,6 +925,7 @@ export function createThrong(settings: Settings, observer: Observer) {
         edge: Math.exp(-world / Math.max(0.5, current.fade)),
         children,
         grouped,
+        companions: withMe,
         closest: Number.isFinite(closest) ? closest : 0,
         overlaps,
         overlapsSeen,

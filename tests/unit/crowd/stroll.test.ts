@@ -49,11 +49,21 @@ function watch(patch: Partial<Settings>, seconds: number) {
 
   offsets.sort((a, b) => a - b)
   const at = (p: number) => offsets[Math.floor(offsets.length * p)]! * DEG
-  return { median: at(0.5), p90: at(0.9), peakTurn: peakTurn * DEG, stillFraction: 1 - moving / steps }
+  return {
+    median: at(0.5),
+    p90: at(0.9),
+    within10: offsets.filter((o) => o * DEG <= 10).length / offsets.length,
+    peakTurn: peakTurn * DEG,
+    stillFraction: 1 - moving / steps,
+  }
 }
 
 describe("the head, while walking", () => {
-  const walking = watch({ walk: 1.2, pausing: 0, looking: 1 }, 120)
+  // **Alone**, because a companion is deliberately reachable with the whole
+  // neck: turning to talk to somebody beside you is exactly the movement the
+  // small walking sweep exists to rule out, and the market preset now walks
+  // with two.
+  const walking = watch({ walk: 1.2, pausing: 0, looking: 1, companions: 0 }, 120)
 
   it("rests looking where it is going", () => {
     // **The rest state is straight ahead**, which is the half the first version
@@ -64,10 +74,20 @@ describe("the head, while walking", () => {
     expect(walking.median).toBeLessThan(4)
   })
 
-  it("glances small and comes back, rather than holding a turn", () => {
+  it("glances and comes back, rather than holding a turn", () => {
     // "If I'm walking, I turn my head only slightly and then turn it back."
-    // Was 62.6° at the 90th percentile; a walking glance should be a few degrees.
-    expect(walking.p90).toBeLessThan(20)
+    // Was 62.6° at the 90th percentile, held.
+    //
+    // **The ceiling moved from 20° to 30° on purpose, and that is a change to
+    // the claim rather than a relaxed threshold.** A walking head now also looks
+    // at things beside the path — "at a market specifically, that's how one
+    // walks and looks" — which is a real turn of 30-40° for a second or two.
+    // What must still hold is that it is a *glance*: the head rests at centre
+    // (the test above) and comes back to it.
+    expect(walking.p90).toBeLessThan(30)
+    // And the resting state is the majority state, which is what "comes back"
+    // means when it is measured rather than asserted.
+    expect(walking.within10).toBeGreaterThan(0.5)
   })
 
   it("is almost never still, because easing means always moving a little", () => {
@@ -79,7 +99,7 @@ describe("the head, while walking", () => {
 })
 
 describe("the head, while stopped", () => {
-  const stopped = watch({ walk: 0, pausing: 1, looking: 1 }, 120)
+  const stopped = watch({ walk: 0, pausing: 1, looking: 1, companions: 0 }, 120)
 
   it("actually looks around", () => {
     // "Only when I'm stopped do I turn my head." Standing, the sweep is a real
@@ -112,4 +132,205 @@ describe("nothing moves the view faster than a person can", () => {
       expect(watch(scene, 60).peakTurn).toBeLessThan(400)
     }
   }, 120_000)
+})
+
+describe("the body: sidestepping, and not shaking", () => {
+  /** Where the body is going against where it is pointing, through a crowd. */
+  function crowdWalk(label: string, seconds: number) {
+    const settings = normalizeSettings(PRESETS.find((p) => p.label === label)!.settings)
+    const me = createStroll(settings, settings.seed)
+    const crowd = createThrong(settings, me)
+
+    const offs: number[] = []
+    let lastCourse = me.course
+    let lastRate = 0
+    let reversals = 0
+    let rates = 0
+    let sumSq = 0
+    let lateral = 0
+    let forward = 0
+
+    for (let t = 0; t < seconds; t += STEP) {
+      me.step(STEP, crowd)
+      crowd.step(STEP)
+      const rate = wrap(me.course - lastCourse) / STEP
+      lastCourse = me.course
+      if (t >= 10) {
+        rates++
+        sumSq += rate * rate
+        if (rate * lastRate < 0) reversals++
+      }
+      lastRate = rate
+      const speed = Math.hypot(me.vx, me.vy)
+      if (t < 10 || speed < 0.3) continue
+      offs.push(Math.abs(wrap(Math.atan2(me.vy, me.vx) - me.course)))
+      lateral += Math.abs(-me.vx * Math.sin(me.course) + me.vy * Math.cos(me.course)) * STEP
+      forward += (me.vx * Math.cos(me.course) + me.vy * Math.sin(me.course)) * STEP
+    }
+
+    offs.sort((a, b) => a - b)
+    return {
+      strafeP90: offs[Math.floor(offs.length * 0.9)]! * DEG,
+      sideways: lateral / forward,
+      facingRms: Math.sqrt(sumSq / rates) * DEG,
+      reversals: reversals / rates,
+    }
+  }
+
+  const street = crowdWalk("the street", 90)
+
+  it("gets past people by stepping sideways, not by turning", () => {
+    // **The body faces the line it means to walk; the crowd displaces it off
+    // that line.** It used to face `atan2(vy, vx)` — wherever it was being
+    // pushed — so by construction it always pointed exactly where it was going
+    // and there was no sidestep at all: a median offset of 1.4° and a 90th
+    // percentile under 8°, in a seven-metre corridor where sidestepping is the
+    // only way past anybody.
+    expect(street.strafeP90).toBeGreaterThan(6)
+    // And it is a sidestep rather than crabbing: `STRAFE_LIMIT` is where the
+    // shoulders come round.
+    expect(street.strafeP90).toBeLessThan(35)
+    // Roughly a quarter of a metre a second of lateral travel at walking pace,
+    // which over a three-second encounter is the 0.75 m it takes to clear
+    // somebody.
+    expect(street.sideways).toBeGreaterThan(0.03)
+  }, 120_000)
+
+  it("keeps the camera steady while it does", () => {
+    // **The jitter, in numbers.** Reported as "strange jitter… in video games
+    // that usually indicates collisions". It was not the collisions: the facing
+    // chased the instantaneous velocity through a hard rate limiter, and a
+    // limiter has no inertia, so it clipped a target that was jittering at
+    // 7 m/s² of avoidance instead of filtering it. The direction reversed on
+    // 14% of steps at 120 Hz — a 15 Hz shake — with the turn rate pinned at its
+    // cap of 115°/s.
+    //
+    // Sprung instead, and pointed at the intended line rather than the pushed
+    // one, it measures 9.8°/s rms with 1.4% reversals.
+    expect(street.facingRms).toBeLessThan(18)
+    expect(street.reversals).toBeLessThan(0.04)
+  }, 120_000)
+})
+
+describe("walking with somebody", () => {
+  function withMates(count: number, seconds: number) {
+    const settings = normalizeSettings({ ...PRESETS[0]!.settings, companions: count })
+    const me = createStroll(settings, settings.seed)
+    const crowd = createThrong(settings, me)
+    const gaps: number[] = []
+    let atMate = 0
+    let samples = 0
+    for (let t = 0; t < seconds; t += STEP) {
+      me.step(STEP, crowd)
+      crowd.step(STEP)
+      if (t < 10) continue
+      samples++
+      const mates = crowd.companions
+      for (const mate of mates) gaps.push(Math.hypot(mate.x - me.x, mate.y - me.y))
+      if (mates[0]) {
+        const toMate = Math.atan2(mates[0].y - me.y, mates[0].x - me.x)
+        if (Math.abs(wrap(me.yaw - toMate)) < 0.35) atMate++
+      }
+    }
+    gaps.sort((a, b) => a - b)
+    return {
+      count: crowd.stats().companions,
+      median: gaps[Math.floor(gaps.length / 2)] ?? 0,
+      worst: gaps[gaps.length - 1] ?? 0,
+      lookingAt: atMate / samples,
+    }
+  }
+
+  it("keeps them beside me rather than letting the crowd carry them off", () => {
+    // **A companion is the one person still there in a minute's time**, which is
+    // the whole of what distinguishes them from the traffic. They keep station
+    // in the observer's own frame, so the pair turns as a pair, and they are
+    // never re-entered at the boundary the way everybody else is.
+    const two = withMates(2, 90)
+    expect(two.count).toBe(2)
+    expect(two.median).toBeGreaterThan(0.5)
+    expect(two.median).toBeLessThan(1.4)
+    // Even at the worst moment of being squeezed by the crowd, still beside me.
+    // Measured at 4.9 m at its very worst over ninety seconds, which is one bad
+    // moment of a dense crowd coming between you rather than a companion lost.
+    expect(two.worst).toBeLessThan(6)
+  }, 180_000)
+
+  it("gets looked at, which is most of where the head goes when there is one", () => {
+    const alone = withMates(0, 60)
+    const pair = withMates(1, 60)
+    expect(alone.count).toBe(0)
+    expect(alone.lookingAt).toBe(0)
+    expect(pair.lookingAt).toBeGreaterThan(0.05)
+  }, 180_000)
+})
+
+describe("the gaze goes up and down, not only side to side", () => {
+  function gaze(patch: Record<string, number>, seconds: number) {
+    const settings = normalizeSettings({ ...PRESETS[0]!.settings, ...patch })
+    const me = createStroll(settings, settings.seed)
+    const crowd = createThrong(settings, me)
+    const pitches: number[] = []
+    let aboveLevel = 0
+    for (let t = 0; t < seconds; t += STEP) {
+      me.step(STEP, crowd)
+      crowd.step(STEP)
+      if (t < 10) continue
+      pitches.push(me.pitch * DEG)
+      if (me.pitch > 0) aboveLevel++
+    }
+    pitches.sort((a, b) => a - b)
+    return {
+      // Clamped: `at(1)` indexed one past the end and handed back `undefined`,
+      // which `toBeLessThan` fails on with no hint that the *index* was the
+      // problem rather than the piece.
+      at: (q: number) => pitches[Math.min(pitches.length - 1, Math.floor(pitches.length * q))]!,
+      aboveLevel: aboveLevel / pitches.length,
+    }
+  }
+
+  const alone = gaze({ pitch: -4, companions: 0, looking: 1 }, 150)
+
+  it("rests where `pitch` says, because it is a bias and not a lock", () => {
+    expect(Math.abs(alone.at(0.5) - -4)).toBeLessThan(2)
+  }, 180_000)
+
+  it("looks down at the ground and at things it walks past", () => {
+    // **Three goes at this, all the same mistake.** A look aimed 22° down
+    // measured 8°, then 0.4° off the bias, because the hold was barely longer
+    // than the half second the neck takes to arrive — and once because a spot
+    // placed far to the side swept past the neck's reach before the head got
+    // there, which ends the glance for a good reason at a bad moment.
+    //
+    // **The number to check a hold against is the settling time**, not intuition
+    // about how long a glance feels.
+    expect(alone.at(0.1)).toBeLessThan(-7)
+    expect(alone.at(0)).toBeGreaterThan(-40)
+  }, 180_000)
+
+  it("looks up, which it did not at all", () => {
+    // "i see it gazing down, but haven't detected an up gaze yet. like looking
+    // at a bird and following its flight while walking." It had a vertical
+    // drift of a few degrees either side of the bias, which never rose far
+    // enough above level to read as looking up.
+    expect(alone.at(0.999)).toBeGreaterThan(15)
+    expect(alone.aboveLevel).toBeGreaterThan(0.02)
+    expect(alone.at(1)).toBeLessThan(35)
+  }, 180_000)
+
+  it("does not spend the walk staring at the sky when there is nobody to talk to", () => {
+    // **The chained-roll fault, which this file had a comment warning about and
+    // then committed.** The companion branch is skipped when there is no
+    // companion, but the branches after it were written as
+    // `roll < SHARE_COMPANION + SHARE_UP` with a constant first term — so the
+    // companion's half of the probability fell through to the next branch and
+    // looking up went from 9% of glances to 59%. Measured as a gaze above level
+    // 25.9% of the time, walking alone, with no downward range left at all.
+    //
+    // The tell is that it only appears in the scene where a *different* branch
+    // is disabled, which is why a single-scene check would not have found it.
+    expect(alone.aboveLevel).toBeLessThan(0.2)
+    const withMates = gaze({ pitch: -4, companions: 2, looking: 1 }, 90)
+    expect(withMates.aboveLevel).toBeLessThan(0.2)
+  }, 180_000)
 })

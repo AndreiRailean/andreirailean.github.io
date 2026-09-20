@@ -54,6 +54,8 @@ export type Settings = {
   height: number
   /** How far above level I am looking, in degrees. Negative is down, which is where a walker looks. */
   pitch: number
+  /** How many people are walking with me, talking. 0 is alone. */
+  companions: number
   /** How much I turn my head, and how far. */
   looking: number
   /** Multiplier on what my own gait does to the frame. 1 is life-size. */
@@ -230,7 +232,18 @@ export const CONTROLS: Control[] = [
     max: 15,
     step: 0.5,
     format: (v) => (Math.abs(v) < 0.25 ? "level" : v < 0 ? `${(-v).toFixed(1)}° down` : `${v.toFixed(1)}° up`),
-    hint: "How far above level I am looking. A walking person does not look at the horizon — the resting line of sight is several degrees down, because the ground you are about to walk on and the faces of anybody close enough to matter are both below eye height. It is also the only control over where the crowd sits in the frame: with heads and no bodies, every head is within a metre of eye height, so the picture is a band and this decides where the band is.",
+    hint: "Where my gaze rests, not where it is locked. A walking person does not look at the horizon — the resting line of sight is several degrees down, because the ground you are about to walk on and the faces of anybody close enough to matter are both below eye height. Glances wander up and down from here as well as side to side: at the ground ahead, at a face, at a child's head which is a long way below yours. It is also what decides where the crowd sits in the frame, since with heads and no bodies the picture is a band and this says where the band is.",
+  },
+  {
+    kind: "slider",
+    key: "companions",
+    label: "with me",
+    group: "me",
+    min: 0,
+    max: 3,
+    step: 1,
+    format: (v) => (v < 0.5 ? "alone" : v < 1.5 ? "one" : `${Math.round(v)}`),
+    hint: "How many people are walking with me. They keep station beside me rather than being met and passed, they hold their place while the crowd goes round them, and I look at them — a conversation is most of where the head goes when there is one to be had. It changes the walk more than the number suggests: alone you are reading the crowd, and with somebody you are only half watching it.",
   },
   {
     kind: "slider",
@@ -370,6 +383,7 @@ export const DEFAULT_SETTINGS: Settings = {
   pausing: 0.15,
   height: 1.78,
   pitch: -4,
+  companions: 1,
   looking: 0.8,
   bob: 1,
   fov: 62,
@@ -412,6 +426,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       pausing: 0.3,
       height: 1.72,
       pitch: -4,
+      companions: 2,
       looking: 1.0,
       bob: 1,
       fov: 62,
@@ -441,6 +456,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       pausing: 0,
       height: 1.76,
       pitch: -3,
+      companions: 0,
       looking: 0.7,
       bob: 1.1,
       fov: 55,
@@ -470,6 +486,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       pausing: 1,
       height: 1.66,
       pitch: -5,
+      companions: 1,
       looking: 1.2,
       bob: 1,
       fov: 70,
@@ -499,6 +516,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       pausing: 0.05,
       height: 1.74,
       pitch: -3,
+      companions: 1,
       looking: 0.6,
       bob: 1,
       fov: 58,
@@ -528,6 +546,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       pausing: 0.2,
       height: 1.94,
       pitch: -2,
+      companions: 0,
       looking: 0.7,
       bob: 0.9,
       fov: 88,
@@ -557,6 +576,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       pausing: 0.35,
       height: 1.14,
       pitch: 2,
+      companions: 1,
       looking: 1.2,
       bob: 1.15,
       fov: 68,
@@ -596,6 +616,7 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   pausing: { min: 0, max: 1, step: 0.05 },
   height: { min: 1, max: 2.05, step: 0.01 },
   pitch: { min: -25, max: 15, step: 0.5 },
+  companions: { min: 0, max: 3, step: 1 },
   looking: { min: 0, max: 1.5, step: 0.05 },
   bob: { min: 0, max: 3, step: 0.05 },
   fov: { min: 35, max: 120, step: 1 },
@@ -745,6 +766,7 @@ export const REGISTRY: readonly Slot[] = [
   // size away from `fade`, which used to derive it — see `throng.ts`.
   { key: "reach", kind: "num", grid: 0.5, origin: 8, bits: 9 },
   { key: "width", kind: "num", grid: 0.5, origin: 3, bits: 9 },
+  { key: "companions", kind: "num", grid: 1, origin: 0, bits: 2 },
 ]
 
 /**
@@ -803,7 +825,7 @@ export function urlForSettings(settings: Settings, pathname: string): string {
  * no business producing one — dragging the hue used to empty the square on every
  * step of the slider in an earlier draft of exactly this list.
  */
-const CAST_KEYS = ["seed"] as const satisfies readonly (keyof Settings)[]
+const CAST_KEYS = ["seed", "companions"] as const satisfies readonly (keyof Settings)[]
 
 export function needsRecast(before: Settings, after: Settings): boolean {
   return CAST_KEYS.some((key) => before[key] !== after[key])

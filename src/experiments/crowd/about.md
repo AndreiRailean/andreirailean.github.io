@@ -35,6 +35,12 @@ walk. Almost everything below is about that.
 
 ## Who is carrying the camera
 
+**I get past people by stepping sideways.** The body faces the line it means to
+walk, and the crowd pushes it off that line — which is what a sidestep is, and
+in a corridor it is the only way past anybody. Only a large or sustained
+deviation brings the shoulders round; below that you are facing down the street
+and travelling slightly across it.
+
 **I am avoided, and I avoid.** The crowd steering round the observer is the
 obvious half and it is not enough on its own: a camera that holds its line while
 everybody gives way is a bulldozer, the crowd parts, nothing is ever negotiated,
@@ -56,12 +62,19 @@ is the whole difference between a head turning and a turret slewing. What gets
 looked at is mostly whoever is about to pass closest, who is also the person the
 body is already negotiating with, and that is why the looking never feels random.
 
-**I do not look at the horizon.** The resting line of sight when you are walking
-is several degrees below level, because the ground you are about to walk on and
-the faces of anybody close enough to matter are both below eye height. **my
-gaze** is that, and it is also the only control over where the crowd sits in the
-frame — with heads and no bodies, every head is within a metre of eye height, so
-the picture is a band and this decides where the band is.
+**I do not look at the horizon, and I do not hold still vertically either.** The
+resting line of sight when walking is several degrees below level, because the
+ground you are about to walk on and the faces of anybody close enough to matter
+are both below eye height. **my gaze** sets where that rest is — it is a bias,
+not a lock. Glances wander up and down from it as readily as side to side: at
+the ground a few metres ahead, at a face, at a child's head which is most of a
+metre below your own. Peripheral vision is what lets you look down and keep
+walking, which is why the control is a resting point rather than a fixed angle.
+
+Looking down reaches further than looking up, because that is where everything
+is. It is also the control that decides where the crowd sits in the frame — with
+heads and no bodies, every head is within a metre of eye height, so the picture
+is a band and this says where the band is.
 
 **The frame bobs, and the bob is not decoration.** A walking head rises and falls
 about four and a half centimetres, once per step, and sways about four from side
@@ -78,6 +91,21 @@ than the adults they are with without anything in the piece saying so.
 stopped rather than a rate of stopping, so turning it up makes the stops longer
 as well as more frequent. That is what somebody looking at things does; a rate
 produces short frequent halts, which read as hesitation.
+
+## Somebody with me
+
+**with me** puts one to three people alongside. They are drawn from the crowd
+like anybody else — their height, their age, their gait — so you can find
+yourself walking with a child, and the only thing that distinguishes them is
+that they keep station instead of being met and passed. They are still there in
+a minute's time, which is the whole of what a companion is.
+
+They sit at about 40° and a metre away, which is the edge of vision: there
+without being looked at, and centred by a glance. And they get glanced at a
+great deal, because a conversation is most of where the head goes when there is
+one to be had — the looks are longer and the gaps between them shorter. It
+changes the walk more than the number suggests. Alone you are reading the crowd;
+with somebody you are only half watching it.
 
 ## Who else is here
 

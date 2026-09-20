@@ -16,6 +16,69 @@ The consequence worth holding on to: **`course` is derived and `yaw` is not the
 same thing.** The body goes where the negotiation puts it. The head points where
 it is looking. Anything that sets `course` directly has removed the negotiation.
 
+## The camera is bolted to the body, so the body's facing is a camera problem
+
+Two reports, one line of code, and the same mistake twice: **the facing tracked
+the velocity.**
+
+- **"Strange jitter… in video games that usually indicates collisions."** It was
+  not the collisions. `course` chased `atan2(vy, vx)` through a hard rate limit,
+  and the instantaneous velocity is being shoved about by up to 7 m/s² of
+  avoidance — more than two degrees of direction per 1/120 s step. A rate
+  limiter has no inertia; it clips a jittering target instead of filtering it.
+  Measured: the turn direction reversed on 14% of steps, a 15 Hz shake, with the
+  rate pinned at its 115°/s cap in all three scenes.
+- **"I'm trying to work out if there's strafing."** There was none, by
+  construction: if the facing _is_ the direction of travel then the two can
+  never differ. Median offset 1.4°, 90th percentile under 8° — in a seven-metre
+  corridor, where stepping sideways is the only way past anybody.
+
+Both fixed by the same change of subject. The body faces **the line it means to
+walk**, sprung rather than rate limited, and the crowd displaces it off that
+line — which is what a sidestep is. `STRAFE_LIMIT` is where it stops being one
+and the shoulders come round.
+
+| scene      | facing rms    | reversals    | strafe p90   |
+| ---------- | ------------- | ------------ | ------------ |
+| market     | 26.8 → 3.3°/s | 8.6% → 0.9%  | 4.9° → 10.8° |
+| concourse  | 23.9 → 2.9°/s | 12.8% → 1.2% | 3.8° → 7.8°  |
+| the street | 35.8 → 9.8°/s | 14.1% → 1.4% | 7.6° → 11.0° |
+
+**The general lesson is the one the neck already taught**: a rate limit and a
+spring are not two settings of the same thing. A limit clips and leaves the
+clipped shape; a spring filters. Anywhere this piece points a camera at
+something that moves, it wants the spring.
+
+## The gaze has two axes and a subject
+
+- **`pitch` is a bias, not a lock**, and holding the vertical fixed while the
+  horizontal wandered was half a head movement. The glance target is computed as
+  an _absolute_ angle and then taken back to an offset from the bias, so a face
+  at eye level cancels the bias instead of adding to it. Glancing at a person
+  aims at **their head**, which means looking at a child is looking down by
+  exactly as much as a child is shorter — free, and the kind of thing this piece
+  should get for free.
+
+- **A hold shorter than the neck's settling time is a movement the head never
+  completes.** The ground glance reused the 0.15–0.5 s walking hold against a
+  neck that settles in about half a second, so a look aimed 22° down measured 8°
+  and the vertical wander barely existed. Each kind of look now has its own
+  hold. If a glance ever looks like it is not arriving, check the hold against
+  `NECK_OMEGA` before touching the amplitude.
+
+- **A companion is placed to be at the edge of vision, not squarely beside.**
+  Two people walking and talking are abreast, and abreast is 90° off your line of
+  travel — past what a neck holds and outside the frame at any sane field of
+  view, so a companion there is somebody you can only see by turning your whole
+  body. About 40° and a metre away is inside the frame's corner: there without
+  being looked at, and centred by a glance.
+
+- **Companions are taken from the crowd rather than made specially**, so they
+  are ordinary people with ordinary heights and gaits — which is what stops them
+  reading as a different kind of object from everyone around them, and is why
+  you can end up walking with a child. What makes them companions is that they
+  keep station in the observer's frame and are never re-entered at the boundary.
+
 ## Traps, each of which happened
 
 - **`height` is a stature, not an eye height, and it cost the whole framing.**

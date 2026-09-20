@@ -190,7 +190,7 @@ export function createCrowd(canvas: HTMLCanvasElement, initial: Settings): Crowd
       me.y + Math.sin(right) * sway,
       z,
       me.yaw,
-      (settings.pitch * Math.PI) / 180,
+      me.pitch,
       settings.fov,
       settings.fade,
       width,
