@@ -62,6 +62,10 @@ export type Settings = {
   fov: number
   /** Distance at which a head has faded to a third, in metres. */
   fade: number
+  /** How far the crowd extends, in metres. Beyond it there is nobody. */
+  reach: number
+  /** How wide the corridor is, in metres. Wide enough, and it is open ground. */
+  width: number
   /** Hue of the crowd, in degrees. */
   hue: number
   /** How much of that hue the heads actually carry. 0 is white. */
@@ -275,6 +279,30 @@ export const CONTROLS: Control[] = [
   },
   {
     kind: "slider",
+    key: "reach",
+    label: "reach",
+    group: "look",
+    min: 8,
+    max: 250,
+    step: 0.5,
+    scale: "log",
+    format: (v) => `${v < 100 ? v.toFixed(1) : Math.round(v)}m`,
+    hint: "How far the crowd extends. Beyond it there is nobody — so this is the control that decides whether you are in the middle of something enormous or in a knot of twenty people with empty ground behind them. It is separate from **distance** on purpose: one is how far people exist, the other is how far you can see, and a scene where the first is shorter than the second shows you the crowd actually ending. Pull it in and the same density arrives as a press of people right around you.",
+  },
+  {
+    kind: "slider",
+    key: "width",
+    label: "corridor",
+    group: "look",
+    min: 3,
+    max: 250,
+    step: 0.5,
+    scale: "log",
+    format: (v) => (v >= 250 ? "open ground" : `${v < 100 ? v.toFixed(1) : Math.round(v)}m`),
+    hint: "How wide the ground is across the line I am walking. At the top it is open and this does nothing. Narrow it and the crowd has walls: everyone is in a street or a passage, nobody can go round, and the only way past somebody is to overtake them or wait. Worth pairing with **stream** at the top and **oncoming** near a half, which is the condition files form under — in a corridor they have nowhere else to form.",
+  },
+  {
+    kind: "slider",
     key: "hue",
     label: "hue",
     group: "paint",
@@ -345,7 +373,9 @@ export const DEFAULT_SETTINGS: Settings = {
   looking: 0.8,
   bob: 1,
   fov: 62,
-  fade: 16,
+  fade: 40,
+  reach: 65,
+  width: 250,
   hue: 210,
   tint: 0,
   playback: 1,
@@ -382,10 +412,12 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       pausing: 0.3,
       height: 1.72,
       pitch: -4,
-      looking: 0.95,
+      looking: 1.0,
       bob: 1,
       fov: 62,
-      fade: 15,
+      fade: 30,
+      reach: 90,
+      width: 250,
       hue: 208,
       tint: 0,
       playback: 1,
@@ -409,10 +441,12 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       pausing: 0,
       height: 1.76,
       pitch: -3,
-      looking: 0.55,
+      looking: 0.7,
       bob: 1.1,
       fov: 55,
-      fade: 13,
+      fade: 34,
+      reach: 120,
+      width: 34,
       hue: 196,
       tint: 0,
       playback: 1,
@@ -436,10 +470,12 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       pausing: 1,
       height: 1.66,
       pitch: -5,
-      looking: 1.3,
+      looking: 1.2,
       bob: 1,
       fov: 70,
-      fade: 14,
+      fade: 28,
+      reach: 80,
+      width: 250,
       hue: 222,
       tint: 0,
       playback: 1,
@@ -447,10 +483,39 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     },
   },
   {
+    label: "the street",
+    hint: "A narrow street with two streams in it. Nobody can go round, so the only way past anybody is to overtake them or to wait — which is the whole negotiation, with the room to avoid it taken away.",
+    settings: {
+      density: 45,
+      stream: 1,
+      against: 0.5,
+      grouping: 0.4,
+      children: 0.14,
+      standing: 0.04,
+      paceLow: 0.9,
+      paceHigh: 1.8,
+      spacing: 1,
+      walk: 1.45,
+      pausing: 0.05,
+      height: 1.74,
+      pitch: -3,
+      looking: 0.6,
+      bob: 1,
+      fov: 58,
+      fade: 40,
+      reach: 160,
+      width: 7,
+      hue: 200,
+      tint: 0,
+      playback: 1,
+      seed: 13907,
+    },
+  },
+  {
     label: "the far end",
     hint: "Far enough to see the crowd stop being people and become texture. It has no edge — it simply runs out.",
     settings: {
-      density: 16,
+      density: 12,
       stream: 0.35,
       against: 0.45,
       grouping: 0.5,
@@ -466,7 +531,9 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       looking: 0.7,
       bob: 0.9,
       fov: 88,
-      fade: 25,
+      fade: 75,
+      reach: 250,
+      width: 250,
       hue: 202,
       tint: 0,
       playback: 1,
@@ -490,10 +557,12 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       pausing: 0.35,
       height: 1.14,
       pitch: 2,
-      looking: 1.25,
+      looking: 1.2,
       bob: 1.15,
       fov: 68,
-      fade: 14,
+      fade: 26,
+      reach: 70,
+      width: 250,
       hue: 216,
       tint: 0,
       playback: 1,
@@ -531,6 +600,8 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   bob: { min: 0, max: 3, step: 0.05 },
   fov: { min: 35, max: 120, step: 1 },
   fade: { min: 2, max: 80, step: 0.1, scale: "log" },
+  reach: { min: 8, max: 250, step: 0.5, scale: "log" },
+  width: { min: 3, max: 250, step: 0.5, scale: "log" },
   hue: { min: 0, max: 359, step: 1 },
   tint: { min: 0, max: 1, step: 0.02 },
   playback: { min: 0, max: 2, step: 0.05 },
@@ -670,6 +741,10 @@ export const REGISTRY: readonly Slot[] = [
   { key: "tint", kind: "num", grid: 0.02, origin: 0, bits: 6 },
   { key: "playback", kind: "num", grid: 0.05, origin: 0, bits: 6 },
   { key: "seed", kind: "num", grid: 1, origin: 0, bits: 17 },
+  // Appended, which is the only edit this list takes. `reach` splits the world's
+  // size away from `fade`, which used to derive it — see `throng.ts`.
+  { key: "reach", kind: "num", grid: 0.5, origin: 8, bits: 9 },
+  { key: "width", kind: "num", grid: 0.5, origin: 3, bits: 9 },
 ]
 
 /**
@@ -737,10 +812,15 @@ export function needsRecast(before: Settings, after: Settings): boolean {
 /**
  * Settings that change how big the world is or how many people it holds.
  *
+ * **`fade` is not one of them any more.** It used to size the world, which
+ * coupled how far you can see to how many people exist and made a long view and
+ * a dense crowd mutually exclusive. `reach` is that dimension now, and `fade` is
+ * purely what the air does.
+ *
  * Not a rebuild: the people already out there keep walking, and only how many of
  * them there ought to be, and how far out they are kept, moves.
  */
-const WORLD_KEYS = ["density", "fade", "fov"] as const satisfies readonly (keyof Settings)[]
+const WORLD_KEYS = ["density", "reach", "width", "fov"] as const satisfies readonly (keyof Settings)[]
 
 export function needsRestock(before: Settings, after: Settings): boolean {
   return WORLD_KEYS.some((key) => before[key] !== after[key])

@@ -43,12 +43,18 @@ everybody else does, against the same neighbours, and the course is whatever
 comes out of it rather than a heading anyone set. The small persistent sidesteps
 are the point.
 
-**The head and the body are not the same thing.** The body goes where the
-negotiation puts it. The head points where it is looking, and the neck has a
-speed limit — about 120° a second — which is most of what makes a glance read as
-a glance rather than as a cut. What gets looked at is mostly whoever is about to
-pass closest, which is also the person the body is already negotiating with, and
-that is why the looking never feels random.
+**The head and the body are not the same thing, and a glance comes back.**
+Straight ahead is where the head lives; everything else is a departure from it.
+Walking, that departure is a few degrees and it returns — you are watching where
+you are going. Stopped, it is a real look around, and it still returns. Turning
+to _face_ something is a different movement altogether: the body does it, which
+is why a stop is where the walk can change direction.
+
+The neck is a spring rather than a motor. It accelerates out of rest and
+decelerates into wherever it is going, and never arrives at a dead stop — which
+is the whole difference between a head turning and a turret slewing. What gets
+looked at is mostly whoever is about to pass closest, who is also the person the
+body is already negotiating with, and that is why the looking never feels random.
 
 **I do not look at the horizon.** The resting line of sight when you are walking
 is several degrees below level, because the ground you are about to walk on and
@@ -109,20 +115,30 @@ perspective here is one multiplication with nothing tuned. It is also why the
 crowd has no edge: it thins until there is nothing, which is what makes it read
 as carrying on past where it can be seen.
 
-**How far the world extends is derived from that rather than chosen.** It runs
-out where a head has faded below half a per cent, which is the point at which a
-screen cannot show it — so turning **distance** up genuinely brings more crowd
-into being rather than revealing an empty plain.
+**How far the crowd extends is its own control.** **reach** decides where people
+stop being, and it is deliberately separate from **distance**, which decides how
+far you can see. Tying the two together — which is how this piece worked at
+first — makes a long view and a dense crowd mutually exclusive, and pays for
+depth by washing out everything close to you. Pull reach in and the same density
+arrives as a press of people right around you with empty ground behind them; push
+it out and the crowd runs past where it can be seen.
 
-There is a ceiling on it, and it is honest about itself. Four and a half thousand
-people is as many as the frame can carry, so a scene that asks for a long
-distance over a dense crowd cannot have all the depth it asked for and the crowd
-ends somewhere you can see it end. That is readable rather than hidden:
-`experiment.stats().edge` is how bright a head at the boundary still is, and
-anything over about three per cent is a scene whose **distance** is long for its
-**density**. Fading the last stretch out to disguise it was the obvious fix and
-the wrong one — it would make a scene that cannot afford its depth look exactly
-like one that can.
+There is a ceiling on how many people can exist at once, so a very deep, very
+dense crowd is not affordable and the world quietly stops short of what reach
+asked for. `experiment.stats().budgeted` says when that has happened, and
+`edge` says how bright a head at the boundary still is.
+
+## There can be walls
+
+**corridor** takes the room away. At the top it is open ground and does nothing;
+narrow it and everyone is in a street or a passage, nobody can step around
+anybody, and the only way past a person is to overtake them or to wait. Pair it
+with **stream** at the top and **oncoming** near a half and the two files have
+nowhere else to form.
+
+It is worth doing once at about seven metres. A crowd with somewhere to go is a
+crowd that mostly ignores you; a crowd with nowhere to go has to deal with you,
+and that is a different walk.
 
 ## What the sliders are for
 
@@ -154,10 +170,11 @@ a tighter one walks straight through.
 All twenty of them are worth a drag, but those are the four that change what you
 are looking at rather than how it looks.
 
-There are five scenes and all of them were found with the sliders. **Market** is
+There are six scenes and all of them were found with the sliders. **Market** is
 the piece as it was asked for. **Concourse** is one axis with half of it coming at
 me — this is where the files form, and it is worth standing in for a minute.
-**Standing still** stops the walk and lets the square come past. **The far end**
+**Standing still** stops the walk and lets the square come past. **The street** is
+seven metres wide with two streams in it and no way round anybody. **The far end**
 is a thinner crowd seen much further, which is where it stops being people and
 becomes texture. **Waist high** is the same square from a child's eyes, where
 every adult is a ceiling and the other children are the only faces.

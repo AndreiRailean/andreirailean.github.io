@@ -74,14 +74,13 @@ describe("the world travels with the observer", () => {
       // single frame. Everybody walking at me is the worst case, so that is the
       // case.
       //
-      // **This does not test `entryAngle`, and it was written believing it did.**
-      // Breaking that function to a uniform angle leaves this passing, because
-      // the uniform version is self-correcting: anybody put back on the wrong
-      // side of the disc is already leaving it and is simply re-entered again.
-      // What this covers is the rest of the mechanism — the re-entry radius, the
-      // velocity being kept, the boundary test — any of which drains the crowd
-      // for real. `entryAngle` is guarded by the re-entry rate below, which is
-      // the only statistic that can see it.
+      // **This does now test `entryAngle`, and for a while it did not.** In a
+      // smaller world the uniform version was self-correcting fast enough to be
+      // indistinguishable here, and this check passed against a broken one. With
+      // the world sized by `reach` it no longer keeps up: breaking `entryAngle`
+      // takes the outer spread from 1.007 to 1.362. The statement that "a
+      // density check cannot see this" was true when it was written and is not
+      // true now, which is worth knowing before trusting either.
       //
       // **Averaged over the run, not read at the end**, and that was the second
       // mistake. A single instantaneous front/back count swings between 0.96 and
@@ -122,11 +121,19 @@ describe("the world travels with the observer", () => {
       // is what a drain breaks, in whichever ring it drains.
       expect(Math.max(...outer) / Math.min(...outer)).toBeLessThan(1.1)
 
-      // **The innermost ring is deliberately short and must stay short.** It is
-      // the hole the observer makes by being somebody everybody avoids,
-      // measured at about 21% below the rest. A crowd that stays uniform right
-      // up to the camera is one that is walking through it.
-      expect(rings[0]! / mean).toBeLessThan(0.92)
+      // **The innermost ring is short, and the reason is not the one first
+      // written here.** That said it was the hole the observer makes by being
+      // avoided. Measured against a control with the observer's own avoidance
+      // switched off, that accounts for a quarter of it: 0.925 against 0.897.
+      //
+      // The rest is the level of detail. Anticipation reaches four seconds
+      // ahead, which is a long-range repulsion, and it only acts inside
+      // `DETAIL` — so the crowd there relaxes outward and the surplus sits just
+      // beyond, 214 people against 286 over equal areas either side of the
+      // radius. It is not visible: at 24 m a head is a couple of pixels and the
+      // band is already a continuum, and a render was checked for the seam
+      // before this was left alone.
+      expect(rings[0]! / mean).toBeLessThan(0.98)
       expect(rings[0]! / mean).toBeGreaterThan(0.5)
 
       // And no front-to-back bias beyond the mild pile-up of walking into people.
@@ -145,9 +152,10 @@ describe("the world travels with the observer", () => {
       // it without re-entering a third of the population into the side they are
       // already walking out of.
       //
-      // Measured on this exact scene: 99 re-entries a second with the flux-weighted
-      // angle, 232 with a uniform one. The threshold sits between them with room
-      // either side, so this fails the moment somebody simplifies that `asin` away.
+      // Measured on this exact scene: 142 re-entries a second with the
+      // flux-weighted angle, 335 with a uniform one. The threshold sits between
+      // them with room either side, so this fails the moment somebody
+      // simplifies that `asin` away.
       //
       // **Measured over a window, not over the whole run**, for two reasons. The
       // opening stretch is not steady state — nobody has reached the boundary yet
@@ -162,22 +170,76 @@ describe("the world travels with the observer", () => {
       const perSecond = (crowd.stats().reentries - from) / 30
 
       expect(perSecond).toBeGreaterThan(20)
-      expect(perSecond, "re-entry angle is no longer weighted by inward flux").toBeLessThan(150)
+      expect(perSecond, "re-entry angle is no longer weighted by inward flux").toBeLessThan(220)
     },
     PATIENT,
   )
 
-  it("keeps its edge too faint to be an edge, in every scene that ships", () => {
-    // The budget caps the world, so a scene asking for a long `distance` over a
-    // dense crowd cannot have the depth it asked for and the crowd ends where
-    // somebody can see it end. That is reported rather than disguised — see
-    // `edge` — and the presets are the place it must not happen.
+  it("sizes the world from reach, whatever the fade is", () => {
+    // **`fade` does not size the world any more**, and this is the check that
+    // says so: ask for a reach the budget affords and you get exactly it, at any
+    // fade. The two used to be one number, which made a long view and a dense
+    // crowd mutually exclusive and paid for depth by washing out the near
+    // layers — "distance appears to introduce linear fog".
+    for (const fade of [12, 72]) {
+      const { crowd } = walk({ density: 6, reach: 80, width: 250, fade }, 0)
+      expect(crowd.stats().world).toBeCloseTo(80, 6)
+      expect(crowd.stats().budgeted).toBe(false)
+    }
+
+    // And when it cannot be afforded, that is reported rather than silent.
+    const dense = walk({ density: 100, reach: 250, width: 250 }, 0)
+    expect(dense.crowd.stats().budgeted).toBe(true)
+    expect(dense.crowd.stats().world).toBeLessThan(250)
+  })
+
+  it("affords a corridor the reach a disc never could", () => {
+    // **The affordable radius is bisected over the real ground**, not solved for
+    // a disc. A 7 m street holds a fiftieth of the people a disc of the same
+    // radius does, so the disc formula clamped a street to a fraction of the
+    // reach it could easily afford — the difference between a street that
+    // recedes and one that stops just ahead.
+    const open = walk({ density: 45, reach: 220, width: 250 }, 0)
+    // Three seconds in, not at t = 0. `regroup` puts a group's members beside
+    // their leader without asking where the walls are, so a leader walking near
+    // one starts with a companion just outside it — 40 people out of 1,386. The
+    // wall force is what deals with that, and asserting after it has had a
+    // moment tests the placement *and* the wall rather than only the placement.
+    const street = walk({ density: 45, reach: 220, width: 7 }, 3)
+    expect(open.crowd.stats().budgeted).toBe(true)
+    expect(street.crowd.stats().world).toBeCloseTo(220, 6)
+    expect(street.crowd.stats().budgeted).toBe(false)
+
+    // And it is a corridor rather than a disc with a stripe painted on it.
+    // Sampling used to *clamp* into the corridor, which stacks everybody outside
+    // it onto the two boundary lines: 96% of the crowd on two lines with nothing
+    // between them, and 33 heads on screen out of 632.
+    const inside = street.crowd.people.filter((p) => Math.abs(p.y) <= 3.5)
+    expect(inside.length).toBe(street.crowd.people.length)
+    // Uniform across the corridor, not piled on its walls: the middle half of
+    // the width should hold about half of them.
+    const middle = street.crowd.people.filter((p) => Math.abs(p.y) <= 1.75).length
+    expect(middle / street.crowd.people.length).toBeGreaterThan(0.4)
+    expect(middle / street.crowd.people.length).toBeLessThan(0.6)
+  })
+
+  it("keeps every shipped scene short of a wall of heads", () => {
+    // `edge` is how bright a head at the boundary still is. **This threshold is
+    // a backstop and not a claim.** Whether a crowd looks like it ends is a
+    // visual question that no number here can see; what was actually done is
+    // that 0.076 and 0.108 were looked at, and neither shows a wall, because the
+    // far heads are sub-pixel and have merged into the band long before the
+    // boundary reaches them.
+    //
+    // It used to be 0.03, from when the edge sat wherever the budget put it and
+    // had to be hidden. `reach` is a control now, and a crowd that visibly ends
+    // is a thing somebody may want to build.
     for (const preset of PRESETS) {
       const settings = normalizeSettings(preset.settings)
       const me = createStroll(settings, settings.seed)
       const crowd = createThrong(settings, me)
       const { edge, world } = crowd.stats()
-      expect(edge, `${preset.label} ends at ${(edge * 100).toFixed(1)}% brightness`).toBeLessThan(0.03)
+      expect(edge, `${preset.label} ends at ${(edge * 100).toFixed(1)}% brightness`).toBeLessThan(0.25)
       // Derived rather than restated, so a change to how the world is sized has
       // to survive the arithmetic as well as the threshold.
       expect(edge).toBeCloseTo(Math.exp(-world / settings.fade), 9)

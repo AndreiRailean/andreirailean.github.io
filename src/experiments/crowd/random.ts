@@ -24,6 +24,53 @@ export function discPoint(rng: Rng, radius: number): { x: number; y: number } {
 }
 
 /**
+ * A point drawn uniformly over a disc **intersected with a corridor**.
+ *
+ * The disc is centred on the observer; the corridor is a strip of half-width
+ * `half` about `y = 0` that is **fixed in the world**, so `observerY` is how far
+ * the observer currently sits off its centre line. The returned point is an
+ * offset from the observer, in both axes.
+ *
+ * **Both halves of that were wrong once and each cost something.**
+ *
+ * Clamping instead of sampling stacks every point outside the corridor onto its
+ * two boundary lines — a 4 m corridor in a 113 m world rejects 96% of disc
+ * samples, so 96% of the crowd went onto two lines with nothing between them and
+ * 33 heads reached the screen out of 632.
+ *
+ * Forgetting `observerY` is worse, because it looks fine for a minute. The
+ * corridor is fixed and the disc is not, so a placement that ignores where the
+ * observer has drifted to keeps putting people around `y = 0` while the observer
+ * walks away from it. The crowd is slowly left behind: at three minutes the
+ * observer was 115 m off the centre line with **nobody at all inside 56 m** and
+ * re-entries running away at 339 a second, having started at 90.
+ *
+ * Sampled properly: for a given `y` the disc runs to `±sqrt(R² − y²)`, so `y` is
+ * drawn over the part of the strip the disc actually reaches, with density
+ * proportional to that chord, and `x` uniformly along it.
+ */
+export function corridorPoint(rng: Rng, radius: number, observerY: number, half: number): { x: number; y: number } {
+  // Open ground: no corridor at all, and the disc is simply the disc.
+  if (!Number.isFinite(half)) return discPoint(rng, radius)
+
+  const low = Math.max(-radius, -half - observerY)
+  const high = Math.min(radius, half - observerY)
+  // The observer is outside their own corridor, which the wall force should
+  // prevent. Put people on the nearest legal line rather than dividing by a
+  // negative span.
+  if (high <= low) return { x: 0, y: (low + high) / 2 }
+  if (low <= -radius && high >= radius) return discPoint(rng, radius)
+
+  for (let attempt = 0; attempt < 24; attempt++) {
+    const y = low + rng() * (high - low)
+    const chord = Math.sqrt(Math.max(0, radius * radius - y * y))
+    if (rng() * radius > chord) continue
+    return { x: (rng() * 2 - 1) * chord, y }
+  }
+  return { x: 0, y: low + rng() * (high - low) }
+}
+
+/**
  * The angle at which somebody travelling in direction `(ux, uy)` should enter
  * the world.
  *
@@ -38,20 +85,16 @@ export function discPoint(rng: Rng, radius: number): { x: number; y: number } {
  * and again, until they land somewhere they can stay — and what survives is the
  * same distribution this function computes in closed form.
  *
- * What it costs is the re-entering. Measured over 150 seconds of a crowd all
- * walking at the observer, 4,500 people:
+ * What it costs is the re-entering: 142 a second against 335 for a uniform
+ * angle, over a steady-state window. That is the first thing it buys, and it is
+ * what `tests/unit/crowd/throng.test.ts` guards it on.
  *
- * | re-entry angle | re-entries per second |
- * | -------------- | --------------------- |
- * | flux-weighted  | 99                    |
- * | uniform        | 232                   |
- *
- * **2.35x the work for an identical picture**, and each re-entry draws a fresh
- * errand and rewrites a velocity. So this is an efficiency, said to be one, and
- * `tests/unit/crowd/throng.test.ts` guards it on the re-entry rate — which is
- * the only statistic that can see it. A density check cannot, and one was
- * written that could not, and it passed against a broken version of this
- * function for an hour before anybody tried breaking it on purpose.
+ * **It buys uniformity too, but only once the world is big.** In a small world
+ * the uniform version keeps up and the crowd comes out evenly spread either way,
+ * which is how a density check written to guard this function came to pass
+ * against a broken one. With the world sized by `reach` it no longer keeps up —
+ * the outer rings spread 1.362 against 1.007. Both statements were true when
+ * they were made; only the second is true now.
  *
  * The closed form: the rate at which a uniform crowd crosses a boundary element
  * is its density times the inward component of velocity, so the entry angle is

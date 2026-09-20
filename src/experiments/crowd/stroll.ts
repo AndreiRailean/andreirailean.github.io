@@ -158,6 +158,8 @@ const WANDER = 0.09
 /** What the observer needs of the crowd: whoever is close enough to matter. */
 export type Neighbourhood = {
   neighbours: (x: number, y: number, radius: number) => Person[]
+  /** Half the corridor the crowd is confined to, so the observer is held by the same walls. */
+  halfWidth: number
 }
 
 export type Stroll = ReturnType<typeof createStroll>
@@ -293,6 +295,21 @@ export function createStroll(settings: Settings, seed: number) {
     // property of the walk rather than of the frame rate.
     aim += (rng() - 0.5) * WANDER * Math.sqrt(dt) * 2
 
+    // **In a street you walk along the street.** Free wandering is right on open
+    // ground and wrong the moment there are walls: in a seven-metre corridor it
+    // has the observer walking diagonally into the side, so the channel recedes
+    // off the edge of the frame instead of down the middle of it. The pull back
+    // to the corridor's line grows as the corridor narrows and is nothing at all
+    // on open ground, which is the same shape as the wall force and for the same
+    // reason — it is the room running out, not a rail.
+    const confine = Math.max(0, Math.min(1, 1 - crowd.halfWidth / 25))
+    if (confine > 0) {
+      let off = aim
+      while (off > Math.PI / 2) off -= Math.PI
+      while (off < -Math.PI / 2) off += Math.PI
+      aim -= off * confine * 1.4 * dt
+    }
+
     const wanted = walking ? current.walk : 0
     const desiredX = Math.cos(aim) * wanted
     const desiredY = Math.sin(aim) * wanted
@@ -307,6 +324,12 @@ export function createStroll(settings: Settings, seed: number) {
     for (const person of crowd.neighbours(x, y, 3.6)) {
       avoid(me, person, strength, force)
     }
+
+    // The same corridor wall the crowd gets. **Without it the observer walks out
+    // through the side of the street** and stands in the empty ground beside it
+    // watching the crowd file past, which is a different piece.
+    const outside = Math.abs(y) - crowd.halfWidth + 0.8
+    if (outside > 0) force.y -= Math.sign(y) * outside * 7
 
     const magnitude = Math.sqrt(force.x * force.x + force.y * force.y)
     if (magnitude > MAX_ACCEL) {

@@ -83,23 +83,38 @@ it is looking. Anything that sets `course` directly has removed the negotiation.
 
 Both are ceilings on the frame, both are stated, and both are reported.
 
-- **`MAX_PEOPLE` caps the world.** The world is a disc that travels with the
-  observer, sized by whichever is smaller: where the fog has taken a head below
-  half a per cent (`horizonFor(fade)`), or the radius `MAX_PEOPLE` of them fill
-  at the current `density`. In every scene that ships, the budget is the binding
-  one.
+- **`reach` sizes the world and `MAX_PEOPLE` caps what it can afford.** The
+  world is a disc of radius `reach`, intersected with a corridor of width
+  `width`, travelling with the observer. `stats().budgeted` says whether the
+  budget cut it short of what `reach` asked for.
 
-  So **`fade` and `density` are not independent**, and the coupling is the one
-  thing about this piece a reader will not guess. A scene asking for a long
-  distance over a dense crowd cannot have the depth it asked for, and the crowd
-  ends somewhere a visitor can see it end. `stats().edge` is how bright a head at
-  the boundary still is; anything over about 0.03 is visible. The rule of thumb
-  is `fade ≤ 1.5 · sqrt(MAX_PEOPLE / density)`, and every preset sits at 0.022 to
-  0.026.
+  **`fade` used to size it, and that was the mistake.** Tying how far you can
+  see to how many people exist made a long view and a dense crowd mutually
+  exclusive, and the piece paid for depth by washing out the near layers —
+  reported as "distance appears to introduce linear fog; more clarity needs to
+  be preserved in the closer layers". They are two questions. `reach` is how far
+  people are, `fade` is how far you can see, and neither constrains the other.
 
-  **Do not disguise it by fading the last stretch out.** That was the obvious fix
-  and it is the wrong one: it would make a scene that cannot afford its depth
-  look exactly like one that can.
+  **The affordable radius is bisected, not solved.** It used to be
+  `sqrt(MAX / (perM2 · π))`, the answer for a full disc, which is wildly wrong
+  once there is a corridor: a 7 m street holds a fiftieth of the people a disc of
+  the same radius does, so the disc formula clamped a street to a tenth of the
+  reach it could easily afford.
+
+- **A crowd that visibly ends is now a choice, and this reverses a decision
+  recorded here yesterday.** That entry said the far edge must be hidden by the
+  fog and that fading the last stretch out to disguise it was the wrong fix. The
+  second half still holds. The first no longer does, because the reason has
+  changed: the edge used to sit at an arbitrary distance nobody chose, imposed by
+  the budget, and now it sits where `reach` puts it. A crowd that runs out at
+  80 m with empty ground behind it is a thing Andrei asked to be able to build.
+
+  `stats().edge` is still how bright a head at the boundary is, and it is still
+  the number to read — but the threshold is no longer 0.03. Checked by eye at
+  0.076 and 0.108, neither shows a wall, because the far heads are sub-pixel and
+  merge into the band before the boundary reaches them. **The test's ceiling is a
+  backstop, not a claim that everything under it looks right**; that question is
+  visual and the check cannot see it.
 
 - **`DETAIL` caps the avoidance**, and is derived rather than guessed: nobody
   outside it avoids anybody. The force is cut off at `CUTOFF` seconds in
@@ -115,22 +130,65 @@ Both are ceilings on the frame, both are stated, and both are reported.
   near ones are not, and a check on the total would pass a piece that was
   visibly broken. Measured at 0.02–0.19 pairs a step within eight metres.
 
+  **Its other consequence is a density step at the radius, and it is left
+  alone.** Anticipation reaches four seconds ahead, which is a long-range
+  repulsion, so the crowd inside `DETAIL` relaxes outward and the surplus sits
+  just beyond it: 214 people against 286 over equal areas either side. A circle
+  at a fixed distance projects to a fixed height in the band, so in principle
+  that is a horizontal seam that never moves however far you walk.
+
+  It was chased. Fading the force out over the last nine metres — the standard
+  treatment for a truncated potential — made it very slightly **worse**, 0.714
+  against 0.747, so the step is not the truncation and that change was reverted
+  rather than kept for its story. Then a render was looked at: there is no seam,
+  because at 24 m a head is two pixels and the band is already a continuum. It is
+  recorded here rather than fixed because the fix would be to run the
+  anticipation everywhere, which is the whole frame budget, for something nobody
+  can see.
+
+## The corridor
+
+`width` confines the crowd laterally, and three things had to change together
+for a street to read as a street rather than as a square with a stripe in it:
+
+- **Sample within the corridor; do not clamp into it.** Clamping does not discard
+  the points outside, it stacks every one of them on the two boundary lines. A
+  4 m corridor in a 113 m world rejects 96% of disc samples, so 96% of the crowd
+  was placed on two lines with nothing between them — 33 heads reached the screen
+  out of 632. `corridorPoint` in `random.ts` samples the chord properly.
+- **The walls are soft and one-sided**, so the ground reads as running out rather
+  than as a barrier being hit — and the observer gets the same wall, or they walk
+  out through the side of the street and watch it go past from the verge.
+- **The observer walks _along_ the street.** Free wandering is right on open
+  ground and wrong the moment there are walls: in a seven-metre corridor it had
+  the observer walking diagonally into the side, so the channel receded off the
+  edge of the frame instead of down the middle of it. The pull toward the
+  corridor's line grows as it narrows and is nothing at all on open ground.
+
+**Laterally the corridor is fixed in the world, not carried with the observer.**
+One that followed them sideways would keep them permanently down its middle,
+which is not what walking along a street is like.
+
 ## The frame, in numbers
 
-Measured headless with no GPU, at 1600x1000, which the section notes is
-pessimistic in absolute terms and trustworthy in ratios.
+Measured headless with no GPU at 1600x1000, which the section notes is
+pessimistic in absolute terms and trustworthy in ratios. The cost is the
+**anticipation**, not the draw and not the population: `avoiding` barely moves
+as `reach` grows, because the far crowd only advects.
 
-| density | fps |
-| ------- | --- |
-| 40      | 60  |
-| 75      | 60  |
-| 95      | 53  |
-| 120     | 17  |
+| scene                                         | people | avoiding | ms per second of walk | fps |
+| --------------------------------------------- | ------ | -------- | --------------------- | --- |
+| density 48, reach 40                          | 2,413  | 914      | 314                   | 60  |
+| density 48, reach 70                          | 7,389  | 822      | 387                   | 60  |
+| density 48, reach 110 (budget-capped at 96 m) | 14,000 | 879      | 556                   | 38  |
+| density 12, reach 200                         | 10,691 | 209      | 193                   | 60  |
+| density 35, reach 120, width 8                | 632    | 141      | 35                    | 60  |
 
-`density`'s track stops at **100** because of the cliff between those last two
-rows, not because 120 is an uninteresting crowd. The cost is the anticipation:
-every person inside `DETAIL` against every neighbour, every step, and the count
-of those goes as the density.
+`MAX_PEOPLE` is **9,000**, between the last two rows that still hold 60 fps and
+the one that does not. **A corridor is nearly free** — its ground area is a
+fiftieth of a disc's — which is why a street can have a reach a square cannot.
+
+`density`'s track stops at 100: 60 fps holds to 95 and falls to 17 by 120.
 
 Two things bought the headroom, and a third is in the code that did not:
 

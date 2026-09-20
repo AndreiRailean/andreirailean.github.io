@@ -51,11 +51,10 @@ import {
   statureAtAge,
   CHILD_AGES,
 } from "@/experiments/crowd/body"
-import { horizonFor } from "@/experiments/crowd/camera"
-import { discPoint, entryAngle, heading } from "@/experiments/crowd/random"
+import { corridorPoint, entryAngle, heading } from "@/experiments/crowd/random"
 import { avoid } from "@/experiments/crowd/steering"
 import { hashSeed, makeRng, type Rng } from "@/experiments/random"
-import type { Settings } from "@/experiments/crowd/settings"
+import { BOUNDS, type Settings } from "@/experiments/crowd/settings"
 
 /**
  * The most people that may exist at once.
@@ -65,13 +64,22 @@ import type { Settings } from "@/experiments/crowd/settings"
  * is what makes `stats().edge` a number worth reading — the budget is the reason
  * a long `fade` over a dense crowd cannot have the depth it asks for.
  */
-export const MAX_PEOPLE = 4500
+export const MAX_PEOPLE = 9000
 
 /** Metres. Inside this people avoid each other; outside it they walk. See the docblock. */
 export const DETAIL = 24
 
 /** Spatial hash cell, in metres. A shade over the 3.5 m at which a pair is worth testing. */
 const CELL = 4
+
+/**
+ * How far before the wall a corridor starts pushing back, in metres.
+ *
+ * A wall people bounce off is a wall; a wall they ease away from is a street.
+ * The force is one-sided and linear in how far inside this band somebody is, so
+ * it reads as room running out rather than as a barrier.
+ */
+const WALL_SOFTEN = 0.8
 
 /** Pairs are only tested inside this. Beyond it the anticipation force is under half a per cent. */
 const NEIGHBOUR = 3.6
@@ -132,8 +140,12 @@ export type ThrongStats = {
   people: number
   /** How many of them are close enough to be avoiding each other. */
   avoiding: number
-  /** Radius of the world, in metres. */
+  /** Radius of the world, in metres. What `reach` asked for, or what the budget allowed. */
   world: number
+  /** True when the budget cut the world short of the `reach` that was asked for. */
+  budgeted: boolean
+  /** Half the corridor, in metres. Larger than `world` means open ground. */
+  halfWidth: number
   /** How bright a head at that radius still is. Above about 0.02 the crowd has a visible edge. */
   edge: number
   /** How many are children. */
@@ -203,6 +215,8 @@ export function createThrong(settings: Settings, observer: Observer) {
   let groups: Group[] = []
   let current = settings
   let world = 1
+  let budgeted = false
+  let halfWidth = 1e6
   let clock = 0
   let avoiding = 0
   let closest = Infinity
@@ -246,19 +260,63 @@ export function createThrong(settings: Settings, observer: Observer) {
   const key = (cx: number, cy: number) => (cx + 4096) * 16384 + (cy + 4096)
 
   /**
-   * How big the world can be, from the budget.
+   * Ground available out to `radius`, in square metres.
    *
-   * `density` is per 100 m², so the area one person occupies is `100 / density`
-   * and the radius holding `MAX_PEOPLE` of them follows.
+   * The world is a disc **intersected with a corridor**, which is a circular
+   * segment problem rather than a rectangle one. Getting it wrong is not a
+   * crash; it is a crowd at the wrong density in a narrow street, which looks
+   * like a crowd.
    */
-  function budgetRadius(): number {
+  function groundArea(radius: number): number {
+    const h = halfWidth
+    if (h >= radius) return Math.PI * radius * radius
+    return 2 * (radius * radius * Math.asin(h / radius) + h * Math.sqrt(radius * radius - h * h))
+  }
+
+  /**
+   * The largest world the budget affords, in metres.
+   *
+   * **Bisected rather than solved, because the corridor has no closed form.**
+   * It used to be `sqrt(MAX / (perM2 · π))` — the answer for a full disc — which
+   * is wildly wrong once there is a corridor: a 7 m street holds a fiftieth of
+   * the people a disc of the same radius does, so the disc formula clamped a
+   * street to a tenth of the reach it could easily have afforded. Thirty
+   * bisections is exact to a millimetre and runs once per restock.
+   */
+  function affordableRadius(): number {
     const perSquareMetre = current.density / 100
-    return Math.sqrt(MAX_PEOPLE / (perSquareMetre * Math.PI))
+    const wanted = MAX_PEOPLE / Math.max(1e-6, perSquareMetre)
+    let low = 1
+    let high = 4000
+    if (groundArea(high) <= wanted) return high
+    for (let i = 0; i < 30; i++) {
+      const mid = (low + high) / 2
+      if (groundArea(mid) > wanted) high = mid
+      else low = mid
+    }
+    return low
   }
 
   function restock(): void {
-    world = Math.max(6, Math.min(horizonFor(current.fade), budgetRadius()))
-    const target = Math.min(MAX_PEOPLE, Math.round((current.density / 100) * Math.PI * world * world))
+    // **`reach` sizes the world now, and `fade` does not.** It used to be
+    // `horizonFor(fade)`, which tied how far you can see to how many people
+    // exist: a long view forced a short fade or an unaffordable crowd, and the
+    // near layers were washed out to pay for depth nobody asked for. They are
+    // two questions and they are separate controls.
+    // **The top of the track is a distinct state, not just a wide corridor.**
+    // A corridor is fixed in the world, so an observer who wanders sideways
+    // eventually meets its wall — which is right for a street and wrong for a
+    // square, where there should be no wall to meet. At the top stop there is no
+    // corridor at all, which every consumer gets for free from `Infinity`: no
+    // wall force, no pull toward the line, and a plain disc to place into. The
+    // control's own `format` already reads "open ground" there.
+    halfWidth = current.width >= BOUNDS.width.max ? Infinity : current.width / 2
+    const asked = Math.max(6, current.reach)
+    const affordable = affordableRadius()
+    budgeted = affordable < asked
+    world = Math.min(asked, affordable)
+
+    const target = Math.min(MAX_PEOPLE, Math.round((current.density / 100) * groundArea(world)))
 
     while (people.length > target) people.pop()
 
@@ -306,7 +364,11 @@ export function createThrong(settings: Settings, observer: Observer) {
       let y = 0
       let room = false
       for (let attempt = 0; attempt < 10 && !room; attempt++) {
-        const spot = discPoint(place, world)
+        // **Laterally the corridor is fixed in the world, not carried with the
+        // observer.** One that followed them sideways would keep them
+        // permanently down its middle, which is not what walking along a street
+        // is like — you drift toward one side and stay there for a while.
+        const spot = corridorPoint(place, world, observer.y, halfWidth)
         x = observer.x + spot.x
         y = observer.y + spot.y
         // A generous guess at the radius before the person exists. Bodies vary
@@ -392,8 +454,19 @@ export function createThrong(settings: Settings, observer: Observer) {
     // A shade inside the boundary, so the same person is not re-entered on the
     // very next step by a rounding error.
     const r = world * 0.985
-    person.x = observer.x + Math.cos(angle) * r
-    person.y = observer.y + Math.sin(angle) * r
+    // In a corridor most of the circle is outside the walls, so the flux angle
+    // is resampled until it lands somewhere a person could actually be. It
+    // converges fast because a corridor crowd is walking along the corridor, so
+    // the angle it wants is already near one of the two open ends.
+    let px = observer.x + Math.cos(angle) * r
+    let py = observer.y + Math.sin(angle) * r
+    for (let attempt = 0; Math.abs(py) > halfWidth && attempt < 12; attempt++) {
+      const retry = entryAngle(place, ux, uy)
+      px = observer.x + Math.cos(retry) * r
+      py = observer.y + Math.sin(retry) * r
+    }
+    person.x = px
+    person.y = Math.max(-halfWidth, Math.min(halfWidth, py))
 
     // A fresh errand, so a long walk does not turn into the same faces on the
     // same headings for ever. Everything about the body is kept.
@@ -592,6 +665,11 @@ export function createThrong(settings: Settings, observer: Observer) {
         avoid(person, observer, strength * 1.15, force)
       }
 
+      // The corridor, if there is one. One-sided and linear, so it reads as the
+      // ground running out rather than as a barrier being hit.
+      const outside = Math.abs(person.y) - halfWidth + WALL_SOFTEN
+      if (outside > 0) force.y -= Math.sign(person.y) * outside * 7
+
       const magnitudeSq = force.x * force.x + force.y * force.y
       if (magnitudeSq > accelSq) {
         const scale = MAX_ACCEL / Math.sqrt(magnitudeSq)
@@ -655,6 +733,11 @@ export function createThrong(settings: Settings, observer: Observer) {
     },
     get world() {
       return world
+    },
+
+    /** Half the corridor, so the observer is held inside the same walls the crowd is. */
+    get halfWidth() {
+      return halfWidth
     },
 
     step,
@@ -725,6 +808,8 @@ export function createThrong(settings: Settings, observer: Observer) {
         people: people.length,
         avoiding,
         world,
+        budgeted,
+        halfWidth,
         edge: Math.exp(-world / Math.max(0.5, current.fade)),
         children,
         grouped,
