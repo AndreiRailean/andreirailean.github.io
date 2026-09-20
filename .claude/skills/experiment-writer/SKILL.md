@@ -83,6 +83,15 @@ summarised: `CONTEXT.md` records that the section's aim, _organic change_, was
 source rather than raw material for a tidier sentence. Questions you could not
 answer go here too — not into a message to him.
 
+**The showcase consumes your piece.** A hand-curated wall at `/showcase/`
+(`src/showcase/wall.ts`) pins **frozen runners by content hash**. Three things
+follow: `pnpm run runners` builds but does **not** publish — tracked is
+published, untracked is build output; **amending** a piece obliges you to _ask_
+whether published scenes move, and the answer is usually no, because the freeze
+is the guarantee; and **what goes on the wall is Andrei's call**, not yours to
+add unasked. Do not edit anything inside `src/showcase/` — it is owned end to
+end; ask rather than reach. `docs/agents/experiment-writer.md` has the detail.
+
 **Two modes, and the gate differs.** _Starting_: nothing renders, so the gate is
 literal — on screen with a panel, and step 3 below is for this case. _Amending_:
 it already renders, so skip the route, the poster, `about.md` and the
@@ -105,9 +114,12 @@ head start, which section 0 says is the thing that matters. So stage it.
 **Before the first interactable build**, which is all you need to get there:
 
 1. `docs/agents/experiment-writer.md` — the role.
-2. **`src/experiments/AGENTS.md`**: the `## Presets` section, `## Adding a piece`
-   and the layout block at the top. Those cover `settings.ts`, the primary, what
-   registers a slug, and what must never land in `src/pages/`.
+2. **`src/experiments/AGENTS.md`**: the `## Presets` section, `## Adding a piece`,
+   the layout block at the top **and the six short records above it**. Those
+   cover `settings.ts`, the primary, what registers a slug, what must never land
+   in `src/pages/` — and, in the _building a runner is not publishing it_
+   record, the only mention in the section that **the showcase exists**. Two
+   sessions built pieces without knowing it did.
 
 **Then, as you reach each area**, and before changing anything already decided:
 
@@ -234,11 +246,20 @@ failed, one of them backwards.
 ## 5. Verify before you claim anything
 
 ```bash
-pnpm exec astro check                # run this after every edit — seconds, not minutes
+pnpm exec astro check 2>&1 | grep errors   # after every edit — seconds, not minutes
 pnpm run prettier && pnpm run lint   # what CI actually runs; `lint` alone is not
 pnpm exec vitest <name>              # milliseconds, while working
 pnpm run build                       # the full thing, including astro check
 ```
+
+**Pipe it through `grep errors`, and do not use `tail`.** Its summary prints
+errors, then warnings, then hints, then **two blank lines** — so the obvious
+cheap check, `| tail -3`, shows you warnings, hints and a blank line and
+scrolls the one number you need off the top. A session ran `astro check` after
+every edit for several rounds while it reported four errors, saw a clean-looking
+tail each time, and kept 1,187 green tests: both runners strip types and eslint
+does not typecheck, so nothing else could catch it. `grep errors` matches that
+line exactly once and nothing else.
 
 **`pnpm exec astro check` is the one to reach for constantly.** `pnpm test` types
 nothing — vitest strips types and Playwright compiles per file — so in CI the

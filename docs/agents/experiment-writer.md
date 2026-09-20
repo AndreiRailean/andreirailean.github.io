@@ -112,6 +112,15 @@ a stopping condition here and not a bullet in a list.
 this point. Only the order was wrong. Do not read this as an argument for writing
 less; read it as an argument for writing the renderable part first.
 
+**The counter-instinct to hold, in the session's own words: _the part that
+feels trivial is the part that is the gate._** It explained afterwards why it
+went bottom-up, and the reason is not carelessness — the brief was rich in
+physics, the physics felt like the risky part, and **the route felt trivial, so
+it got deferred as the thing that could be done any time.** That reasoning is
+correct about difficulty and exactly backwards about order. Whatever in the
+brief feels hardest is what most needs something on screen to test it against,
+and the boring page is what makes testing possible.
+
 ### This outranks a design-first process, deliberately
 
 A general-purpose process skill will tell you to explore, ask, propose options,
@@ -150,7 +159,11 @@ covers.
 1. This file.
 2. `src/experiments/AGENTS.md` — the `## Presets` section and `## Adding a
 piece`. Those two cover `settings.ts`, the primary, and what registers a slug.
-3. The layout block at the top of that file, so nothing lands in the wrong place.
+3. The layout block at the top of that file, so nothing lands in the wrong
+   place, **and the six records above it** — they are short, and one of them,
+   _building a runner is not publishing it_, is the only place in the section a
+   session learns the showcase exists at all. Deferring those six is how two
+   pieces got built by sessions that had never heard of the wall.
 
 **Then, as you touch each area** — and before changing anything the section
 already decided:
@@ -206,6 +219,14 @@ to read.
 **And a change that contradicts an invariant is worth saying so out loud**,
 in the commit and in `seed.md` — not quietly overriding it, which is the section
 rule for ADRs and applies the same way to a piece's own notes.
+
+**Amending also raises the showcase question, and starting does not.** A piece
+that has been around may have scenes published on the wall, pinned to a runner
+built from the code you are about to change. So ask, once, whether those
+scenes should move — the answer is usually no, and _asking_ is the obligation
+rather than acting. See _The showcase consumes your piece_ below. A new piece
+has nothing published, which is why this is an amend-path concern and why two
+sessions starting pieces never met it.
 
 ## Starting a piece: the order, and where it is forced
 
@@ -276,6 +297,48 @@ its content store at startup, so a new file 500s the about page and renders the
 index's empty state until you do. `pnpm run build` is unaffected, which is why
 `pnpm run preview` is the right tool anyway.
 
+## The showcase consumes your piece, and you will not find it by accident
+
+**There is a wall of published scenes at `/showcase/`**, hand-curated in
+`src/showcase/wall.ts`, where each entry pins a **frozen runner by content
+hash**. It is a separate bounded context with its own owner and its own
+`src/showcase/AGENTS.md`, and it is the section's first real load test.
+
+**Two sessions built pieces without knowing it existed**, and found out only
+when Andrei asked them to add presets to it. That is a routing failure rather
+than theirs: `CONTEXT-MAP.md` names two contexts and the showcase is in
+neither, so a session told to read the map and then its own context never meets
+it. The one mention inside `src/experiments/AGENTS.md` is the _building a
+runner is not publishing it_ record, which the staged reading above defers —
+so read that record when starting a piece, not later.
+
+**What is yours here is small and real.** The showcase's own doc says it in a
+heading: _publishing a runner is part of changing a piece_.
+
+- **Building is not publishing.** `pnpm run runners` writes your piece's
+  current bytes into `public/showcase/runners/` as an **untracked** file. The
+  directory is self-describing: tracked is published, untracked is build
+  output. Nothing obliges you to commit it.
+- **Changing a piece obliges you to _ask_ whether published scenes move**, and
+  the answer is usually no. A pinned scene keeps rendering the bytes it was
+  published against — that freeze is the guarantee, not a staleness bug. Re-pin
+  only when the new runner fixes something that is wrong **for the wall**; the
+  worked example is #169, a listener leak that only bites a host mounting and
+  unmounting repeatedly. A rendering change nobody asked for is the opposite
+  case: leave it, and the approved scene stays approved.
+- **Old runners are never deleted**, and an untracked one beside a tracked one
+  is just a newer build. Leave both.
+
+**What is not yours:** everything inside `src/showcase/`. It is owned end to
+end, and `src/showcase/AGENTS.md` asserts that boundary deliberately rather
+than by geography. **Deciding what goes on the wall is Andrei's** — the wall is
+hand-curated and a visitor sees every entry, so it is the third gate. You may
+tell him a piece has scenes worth publishing; you do not add them unasked, and
+you do not edit `wall.ts` on your own authority.
+
+**If you need something from the showcase side, ask rather than reach.** Its
+doc records that this is how #168 got fixed properly instead of worked around.
+
 ## `seed.md`: the record of what he actually said
 
 **Every piece keeps `src/experiments/<slug>/seed.md`**, holding his own words:
@@ -312,6 +375,14 @@ What goes in:
   the two are easy to confuse because both are prose about the piece. `seed.md`
   faces inward and records _him_; `about.md` faces outward and describes the
   work.
+
+**If you are adopting this convention mid-build, say so in the file.** A
+`seed.md` written at minute four hundred is transcribed, not kept, and the two
+are not the same artefact — `crowd` wrote one in a single sitting after the
+rule landed and marked it as such rather than letting it read as
+contemporaneous, which is the right handling. It also reported nearly losing
+the exact phrasing of two rounds of his feedback, and that his phrasing was
+load-bearing in both. That is the cost the rule exists to avoid, measured.
 
 **No check holds this yet, and that is worth stating rather than hiding.** The
 six pieces that already exist have no `seed.md`, so a check asserting every
@@ -387,6 +458,14 @@ cheaper than picking well.
   glance would have caught.
 - **Spend the time on correctness and range, not on polish.** Polish is what he
   would have redirected, and what his first sentence is most likely to discard.
+- **Know what measurement cannot reach, and do not mistake a green night for a
+  good one.** The `crowd` session built overnight against numbers and came out
+  with a piece that was structurally complete and visually unexamined: **every
+  one of his first four notes was about motion quality, and no check could have
+  raised any of them.** Measurements find defects; they do not find whether it
+  looks right, and the gap between those two is where all of his feedback
+  lives. So report an unattended night as "correct as far as I can test, and
+  unlooked-at" rather than as finished.
 - **Put every question you could not answer into `seed.md`**, not into a message
   to him. Better still, put it in the piece: a preset per candidate answer is
   answered by dragging, which is how he answers anyway.
@@ -419,6 +498,31 @@ condition, not a failure.
 something looks wrong, the useful response is to work out what in the physics or
 the arithmetic produces it, rather than to nudge a constant until it goes away.
 
+**This now has a count behind it. Across nine rounds of his feedback on
+`crowd`, every single one resolved to a mechanism and not one to a constant** —
+and four times what he described as a single symptom turned out to be two or
+three separate defects. The worked examples are worth reading as a set, because
+the pattern is that his words name the _symptom_ accurately and the _cause_ not
+at all:
+
+| What he said                     | What it was                            |
+| -------------------------------- | -------------------------------------- |
+| "robotic head turns"             | a rate limiter with no easing          |
+| "strange jitter like collisions" | not collisions                         |
+| "is there strafing"              | facing equals velocity by construction |
+| "do I ever turn"                 | an unreachable branch                  |
+
+So **take the symptom as reliable and the diagnosis as untested**, including
+when he offers one. "Like collisions" was a genuine observation attached to the
+wrong cause, and a session that went looking at collision code would have found
+nothing wrong and reported back that the piece was fine.
+
+**And one distinction that keeps producing this class**, recorded generally in
+`src/experiments/crowd/AGENTS.md`: **a rate limit and a spring are not two
+settings of the same thing.** A limit clips and leaves the clipped shape behind
+— which is what "robotic" was. A spring filters. Reaching for the wrong one of
+those is not a tuning error that a better constant fixes.
+
 **And when the question is a mechanism, build the comparison that isolates it.**
 This is the discipline the second gate turns on, and #117 is the worked case.
 Andrei looked and could not decide, because nothing reachable from the sliders
@@ -449,6 +553,21 @@ was invisible in a screenshot, and that both runners assert on numbers rather
 than pixels. This is that rule moved earlier: not a thing the test suite does to
 you at review, a thing you do to yourself at minute thirty. `stats()` and the
 console API exist for exactly this.
+
+**"A mechanism that never runs" is the class to check for, and two pieces have
+now hit it.** `bubbles` caught its own by measuring. `crowd` did not, and only
+Andrei looking found it: `if (Math.abs(yawOffset) > NECK_LIMIT)`, where
+`yawOffset` springs toward a target that is _already clamped to `NECK_LIMIT`_,
+critically damped and therefore never overshooting — an unreachable branch, so
+the turning it implemented simply never happened. **Both the piece's note and
+its own `AGENTS.md` described the behaviour as working.**
+
+The general shape is worth recognising on sight: **a conditional whose guard is
+bounded by the same constant that bounds its subject.** The repo already holds
+the testing version of this — a check nobody has seen fail is a claim — and
+this is the implementation version. A branch nobody has seen taken is also a
+claim, and asserting that each mechanism actually _fires_ is how you stop
+writing documentation for code that does nothing.
 
 ## Verifying, which never gates the URL
 
