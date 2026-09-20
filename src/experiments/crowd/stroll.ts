@@ -157,6 +157,31 @@ const SHARE_SPOT = 0.3
 const PIVOT = 1.1
 
 /**
+ * The chance that a look taken while standing becomes where you go next.
+ *
+ * **A stop had no consequence, and that is what made the walk a straight line.**
+ * Measured over five minutes of the market: thirty-two stops, and the median
+ * change of heading across one of them was 1.1° — the most any stop achieved was
+ * 2.9°. The whole route was a slow aimless drift of about ±30° that wandered
+ * back to where it started, plus sidesteps.
+ *
+ * The mechanism meant to provide turning could not fire. It read
+ * `if (Math.abs(yawOffset) > NECK_LIMIT)` — turn the body when the neck runs out
+ * — but `yawOffset` springs toward a target that is *already clamped* to
+ * `NECK_LIMIT`, and a critically damped spring does not overshoot. So the branch
+ * was unreachable, the piece's own note claimed the behaviour, and nothing
+ * anywhere said otherwise. **A mechanism nobody has seen fire is a claim, not a
+ * mechanism.**
+ *
+ * What replaces it is the reason people change direction in a market: you look
+ * at something, and then you go to it. So when a look ends while standing, it
+ * sometimes becomes the new line — the body pivots round to where the head
+ * already is, and the head comes back to centre as it arrives, which is one
+ * movement rather than two.
+ */
+const TURN_ON_LOOK = 0.38
+
+/**
  * Radians per second the body will turn at while walking.
  *
  * **Not a stylistic limit — a discontinuity guard, and it caught a real one.**
@@ -270,6 +295,13 @@ const SPOT_BEARING_MIN = 0.65
  * walk on it: a check, half a second, done. You look up because something caught
  * your eye, and then you track it.
  *
+ * **Far enough and slow enough to still be there in a second.** A glance ends
+ * when its subject goes further round than the neck reaches, which is the right
+ * rule and bites hardest here: something 9 m away crossing at 9 m/s sweeps past
+ * 66° in under a second, so the look was cut before the head arrived and the
+ * time spent gazing above level fell from 12% to 1.5%. Same fault as a hold
+ * shorter than the settling time, reached from a third direction.
+ *
  * **There is nothing up there to look at, and that is deliberate.** This piece
  * draws heads and nothing else — no sky, no buildings, no birds — but the crowd
  * is all that is *drawn*, not all that is there. A gaze that only ever went to
@@ -277,8 +309,8 @@ const SPOT_BEARING_MIN = 0.65
  */
 const HOLD_UP = [1.5, 3.4]
 const UP_HEIGHT = [5, 19]
-const UP_RANGE = [9, 30]
-const UP_SPEED = [2, 9]
+const UP_RANGE = [14, 40]
+const UP_SPEED = [1, 4]
 
 /** Seconds a start or a stop is ramped over. */
 const RAMP = 0.9
@@ -398,6 +430,25 @@ export function createStroll(settings: Settings, seed: number) {
    * to *their head*, so looking at a child is looking down, by exactly as much
    * as a child is shorter.
    */
+  /**
+   * What the current glance is aimed at, **in the world rather than in angles**.
+   *
+   * A glance used to be a pair of angles fixed when it was chosen, which makes
+   * every look a stare: the head snaps to a bearing and holds it while the world
+   * slides past underneath. What a person does is look *at something*, and the
+   * angles then follow from the fact that they are walking.
+   *
+   * Aiming at a point gets all of it from one mechanism — a stall sweeps round
+   * and down as you pass it, the ground ahead is the same thing at `z = 0`, a
+   * bird is a point with a velocity, a face is a point that walks — and the look
+   * ends itself when its subject goes further round than the neck reaches, which
+   * is the glance ending because the world moved.
+   */
+  type Look =
+    | { kind: "ahead" }
+    | { kind: "person"; person: Person; wide: number }
+    | { kind: "spot"; x: number; y: number; z: number; vx: number; vy: number; vz: number; wide: number }
+
   /** Where a look points now, as offsets from the course and from the resting pitch. */
   function aimAt(look: Look): { yaw: number; up: number; worth: boolean } {
     if (look.kind === "ahead") return { yaw: 0, up: 0, worth: true }
@@ -628,6 +679,11 @@ export function createStroll(settings: Settings, seed: number) {
       // It went round further than the neck reaches, or you are on top of it.
       if (!aim.worth) holdLeft = 0
       if (holdLeft <= 0) {
+        // **A stop is where the walk changes direction**, and what it changes to
+        // is whatever was just being looked at. See `TURN_ON_LOOK`: the body
+        // pivots round to where the head already is, and the head returns to
+        // centre as it arrives, so it reads as one movement.
+        if (stopped && rng() < TURN_ON_LOOK) aimTarget = course + yawOffset
         look = { kind: "ahead" }
         glanceTo = 0
         glanceUp = 0
@@ -661,14 +717,11 @@ export function createStroll(settings: Settings, seed: number) {
     pitchVel = Math.max(-NECK, Math.min(NECK, pitchVel + lift * dt))
     pitchOffset = Math.max(-PITCH_DOWN, Math.min(PITCH_UP, pitchOffset + pitchVel * dt))
 
-    // **The body turns for anything the neck should not hold.** A head parked at
-    // its limit is not something people do; they turn to face the thing. Only
-    // while stopped, because turning while walking is a change of route rather
-    // than a look, and that is what `aim` already does slowly.
+    // A head parked past its limit is not something people do. Unreachable in
+    // practice — the glance target is clamped to the same limit and the spring
+    // does not overshoot — but cheap, and the clamp is the honest place for it.
     if (Math.abs(yawOffset) > NECK_LIMIT) {
-      const over = yawOffset - Math.sign(yawOffset) * NECK_LIMIT
-      yawOffset -= over
-      if (stopped) aimTarget += over
+      yawOffset = Math.sign(yawOffset) * NECK_LIMIT
     }
 
     // **The body turns toward where it is going; it is never assigned there.**

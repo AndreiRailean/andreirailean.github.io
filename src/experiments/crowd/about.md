@@ -49,6 +49,13 @@ everybody else does, against the same neighbours, and the course is whatever
 comes out of it rather than a heading anyone set. The small persistent sidesteps
 are the point.
 
+**A stop is where the walk changes direction.** You look at something, and
+sometimes you then go to it — the body pivots round to where your head already
+is, and your head comes back to centre as it arrives, so it reads as one
+movement. Without that a stop achieves nothing: you pause, look around, and set
+off along exactly the line you were already on. Not in a street, though. There
+the walls win, and you carry on down it.
+
 **The head and the body are not the same thing, and a glance comes back.**
 Straight ahead is where the head lives; everything else is a departure from it.
 Walking, that departure is a few degrees and it returns — you are watching where
@@ -100,12 +107,16 @@ yourself walking with a child, and the only thing that distinguishes them is
 that they keep station instead of being met and passed. They are still there in
 a minute's time, which is the whole of what a companion is.
 
-They sit at about 40° and a metre away, which is the edge of vision: there
-without being looked at, and centred by a glance. And they get glanced at a
-great deal, because a conversation is most of where the head goes when there is
-one to be had — the looks are longer and the gaps between them shorter. It
-changes the walk more than the number suggests. Alone you are reading the crowd;
-with somebody you are only half watching it.
+They sit at about 40° and a metre away, or a pace ahead — in shot, which is the
+point of them. A first-person view has no reference in it: nothing of a known
+size at a known distance for the rest of the picture to be read against. A head
+beside you is that, and it makes the whole thing read a little like a view of
+somebody rather than a view from nowhere.
+
+And they get glanced at a great deal, because a conversation is most of where
+the head goes when there is one to be had — the looks are longer and the gaps
+between them shorter. It changes the walk more than the number suggests. Alone
+you are reading the crowd; with somebody you are only half watching it.
 
 ## Who else is here
 

@@ -70,19 +70,32 @@ export const MAX_PEOPLE = 9000
 export const DETAIL = 24
 
 /**
- * Where somebody walking with the observer keeps station, in metres.
+ * Where somebody walking with you goes, in the observer's own frame:
+ * `(right, ahead)` in metres.
  *
- * **Placed to be at the edge of vision rather than squarely beside.** Two people
- * walking and talking are abreast, and abreast is 90° off your line of travel —
- * past what a neck holds, and outside the frame at any sane field of view, so a
- * companion placed there is somebody you can only ever see by turning your whole
- * body. These numbers put them at about 40° and 0.94 m away, which is inside the
- * frame's corner at the fields of view this piece uses: **there, at the edge of
- * vision, without being looked at** — which is what having somebody with you is
- * — and squarely centred by a glance.
+ * **Placed to be seen, and that is the whole of what a companion is for.**
+ * Andrei: "just having some companions provides perspective. because i see what
+ * i 'see', having a companion makes it look somewhat like a third person view."
+ * A head at a known size, a known distance and a steady place is a reference the
+ * rest of the picture can be read against — a first-person view has nothing else
+ * playing that part.
+ *
+ * Abreast would be 90° off the line of travel, which is past what a neck reaches
+ * and outside the frame at any field of view this piece uses. These sit at about
+ * 41° and 15°, which is in shot.
+ *
+ * **There was a shuffle here and it has been deleted.** Six stations including
+ * two behind, traded every 7-22 seconds, so people drifted ahead and fell back
+ * and overtook. It worked and it earned nothing: "we don't need to overdo the
+ * constellation modeling. catching up with the group and all stopping together
+ * are possible, but i don't think they add any value." A companion behind you
+ * provides no reference, because you cannot see them. Do not rebuild it.
  */
-const COMPANION_SIDE = 0.6
-const COMPANION_AHEAD = 0.72
+const COMPANION_SLOTS: readonly (readonly [number, number])[] = [
+  [0.62, 0.7],
+  [-0.62, 0.7],
+  [0.45, 1.95],
+]
 
 /** How firmly a companion holds their place, per second squared. Stiffer than a crowd group's. */
 const COMPANION_SPRING = 3.4
@@ -347,11 +360,9 @@ export function createThrong(settings: Settings, observer: Observer) {
     const wanted = Math.min(Math.round(current.companions), people.length)
     for (let i = 0; i < wanted; i++) {
       const mate = people[i]!
-      const side = i % 2 === 0 ? 1 : -1
-      const rank = Math.floor(i / 2)
       mate.companion = true
-      mate.besideRight = side * (COMPANION_SIDE + rank * 0.62)
-      mate.besideAhead = COMPANION_AHEAD - rank * 0.25
+      mate.besideRight = COMPANION_SLOTS[i % COMPANION_SLOTS.length]![0]
+      mate.besideAhead = COMPANION_SLOTS[i % COMPANION_SLOTS.length]![1]
       mate.standing = false
       mate.group = -1
       // Beside the observer from the first frame, rather than converging on them

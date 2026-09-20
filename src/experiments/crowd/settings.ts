@@ -426,7 +426,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       pausing: 0.3,
       height: 1.72,
       pitch: -4,
-      companions: 2,
+      companions: 3,
       looking: 1.0,
       bob: 1,
       fov: 62,

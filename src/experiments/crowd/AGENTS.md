@@ -49,6 +49,33 @@ spring are not two settings of the same thing. A limit clips and leaves the
 clipped shape; a spring filters. Anywhere this piece points a camera at
 something that moves, it wants the spring.
 
+## A mechanism nobody has seen fire is a claim, not a mechanism
+
+The section says this about checks. It is just as true of the code, and this
+piece has now done it: the body was supposed to turn when the neck ran out of
+range, written as `if (Math.abs(yawOffset) > NECK_LIMIT)`. But `yawOffset`
+springs toward a glance target that is **already clamped to `NECK_LIMIT`**, and
+the spring is critically damped, so it never overshoots and the branch was
+unreachable.
+
+The result was a walk in a straight line. Measured over five minutes of the
+market: thirty-two stops, and the median change of heading across one of them
+was **1.1°**, the largest 2.9°. Everything else was a slow aimless drift of about
+±30° that wandered back to where it started. Both the note and this file claimed
+the behaviour, and nothing anywhere contradicted them — it took Andrei asking
+"am i always moving in the same direction or do i ever turn" to find it.
+
+**What is worth copying is not the fix but the shape of the bug**: a conditional
+whose guard is bounded by the same constant that bounds its subject. Anywhere
+this piece clamps a value and then tests it against that clamp, the test is
+dead. Grep for `NECK_LIMIT`, `STRAFE_LIMIT`, `PITCH_UP` and `MAX_ACCEL` before
+adding another.
+
+A stop changes direction now, and the trigger is the one a market actually uses:
+you look at something and then go to it. The corridor is the control — in a
+seven-metre street the pull toward its line beats the glance and the heading
+stays inside a few degrees, which is what walls are.
+
 ## The gaze has two axes and a subject
 
 - **`pitch` is a bias, not a lock**, and holding the vertical fixed while the
@@ -72,6 +99,26 @@ something that moves, it wants the spring.
   view, so a companion there is somebody you can only see by turning your whole
   body. About 40° and a metre away is inside the frame's corner: there without
   being looked at, and centred by a glance.
+
+- **A companion is for perspective, and that bounds how much to build.** "Just
+  having some companions provides perspective. because i see what i 'see',
+  having a companion makes it look somewhat like a third person view." A head at
+  a known size, a known distance and a steady place is a reference the rest of
+  the picture can be read against, and a first-person view has nothing else
+  playing that part.
+
+  **A shuffle was built and deleted**: six stations including two behind, traded
+  every 7-22 seconds, so people drifted ahead, fell back and overtook. It worked.
+  It earned nothing — "we don't need to overdo the constellation modeling… i
+  don't think they add any value" — and a companion behind you is no reference at
+  all, because you cannot see them. Three fixed stations, all in shot.
+
+  **Fixed does not mean static, which is the thing that made it safe to delete.**
+  Measured against their own stations, companions sit 0.18 m off at the median
+  and swing to 0.87 m: the crowd jostles them, the formation is a spring rather
+  than a clamp, and they bob with their own gait. At a metre away half a metre is
+  ±27° of movement in frame. The shuffle was adding motion to something that was
+  already moving.
 
 - **Companions are taken from the crowd rather than made specially**, so they
   are ordinary people with ordinary heights and gaits — which is what stops them
