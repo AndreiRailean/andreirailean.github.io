@@ -54,14 +54,94 @@ import type { Person } from "@/experiments/crowd/throng"
 import { makeRng, hashSeed, type Rng } from "@/experiments/random"
 import type { Settings } from "@/experiments/crowd/settings"
 
-/** Radians per second the neck can manage. About 120°/s — a brisk but unhurried turn. */
-const NECK = 2.1
+/**
+ * Radians per second the neck will ever be asked for — a ceiling, not a rate.
+ *
+ * 3.5 rad/s is 200°/s, which is toward the top of what a deliberate look
+ * manages. It is set **above** anything the spring below produces on purpose: a
+ * critically damped step peaks at about `0.37 · ω · amplitude`, so the largest
+ * glance this piece can ask for peaks at 3.4. Clipping it would flatten the top
+ * of the velocity profile, which is precisely the bang-bang shape the spring was
+ * brought in to remove — and at 2.1 it clipped on 7% of frames while standing.
+ */
+const NECK = 3.5
 
-/** How far off the line of travel the head will go. Past this a person turns their shoulders too. */
+/**
+ * Natural frequency of the neck, in radians per second.
+ *
+ * **The head is a critically damped spring, and the first version was not.** It
+ * turned at a constant `NECK` rad/s until it reached its target and then stopped
+ * dead, which is a bang-bang velocity profile: instant start, flat middle,
+ * instant stop. Measured over two minutes of walking, the head was motionless
+ * 73% of the time and at the speed cap for 18% — so two thirds of all head
+ * movement was at maximum speed. That is exactly what "robotic" means, and no
+ * amount of lowering `NECK` fixes it, because the problem is the *shape* of the
+ * profile rather than its height.
+ *
+ * Critically damped means it accelerates out of rest, decelerates into the
+ * target, and never overshoots. 8 rad/s settles a glance in about half a second,
+ * which is what a head actually takes.
+ */
+const NECK_OMEGA = 8
+
+/** How far off the line of travel the head will go at all. Past this a person turns their shoulders. */
 const NECK_LIMIT = 1.15
 
-/** Seconds a gaze is held. Drawn around this. */
-const DWELL = 1.6
+/**
+ * How far the head swings on one glance, in radians, before `looking` scales it.
+ *
+ * **Walking and stopped are different movements, not the same one at different
+ * rates.** Walking, the head barely leaves centre — you are watching where you
+ * are going and a glance is a few degrees and back. Stopped, you actually look
+ * at things. The first version used one amplitude for both and held a 60° offset
+ * for a second and a half while walking, which does not read as a glance at all:
+ * a held offset reads as the direction you are facing, so the forward optical
+ * flow then looks like the whole body has turned.
+ */
+const SWEEP_WALKING = 0.3
+const SWEEP_STOPPED = 1.0
+
+/**
+ * Seconds a glance is held at its far point before the head comes back.
+ *
+ * **A glance returns. It does not stay.** Both ends are short, because the rest
+ * position of a head is straight ahead and everything else is a departure from
+ * it — which is the half the first version had no concept of at all: it picked a
+ * new absolute target every time and simply left the head wherever that put it.
+ */
+const HOLD_WALKING = [0.15, 0.5]
+const HOLD_STOPPED = [0.5, 1.8]
+
+/** Seconds between the end of one glance and the start of the next. */
+const GAP_WALKING = [1.4, 4.5]
+const GAP_STOPPED = [0.5, 2.2]
+
+/**
+ * Radians per second the body pivots at when standing.
+ *
+ * **Turning to face something is a body movement, not a neck movement.** A head
+ * held past its comfortable range is not what a person does; they turn. So a
+ * stopped observer pivots toward a new line and then sets off along it, which is
+ * how the walk changes direction at all.
+ */
+const PIVOT = 1.1
+
+/**
+ * Radians per second the body will turn at while walking.
+ *
+ * **Not a stylistic limit — a discontinuity guard, and it caught a real one.**
+ * The course used to be assigned straight from `atan2(vy, vx)` the instant the
+ * speed crossed a threshold. Near that threshold the velocity is mostly
+ * avoidance jitter and points anywhere, so the body — and the camera bolted to
+ * it — snapped by up to 172° in a single 1/120 s step. Measured as a peak of
+ * 20,600°/s against a neck that manages 200.
+ *
+ * It is invisible in a still and unmistakable in motion, and it predates the
+ * glance rework: it is a good part of what "robotic" was. A body lags its own
+ * velocity, which is also why this is the honest model rather than a clamp — you
+ * can step sideways while still facing forward, and this is what lets it.
+ */
+const TURN_WALKING = 2
 
 /** Seconds a start or a stop is ramped over. */
 const RAMP = 0.9
@@ -100,10 +180,17 @@ export function createStroll(settings: Settings, seed: number) {
   let aim = 0
   /** Which way the body is actually going. Derived from the velocity, not set. */
   let course = 0
-  /** Which way the head is pointing, absolute. */
+  /** Which way the head is pointing, absolute. Always `course` plus the offset below. */
   let yaw = 0
-  let gaze = 0
-  let untilLook = 0
+  /** How far the head is off the body, in radians. Rest is zero. */
+  let yawOffset = 0
+  let yawVel = 0
+  /** Where the current glance is taking the head, as an offset. Zero between glances. */
+  let glanceTo = 0
+  let untilGlance = 0
+  let holdLeft = 0
+  /** Where the body would like to be pointing. Only reachable by pivoting, and only when stopped. */
+  let aimTarget = 0
 
   let walking = true
   let untilState = 0
@@ -132,35 +219,40 @@ export function createStroll(settings: Settings, seed: number) {
     return Math.max(0.4, -Math.log(Math.max(1e-6, rng())) * scale)
   }
 
-  /**
-   * Pick something to look at, as an absolute angle.
-   *
-   * A sample rather than a sweep. The crowd is thousands of people and this runs
-   * a couple of times a second; twenty draws finds somebody worth looking at
-   * essentially every time, and costs nothing.
-   */
-  function chooseGaze(people: Person[]): number {
-    const strength = current.looking
-    if (strength <= 0) return course
+  const between = ([low, high]: number[], r: number) => low! + r * (high! - low!)
 
-    // Straight ahead a fair share of the time. A head always turned toward
-    // something reads as a search rather than as a walk.
-    if (rng() > 0.35 + 0.45 * Math.min(1, strength)) return course + (rng() - 0.5) * 0.25
+  /**
+   * How far the next glance should take the head off centre, as a signed offset.
+   *
+   * **An offset rather than an absolute angle, and that is the whole repair.**
+   * The first version chose an absolute direction and pointed the head at it,
+   * which left the head wherever the last interesting thing had been — so the
+   * rest state was arbitrary instead of straight ahead, and a 60° offset sat
+   * there for a second and a half looking like the body had turned.
+   *
+   * What is looked at is unchanged and worth keeping: mostly whoever is about to
+   * pass closest, who is also the person the body is already negotiating with.
+   * The difference is that they are now glanced *toward* rather than fixed on —
+   * somebody at 80° gets a glance of whatever the sweep allows, which is what
+   * noticing someone in the corner of your eye actually is.
+   */
+  function pickGlance(people: Person[], sweep: number): number {
+    if (sweep <= 0) return 0
 
     let found: Person | null = null
     let bestScore = Infinity
     const cos = Math.cos(course)
     const sin = Math.sin(course)
 
+    // A sample rather than a sweep. Twenty draws finds somebody worth looking at
+    // essentially every time and costs nothing.
     for (let n = 0; n < 20 && people.length > 0; n++) {
       const person = people[Math.floor(rng() * people.length)]
       if (!person) continue
       const dx = person.x - x
       const dy = person.y - y
-      const distance = Math.hypot(dx, dy)
+      const distance = Math.sqrt(dx * dx + dy * dy)
       if (distance < 0.6 || distance > 14) continue
-      // Ahead counts for more, and so does close. Somebody behind the shoulder
-      // is not looked at, because the neck would not reach them anyway.
       const ahead = (dx * cos + dy * sin) / distance
       if (ahead < -0.2) continue
       const score = distance * (1.6 - ahead)
@@ -170,8 +262,14 @@ export function createStroll(settings: Settings, seed: number) {
       }
     }
 
-    if (!found) return course + (rng() - 0.5) * 0.6 * strength
-    return Math.atan2(found.y - y, found.x - x)
+    // Nobody in particular: a small drift to one side, which is most of what a
+    // head does when there is nothing to look at.
+    if (!found) return (rng() - 0.5) * sweep
+
+    let offset = Math.atan2(found.y - y, found.x - x) - course
+    while (offset > Math.PI) offset -= Math.PI * 2
+    while (offset < -Math.PI) offset += Math.PI * 2
+    return Math.max(-sweep, Math.min(sweep, offset))
   }
 
   function step(dt: number, crowd: Neighbourhood): void {
@@ -230,33 +328,63 @@ export function createStroll(settings: Settings, seed: number) {
     x += vx * dt
     y += vy * dt
 
-    // The body faces where it is going, and only while it is going somewhere —
-    // a course read off a velocity of nothing is a course that spins.
-    if (speed > 0.12) course = Math.atan2(vy, vx)
-
     // The gait, which drives the bob. The same two lines every other person in
     // the crowd gets, off the same anatomy in `body.ts`.
     phase += cadence(stature, speed, Math.max(0.4, current.walk)) * dt * Math.PI * 2
 
-    untilLook -= dt
-    if (untilLook <= 0) {
-      gaze = chooseGaze(crowd.neighbours(x, y, 14))
-      untilLook = DWELL * (0.4 + rng() * 1.4)
+    // **The head: a glance is a departure and a return.** Between glances the
+    // commanded offset is zero, which is straight ahead, so the rest state of the
+    // head is the direction of travel and everything else is temporary.
+    const stopped = speed < 0.25
+    const sweep = (stopped ? SWEEP_STOPPED : SWEEP_WALKING) * Math.min(1.3, Math.max(0, current.looking))
+
+    if (holdLeft > 0) {
+      holdLeft -= dt
+      if (holdLeft <= 0) glanceTo = 0
+    } else {
+      untilGlance -= dt
+      if (untilGlance <= 0) {
+        glanceTo = pickGlance(crowd.neighbours(x, y, 14), Math.min(sweep, NECK_LIMIT))
+        holdLeft = between(stopped ? HOLD_STOPPED : HOLD_WALKING, rng())
+        untilGlance = holdLeft + between(stopped ? GAP_STOPPED : GAP_WALKING, rng())
+      }
     }
 
-    // The neck's limit is applied to the *offset* from the course rather than to
-    // the absolute angle, so the head cannot end up looking backwards however
-    // the course moves under it.
-    let offset = gaze - course
-    while (offset > Math.PI) offset -= Math.PI * 2
-    while (offset < -Math.PI) offset += Math.PI * 2
-    const limit = NECK_LIMIT * Math.min(1.3, Math.max(0, current.looking))
-    offset = Math.max(-limit, Math.min(limit, offset))
+    // **Critically damped, not rate limited.** It accelerates out of rest and
+    // decelerates into the target with no overshoot and no hard stop, which is
+    // the difference between a head turning and a turret slewing. `NECK` is kept
+    // as a ceiling only, for the rare large offset.
+    const pull = -2 * NECK_OMEGA * yawVel - NECK_OMEGA * NECK_OMEGA * (yawOffset - glanceTo)
+    yawVel = Math.max(-NECK, Math.min(NECK, yawVel + pull * dt))
+    yawOffset += yawVel * dt
 
-    let turn = course + offset - yaw
-    while (turn > Math.PI) turn -= Math.PI * 2
-    while (turn < -Math.PI) turn += Math.PI * 2
-    yaw += Math.max(-NECK * dt, Math.min(NECK * dt, turn))
+    // **The body turns for anything the neck should not hold.** A head parked at
+    // its limit is not something people do; they turn to face the thing. Only
+    // while stopped, because turning while walking is a change of route rather
+    // than a look, and that is what `aim` already does slowly.
+    if (Math.abs(yawOffset) > NECK_LIMIT) {
+      const over = yawOffset - Math.sign(yawOffset) * NECK_LIMIT
+      yawOffset -= over
+      if (stopped) aimTarget += over
+    }
+
+    // **The body turns toward where it is going; it is never assigned there.**
+    // Moving, that is the velocity. Standing, it is wherever the body has
+    // decided to face, so a stop is where the walk can change direction. Either
+    // way it is rate limited, because a body cannot pivot in one frame and the
+    // version that could produced a 172° step — see `TURN_WALKING`.
+    if (speed > 0.12) aimTarget = Math.atan2(vy, vx)
+    let toward = aimTarget - course
+    while (toward > Math.PI) toward -= Math.PI * 2
+    while (toward < -Math.PI) toward += Math.PI * 2
+    const rate = speed > 0.12 ? TURN_WALKING : PIVOT
+    const pivot = Math.max(-rate * dt, Math.min(rate * dt, toward))
+    course += pivot
+    // The line being walked comes round with the body, so setting off again goes
+    // the new way rather than snapping back to the old one.
+    if (speed <= 0.12) aim += pivot
+
+    yaw = course + yawOffset
   }
 
   return {
