@@ -62,6 +62,11 @@ over anything that settles a question. A widening helps whichever way he steers;
 a commitment is a coin-flip that costs a night when it loses. **Reaching the
 gate is not a reason to idle**; it is where widening starts.
 
+**Nothing is pushed and no PR is opened until he asks.** A piece stays local
+however green the suite is; what he opens is the running URL, and a push adds
+nothing to it. Commit locally and freely. **Experiments only** — steward work
+and infrastructure still go to a PR normally. Step 6 has the reasoning.
+
 **Not blocking is not the same as not stopping.** You are expected to stop —
 just not at the first hurdle. There is almost always a body of work that does
 not need him: the gate, then the widening. Do that, and **when it runs out, stop
@@ -140,19 +145,40 @@ that did not fit in the title lives there, and on #117 it is most of the issue.
 **Everything up to the gate, in this order** — nothing here is optional and
 nothing below it starts until he has driven the result:
 
+0. `src/experiments/<slug>/seed.md` — his instruction verbatim, before any code.
 1. `src/experiments/<slug>/settings.ts` — `TRACKS` written out, `BOUNDS` narrowed
    from it, a preset stating every setting and inheriting from nothing. Position
    one is the primary; three other surfaces read it.
-2. The smallest thing that draws. One mark is enough.
+2. Something that draws. **How much goes in one file is not the rule** — the
+   rule is that **no second module is written before a route renders the
+   first**. A whole simulation in one file and then a route is fine; two
+   modules and no page is the failure `crowd` demonstrated. Do not write a
+   throwaway stub that draws a circle in order to obey a word count.
 3. `src/pages/experiments/<slug>/index.astro` — markup, a `<style>` block and
    `import { boot } from "@/experiments/<slug>/page"`. No logic in the `.astro`.
-4. The kit's panel, from `CONTROLS`. **Now go to step 4 and stop.**
+4. The kit's panel, from `CONTROLS`.
+5. **Numbers before the first screenshot** — see below. Then go to step 4 and
+   hand over the URL.
+
+**Measure before you look, every time.** This is not a fallback for when he is
+away; it is how you find out whether the piece does what you think, and it goes
+before the first screenshot rather than after. Dump `stats()` and check that
+**each mechanism actually fired** — not that the page rendered.
+
+`bubbles` caught two faults this way that no still would have shown: the frame
+was 3m wide so a 6mm bubble came out 1.3px with 0.5% of the screen lit, and
+`biggest` plateaued at 14mm against a `popSize` of 50mm, meaning **one of the
+piece's three mechanisms never ran at all** and the picture gave no sign of it.
+A screenshot of that scene looks like a reasonable piece. `src/experiments/AGENTS.md`
+already says almost every bug in this section was invisible in a screenshot;
+this is that rule applied at minute thirty rather than at review.
 
 **Then, after he has interacted with it:** the about page reading its theme off
 `PRESETS[0]`, `about.md` without its `poster:` line, the four registration points
-(`SLUGS`, `PIECES`, `EXPECTED`, `NOTES`), and **capture the poster _before_
-adding `poster:` to `about.md`** — the collection resolves that path through
-`image()` and a missing file 500s the index.
+(`SLUGS`, `PIECES`, `EXPECTED`, `NOTES`), **the piece's own `AGENTS.md`** holding
+the traps this build cost you, and **capture the poster _before_ adding
+`poster:` to `about.md`** — the collection resolves that path through `image()`
+and a missing file 500s the index.
 
 **Changing a piece:** read its own `AGENTS.md` first, and expect the trap you are
 about to hit to be described in it.
@@ -160,10 +186,18 @@ about to hit to be described in it.
 **Either way, read the theme off `PRESETS[0]` rather than typing a hue.** Every
 instance of that fault in the section was a literal that was correct on the day.
 
-## 4. Show him, which is how the work finishes
+## 4. Hand over the URL, immediately and on its own
 
 **He approves what he sees in a browser, not what you describe**, so this is part
-of finishing rather than something to ask for.
+of the work rather than something to ask permission for.
+
+**Send the address the moment the piece is interactable — do not wait for the
+suite, and do not bundle it with a test result.** A session said "I'll push and
+give you the URL once the suite reports" and both halves of that were wrong:
+the URL sat behind a three-minute run for no reason, and the push was not
+wanted. The URL is the deliverable and goes out now; verification is a separate
+claim reported separately when it exists. If the suite later goes red, say so —
+a piece under exploration is expected to be rough.
 
 ```bash
 pnpm run preview      # builds and serves in ~8s; hand him the tailscale or LAN URL
@@ -218,21 +252,35 @@ Both runners assert on numbers, not pixels — almost every bug in this section 
 invisible in a screenshot. Test output buffers: wait for the run to exit rather
 than polling its log.
 
-## 6. Land nothing visual; keep working anyway
+## 6. Stay local: no push, no PR, until he asks
 
-Open a pull request; fetch and merge `origin/main` first. **Never push to
-`main`** — admin bypass makes a successful push meaningless. Land nothing visual
-on your own authority: that is the third gate and it is his.
+**A piece is not pushed to GitHub and gets no pull request until Andrei says
+so.** Not when the suite is green, not when you think it is finished. He is
+exploring, and a PR asks a question he is not ready to answer — "we're not
+ready for PRs yet" is his own phrasing.
 
-**Opening the PR is not automatically the end of your night.** It is his to
-merge, not yours to wait on, so if there is still widening to do — more presets,
-more range, a question turned into two scenes he can compare — do it on the same
-branch and push again.
+This is scoped to **experiments only**. Steward work, a check, a build script
+or a doc fix still goes to a PR the normal way; it is a piece under exploration
+that stays local.
 
-**But when the work that does not need him runs out, stop.** Hand over the URL,
-put the open questions in `seed.md`, leave the PR, run `/wrap-up`. A finished
-night ends deliberately; it does not trail off into widening nobody wanted, and
-it does not sit idle waiting for a reply.
+**Commit locally, often, and do not push.** Local commits cost nothing and
+protect everything: `docs/agents/steward.md` already prefers "commit early
+rather than push early", and a worktree's commits are visible to every other
+worktree through the shared object store, so nothing is at risk by staying off
+the remote. Uncommitted work, by contrast, is invisible to everything and dies
+with the session.
+
+**The delivery is the running URL, not a branch.** That is what he opens, and
+it is already live on this machine. A push adds nothing he wanted.
+
+**When the work that does not need him runs out, stop.** Hand over the URL,
+put the open questions in `seed.md`, commit, run `/wrap-up`, and say the branch
+is local and unpushed. A finished night ends deliberately; it does not trail
+off into widening nobody wanted, and it does not sit idle waiting for a reply.
+
+**Never push to `main`, ever** — admin bypass makes a successful push
+meaningless. And land nothing visual on your own authority even once he does
+ask for a PR: that is the third gate and it stays his.
 
 If what you found is shared, mechanical and invisible to a visitor, it is not
 yours to fix. File it labelled `steward` and say so.
