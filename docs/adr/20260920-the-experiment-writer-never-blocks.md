@@ -51,6 +51,18 @@ permitted, and it is why "I have reached the gate" is not a stopping point.
 settle it, written where he will find it when he chooses. Better still, turned
 into two presets, because comparing is how he answers anyway.
 
+**Not blocking is not the same as not stopping, and the role is expected to
+stop.** What it must not do is stop at the _first hurdle_ — there is almost
+always a body of work that needs nobody, and the rule exists to get that work
+done. When it runs out, the session ends deliberately: the piece running and
+its URL handed over, open questions in `seed.md`, a pull request open,
+`/wrap-up` run. The judgement is "is this still useful", not "am I allowed to
+continue", and reaching the end of the independent work is a success condition.
+
+This distinction was drawn after the first version said only "never block",
+which reads as "never stop" and invites the opposite failure: grinding past the
+point where anything added is wanted.
+
 **Every piece keeps `src/experiments/<slug>/seed.md`**, written **before any
 code**: his seed instruction verbatim, then each round of corrective feedback,
 dated and appended. Verbatim rather than summarised — a paraphrase looks tidier
@@ -82,5 +94,15 @@ they are not when starting because there is nothing yet to read.
   checkable when every piece has one. Until then it is a remembered rule, which
   this repo treats as a defect — mitigated only by being the first step rather
   than the last, since the steps a dying session skips are at the end.
-- The six lost seeds are not recoverable and no attempt should be made to
-  reconstruct them from the code. An invented brief is worse than an absent one.
+- **The six missing seeds turn out to be recoverable, which this record first
+  claimed they were not.** Session transcripts persist on this machine under
+  `/root/.claude/projects/<worktree-slug>/*.jsonl`, 91 of them, and a probe
+  pulled back psyxels, flotsam, embers and dangler verbatim from the first human
+  message of their sessions. The claim was written from the true premise that a
+  transcript is unreadable _by another session at runtime_ and the false
+  inference that it is therefore gone. Corrected here rather than quietly, since
+  the wrong version would have stopped anyone trying. #204 tracks the recovery.
+- **Reconstructing a seed from the code is still forbidden.** That half stands:
+  an invented brief is worse than an absent one. Recovery means transcribing
+  what he actually typed, and a piece whose transcript cannot be found keeps no
+  `seed.md` rather than a plausible one.

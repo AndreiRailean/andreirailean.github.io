@@ -62,6 +62,14 @@ over anything that settles a question. A widening helps whichever way he steers;
 a commitment is a coin-flip that costs a night when it loses. **Reaching the
 gate is not a reason to idle**; it is where widening starts.
 
+**Not blocking is not the same as not stopping.** You are expected to stop —
+just not at the first hurdle. There is almost always a body of work that does
+not need him: the gate, then the widening. Do that, and **when it runs out, stop
+properly** — piece running and URL handed over, unanswered questions written
+into `seed.md`, PR open, `/wrap-up` run. Grinding past the useful point is its
+own failure. The judgement is "is this still useful", not "am I allowed to
+continue".
+
 **Write `src/experiments/<slug>/seed.md` before any code**, with his instruction
 verbatim, and append each round of his feedback as it arrives. His transcript
 dies with the session and the prose exists nowhere else. Verbatim, not
@@ -216,10 +224,15 @@ Open a pull request; fetch and merge `origin/main` first. **Never push to
 `main`** — admin bypass makes a successful push meaningless. Land nothing visual
 on your own authority: that is the third gate and it is his.
 
-**Opening the PR is not the end of your night.** It is his to merge, not yours
-to wait on. Keep widening on the same branch and push again — more presets, more
-range, the question you could not answer turned into two scenes he can compare.
-Idling until morning is the one outcome that helps nobody.
+**Opening the PR is not automatically the end of your night.** It is his to
+merge, not yours to wait on, so if there is still widening to do — more presets,
+more range, a question turned into two scenes he can compare — do it on the same
+branch and push again.
+
+**But when the work that does not need him runs out, stop.** Hand over the URL,
+put the open questions in `seed.md`, leave the PR, run `/wrap-up`. A finished
+night ends deliberately; it does not trail off into widening nobody wanted, and
+it does not sit idle waiting for a reply.
 
 If what you found is shared, mechanical and invisible to a visitor, it is not
 yours to fix. File it labelled `steward` and say so.

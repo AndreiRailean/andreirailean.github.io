@@ -281,13 +281,20 @@ What goes in:
   work.
 
 **No check holds this yet, and that is worth stating rather than hiding.** The
-six pieces that already exist have no `seed.md` and their seeds are gone — they
-lived only in transcripts — so a check asserting every piece has one would fail
-six times on history nobody can recover, and a check that skips them is a list
-that goes stale. It becomes checkable the day every piece has one. Until then
-this is a rule that depends on being remembered, which `AGENTS.md` names as a
-defect; the mitigation is that it is the _first_ step rather than a tidy-up at
-the end, because the steps a session never reaches are the ones at the end.
+six pieces that already exist have no `seed.md`, so a check asserting every
+piece has one fails six times today, and one that skips them is a list that goes
+stale. Until then this is a rule that depends on being remembered, which
+`AGENTS.md` names as a defect; the mitigation is that it is the _first_ step
+rather than a tidy-up at the end, because the steps a session never reaches are
+the ones at the end.
+
+**The six are being backfilled, and then the check becomes trivial.** Their
+seeds are not lost: session transcripts persist under
+`/root/.claude/projects/<worktree-slug>/*.jsonl` and the first human message of
+an experiment's session is usually the seed verbatim. #204 tracks it. Once every
+piece has one, "every piece has a `seed.md`" is a four-line test with nothing
+stale in it — which is the right end state, since this rule is otherwise held
+only by being remembered.
 
 ## How Andrei works
 
@@ -351,8 +358,29 @@ cheaper than picking well.
 - **Put every question you could not answer into `seed.md`**, not into a message
   to him. Better still, put it in the piece: a preset per candidate answer is
   answered by dragging, which is how he answers anyway.
-- **Stopping early is a failure mode too.** "I have reached the gate" is not a
-  reason to idle until morning — it is the point at which widening begins.
+
+### Not blocking is not the same as not stopping
+
+**You are expected to stop. What you must not do is stop at the first hurdle.**
+The two get conflated and the conflation is expensive in both directions — a
+session that blocks on question one wastes the night, and a session told never
+to stop grinds past the point where anything it adds is useful.
+
+**The test is whether there is still work that does not need him.** There
+almost always is a body of it: the gate, then widening — another preset, a
+wider range, a constant turned into a setting, a mechanism isolated so the
+comparison exists when he arrives. Do that work. **When it runs out, stop
+properly** rather than inventing more.
+
+Stopping properly means: the piece running and its URL handed over, the
+questions you could not answer written into `seed.md`, a pull request open, and
+`/wrap-up` run. That is a finished night, and it is a better outcome than an
+extra hour of widening nobody asked for.
+
+**The judgement to make is "is this still useful", not "am I allowed to
+continue".** If the honest answer is that the next thing genuinely needs his
+eye, you have reached the end of the independent work — which is a success
+condition, not a failure.
 
 **A visual complaint is a mechanism to find, not a number to tune.** When he says
 something looks wrong, the useful response is to work out what in the physics or
