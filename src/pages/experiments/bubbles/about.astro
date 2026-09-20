@@ -1,0 +1,74 @@
+---
+import { getCollection } from "astro:content"
+import Note, { type NoteTheme } from "@/experiments/gallery/Note.astro"
+import { PRESETS } from "@/experiments/bubbles/settings"
+
+// The note's furniture is the gallery's; only the paint is this piece's. See
+// docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.
+const entry = (await getCollection("experiments")).find(({ data }) => data.slug === "bubbles")
+if (!entry) throw new Error("Bubbles: missing about.md")
+
+// Read off the primary rather than written down, so promoting a preset moves the
+// note's accent along with the poster and the landing scene. Every instance of
+// this fault in the section was a hue typed as a literal, correct on the day.
+//
+// `bg` is the one field that is *not* turned from the hue, and that is the piece
+// rather than an oversight: the water is black, exactly, and the whole premise
+// is that a viewer sees white circles and nothing else. A tinted ground behind
+// the sheet would be a second opinion about a colour the piece has decided it
+// does not have.
+const primary = PRESETS[0]!.settings
+const { hue } = primary
+---
+
+<Note
+  entry={entry}
+  theme={{
+    bg: "#000",
+    sheet: `hsl(${hue} 40% 4% / 78%)`,
+    fg: `hsl(${hue} 14% 86%)`,
+    bright: `hsl(${hue} 22% 97%)`,
+    muted: `hsl(${hue} 12% 58%)`,
+    edge: `hsl(${hue} 28% 82% / 12%)`,
+    accent: `hsl(${hue} 72% 64%)`,
+  } satisfies NoteTheme}
+  backdrop={0.5}
+>
+  <script>
+    import { createBubbles } from "@/experiments/bubbles/bubbles"
+    import { normalizeSettings, PRESETS } from "@/experiments/bubbles/settings"
+
+    const canvas = document.getElementById("backdrop")
+    if (canvas instanceof HTMLCanvasElement) {
+      // **The primary, turned down — spread rather than sampled.** Picking a few
+      // fields off the primary and writing the rest out is how a backdrop
+      // quietly stops being the piece the page is about, which has happened here
+      // once already in embers.
+      //
+      // Only the busyness moves. This is scenery: it sits under a sheet of text,
+      // it should not compete with it, and it should still be recognisably the
+      // thing the page is about.
+      //
+      // It used to widen `frame` and `spacing` as well, to spread the foam
+      // across the page instead of leaving a bright patch behind the middle
+      // column. That was right for a primary whose foam sat over its jets and
+      // wrong for one that already fills its frame — `time bubbles` is a thin
+      // field of specks everywhere, and widening it only made the backdrop
+      // emptier. Turning the gas down is enough.
+      const primary = PRESETS[0]!.settings
+      const water = createBubbles(
+        canvas,
+        normalizeSettings({
+          ...primary,
+          gas: primary.gas * 0.4,
+          count: Math.round(primary.count * 0.5),
+        }),
+      )
+      water.start()
+      // The surface is empty at t=0 and takes twenty seconds of jets to hold the
+      // foam the settings actually describe. Without a run-up the sheet sits
+      // over a black rectangle for the first half-minute of every visit.
+      water.settle(30)
+    }
+  </script>
+</Note>

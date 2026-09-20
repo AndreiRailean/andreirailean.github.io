@@ -15,6 +15,7 @@ import { litPixels as countLit } from "./support/canvas.ts"
 
 const NOTES = [
   { slug: "starry-night", title: "Starry Night" },
+  { slug: "bubbles", title: "Bubbles" },
   { slug: "dangler", title: "Dangler" },
   { slug: "flotsam", title: "Flotsam" },
   { slug: "psyxels", title: "Psyxels" },
