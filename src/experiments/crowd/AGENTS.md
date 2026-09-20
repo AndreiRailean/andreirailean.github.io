@@ -100,6 +100,18 @@ stays inside a few degrees, which is what walls are.
   body. About 40° and a metre away is inside the frame's corner: there without
   being looked at, and centred by a glance.
 
+- **The gaze invents its subjects, and that is the mechanism rather than a
+  workaround.** "We're only drawing heads. if we only followed things that are
+  there, we'd only be following heads. we want to follow birds, rocks, etc. So
+  sometimes we need to invent a thing to look at (and not show it)."
+
+  About two glances in five go to a point in the world with nothing rendered at
+  it — 9% overhead and moving, 30% on or near the ground. **Do not "fix" this by
+  restricting the gaze to drawn objects.** In a piece whose only object is a
+  head, that produces a gaze that tracks heads and nothing else, which is the
+  renderer's gaze rather than a person's. If something ever _is_ drawn up there,
+  the invented subjects stay: a person looks at more than a piece renders.
+
 - **A companion is for perspective, and that bounds how much to build.** "Just
   having some companions provides perspective. because i see what i 'see',
   having a companion makes it look somewhat like a third person view." A head at
@@ -361,6 +373,25 @@ ordinary plausible number.
 one instant of one step and a single unlucky pair moves it a long way. Average
 over a run, the way the tests do; a one-shot read of `closest` sent this session
 chasing a regression that was one pair.
+
+## Landmarks: considered, declined, and the reason is the piece
+
+**Nothing is above the band, and adding something would cost the thing the piece
+is.** Andrei, asked whether the empty sky was a gap: "it's a 'brief' because
+nothing was specified to be there, so it's empty as expected. adding landmarks
+would probably add more character to the scene, but it would also break up the
+'moving infinity' that is presented."
+
+That phrase is his and it is the clearest name anything has for what this does.
+The crowd has no edge and no landmark, so **there is no fixed point to measure
+progress against and the walk cannot arrive anywhere.** A tower, a building
+line, a horizon feature — any of them would give the eye something to hold, and
+not holding is the whole effect. It would also make the observer's wandering
+legible as _going somewhere_, which it is not.
+
+So this is a rejected approach rather than an unbuilt one. If it is ever
+revisited, the thing to preserve is that no landmark stays in frame long enough
+to be navigated by.
 
 ## What is not here, and would be worth having
 

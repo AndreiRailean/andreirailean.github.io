@@ -78,6 +78,13 @@ the ground a few metres ahead, at a face, at a child's head which is most of a
 metre below your own. Peripheral vision is what lets you look down and keep
 walking, which is why the control is a resting point rather than a fixed angle.
 
+**Some of what it looks at is not there.** Only heads are drawn, so a gaze
+restricted to what you can see would be a gaze that only ever followed heads.
+The ground a few metres ahead, a stall you are passing, a bird crossing — those
+are points the walk invents and does not render, and about two glances in five
+go to one. It is the difference between a person looking around and a camera
+tracking its own contents.
+
 Looking down reaches further than looking up, because that is where everything
 is. It is also the control that decides where the crowd sits in the frame — with
 heads and no bodies, every head is within a metre of eye height, so the picture
@@ -217,6 +224,19 @@ seven metres wide with two streams in it and no way round anybody. **The far end
 is a thinner crowd seen much further, which is where it stops being people and
 becomes texture. **Waist high** is the same square from a child's eyes, where
 every adult is a ceiling and the other children are the only faces.
+
+## Why there is nothing above it
+
+The frame is a band of heads with a great deal of black over it, and that is the
+piece rather than an unfinished corner of it. Nothing was ever specified to be up
+there.
+
+Landmarks would add character and would cost the thing the piece is: a **moving
+infinity**. The crowd has no edge and no fixed point, so there is nothing to
+measure progress against and the walk cannot arrive anywhere — it can only keep
+going. A tower or a building line would give the eye something to hold, and not
+holding is the effect. It would also make the wandering read as _going
+somewhere_, which it is not.
 
 ## What it does not do yet
 

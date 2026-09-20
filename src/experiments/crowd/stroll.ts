@@ -302,10 +302,18 @@ const SPOT_BEARING_MIN = 0.65
  * time spent gazing above level fell from 12% to 1.5%. Same fault as a hold
  * shorter than the settling time, reached from a third direction.
  *
- * **There is nothing up there to look at, and that is deliberate.** This piece
- * draws heads and nothing else — no sky, no buildings, no birds — but the crowd
- * is all that is *drawn*, not all that is there. A gaze that only ever went to
- * things the renderer knows about would be a gaze belonging to the renderer.
+ * **Nothing is drawn up there, and the gaze goes anyway.** Andrei's reason, which
+ * is better than the one this comment used to give: "we're only drawing heads.
+ * if we only followed things that are there, we'd only be following heads. we
+ * want to follow birds, rocks, etc. So sometimes we need to invent a thing to
+ * look at (and not show it)."
+ *
+ * So inventing the subject is the mechanism rather than a shortcut around a
+ * missing one. A gaze restricted to what the renderer knows about is the
+ * renderer's gaze, and in a piece that draws one kind of object it would be a
+ * gaze that only ever tracked that object. **Roughly two glances in five go to
+ * something that does not exist** — the birds here, and the rocks, dogs and
+ * stalls in `SPOT_AHEAD`.
  */
 const HOLD_UP = [1.5, 3.4]
 const UP_HEIGHT = [5, 19]
