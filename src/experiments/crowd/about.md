@@ -225,6 +225,19 @@ is a thinner crowd seen much further, which is where it stops being people and
 becomes texture. **Waist high** is the same square from a child's eyes, where
 every adult is a ceiling and the other children are the only faces.
 
+## Why there is nothing above it
+
+The frame is a band of heads with a great deal of black over it, and that is the
+piece rather than an unfinished corner of it. Nothing was ever specified to be up
+there.
+
+Landmarks would add character and would cost the thing the piece is: a **moving
+infinity**. The crowd has no edge and no fixed point, so there is nothing to
+measure progress against and the walk cannot arrive anywhere — it can only keep
+going. A tower or a building line would give the eye something to hold, and not
+holding is the effect. It would also make the wandering read as _going
+somewhere_, which it is not.
+
 ## What it does not do yet
 
 Nobody is going anywhere in particular. People have a heading rather than a

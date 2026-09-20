@@ -374,6 +374,25 @@ one instant of one step and a single unlucky pair moves it a long way. Average
 over a run, the way the tests do; a one-shot read of `closest` sent this session
 chasing a regression that was one pair.
 
+## Landmarks: considered, declined, and the reason is the piece
+
+**Nothing is above the band, and adding something would cost the thing the piece
+is.** Andrei, asked whether the empty sky was a gap: "it's a 'brief' because
+nothing was specified to be there, so it's empty as expected. adding landmarks
+would probably add more character to the scene, but it would also break up the
+'moving infinity' that is presented."
+
+That phrase is his and it is the clearest name anything has for what this does.
+The crowd has no edge and no landmark, so **there is no fixed point to measure
+progress against and the walk cannot arrive anywhere.** A tower, a building
+line, a horizon feature — any of them would give the eye something to hold, and
+not holding is the whole effect. It would also make the observer's wandering
+legible as _going somewhere_, which it is not.
+
+So this is a rejected approach rather than an unbuilt one. If it is ever
+revisited, the thing to preserve is that no landmark stays in frame long enough
+to be navigated by.
+
 ## What is not here, and would be worth having
 
 - **Nobody is going anywhere in particular.** People carry a heading, not a

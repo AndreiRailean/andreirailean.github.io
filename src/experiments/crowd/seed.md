@@ -129,25 +129,44 @@ code had:
 > follow birds, rocks, etc. So sometimes we need to invent a thing to look at
 > (and not show it).
 
+## 2026-09-20 — the empty sky, and what would be lost by filling it
+
+Answering the last two open questions, and naming the piece better than any of
+the prose written for it:
+
+> i'm looking at market and it all appears fluid. i like the interaction with
+> companions - hard to tell if i'm looking at them or past them, so not a worry.
+>
+> don't quite understand what "black above the band" is. if we're talking about
+> the "sky", then yes - it's a "brief" because nothing was specified to be there,
+> so it's empty as expected. adding landmarks would probably add more character
+> to the scene, but it would also break up the "moving infinity" that is
+> presented.
+
+**"Moving infinity" is his phrase and it is the thing.** The crowd has no edge
+and no landmark, so there is no fixed point to measure progress against and the
+walk cannot arrive anywhere — which is why the emptiness is load-bearing rather
+than unfinished. A landmark would give the eye something to hold, and holding is
+the one thing this picture does not do.
+
 ---
 
 ## Questions I could not answer, and what I assumed
 
 Written for him to read when he chooses, not to block on.
 
-- **Is the empty space above the band right?** With heads and nothing else in the
-  world, every head is within a metre of eye height, so the picture is a band
-  with a lot of black above it. `my gaze` moves where the band sits but nothing
-  can fill that space without drawing something that is not a head. Assumed it is
-  the brief — "the only thing visible is white circles on black background" —
-  rather than a gap. What would settle it: whether he wants bodies, or a ground,
-  or nothing.
+- ~~**Is the empty space above the band right?**~~ **Answered on 2026-09-20,
+  above.** It is the brief, and filling it would cost something specific: the
+  "moving infinity". Landmarks were considered in the same breath and declined
+  for that reason, which is recorded in `AGENTS.md` so nobody adds them as an
+  obvious improvement.
 - **Should the gaze look at things that are not drawn?** The overhead look
   follows a point in the world with no bird rendered at it. Assumed yes: the
   crowd is all that is _drawn_, not all that is there, and a gaze that only ever
   went to things the renderer knows about would belong to the renderer. He has
   seen it and not objected, which is not the same as having chosen it.
-- **Is the market's head too busy with three companions?** Half of all glances go
-  to one of them, which makes the walk a conversation rather than an observation.
-  He asked for three and said the motion was good at two; the lever if it is too
-  much is `SHARE_COMPANION`, not the neck.
+- ~~**Is the market's head too busy with three companions?**~~ **Answered on
+  2026-09-20, above: no.** "Hard to tell if i'm looking at them or past them, so
+  not a worry" — which is a more interesting answer than yes or no, because it
+  says the companion glance is not legible _as_ a glance at them. It does not
+  need to be. Whatever it reads as, it reads as fluid.
