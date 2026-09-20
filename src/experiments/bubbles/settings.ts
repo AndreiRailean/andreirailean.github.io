@@ -16,6 +16,11 @@ export const LAYOUTS = ["ring", "row", "scatter"] as const
 export type Layout = (typeof LAYOUTS)[number]
 export const isLayout = (value: unknown): value is Layout => LAYOUTS.includes(value as Layout)
 
+/** How a bubble is drawn. */
+export const LOOKS = ["disc", "ring", "mixed"] as const
+export type Look = (typeof LOOKS)[number]
+export const isLook = (value: unknown): value is Look => LOOKS.includes(value as Look)
+
 /** Which way each jet twists the water under it. */
 export const SPINS = ["alternate", "same", "loose"] as const
 export type Spin = (typeof SPINS)[number]
@@ -34,6 +39,7 @@ export type Settings = {
   jets: number
   layout: Layout
   spin: Spin
+  look: Look
   /** How far the jets sit from the middle of the tub, in metres. */
   spread: number
   /** Radius of a jet's mouth, in metres. The outflow peaks here. */
@@ -44,6 +50,8 @@ export type Settings = {
   swirl: number
   /** Bubbles a jet releases per second. */
   rate: number
+  /** How hard each jet surges on its own slow clock. 0 runs them steady. */
+  pulse: number
   /** Smallest radius a bubble is born at, in metres. */
   birthMin: number
   /** Largest radius a bubble is born at, in metres. */
@@ -62,6 +70,8 @@ export type Settings = {
   waveHz: number
   /** How sluggishly a bubble answers the water. 0 pins it to the flow. */
   lag: number
+  /** How far apart two bubbles count as touching, as a fraction of their radii. */
+  pack: number
   /** How readily two touching bubbles become one. */
   merge: number
   /** How hard two touching bubbles that did not merge push apart. */
@@ -76,6 +86,8 @@ export type Settings = {
   spray: number
   /** Most bubbles alive at once. */
   count: number
+  /** Wall thickness of a ring, as a fraction of its radius. Unused by `disc`. */
+  rim: number
   /** How much of the last frame is left behind, as a wake. */
   trail: number
   /** Metres of water across the shorter side of the window. */
@@ -85,7 +97,7 @@ export type Settings = {
   seed: number
 }
 
-export type NumericKey = Exclude<keyof Settings, "layout" | "spin">
+export type NumericKey = Exclude<keyof Settings, "layout" | "spin" | "look">
 
 export type Control = KitControl<string & keyof Settings>
 
@@ -183,11 +195,22 @@ export const CONTROLS: Control[] = [
     label: "gas",
     group: "jets",
     min: 2,
-    max: 400,
+    max: 1500,
     step: 1,
     scale: "log",
     format: (v) => `${Math.round(v)}/s`,
-    hint: "Bubbles a single jet releases each second. The cap on how many can be alive at once is under picture, and when the two fight the cap wins — a jet with nowhere to put a bubble simply does not release it.",
+    hint: "Bubbles a single jet releases each second. The cap on how many can be alive at once is under picture, and when the two fight the cap wins — a jet with nowhere to put a bubble simply does not release it. The top of this range is well past what the cap will allow at any normal setting, deliberately: it is how you get a tub that is more foam than water.",
+  },
+  {
+    kind: "slider",
+    key: "pulse",
+    label: "surge",
+    group: "jets",
+    min: 0,
+    max: 1,
+    step: 0.02,
+    format: (v) => v.toFixed(2),
+    hint: "How hard each jet surges, on its own slow clock a few seconds long. Real jets do this — a pump and an air intake do not deliver evenly — and it is what stops a tub reaching a steady state and staying there. At 0 every jet runs flat.",
   },
   {
     kind: "range",
@@ -281,6 +304,17 @@ export const CONTROLS: Control[] = [
   },
   {
     kind: "slider",
+    key: "pack",
+    label: "contact",
+    group: "foam",
+    min: 0.5,
+    max: 1.3,
+    step: 0.02,
+    format: (v) => v.toFixed(2),
+    hint: "How close two bubbles have to be before they count as touching, measured against the sum of their radii. Below 1 they must genuinely overlap, which makes a loose foam of separate circles. Above 1 their films reach for each other before they meet, which is what a real surface does, and packs the foam tight.",
+  },
+  {
+    kind: "slider",
     key: "merge",
     label: "coalesce",
     group: "foam",
@@ -358,6 +392,29 @@ export const CONTROLS: Control[] = [
     hint: "Most bubbles alive at one time. A ceiling on the work per frame rather than a setting about the picture, but the two are hard to separate: a jet that cannot get a slot releases nothing, so the cap shows up as a thinner boil.",
   },
   {
+    kind: "choice",
+    key: "look",
+    label: "drawn as",
+    group: "picture",
+    options: [
+      { value: "disc", label: "discs" },
+      { value: "ring", label: "rings" },
+      { value: "mixed", label: "mixed" },
+    ],
+    hint: "What a bubble is. Discs are solid white circles. Rings are outlines, which is closer to what a bubble on a real surface looks like from above — a bright meniscus with the water showing through the middle. Mixed draws a bubble as a ring once it is big enough for the ring to read, and as a dot while it is not, which is what an eye actually sees.",
+  },
+  {
+    kind: "slider",
+    key: "rim",
+    label: "wall",
+    group: "picture",
+    min: 0.08,
+    max: 0.6,
+    step: 0.02,
+    format: (v) => v.toFixed(2),
+    hint: "How thick a ring's wall is, as a fraction of its radius. At 0.5 a ring is a filled disc with a pinhole. Does nothing while bubbles are drawn as discs.",
+  },
+  {
     kind: "slider",
     key: "trail",
     label: "wake",
@@ -413,11 +470,13 @@ export const DEFAULT_SETTINGS: Settings = {
   jets: 5,
   layout: "ring",
   spin: "alternate",
+  look: "disc",
   spread: 0.34,
   core: 0.05,
   outflow: 0.46,
   swirl: 0.2,
   rate: 260,
+  pulse: 0.3,
   birthMin: 0.003,
   birthMax: 0.009,
   churn: 0.6,
@@ -427,6 +486,7 @@ export const DEFAULT_SETTINGS: Settings = {
   wave: 0.3,
   waveHz: 1.4,
   lag: 0.36,
+  pack: 0.9,
   merge: 0.6,
   bounce: 0.5,
   dissolve: 0.0005,
@@ -434,6 +494,7 @@ export const DEFAULT_SETTINGS: Settings = {
   popRate: 1.6,
   spray: 3,
   count: 3000,
+  rim: 0.24,
   trail: 0,
   span: 0.9,
   hue: 190,
@@ -459,11 +520,13 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       jets: 5,
       layout: "ring",
       spin: "alternate",
+      look: "disc",
       spread: 0.34,
       core: 0.05,
       outflow: 0.46,
       swirl: 0.2,
       rate: 260,
+      pulse: 0.3,
       birthMin: 0.003,
       birthMax: 0.009,
       churn: 0.6,
@@ -473,6 +536,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       wave: 0.3,
       waveHz: 1.4,
       lag: 0.36,
+      pack: 0.9,
       merge: 0.6,
       bounce: 0.5,
       dissolve: 0.0005,
@@ -480,6 +544,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       popRate: 1.6,
       spray: 3,
       count: 3000,
+      rim: 0.24,
       trail: 0,
       span: 0.9,
       hue: 190,
@@ -493,11 +558,13 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       jets: 1,
       layout: "ring",
       spin: "same",
+      look: "disc",
       spread: 0,
       core: 0.06,
       outflow: 0.5,
       swirl: 0.16,
       rate: 300,
+      pulse: 0.24,
       birthMin: 0.002,
       birthMax: 0.008,
       churn: 0.3,
@@ -507,6 +574,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       wave: 0.4,
       waveHz: 1.1,
       lag: 0.3,
+      pack: 0.9,
       merge: 0.56,
       bounce: 0.46,
       dissolve: 0.0005,
@@ -514,6 +582,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       popRate: 1.4,
       spray: 3,
       count: 2600,
+      rim: 0.24,
       trail: 0,
       span: 0.7,
       hue: 190,
@@ -527,11 +596,13 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       jets: 8,
       layout: "ring",
       spin: "alternate",
+      look: "disc",
       spread: 0.42,
       core: 0.04,
       outflow: 0.76,
       swirl: 0.5,
-      rate: 400,
+      rate: 700,
+      pulse: 0.18,
       birthMin: 0.002,
       birthMax: 0.007,
       churn: 1.1,
@@ -541,6 +612,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       wave: 0.6,
       waveHz: 2.2,
       lag: 0.22,
+      pack: 0.86,
       merge: 0.4,
       bounce: 0.62,
       dissolve: 0.001,
@@ -548,6 +620,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       popRate: 2.6,
       spray: 4,
       count: 6000,
+      rim: 0.2,
       trail: 0,
       span: 1,
       hue: 198,
@@ -561,11 +634,13 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       jets: 3,
       layout: "scatter",
       spin: "loose",
+      look: "mixed",
       spread: 0.3,
       core: 0.1,
       outflow: 0.22,
       swirl: 0.16,
       rate: 40,
+      pulse: 0.4,
       birthMin: 0.006,
       birthMax: 0.018,
       churn: 0.3,
@@ -575,6 +650,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       wave: 0.16,
       waveHz: 0.55,
       lag: 0.62,
+      pack: 1.1,
       merge: 0.96,
       bounce: 0.3,
       dissolve: 0.0005,
@@ -582,6 +658,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       popRate: 0.7,
       spray: 6,
       count: 800,
+      rim: 0.22,
       trail: 0,
       span: 0.9,
       hue: 184,
@@ -595,11 +672,13 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       jets: 2,
       layout: "row",
       spin: "same",
+      look: "disc",
       spread: 0.22,
       core: 0.05,
       outflow: 0.4,
       swirl: 0.86,
       rate: 320,
+      pulse: 0.16,
       birthMin: 0.003,
       birthMax: 0.008,
       churn: 0.28,
@@ -609,6 +688,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       wave: 0.24,
       waveHz: 1.6,
       lag: 0.4,
+      pack: 0.9,
       merge: 0.62,
       bounce: 0.58,
       dissolve: 0.0005,
@@ -616,6 +696,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       popRate: 1.5,
       spray: 3,
       count: 3400,
+      rim: 0.24,
       trail: 0,
       span: 0.8,
       hue: 206,
@@ -629,11 +710,13 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       jets: 5,
       layout: "ring",
       spin: "alternate",
+      look: "disc",
       spread: 0.36,
       core: 0.07,
       outflow: 0.3,
       swirl: 0.1,
       rate: 240,
+      pulse: 0,
       birthMin: 0.003,
       birthMax: 0.009,
       churn: 1.3,
@@ -643,6 +726,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       wave: 0.14,
       waveHz: 0.75,
       lag: 0.26,
+      pack: 0.94,
       merge: 0.5,
       bounce: 0.52,
       dissolve: 0.001,
@@ -650,10 +734,87 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       popRate: 1.8,
       spray: 2,
       count: 4000,
+      rim: 0.24,
       trail: 0,
       span: 0.9,
       hue: 172,
       seed: 6180,
+    },
+  },
+  {
+    label: "meniscus",
+    hint: "Drawn as rings rather than discs, with few enough large bubbles for a ring to read. This is closer to what foam on a real surface looks like from above.",
+    settings: {
+      jets: 3,
+      layout: "ring",
+      spin: "alternate",
+      look: "ring",
+      spread: 0.22,
+      core: 0.08,
+      outflow: 0.3,
+      swirl: 0.2,
+      rate: 60,
+      pulse: 0.24,
+      birthMin: 0.008,
+      birthMax: 0.022,
+      churn: 0.34,
+      scale: 0.3,
+      drift: 0.24,
+      ebb: 0.4,
+      wave: 0.2,
+      waveHz: 0.8,
+      lag: 0.5,
+      pack: 1.06,
+      merge: 0.86,
+      bounce: 0.42,
+      dissolve: 0.0005,
+      popSize: 0.08,
+      popRate: 0.6,
+      spray: 5,
+      count: 900,
+      rim: 0.2,
+      trail: 0,
+      span: 0.7,
+      hue: 196,
+      seed: 2718,
+    },
+  },
+  {
+    label: "surging",
+    hint: "The jets surging hard on their own clocks, so the tub never reaches a steady state and stays there.",
+    settings: {
+      jets: 4,
+      layout: "ring",
+      spin: "alternate",
+      look: "disc",
+      spread: 0.3,
+      core: 0.06,
+      outflow: 0.6,
+      swirl: 0.28,
+      rate: 520,
+      pulse: 0.9,
+      birthMin: 0.003,
+      birthMax: 0.01,
+      churn: 0.5,
+      scale: 0.28,
+      drift: 0.5,
+      ebb: 0.6,
+      wave: 0.36,
+      waveHz: 1.6,
+      lag: 0.34,
+      pack: 0.92,
+      merge: 0.58,
+      bounce: 0.54,
+      dissolve: 0.001,
+      popSize: 0.036,
+      popRate: 1.8,
+      spray: 3,
+      count: 5000,
+      rim: 0.24,
+      trail: 0,
+      span: 0.9,
+      hue: 186,
+      seed: 1597,
     },
   },
 ]
@@ -674,7 +835,8 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   core: { min: 0.02, max: 0.5, step: 0.01 },
   outflow: { min: 0, max: 3, step: 0.02 },
   swirl: { min: 0, max: 1.5, step: 0.02 },
-  rate: { min: 2, max: 400, step: 1, scale: "log" },
+  rate: { min: 2, max: 1500, step: 1, scale: "log" },
+  pulse: { min: 0, max: 1, step: 0.02 },
   birthMin: { min: 0.002, max: 0.04, step: 0.001, scale: "log" },
   birthMax: { min: 0.002, max: 0.04, step: 0.001, scale: "log" },
   churn: { min: 0, max: 2, step: 0.02 },
@@ -684,6 +846,7 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   wave: { min: 0, max: 1.5, step: 0.02 },
   waveHz: { min: 0.1, max: 4, step: 0.05 },
   lag: { min: 0, max: 1, step: 0.02 },
+  pack: { min: 0.5, max: 1.3, step: 0.02 },
   merge: { min: 0, max: 1, step: 0.02 },
   bounce: { min: 0, max: 1, step: 0.02 },
   dissolve: { min: 0, max: 0.02, step: 0.0005 },
@@ -691,6 +854,7 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   popRate: { min: 0, max: 5, step: 0.05 },
   spray: { min: 0, max: 8, step: 1 },
   count: { min: 200, max: 6000, step: 50, scale: "log" },
+  rim: { min: 0.08, max: 0.6, step: 0.02 },
   trail: { min: 0, max: 0.95, step: 0.05 },
   span: { min: 0.3, max: 4, step: 0.05 },
   hue: { min: 0, max: 360, step: 1 },
@@ -738,6 +902,7 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
     ...merged,
     layout: isLayout(merged.layout) ? merged.layout : base.layout,
     spin: isSpin(merged.spin) ? merged.spin : base.spin,
+    look: isLook(merged.look) ? merged.look : base.look,
   }
 
   for (const [key, bound] of Object.entries(BOUNDS) as [NumericKey, { min: number; max: number }][]) {
@@ -794,7 +959,7 @@ export const REGISTRY: readonly Slot[] = [
   { key: "core", kind: "num", grid: 0.01, origin: 0.02, bits: 6 },
   { key: "outflow", kind: "num", grid: 0.02, origin: 0, bits: 8 },
   { key: "swirl", kind: "num", grid: 0.02, origin: 0, bits: 7 },
-  { key: "rate", kind: "num", grid: 1, origin: 2, bits: 9 },
+  { key: "rate", kind: "num", grid: 1, origin: 2, bits: 9, retired: true },
   { key: "birthMin", kind: "num", grid: 0.001, origin: 0.002, bits: 6 },
   { key: "birthMax", kind: "num", grid: 0.001, origin: 0.002, bits: 6 },
   { key: "churn", kind: "num", grid: 0.02, origin: 0, bits: 7 },
@@ -815,6 +980,15 @@ export const REGISTRY: readonly Slot[] = [
   { key: "span", kind: "num", grid: 0.05, origin: 0.3, bits: 7 },
   { key: "hue", kind: "num", grid: 1, origin: 0, bits: 9 },
   { key: "seed", kind: "num", grid: 1, origin: 1, bits: 14 },
+  // Appended after the first build. The slot above with the same key is retired
+  // rather than widened: its `bits` are what an address already written means by
+  // those bits, and 9 of them cannot reach past 513 bubbles a second. Later
+  // slots win, so an address carrying both ends up with this one's value.
+  { key: "rate", kind: "num", grid: 1, origin: 2, bits: 11 },
+  { key: "pulse", kind: "num", grid: 0.02, origin: 0, bits: 6 },
+  { key: "pack", kind: "num", grid: 0.02, origin: 0.5, bits: 6 },
+  { key: "look", kind: "enum", options: ["disc", "ring", "mixed"] },
+  { key: "rim", kind: "num", grid: 0.02, origin: 0.08, bits: 5 },
 ]
 
 /**
@@ -864,6 +1038,9 @@ function settingsFromNamedQuery(params: URLSearchParams): Settings {
   const spin = params.get("spin")
   if (isSpin(spin)) patch.spin = spin
 
+  const look = params.get("look")
+  if (isLook(look)) patch.look = look
+
   for (const key of Object.keys(BOUNDS) as NumericKey[]) {
     const raw = params.get(key)
     if (raw === null || raw.trim() === "") continue
@@ -880,6 +1057,7 @@ function namesASetting(params: URLSearchParams): boolean {
   if (packed !== null && packed !== "" && decodeScene(REGISTRY, packed)) return true
   if (isLayout(params.get("layout"))) return true
   if (isSpin(params.get("spin"))) return true
+  if (isLook(params.get("look"))) return true
   return (Object.keys(BOUNDS) as NumericKey[]).some((key) => {
     const raw = params.get(key)
     return raw !== null && raw.trim() !== "" && Number.isFinite(Number(raw))

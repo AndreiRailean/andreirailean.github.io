@@ -124,3 +124,23 @@ satisfied without the `kit-opt-out(hue):` escape.
 every other piece's note. That is the piece, not an oversight: a tinted ground
 behind the sheet would be a second opinion about a colour this piece has decided
 it does not have.
+
+## The registry has already been retired once, and it is the worked example
+
+`rate` topped out at 400 bubbles a second in the first build, and measuring said
+that was the binding constraint: at 8 jets and 400 the population reached 1,491
+against a cap of 6,000 and the frame rate never left 58. So the ceiling was
+raised to 1,500 — which **9 bits cannot hold**.
+
+The slot was not widened. It is marked `retired: true` and left exactly where it
+is, and a new slot with the same key and 11 bits is appended at the end. Later
+slots win, so an address carrying both ends up with the new value, and every
+address written before the change still decodes through the old slot.
+
+**Expect `tests/unit/experiments-address.test.ts` to fail on this, and read the
+diff before updating it.** A retirement is the one in-place edit the rules allow,
+and the snapshot cannot tell it from an illegal one — the whole line changes,
+from `rate num grid=1 origin=2 bits=9` to the same with `RETIRED` on the end.
+What makes it legal is that `grid`, `origin`, `bits` and the slot's _position_
+are all untouched. If any of those moved, the check is telling you something.
+Section-wide, that gap is #208.

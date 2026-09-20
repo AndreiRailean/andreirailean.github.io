@@ -63,9 +63,6 @@ const MARGIN = 0.18
 /** Contacts per second at `merge` 1. Below a contact lasting a frame or two. */
 const MERGE_EAGERNESS = 14
 
-/** How far two bubbles must overlap before they are touching, as a fraction of the pair. */
-const CONTACT = 0.9
-
 /** A bubble thinner than this many metres has drained away. */
 const GONE = 0.0012
 
@@ -114,6 +111,9 @@ export type Jet = {
   y: number
   /** +1 or -1: which way this jet turns the water under it. */
   spin: number
+  /** Seconds one surge takes, and where in it this jet currently is. */
+  period: number
+  phase: number
 }
 
 /**
@@ -153,7 +153,11 @@ export function placeJets(settings: Settings): Jet[] {
     }
 
     const turn = spin === "same" ? 1 : spin === "alternate" ? (index % 2 === 0 ? 1 : -1) : rng() < 0.5 ? -1 : 1
-    out.push({ x, y, spin: turn })
+    // Every jet surges on its own clock, at its own rate. One shared period
+    // makes the whole tub breathe together, which is the same tell a shared
+    // waver frequency is one layer down — and here it would be worse, because a
+    // surge is visible at the scale of the whole picture.
+    out.push({ x, y, spin: turn, period: 2.2 + rng() * 4.2, phase: rng() * Math.PI * 2 })
   }
 
   return out
@@ -315,7 +319,7 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
       if (d < 1e-6) continue
       // Peaks at exactly `outflow` when d is the mouth radius, and falls away
       // like 1/d outside it. A bare 1/d would be infinite over the jet.
-      const profile = (2 * settings.core * d) / (d2 + settings.core * settings.core)
+      const profile = surgeOf(jet) * ((2 * settings.core * d) / (d2 + settings.core * settings.core))
       const nx = dx / d
       const ny = dy / d
       ux += settings.outflow * profile * nx + settings.swirl * profile * -ny * jet.spin
@@ -339,6 +343,19 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
 
   const sample = { x: 0, y: 0 }
 
+  /**
+   * How hard one jet is working right now, as a multiple of its settings.
+   *
+   * The same number scales the gas and the push, because they have the same
+   * cause: a pump delivering harder pushes more water *and* entrains more air.
+   * Scaling only the gas gives a tub whose density pulses while its flow does
+   * not, which reads as the bubbles changing rather than the jet.
+   */
+  function surgeOf(jet: Jet): number {
+    if (settings.pulse <= 0) return 1
+    return 1 + settings.pulse * Math.sin((clock / jet.period) * Math.PI * 2 + jet.phase)
+  }
+
   function emit(dt: number) {
     if (jets.length === 0) return
     const low = settings.birthMin
@@ -346,7 +363,7 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
 
     for (let index = 0; index < jets.length; index++) {
       const jet = jets[index]!
-      owed[index] = (owed[index] ?? 0) + settings.rate * dt
+      owed[index] = (owed[index] ?? 0) + settings.rate * surgeOf(jet) * dt
       while (owed[index]! >= 1) {
         owed[index]! -= 1
         const angle = rng() * Math.PI * 2
@@ -370,8 +387,10 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
 
     const extentX = view.halfWidth + view.margin
     const extentY = view.halfHeight + view.margin
-    // A cell must hold the largest pair, or a 3x3 sweep can miss a contact.
-    let size = Math.max(biggest * 2.2, 0.004)
+    // A cell must hold the largest pair *at the current reach*, or a 3x3 sweep
+    // misses contacts. `pack` above 1 lets films reach for each other before
+    // they meet, so it widens what counts as a pair and has to be in here.
+    let size = Math.max(biggest * 2 * Math.max(1, settings.pack) * 1.1, 0.004)
     cols = Math.ceil((extentX * 2) / size)
     rows = Math.ceil((extentY * 2) / size)
     if (cols > MAX_CELLS || rows > MAX_CELLS) {
@@ -429,7 +448,7 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
                 const dy = py[j]! - py[i]!
                 const ri = radius[i]!
                 const rj = radius[j]!
-                const reach = (ri + rj) * CONTACT
+                const reach = (ri + rj) * settings.pack
                 const d2 = dx * dx + dy * dy
                 if (d2 > reach * reach) continue
                 const d = Math.sqrt(d2) || 1e-6
@@ -569,21 +588,66 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
       ctx.fillRect(0, 0, view.width, view.height)
     }
 
-    // One path for the whole surface. Overlapping circles union under the
-    // default winding rule and they are all the same white, so the picture is
-    // identical to filling them one by one and costs a single fill.
+    // Two passes, because a stroke and a fill cannot share a path. Within each
+    // pass it is **one** path for the whole surface: the circles are all the
+    // same white and overlaps union under the default winding rule, so the
+    // picture is identical to drawing them one by one and costs a single
+    // operation.
+    //
+    // `mixed` is the reason the split is by bubble rather than by scene. A ring
+    // whose wall is under about three quarters of a pixel does not draw as a
+    // ring; it draws as a grey smudge, because the only thing a sub-pixel
+    // stroke can do is lower the coverage. So a bubble too small to hold a wall
+    // is a dot, which is also what an eye sees.
+    const wall = settings.rim
+    const wantRing = settings.look !== "disc"
+    const ringAll = settings.look === "ring"
+
     ctx.fillStyle = "#fff"
     ctx.beginPath()
+    let filled = false
     for (let i = 0; i < capacity; i++) {
       if (live[i] === 0) continue
       const r = radius[i]! * view.pxPerMetre
       if (r < 0.15) continue
+      if (wantRing && (ringAll || r * wall >= 0.75)) continue
       const x = screenX(view, px[i]!)
       const y = screenY(view, py[i]!)
       ctx.moveTo(x + r, y)
       ctx.arc(x, y, r, 0, Math.PI * 2)
+      filled = true
     }
-    ctx.fill()
+    if (filled) ctx.fill()
+
+    if (!wantRing) return
+
+    ctx.strokeStyle = "#fff"
+    ctx.beginPath()
+    let stroked = false
+    for (let i = 0; i < capacity; i++) {
+      if (live[i] === 0) continue
+      const r = radius[i]! * view.pxPerMetre
+      if (r < 0.15) continue
+      if (!ringAll && r * wall < 0.75) continue
+      const x = screenX(view, px[i]!)
+      const y = screenY(view, py[i]!)
+      // A stroke straddles its path, so the arc is inset by half the wall and
+      // the bubble's outer edge still lands at `r`. Without that a ring is
+      // visibly bigger than the disc it replaces and toggling `drawn as`
+      // changes the size of everything.
+      const width = Math.max(0.45, Math.min(r * 1.9, r * wall * 2))
+      const at = Math.max(0.05, r - width / 2)
+      ctx.moveTo(x + at, y)
+      ctx.arc(x, y, at, 0, Math.PI * 2)
+      stroked = true
+      ctx.lineWidth = width
+      // One path cannot carry two widths, so a run of same-width rings would be
+      // ideal and is not worth the bookkeeping: stroke per bubble here, and the
+      // pass only runs for bubbles large enough to be few.
+      ctx.stroke()
+      ctx.beginPath()
+    }
+    if (stroked) ctx.beginPath()
   }
 
   function resize() {

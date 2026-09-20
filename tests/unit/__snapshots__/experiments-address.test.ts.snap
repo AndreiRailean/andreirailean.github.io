@@ -9,7 +9,7 @@ exports[`bubbles > has not edited a slot in place 1`] = `
   "core num grid=0.01 origin=0.02 bits=6",
   "outflow num grid=0.02 origin=0 bits=8",
   "swirl num grid=0.02 origin=0 bits=7",
-  "rate num grid=1 origin=2 bits=9",
+  "rate num grid=1 origin=2 bits=9 RETIRED",
   "birthMin num grid=0.001 origin=0.002 bits=6",
   "birthMax num grid=0.001 origin=0.002 bits=6",
   "churn num grid=0.02 origin=0 bits=7",
@@ -30,6 +30,11 @@ exports[`bubbles > has not edited a slot in place 1`] = `
   "span num grid=0.05 origin=0.3 bits=7",
   "hue num grid=1 origin=0 bits=9",
   "seed num grid=1 origin=1 bits=14",
+  "rate num grid=1 origin=2 bits=11",
+  "pulse num grid=0.02 origin=0 bits=6",
+  "pack num grid=0.02 origin=0.5 bits=6",
+  "look enum disc|ring|mixed",
+  "rim num grid=0.02 origin=0.08 bits=5",
 ]
 `;
 
