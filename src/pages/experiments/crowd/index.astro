@@ -1,0 +1,89 @@
+---
+import "@/experiments/kit/controls.css"
+
+import Reel from "@/experiments/gallery/Reel.astro"
+
+// A deliberately bare document: no Layout, no globals.css, no Tailwind. The
+// experiment owns the whole viewport and shares no chrome with the rest of the
+// site.
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Crowd</title>
+    <style is:global>
+      html {
+        /* Set from JS on every change; the fallback keeps the page sane before
+           the first paint and without script. Every scene this piece ships is
+           `tint: 0` and therefore white — the hue is what the *chrome* and the
+           note are tinted from, which is why it exists at all. */
+        --hue: 208;
+
+        /* Black, and meant literally. The piece is white circles on black and
+           the fade runs to the ground colour, so a "nearly black" here would put
+           a floor under the fog and give the crowd a visible far wall. */
+        --ground: #000;
+
+        --accent: hsl(var(--hue) 40% 74%);
+        --ui-text: rgb(255 255 255 / 74%);
+        --ui-label: rgb(255 255 255 / 48%);
+        --ui-heading: hsl(var(--hue) 28% 70%);
+        --ui-panel: rgb(8 9 11 / 86%);
+        --ui-chip: rgb(12 13 16 / 78%);
+        --ui-edge: rgb(225 235 255 / 13%);
+        --ui-edge-hover: rgb(225 235 255 / 34%);
+        --ui-on-bg: hsl(var(--hue) 22% 30%);
+        --ui-on-text: hsl(var(--hue) 30% 95%);
+        --ui-on-edge: rgb(215 230 255 / 42%);
+        --track: rgb(225 235 255 / 15%);
+        --ui-fade: 0.35s;
+
+        /* The kit's measures, which the pieces legitimately disagree about:
+           twenty rows in five groups want a wider panel than fifteen, and the
+           values here are speeds and metres rather than percentages. */
+        --ui-label-col: 6rem;
+        --ui-value-col: 6.25rem;
+        --ui-panel-min: 23rem;
+        --ui-row-gap: 0.38rem;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: var(--ground);
+      }
+
+      body {
+        overflow: hidden;
+      }
+
+      canvas {
+        position: fixed;
+        inset: 0;
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="square"></canvas>
+    {
+      /* The interactive view: full-bleed piece, two axes of swipe, on a touch device.
+        Between the canvas and `#ui` because DOM order is the whole stacking
+        arrangement here — see the note in Reel.astro. */
+    }
+    <Reel slug="crowd" />
+    <div id="ui"></div>
+
+    <script>
+      import { boot } from "@/experiments/crowd/page"
+
+      boot()
+    </script>
+  </body>
+</html>

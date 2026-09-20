@@ -77,7 +77,7 @@ export type WallEntry = {
  * day one would have been publishing a known defect and then owing it the
  * freeze.
  *
- * **Twenty-three of the twenty-four presets are here.** The one missing is
+ * **Twenty-nine of the thirty presets are here.** The one missing is
  * Psyxels' `maker`, the only scene in any piece whose subject is a photograph
  * rather than a glyph. Its runner has no way to be handed an image, and how a
  * frozen runner carries an asset is undecided — see the note at the top of
@@ -93,6 +93,15 @@ export const WALL: readonly WallEntry[] = [
     note: "A fire four metres across, seen from a metre away, so there is no column to look at — only what crosses: white-hot where an ember is burning hardest, deep blue as it cools, and the splinters arriving in fans. Its colours are a blackbody's, rotated off the Planck curve rather than chosen.",
     runner: "embers.da2cfdf8bf93.js",
     scene: "____-0AW29AnEGQE_EY9a0YGERRZLojAtkAMMqLEI",
+  },
+  {
+    id: "crowd-market",
+    title: "market",
+    piece: "crowd",
+    pieceTitle: "Crowd",
+    note: "A busy square at eye level, walked slowly, stopping to look, with three people alongside. Everyone is a white circle and the only thing you know about them is how high their head is and where it is going.",
+    runner: "crowd.55724c73cfc2.js",
+    scene: "____cF8syctZLJ6ppCqihtGGgAoXoRSe7",
   },
   {
     id: "flotsam-offing",
@@ -113,6 +122,15 @@ export const WALL: readonly WallEntry[] = [
     scene: "______9AnD0SngHypCDFYIYIDjmQ3gBAAPogRbxfCDYMEtG4qoxXM",
   },
   {
+    id: "crowd-concourse",
+    title: "concourse",
+    piece: "crowd",
+    pieceTitle: "Crowd",
+    note: "One axis, half of it coming at me, and me walking faster than most of it. This is where the files form — nothing in the code knows what a lane is.",
+    runner: "crowd.55724c73cfc2.js",
+    scene: "____cHe4yOQRr5kYJixyxRQGIAoGfBwD4",
+  },
+  {
     id: "walkers-chalky",
     title: "chalky",
     piece: "walkers",
@@ -129,6 +147,15 @@ export const WALL: readonly WallEntry[] = [
     note: "Six arms of long, all but limp strands in cold blue, falling past you, everything barely moving.",
     runner: "dangler.24e68564770d.js",
     scene: "____f0vRtmOcQjJtlcCJmt8jAYgo-EQQAsXQioQDI",
+  },
+  {
+    id: "crowd-the-street",
+    title: "the street",
+    piece: "crowd",
+    pieceTitle: "Crowd",
+    note: "A seven-metre street with two streams in it. Nobody can go round, so the only way past anybody is to overtake them or to wait.",
+    runner: "crowd.55724c73cfc2.js",
+    scene: "____cFnIyQcRThzoZSxihdfGQAoNlOYAh",
   },
   {
     id: "starry-night-deep-field",
@@ -149,6 +176,15 @@ export const WALL: readonly WallEntry[] = [
     scene: "_____2AADQi7AAhWZCYQeEGGFZTrSpFBQIRQMDcAyZKqKUKggALVDw",
   },
   {
+    id: "crowd-standing-still",
+    title: "standing still",
+    piece: "crowd",
+    pieceTitle: "Crowd",
+    note: "I stop, and the square goes round me. Nothing moves the frame but my own breathing and my head.",
+    runner: "crowd.55724c73cfc2.js",
+    scene: "____cG1kyc5BDSIFISjCiNBG8AoyqVIe5",
+  },
+  {
     id: "psyxels-neon",
     title: "neon",
     piece: "psyxels",
@@ -167,6 +203,15 @@ export const WALL: readonly WallEntry[] = [
     scene: "____YFyGa_gA-XbqDKQAAHNLsyUVmQ",
   },
   {
+    id: "crowd-the-far-end",
+    title: "the far end",
+    piece: "crowd",
+    pieceTitle: "Crowd",
+    note: "A thinner crowd seen much further, which is where it stops being people and becomes texture. It has no edge — it simply runs out.",
+    runner: "crowd.55724c73cfc2.js",
+    scene: "____cBdGtUopThaBLy5yTW2mUAodszye4",
+  },
+  {
     id: "dangler-together",
     title: "together",
     piece: "dangler",
@@ -183,6 +228,15 @@ export const WALL: readonly WallEntry[] = [
     note: "Dark stars pressed into a warm light ground.",
     runner: "starry-night.490e5f9452c8.js",
     scene: "__9ALCzDvUi1YyAPAyI",
+  },
+  {
+    id: "crowd-waist-high",
+    title: "waist high",
+    piece: "crowd",
+    pieceTitle: "Crowd",
+    note: "The same square from a child's eyes. Every adult is a ceiling and the other children are the only faces.",
+    runner: "crowd.55724c73cfc2.js",
+    scene: "____cGMyye9RLByZxzbC6E8GwApWCg-e5",
   },
   {
     id: "flotsam-crossing",
