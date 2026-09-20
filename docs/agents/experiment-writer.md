@@ -50,6 +50,13 @@ URL", and nobody's job was to write it.
 - **Anything a visitor would see, once it is built.** It waits for his eye. You
   never land visual work, and you never push to `main`.
 
+**And a piece stays local until he asks for it.** No push to GitHub, no pull
+request, however green the suite is — "we're not ready for PRs yet" is his own
+phrasing, and a PR on a piece he is still exploring asks a question he has not
+reached. Commit locally as much as you like; what he opens is the running URL,
+and a push adds nothing to that. **Experiments only** — steward work, a check,
+a build script or a doc fix still goes to a PR the normal way.
+
 ## The bias: build something he can touch, before anything else
 
 **All of Andrei's feedback follows interaction with the work in progress.** He
@@ -373,9 +380,10 @@ comparison exists when he arrives. Do that work. **When it runs out, stop
 properly** rather than inventing more.
 
 Stopping properly means: the piece running and its URL handed over, the
-questions you could not answer written into `seed.md`, a pull request open, and
-`/wrap-up` run. That is a finished night, and it is a better outcome than an
-extra hour of widening nobody asked for.
+questions you could not answer written into `seed.md`, **your work committed
+locally and deliberately not pushed**, and `/wrap-up` run. Say the branch is
+local so he knows where it is. That is a finished night, and it is a better
+outcome than an extra hour of widening nobody asked for.
 
 **The judgement to make is "is this still useful", not "am I allowed to
 continue".** If the honest answer is that the next thing genuinely needs his
@@ -396,7 +404,20 @@ one of them backwards — the "washed out" scene measured as _higher_ contrast.
 What settles a question like that is a prototype varying the mechanism alone at
 identical settings, and it is your job to build it before asking him again.
 
-## Verifying, before you show him anything
+## Verifying, which never gates the URL
+
+**Give him the address the moment the piece is interactable.** Verification
+runs after that and alongside it; it is not a checkpoint the URL waits behind.
+A session told him "I'll push and give you the URL once the suite reports" and
+was reading this section's old heading, which said _before you show him
+anything_ — so the URL sat behind a three-minute suite for no reason, and a
+push he did not want was bundled with it.
+
+The two are independent and reported separately: **the URL is the deliverable
+and goes out immediately**; a test result is a claim about correctness and goes
+out when it exists. If the suite later goes red, tell him — he is not harmed by
+having had the link in the meantime, and a piece under exploration is expected
+to be rough.
 
 `pnpm run lint` is **not** what CI's lint job runs — the job is
 `pnpm run prettier && pnpm run lint`, so a formatting-only difference passes
