@@ -19,7 +19,7 @@ exports[`bubbles > has not edited a slot in place 1`] = `
   "wave num grid=0.02 origin=0 bits=7",
   "waveHz num grid=0.05 origin=0.1 bits=7",
   "lag num grid=0.02 origin=0 bits=6",
-  "merge num grid=0.02 origin=0 bits=6",
+  "merge num grid=0.02 origin=0 bits=6 RETIRED",
   "bounce num grid=0.02 origin=0 bits=6",
   "dissolve num grid=0.0005 origin=0 bits=6 RETIRED",
   "popSize num grid=0.002 origin=0.01 bits=7",
@@ -40,7 +40,7 @@ exports[`bubbles > has not edited a slot in place 1`] = `
   "gas num grid=1 origin=2 bits=12",
   "fragile num grid=0.02 origin=0 bits=6 RETIRED",
   "playback num grid=0.01 origin=0.05 bits=8",
-  "rim num grid=0.01 origin=0.02 bits=6",
+  "rim num grid=0.01 origin=0.02 bits=6 RETIRED",
   "birthMin num grid=0.0005 origin=0.0005 bits=6",
   "birthMax num grid=0.0005 origin=0.0005 bits=6",
   "stable num grid=0.001 origin=0.002 bits=6",
@@ -48,6 +48,9 @@ exports[`bubbles > has not edited a slot in place 1`] = `
   "count num grid=100 origin=200 bits=8",
   "life num grid=1 origin=2 bits=9",
   "cling num grid=0.02 origin=0 bits=6",
+  "merge num grid=0.01 origin=0.01 bits=13",
+  "rupture num grid=0.02 origin=0 bits=6",
+  "rim num grid=0.1 origin=0.5 bits=6",
   "fragile num grid=0.02 origin=0 bits=6",
 ]
 `;

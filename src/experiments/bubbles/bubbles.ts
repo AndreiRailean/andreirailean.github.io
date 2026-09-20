@@ -95,19 +95,6 @@ const STILL_SECONDS = 22
 /** How far outside the frame a bubble is still simulated, as a fraction of `span`. */
 const MARGIN = 0.18
 
-/**
- * Contacts per second at `merge` 1.
- *
- * **Raised from 14, and the reason is what overlap actually is.** At 14 a
- * touching pair took about five frames to decide to join, and for all five the
- * flow went on pressing them together — so comparable bubbles sat visibly
- * interpenetrated by a quarter of their tangent distance while they waited.
- * Real bubbles do not pass through each other on the way to coalescing; they
- * touch, flatten against a shared wall, and go. Circles cannot show the
- * flattening, so the nearest honest thing is for the wait to be short.
- */
-const MERGE_EAGERNESS = 55
-
 /** How quickly a touching pair is brought to a common velocity, at `cling` 1. */
 const CLING_RATE = 26
 
@@ -307,6 +294,16 @@ export type BubblesStats = {
    * move together" are claims about numbers the piece could not report.
    */
   slip: number
+  /**
+   * How far contact moves a bubble directly, in millimetres a second, averaged
+   * over every live bubble.
+   *
+   * Separating an overlap is a correction to the position: it does not show up
+   * in the motion and the flow undoes it next step, so it reads as a jump
+   * rather than as a push. Against `speed` it says how much of what a viewer
+   * sees is the flow and how much is the solver.
+   */
+  shove: number
   /** Frames per second, averaged over the last second. */
   fps: number
 }
@@ -387,6 +384,8 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
   let overlapCount = 0
   let slipSum = 0
   let slipCount = 0
+  let shoveSum = 0
+  let shoveSeconds = 0
   let made = 0
   let merges = 0
   let pops = 0
@@ -817,13 +816,20 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
     if (settings.merge <= 0 && settings.bounce <= 0) return
     rebuildGrid()
 
-    const base = settings.merge * MERGE_EAGERNESS * dt
+    // `merge` is now a rate — film failures per second of contact — rather than
+    // a dial scaled by a constant. **That is what decides whether the piece can
+    // make foam at all.** At the old top end a touching pair became one bubble
+    // inside a frame: measured at 3,242 merges a second against 1,203 bubbles
+    // alive, every bubble merging three times a second, so no raft of
+    // neighbours could ever exist and `cling` had nothing to hold together.
+    const base = settings.merge * dt
     const reach = Math.max(1, settings.pack)
     stamp++
 
     // "Big" is four times the largest a bubble can arrive at, so it means
     // assembled here rather than delivered.
     const grown = settings.birthMax * 4
+    shoveSeconds += dt
 
     for (let i = 0; i < capacity; i++) {
       if (live[i] === 0) continue
@@ -867,6 +873,16 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
             const chance = base > 0 ? 1 - Math.exp(-base / (1 + (settings.shatter * busy) / WORKED)) : 0
 
             if (chance > 0 && rng() < chance) {
+              // **A film giving way does not always join two bubbles.** It can
+              // take the outer wall with it, and then one of them is simply
+              // gone — which is what a foam raft does constantly and is why a
+              // crowd of neighbours does not inevitably coarsen into one
+              // enormous bubble. The larger of the pair is likelier to be the
+              // one that goes, because it is holding up more film.
+              if (settings.rupture > 0 && rng() < settings.rupture) {
+                burst(rng() < mi / total ? i : j)
+                continue
+              }
               // Area conserved, so radius goes as the square root: four
               // bubbles to double one.
               px[i] = (px[i]! * mi + px[j]! * mj) / total
@@ -962,6 +978,7 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
             // far in one step. They almost always merge before it matters, but
             // "almost always" is not a thing to leave in a contact solver.
             const push = Math.min(overlap, Math.min(radius[i]!, rj)) * settings.bounce
+            shoveSum += push
             px[i]! -= ux * push * shareI
             py[i]! -= uy * push * shareI
             px[j]! += ux * push * shareJ
@@ -1110,6 +1127,10 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
     // ring; it draws as a grey smudge, because the only thing a sub-pixel
     // stroke can do is lower the coverage. So a bubble too small to hold a wall
     // is a dot, which is also what an eye sees.
+    // **The same wall for every bubble, in pixels.** It was a fraction of the
+    // radius, which is backwards to look at: a small bubble came out with a
+    // visibly thicker wall than a large one, when a real bubble's wall reads as
+    // the same fine line whatever its size.
     const wall = settings.rim
     const wantRing = settings.look !== "disc"
     const ringAll = settings.look === "ring"
@@ -1121,7 +1142,8 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
       if (live[i] === 0) continue
       const r = radius[i]! * view.pxPerMetre
       if (r < 0.15) continue
-      if (wantRing && (ringAll || r * wall >= 0.75)) continue
+      // A ring needs room for its wall plus a hole; under that it is a dot.
+      if (wantRing && (ringAll || r >= wall * 1.6)) continue
       const x = screenX(view, px[i]!)
       const y = screenY(view, py[i]!)
       ctx.moveTo(x + r, y)
@@ -1139,14 +1161,15 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
       if (live[i] === 0) continue
       const r = radius[i]! * view.pxPerMetre
       if (r < 0.15) continue
-      if (!ringAll && r * wall < 0.75) continue
+      if (!ringAll && r < wall * 1.6) continue
       const x = screenX(view, px[i]!)
       const y = screenY(view, py[i]!)
       // A stroke straddles its path, so the arc is inset by half the wall and
       // the bubble's outer edge still lands at `r`. Without that a ring is
       // visibly bigger than the disc it replaces and toggling `drawn as`
-      // changes the size of everything.
-      const width = Math.max(0.45, Math.min(r * 1.9, r * wall * 2))
+      // changes the size of everything. The wall is capped at the radius so a
+      // bubble smaller than its own wall cannot invert.
+      const width = Math.min(wall, r * 1.6)
       const at = Math.max(0.05, r - width / 2)
       ctx.moveTo(x + at, y)
       ctx.arc(x, y, at, 0, Math.PI * 2)
@@ -1277,6 +1300,8 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
       overlapCount = 0
       slipSum = 0
       slipCount = 0
+      shoveSum = 0
+      shoveSeconds = 0
       clock = 0
       draw()
     },
@@ -1321,6 +1346,7 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
         bigOut: Number((insideMean > 0 ? outsideMean / insideMean : 0).toFixed(3)),
         mean: Number(((alive > 0 ? total / alive : 0) * 1000).toFixed(2)),
         speed: Number(((alive > 0 ? pace / alive : 0) * 1000).toFixed(1)),
+        shove: Number((shoveSeconds > 0 && alive > 0 ? (shoveSum / shoveSeconds / alive) * 1000 : 0).toFixed(1)),
         overlap: Number((overlapCount > 0 ? (overlapSum / overlapCount) * 100 : 0).toFixed(1)),
         slip: Number((slipCount > 0 ? (slipSum / slipCount) * 1000 : 0).toFixed(1)),
         made,

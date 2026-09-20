@@ -269,3 +269,49 @@ visible teleport rather than a break-up.
   work than anything here.
 - **`one jet` still measures 54% overlap** where every other scene is at or near 0. It has very few grown bubbles so the sample is small, and I did not chase
   it.
+
+## 2026-09-20 — fifth round
+
+> i'm not seeing any clinging here.
+>
+> http://10.1.11.11:4456/experiments/bubbles/?s=_4_977vffEBYUGAg0YoWCCOYoniCgEsQqdMgRgwDpfBAFlCHHdZk
+>
+> a few more observations:
+>
+> - real bubbles don't always join to make a bigger bubble. i guess turbulence
+>   sometimes causes them to press together and form a bigger bubble. but they
+>   could also pop (or one of them could) instead of joining.
+> - all bubbles should have the same stroke width. i think real bubbles are that
+>   way. this makes smaller bubbles look like they have thicker walls. current
+>   experiment lets the s wall grow with size and it shouldn't
+> - still seeing jerky circle action. reloaded a few times. maybe something
+>   didn't tak
+>
+> what's the control to make it more foamy? i.e. let bubbles accumulate
+
+## 2026-09-20 — answering the fifth round
+
+**The foam control is `coalesce`**, and it did not exist as one until now. It is
+film failures per second of contact: bring it under about one a second and
+touching bubbles stay neighbours instead of joining, so the surface packs. Preset
+3, `foam`, is the packed end. Everything else that looked wrong in that round was
+the same number — a contact was not surviving a single frame, so there was never
+a raft to cling to and nothing could accumulate.
+
+- **Why no clinging was visible.** Not a bug in `cling`. Measured on his scene:
+  3,242 merges a second against 1,203 bubbles alive. Slip between touching pairs
+  was 92% of the foam's own speed; it is 10–15% now.
+- **His address also carried `bounce: 0.34`**, the value from before the last
+  round — an address states every setting, so a saved link does not pick up new
+  defaults. Worth knowing when a scene seems not to have changed.
+- **The jerkiness.** `shove` now reports it: mean positional correction per
+  bubble per second, against the foam's speed. It is 1–10% in every scene except
+  `foam`, which runs at 86% because a jammed raft is the solver pushing harder
+  than the water does. That is the honest limit of drawing foam as circles that
+  may not overlap — real bubbles deform into polygons, which is a rendering
+  change rather than a physics one and is not built.
+- **The trade I could not settle for you.** Slow coalescence gives thick foam and
+  _fewer_ big bubbles — they are opposite ends of one control. `slick`,
+  `meniscus` and `foam` get some of both by being soapy: long `lasts`, high
+  `holds at`, low `torn by`.
+- **Still not built:** the per-jet tilt, and bubble flattening.

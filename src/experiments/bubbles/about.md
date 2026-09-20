@@ -126,6 +126,26 @@ which is directly over a jet: density is what drives coalescence, so no amount
 of moving the births could have fixed it. Something had to take them apart
 again.
 
+### Why foam exists at all
+
+A bubble that touches another and immediately becomes one with it cannot make
+foam. There would be nothing to accumulate — just a size that keeps climbing.
+Foam exists because **the film between two neighbours holds**, often for a very
+long time, and they sit as separate bubbles packed against each other.
+
+So `coalesce` is a rate: film failures per second of contact. Near the top a
+pair joins the instant it touches. Down at one event every few seconds a raft
+forms and the surface packs. It is the single control that decides whether you
+are looking at foam or at a few large circles, and for a long time this piece
+only had the second one — a touching pair was becoming one bubble inside a
+frame, three thousand times a second.
+
+And a film giving way does not always join two bubbles. It can take the outer
+wall with it, and then one of them is simply gone. `rupture` is the share of
+failures that go that way, weighted toward the larger of the pair since it is
+holding up more film. It is why a crowd of neighbours does not inevitably
+coarsen into one enormous bubble.
+
 ### Foam sticks together
 
 Bubbles here could originally do two things to each other: become one, or push
@@ -193,6 +213,13 @@ A few places worth going:
   but merging.
 - **`coalesce` to zero** is the other end: nothing ever grows, and the piece
   becomes a pure read-out of the flow with a few thousand tracers in it.
+- **`coalesce` down, for foam.** It is the answer to "how do I make it
+  accumulate": bring it under about one event a second and touching bubbles stay
+  neighbours instead of joining, so the surface packs. Take it up to the top and
+  the same scene dissolves into a handful of large circles. Preset 3 is the
+  packed end.
+- **`rupture` to zero.** Every contact that resolves becomes a merge, so the
+  foam can only ever coarsen. Up near 1 and a crowd keeps destroying itself.
 - **`cling` to zero, drawn as rings.** The foam comes apart into separate
   circles that slide through each other, which is what it did before the
   binding existed. It is the fastest way to see what holding a raft together
@@ -216,10 +243,13 @@ A few places worth going:
 - **`frame` down to about 30cm.** Close enough that a bubble is a large circle
   and you can watch individual merges happen, which is invisible at any normal
   framing.
-- **`drawn as` rings, with `wall` down at 0.03.** A hairline outline is much
+- **`drawn as` rings, with `wall` down at 1px.** A hairline outline is much
   closer to what foam on real water looks like from above — a bright meniscus
-  with the water showing through. `mixed` draws a ring only once it is big
-  enough to read and a dot while it is not, which is what an eye does.
+  with the water showing through. The wall is the same width for every bubble
+  whatever its size, which is what a real bubble looks like; measuring it as a
+  fraction of the radius made small bubbles look thick-walled. `mixed` draws a
+  ring only once it is big enough to hold one and a dot while it is not, which
+  is what an eye does.
 - **`wake`** leaves the last frame behind, so what you see is where the foam has
   been rather than where it is. The flow becomes legible as streaks, which is
   cheating, and is instructive for exactly that reason.

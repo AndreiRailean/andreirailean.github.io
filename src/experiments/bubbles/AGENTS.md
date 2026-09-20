@@ -360,3 +360,45 @@ of the ten presets.
 **The shape to recognise: a population statistic is meaningless until you have
 said which population.** Twice the number moved for reasons that had nothing to
 do with the thing being changed.
+
+## Foam needs coalescence to be _rare_, and this is the finding that took longest
+
+`merge` was "how readily", a 0-to-1 dial multiplied by a constant that had been
+raised to 55 to cut down overlap. At the top that is a join per frame of contact.
+Measured on a scene Andrei sent: **3,242 merges a second against 1,203 bubbles
+alive** — every bubble merging three times a second.
+
+Three separate complaints were all that one number:
+
+- _"I'm not seeing any clinging"_ — a contact did not survive a frame, so no raft
+  ever existed for `cling` to hold together. Slip between touching pairs sat at
+  92% of the foam's own speed; at a slow rate it is 10–15%.
+- _"what's the control to make it more foamy, i.e. let bubbles accumulate"_ —
+  there wasn't one, because accumulation is impossible when contact means
+  absorption.
+- Bubbles only ever coarsened, because a resolved contact could only be a merge.
+
+`merge` is a **rate** now, on a log track from one event per hundred seconds to
+sixty a second, and `rupture` is the share of film failures that destroy a bubble
+instead of joining two. Foam lives below about one a second.
+
+**The trade to know about:** slow coalescence means fewer large bubbles, so
+`bigOut` falls back toward 1 in the fast-packing scenes. Big bubbles and thick
+foam are opposite ends of the same control. `slick`, `meniscus` and `foam` hold
+both by being soapy — a long `lasts`, a high `holds at` and a low `torn by`.
+
+## `shove` says when the contact solver has taken over
+
+Mean positional correction per bubble per second, against `speed`. Under about
+10% the solver is invisible. The `foam` preset runs at **86%** — in a jammed raft
+the separation is moving bubbles more than the water is, which is the honest
+limit of drawing foam as circles that may not overlap. Real bubbles deform into
+polygons instead; that would be a rendering change, not a physics one.
+
+## A wall measured as a fraction of the radius is backwards
+
+`rim` was a fraction, so a small bubble came out with a visibly thicker wall than
+a large one. Andrei: _"all bubbles should have the same stroke width… this makes
+smaller bubbles look like they have thicker walls."_ It is a width in pixels now,
+identical for every bubble, capped at the radius so a bubble smaller than its own
+wall cannot invert.
