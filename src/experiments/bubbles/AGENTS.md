@@ -384,7 +384,7 @@ instead of joining two. Foam lives below about one a second.
 
 **The trade to know about:** slow coalescence means fewer large bubbles, so
 `bigOut` falls back toward 1 in the fast-packing scenes. Big bubbles and thick
-foam are opposite ends of the same control. `slick`, `meniscus` and `foam` hold
+foam are opposite ends of the same control. `slick` and `foam` hold
 both by being soapy — a long `lasts`, a high `holds at` and a low `torn by`.
 
 ## `shove` says when the contact solver has taken over

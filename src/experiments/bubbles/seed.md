@@ -382,3 +382,25 @@ without anyone having to remember.
 - **`DEFAULT_SETTINGS` was deliberately left alone.** It is the baseline an
   address with gaps falls back to, not a scene, and the section is explicit that
   the two are different things.
+
+## 2026-09-20 — eighth round
+
+> make sure all presets use lowercase. delete "meniscus". slick is similar and is
+> enough. remove "shallow". remove "one jet"
+
+## 2026-09-20 — what came out with them
+
+Eleven presets now, all lowercase, and the first nine are the ones the number
+keys reach — `standing still` and `surging` are mouse only.
+
+- **`shallow` was the other half of a comparison**, not a scene to look at: it
+  differed from `deep water` by `depth` alone so the mechanism could be moved
+  rather than described. With it gone, `about.md` says to take `deep water` and
+  drag `depth` from two metres to fifteen centimetres instead, which is the same
+  demonstration in one action rather than two presets.
+- **Rings did not leave with `meniscus`.** The primary draws them, and so do
+  `standing ring` and `ring, breathing`; `slick` is `mixed`. If anything the
+  ring look is better represented now than when it had a preset of its own.
+- Every reference to the three by name is gone from `about.md`, the piece's
+  `AGENTS.md`, `poster.ts` and the note — the ones left in this file are yours
+  and stay.

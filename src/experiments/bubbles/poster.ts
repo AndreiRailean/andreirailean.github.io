@@ -14,7 +14,7 @@ import type { PosterRecipe } from "@/experiments/poster"
  *
  * **The picture accumulates now, and that warning came due.** This docblock used
  * to say it did not, and that the day a scene with a wake was promoted to first
- * the recipe would have to say how many frames. `Time bubbles` has `trail` at
+ * the recipe would have to say how many frames. `time bubbles` has `trail` at
  * 0.35, so the streaks are a rendering artefact built up frame by frame rather
  * than simulation state: stepping the water forward and drawing once gives a
  * frame with no wake in it at all.
