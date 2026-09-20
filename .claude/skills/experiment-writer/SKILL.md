@@ -145,19 +145,40 @@ that did not fit in the title lives there, and on #117 it is most of the issue.
 **Everything up to the gate, in this order** — nothing here is optional and
 nothing below it starts until he has driven the result:
 
+0. `src/experiments/<slug>/seed.md` — his instruction verbatim, before any code.
 1. `src/experiments/<slug>/settings.ts` — `TRACKS` written out, `BOUNDS` narrowed
    from it, a preset stating every setting and inheriting from nothing. Position
    one is the primary; three other surfaces read it.
-2. The smallest thing that draws. One mark is enough.
+2. Something that draws. **How much goes in one file is not the rule** — the
+   rule is that **no second module is written before a route renders the
+   first**. A whole simulation in one file and then a route is fine; two
+   modules and no page is the failure `crowd` demonstrated. Do not write a
+   throwaway stub that draws a circle in order to obey a word count.
 3. `src/pages/experiments/<slug>/index.astro` — markup, a `<style>` block and
    `import { boot } from "@/experiments/<slug>/page"`. No logic in the `.astro`.
-4. The kit's panel, from `CONTROLS`. **Now go to step 4 and stop.**
+4. The kit's panel, from `CONTROLS`.
+5. **Numbers before the first screenshot** — see below. Then go to step 4 and
+   hand over the URL.
+
+**Measure before you look, every time.** This is not a fallback for when he is
+away; it is how you find out whether the piece does what you think, and it goes
+before the first screenshot rather than after. Dump `stats()` and check that
+**each mechanism actually fired** — not that the page rendered.
+
+`bubbles` caught two faults this way that no still would have shown: the frame
+was 3m wide so a 6mm bubble came out 1.3px with 0.5% of the screen lit, and
+`biggest` plateaued at 14mm against a `popSize` of 50mm, meaning **one of the
+piece's three mechanisms never ran at all** and the picture gave no sign of it.
+A screenshot of that scene looks like a reasonable piece. `src/experiments/AGENTS.md`
+already says almost every bug in this section was invisible in a screenshot;
+this is that rule applied at minute thirty rather than at review.
 
 **Then, after he has interacted with it:** the about page reading its theme off
 `PRESETS[0]`, `about.md` without its `poster:` line, the four registration points
-(`SLUGS`, `PIECES`, `EXPECTED`, `NOTES`), and **capture the poster _before_
-adding `poster:` to `about.md`** — the collection resolves that path through
-`image()` and a missing file 500s the index.
+(`SLUGS`, `PIECES`, `EXPECTED`, `NOTES`), **the piece's own `AGENTS.md`** holding
+the traps this build cost you, and **capture the poster _before_ adding
+`poster:` to `about.md`** — the collection resolves that path through `image()`
+and a missing file 500s the index.
 
 **Changing a piece:** read its own `AGENTS.md` first, and expect the trap you are
 about to hit to be described in it.
