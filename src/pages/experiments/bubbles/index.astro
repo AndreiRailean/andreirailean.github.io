@@ -1,0 +1,83 @@
+---
+import "@/experiments/kit/controls.css"
+
+import Reel from "@/experiments/gallery/Reel.astro"
+
+// A deliberately bare document: no Layout, no globals.css, no Tailwind. The
+// experiment owns the whole viewport and shares no chrome with the rest of the
+// site.
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bubbles</title>
+    <style is:global>
+      html {
+        /* Overridden from JS on every change; the fallback keeps the page sane
+           before the first paint and without script. The water itself takes no
+           colour from this — it is black, and the bubbles are white. */
+        --hue: 190;
+
+        --accent: hsl(var(--hue) 72% 62%);
+        --ui-text: rgb(255 255 255 / 74%);
+        --ui-label: rgb(255 255 255 / 50%);
+        --ui-heading: hsl(var(--hue) 36% 68%);
+        --ui-panel: rgb(4 8 10 / 86%);
+        --ui-chip: rgb(6 12 15 / 76%);
+        --ui-edge: rgb(215 240 255 / 14%);
+        --ui-edge-hover: rgb(215 240 255 / 34%);
+        --ui-on-bg: hsl(var(--hue) 58% 32%);
+        --ui-on-text: hsl(var(--hue) 70% 94%);
+        --ui-on-edge: rgb(200 235 255 / 42%);
+        --track: rgb(215 240 255 / 16%);
+        --ui-fade: 0.35s;
+
+        /* The kit's measures, which the pieces legitimately disagree about:
+           twenty-seven rows in four groups want a wider panel than fifteen. */
+        --ui-label-col: 6.5rem;
+        --ui-value-col: 5.5rem;
+        --ui-panel-min: 23rem;
+        --ui-row-gap: 0.38rem;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        /* The water. Everything a viewer can see that is not a bubble is this. */
+        background: #000;
+      }
+
+      body {
+        overflow: hidden;
+      }
+
+      canvas {
+        position: fixed;
+        inset: 0;
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="water"></canvas>
+    {
+      /* The interactive view: full-bleed piece, two axes of swipe, on a touch device.
+        Between the canvas and `#ui` because DOM order is the whole stacking
+        arrangement here — see the note in Reel.astro. */
+    }
+    <Reel slug="bubbles" />
+    <div id="ui"></div>
+
+    <script>
+      import { boot } from "@/experiments/bubbles/page"
+
+      boot()
+    </script>
+  </body>
+</html>
