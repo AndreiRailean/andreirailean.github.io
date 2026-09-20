@@ -112,6 +112,15 @@ a stopping condition here and not a bullet in a list.
 this point. Only the order was wrong. Do not read this as an argument for writing
 less; read it as an argument for writing the renderable part first.
 
+**The counter-instinct to hold, in the session's own words: _the part that
+feels trivial is the part that is the gate._** It explained afterwards why it
+went bottom-up, and the reason is not carelessness — the brief was rich in
+physics, the physics felt like the risky part, and **the route felt trivial, so
+it got deferred as the thing that could be done any time.** That reasoning is
+correct about difficulty and exactly backwards about order. Whatever in the
+brief feels hardest is what most needs something on screen to test it against,
+and the boring page is what makes testing possible.
+
 ### This outranks a design-first process, deliberately
 
 A general-purpose process skill will tell you to explore, ask, propose options,
@@ -313,6 +322,14 @@ What goes in:
   faces inward and records _him_; `about.md` faces outward and describes the
   work.
 
+**If you are adopting this convention mid-build, say so in the file.** A
+`seed.md` written at minute four hundred is transcribed, not kept, and the two
+are not the same artefact — `crowd` wrote one in a single sitting after the
+rule landed and marked it as such rather than letting it read as
+contemporaneous, which is the right handling. It also reported nearly losing
+the exact phrasing of two rounds of his feedback, and that his phrasing was
+load-bearing in both. That is the cost the rule exists to avoid, measured.
+
 **No check holds this yet, and that is worth stating rather than hiding.** The
 six pieces that already exist have no `seed.md`, so a check asserting every
 piece has one fails six times today, and one that skips them is a list that goes
@@ -387,6 +404,14 @@ cheaper than picking well.
   glance would have caught.
 - **Spend the time on correctness and range, not on polish.** Polish is what he
   would have redirected, and what his first sentence is most likely to discard.
+- **Know what measurement cannot reach, and do not mistake a green night for a
+  good one.** The `crowd` session built overnight against numbers and came out
+  with a piece that was structurally complete and visually unexamined: **every
+  one of his first four notes was about motion quality, and no check could have
+  raised any of them.** Measurements find defects; they do not find whether it
+  looks right, and the gap between those two is where all of his feedback
+  lives. So report an unattended night as "correct as far as I can test, and
+  unlooked-at" rather than as finished.
 - **Put every question you could not answer into `seed.md`**, not into a message
   to him. Better still, put it in the piece: a preset per candidate answer is
   answered by dragging, which is how he answers anyway.
@@ -419,6 +444,31 @@ condition, not a failure.
 something looks wrong, the useful response is to work out what in the physics or
 the arithmetic produces it, rather than to nudge a constant until it goes away.
 
+**This now has a count behind it. Across nine rounds of his feedback on
+`crowd`, every single one resolved to a mechanism and not one to a constant** —
+and four times what he described as a single symptom turned out to be two or
+three separate defects. The worked examples are worth reading as a set, because
+the pattern is that his words name the _symptom_ accurately and the _cause_ not
+at all:
+
+| What he said                     | What it was                            |
+| -------------------------------- | -------------------------------------- |
+| "robotic head turns"             | a rate limiter with no easing          |
+| "strange jitter like collisions" | not collisions                         |
+| "is there strafing"              | facing equals velocity by construction |
+| "do I ever turn"                 | an unreachable branch                  |
+
+So **take the symptom as reliable and the diagnosis as untested**, including
+when he offers one. "Like collisions" was a genuine observation attached to the
+wrong cause, and a session that went looking at collision code would have found
+nothing wrong and reported back that the piece was fine.
+
+**And one distinction that keeps producing this class**, recorded generally in
+`src/experiments/crowd/AGENTS.md`: **a rate limit and a spring are not two
+settings of the same thing.** A limit clips and leaves the clipped shape behind
+— which is what "robotic" was. A spring filters. Reaching for the wrong one of
+those is not a tuning error that a better constant fixes.
+
 **And when the question is a mechanism, build the comparison that isolates it.**
 This is the discipline the second gate turns on, and #117 is the worked case.
 Andrei looked and could not decide, because nothing reachable from the sliders
@@ -449,6 +499,21 @@ was invisible in a screenshot, and that both runners assert on numbers rather
 than pixels. This is that rule moved earlier: not a thing the test suite does to
 you at review, a thing you do to yourself at minute thirty. `stats()` and the
 console API exist for exactly this.
+
+**"A mechanism that never runs" is the class to check for, and two pieces have
+now hit it.** `bubbles` caught its own by measuring. `crowd` did not, and only
+Andrei looking found it: `if (Math.abs(yawOffset) > NECK_LIMIT)`, where
+`yawOffset` springs toward a target that is _already clamped to `NECK_LIMIT`_,
+critically damped and therefore never overshooting — an unreachable branch, so
+the turning it implemented simply never happened. **Both the piece's note and
+its own `AGENTS.md` described the behaviour as working.**
+
+The general shape is worth recognising on sight: **a conditional whose guard is
+bounded by the same constant that bounds its subject.** The repo already holds
+the testing version of this — a check nobody has seen fail is a claim — and
+this is the implementation version. A branch nobody has seen taken is also a
+claim, and asserting that each mechanism actually _fires_ is how you stop
+writing documentation for code that does nothing.
 
 ## Verifying, which never gates the URL
 

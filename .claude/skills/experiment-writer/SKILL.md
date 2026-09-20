@@ -234,11 +234,20 @@ failed, one of them backwards.
 ## 5. Verify before you claim anything
 
 ```bash
-pnpm exec astro check                # run this after every edit — seconds, not minutes
+pnpm exec astro check 2>&1 | grep errors   # after every edit — seconds, not minutes
 pnpm run prettier && pnpm run lint   # what CI actually runs; `lint` alone is not
 pnpm exec vitest <name>              # milliseconds, while working
 pnpm run build                       # the full thing, including astro check
 ```
+
+**Pipe it through `grep errors`, and do not use `tail`.** Its summary prints
+errors, then warnings, then hints, then **two blank lines** — so the obvious
+cheap check, `| tail -3`, shows you warnings, hints and a blank line and
+scrolls the one number you need off the top. A session ran `astro check` after
+every edit for several rounds while it reported four errors, saw a clean-looking
+tail each time, and kept 1,187 green tests: both runners strip types and eslint
+does not typecheck, so nothing else could catch it. `grep errors` matches that
+line exactly once and nothing else.
 
 **`pnpm exec astro check` is the one to reach for constantly.** `pnpm test` types
 nothing — vitest strips types and Playwright compiles per file — so in CI the
