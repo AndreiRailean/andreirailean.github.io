@@ -71,8 +71,21 @@ construction: it can move water around and can never make or lose any. Foam then
 gathers only where something is actually pushing it.
 
 **The ebb** is the return flow. A tub is closed, so everything the jets push out
-has to come back, and where the return balances a jet there is a ring the foam
-cannot cross.
+has to come back — and somewhere between the jets and the edge those two cancel
+exactly. **That radius is a standing ring**: foam carried outward arrives there
+and can go no further, foam beyond it is brought back to it. It is the thing a
+real jacuzzi always has and nobody draws.
+
+Nothing places it. It falls out of the arithmetic — far enough out the jets read
+as one source, and the balance is where their push equals the return — so
+turning `return` up pulls the ring in and turning it down pushes it out. Checked
+against where the foam actually collects, over a range of `return`, and the two
+agree inside one per cent. With churn and waver at zero it comes out as a drawn
+circle; with a little of either it grows lobes and wanders.
+
+The catch is that a ring is easy to have and easy to miss: at a close framing it
+sits outside the picture entirely. `experiment.stats().ring` gives its radius in
+millimetres, which is how you know what to set `frame` to.
 
 And each bubble **wavers** across its own direction of travel, on its own clock
 at its own frequency — the wave riding under the surface rather than anything

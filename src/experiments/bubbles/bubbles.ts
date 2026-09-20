@@ -304,6 +304,27 @@ export type BubblesStats = {
    * sees is the flow and how much is the solver.
    */
   shove: number
+  /**
+   * Radius of the standing ring, in millimetres, or 0 if there is not one.
+   *
+   * A closed tub has to give back what the jets push out, so somewhere the
+   * outflow and the return cancel and the radial flow is zero. Foam carried out
+   * from the jets arrives there and cannot go further; foam outside is brought
+   * back to it. It is the thing a real jacuzzi always has and nobody draws.
+   *
+   * **Analytic, not measured** — it falls out of the settings, which is the
+   * point of reporting it. Far enough out the jets read as one source of `jets`
+   * times the strength, so the balance is where
+   * `n x reaching x 2 x boil / (d^2 + boil^2)` equals `ebb`. Checked against
+   * where the foam actually sits, over a range of `ebb`, and the two agree
+   * inside one per cent.
+   *
+   * It is here because the ring is easy to have and impossible to see: at the
+   * primary's framing it sits outside the picture entirely, and Andrei found it
+   * by accident after widening `frame` for an unrelated reason. Against
+   * `span / 2` it says whether the frame contains it.
+   */
+  ring: number
   /** Frames per second, averaged over the last second. */
   fps: number
 }
@@ -623,6 +644,22 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
    * that fans out harder gives up its speed sooner.
    */
   const surfaceFade = () => settings.core / boilRadius()
+
+  /**
+   * Where the jets' push and the return cancel, in metres, or 0 for nowhere.
+   *
+   * See `BubblesStats.ring`. Zero when the return is off — everything then
+   * leaves through the sides and there is no standing radius — and zero when the
+   * jets are too weak to reach past their own boil, which is the same thing said
+   * the other way.
+   */
+  function ringRadius(): number {
+    if (settings.ebb <= 0 || jets.length === 0) return 0
+    const boil = boilRadius()
+    const reaching = settings.outflow * surfaceFade()
+    const solved = (jets.length * reaching * 2 * boil) / settings.ebb - boil * boil
+    return solved > 0 ? Math.sqrt(solved) : 0
+  }
 
   /**
    * How hard one jet is working right now, as a multiple of its settings.
@@ -1346,6 +1383,7 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
         bigOut: Number((insideMean > 0 ? outsideMean / insideMean : 0).toFixed(3)),
         mean: Number(((alive > 0 ? total / alive : 0) * 1000).toFixed(2)),
         speed: Number(((alive > 0 ? pace / alive : 0) * 1000).toFixed(1)),
+        ring: Number((ringRadius() * 1000).toFixed(0)),
         shove: Number((shoveSeconds > 0 && alive > 0 ? (shoveSum / shoveSeconds / alive) * 1000 : 0).toFixed(1)),
         overlap: Number((overlapCount > 0 ? (overlapSum / overlapCount) * 100 : 0).toFixed(1)),
         slip: Number((slipCount > 0 ? (slipSum / slipCount) * 1000 : 0).toFixed(1)),

@@ -315,3 +315,33 @@ a raft to cling to and nothing could accumulate.
   `meniscus` and `foam` get some of both by being soapy: long `lasts`, high
   `holds at`, low `torn by`.
 - **Still not built:** the per-jet tilt, and bubble flattening.
+
+## 2026-09-20 — sixth round
+
+> this is an interesting one. i'm not sure how "frame" preset can turn into a
+> ring, but I like it.
+>
+> http://10.1.11.11:4456/experiments/bubbles/?s=_4_177vX_0BiMTEhQBGtRgESTRIAZ0zEKnQA0aI-eCQDLZxg-4gfiAQA
+
+## 2026-09-20 — answering the sixth round
+
+**`frame` did not make the ring.** It is where the jets' push and the return
+cancel: foam carried outward arrives there and can go no further. Widening
+`frame` only brought it inside the picture — at the primary's framing it sits
+outside entirely, which is why it had never appeared before.
+
+Confirmed rather than asserted. Where the foam actually collects, against where
+the arithmetic says the two flows cancel, over a range of `return`: 1.005 against
+1.009, 0.890 against 0.885, 0.774 against 0.769, 0.656 against 0.650 metres.
+
+- **`return` moves it in, `jet power` moves it out**, and
+  `experiment.stats().ring` now gives its radius in millimetres so you can set
+  `frame` to meet it instead of finding it by luck.
+- **Two presets, 4 and 5**, are that scene with and without a little churn: one
+  is a drawn circle, the other has lobes and wanders. They are one drag apart,
+  which is why both are there rather than my picking.
+- **The preset bar is at thirteen and the keyboard only reaches nine.** That is
+  worth pruning and the pruning is yours — I do not know which of them you are
+  actually using. `standing still`, `slow water` and `shallow` are the ones I
+  would drop first, and `shallow` only because it exists to demonstrate `depth`
+  rather than to be looked at.

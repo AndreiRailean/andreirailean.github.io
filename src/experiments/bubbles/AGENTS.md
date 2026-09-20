@@ -402,3 +402,32 @@ a large one. Andrei: _"all bubbles should have the same stroke width… this mak
 smaller bubbles look like they have thicker walls."_ It is a width in pixels now,
 identical for every bubble, capped at the radius so a bubble smaller than its own
 wall cannot invert.
+
+## The standing ring is derived, and `stats().ring` is the proof
+
+Andrei found it by accident — _"i'm not sure how 'frame' preset can turn into a
+ring, but I like it"_ — after widening `frame` for an unrelated reason. `frame`
+had nothing to do with it. The ring is where the jets' outflow and the return
+cancel, and widening the frame only brought it inside the picture.
+
+Far enough out the jets read as one source of `jets` times the strength, so the
+balance is where `n × reaching × 2 × boil / (d² + boil²)` equals `ebb`. Measured
+against where the foam actually collects, over a range of `ebb`:
+
+```
+return   foam sits at   balance predicts
+0.55        1.005 m         1.009 m
+0.70        0.890 m         0.885 m
+0.90        0.774 m         0.769 m
+1.20        0.656 m         0.650 m
+```
+
+**`stats().ring` reports it analytically** rather than measuring it, which is the
+point: a ring is easy to have and impossible to see when it falls outside the
+frame. At `return` 0.4 the same scene predicts 1.196m against a half-frame of
+1.1m, and the pixel measurement finds nothing at all — correctly, because there
+is nothing in the picture. Against `span / 2` the number says whether to widen.
+
+It is also the one place in this piece where a thing a viewer notices was
+designed in, forgotten, and then rediscovered from the outside. It was written
+into the `ebb` docblock from the first build and nobody had ever seen it.

@@ -44,7 +44,7 @@ export function announceApi(): void {
     ["experiment.pause()", "hold the water where it is, or let it run on"],
     ["experiment.idle(false)", "stop the chrome hiding itself"],
     ["experiment.fullscreen()", "toggle fullscreen (or press f)"],
-    ["experiment.stats()", "alive, sizes, speed, and running totals of births, merges, pops and tears"],
+    ["experiment.stats()", "alive, sizes, speed, the standing ring, and running totals"],
     ["experiment.decode(url)", "what scene an address describes"],
     ["experiment.url()", "a link that restores this exact state"],
   ]
