@@ -131,8 +131,8 @@ export function placeJets(settings: Settings): Jet[] {
   const out: Jet[] = []
 
   for (let index = 0; index < jets; index++) {
-    let x = 0
-    let y = 0
+    let x: number
+    let y: number
     if (layout === "ring") {
       // Half a step of phase, so an even count never puts two jets on the
       // horizontal axis and reads as a row by accident.

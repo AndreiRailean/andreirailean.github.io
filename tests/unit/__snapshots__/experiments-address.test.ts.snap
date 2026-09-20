@@ -1,5 +1,38 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`bubbles > has not edited a slot in place 1`] = `
+[
+  "jets num grid=1 origin=1 bits=3",
+  "layout enum ring|row|scatter",
+  "spin enum alternate|same|loose",
+  "spread num grid=0.01 origin=0 bits=7",
+  "core num grid=0.01 origin=0.02 bits=6",
+  "outflow num grid=0.02 origin=0 bits=8",
+  "swirl num grid=0.02 origin=0 bits=7",
+  "rate num grid=1 origin=2 bits=9",
+  "birthMin num grid=0.001 origin=0.002 bits=6",
+  "birthMax num grid=0.001 origin=0.002 bits=6",
+  "churn num grid=0.02 origin=0 bits=7",
+  "scale num grid=0.01 origin=0.05 bits=7",
+  "drift num grid=0.02 origin=0 bits=7",
+  "ebb num grid=0.02 origin=0 bits=7",
+  "wave num grid=0.02 origin=0 bits=7",
+  "waveHz num grid=0.05 origin=0.1 bits=7",
+  "lag num grid=0.02 origin=0 bits=6",
+  "merge num grid=0.02 origin=0 bits=6",
+  "bounce num grid=0.02 origin=0 bits=6",
+  "dissolve num grid=0.0005 origin=0 bits=6",
+  "popSize num grid=0.002 origin=0.01 bits=7",
+  "popRate num grid=0.05 origin=0 bits=7",
+  "spray num grid=1 origin=0 bits=4",
+  "count num grid=50 origin=200 bits=7",
+  "trail num grid=0.05 origin=0 bits=5",
+  "span num grid=0.05 origin=0.3 bits=7",
+  "hue num grid=1 origin=0 bits=9",
+  "seed num grid=1 origin=1 bits=14",
+]
+`;
+
 exports[`dangler > has not edited a slot in place 1`] = `
 [
   "seed num grid=1 origin=0 bits=20",
