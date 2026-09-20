@@ -345,3 +345,40 @@ the arithmetic says the two flows cancel, over a range of `return`: 1.005 agains
   actually using. `standing still`, `slow water` and `shallow` are the ones I
   would drop first, and `shallow` only because it exists to demonstrate `depth`
   rather than to be looked at.
+
+## 2026-09-20 — seventh round
+
+> Make this preset number one "Time bubbles"
+>
+> http://10.1.11.11:4456/experiments/bubbles/?s=_4_177vX_0BiMTEjANGtCgUSTRIAZybEKnQA0aIK6CADLZzA-4gfiAQA
+
+## 2026-09-20 — promoting it, and the warning that came due
+
+`Time bubbles` is position one. A bare address lands on it, the poster is
+captured from it, and the note's backdrop and accent are read off it — that is
+what position one means here, so promoting a preset moves all four together.
+
+**It turned out to be the scene that broke a rule I had written down and never
+had to obey.** `poster.ts` said "the picture does not accumulate… if a scene with
+a wake is ever promoted to first, this recipe has to say how many frames". This
+one has `trail` at 0.35, so its streaks are built up frame by frame rather than
+being simulation state: stepping the water forward a hundred seconds and drawing
+once gives a frame with no wake in it at all. My first screenshot of your scene
+was exactly that, and it looked far emptier than what you are seeing.
+
+The fix went into the piece rather than into the recipe, because all three
+surfaces that arrive somewhere without watching it happen fall into it together:
+`settle` now draws its last sixty frames instead of stepping past them, so the
+poster, the note's backdrop and the reduced-motion still all keep their wake
+without anyone having to remember.
+
+- **The note's backdrop stopped widening the frame.** It used to spread the foam
+  across the page so it did not sit as a bright patch behind the middle column,
+  which was right for a primary whose foam gathered over its jets and wrong for
+  one that already fills the frame. Turning the gas down is enough now.
+- **`about.md` names scenes instead of numbering them.** Every reference to
+  "preset 3" broke the moment this one went to the front, so they are `foam`,
+  `standing ring` and so on now.
+- **`DEFAULT_SETTINGS` was deliberately left alone.** It is the baseline an
+  address with gaps falls back to, not a scene, and the section is explicit that
+  the two are different things.

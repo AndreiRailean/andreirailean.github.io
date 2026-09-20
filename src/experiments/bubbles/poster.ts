@@ -12,14 +12,22 @@ import type { PosterRecipe } from "@/experiments/poster"
  * piece at five seconds and a false one of the piece. `settle` is what makes it
  * the piece.
  *
- * **The picture does not accumulate**, so no frames have to be drawn into it —
- * `trail` is 0 in the primary and every circle is drawn whole each frame. If a
- * scene with a wake is ever promoted to first, this recipe has to say how many
- * frames, and the note's backdrop and the reduced-motion still fall into it
- * together.
+ * **The picture accumulates now, and that warning came due.** This docblock used
+ * to say it did not, and that the day a scene with a wake was promoted to first
+ * the recipe would have to say how many frames. `Time bubbles` has `trail` at
+ * 0.35, so the streaks are a rendering artefact built up frame by frame rather
+ * than simulation state: stepping the water forward and drawing once gives a
+ * frame with no wake in it at all.
+ *
+ * The fix is in the piece rather than here, because all three surfaces that
+ * arrive somewhere without watching it happen fall into it together — this
+ * poster, the note's backdrop and the reduced-motion still. `settle` now draws
+ * its last `WAKE_FRAMES` frames instead of stepping past them, so every one of
+ * them gets a wake without having to remember to ask.
  *
  * **It is not reproducible**, for a reason the piece cannot fix and should not:
- * the seed fixes where the jets are and which way they turn, and nothing else.
+ * the seed fixes where the jets are, which way they turn and which eddies the
+ * background is made of, and nothing else.
  * Every bubble after that is drawn from a stream that has been running since the
  * page loaded. Two captures are two different minutes of the same tub — hence a
  * few tries, since coalescence is bursty and a shutter can land in a quiet

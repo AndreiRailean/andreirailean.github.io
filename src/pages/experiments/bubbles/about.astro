@@ -47,9 +47,14 @@ const { hue } = primary
       //
       // Only the busyness moves. This is scenery: it sits under a sheet of text,
       // it should not compete with it, and it should still be recognisably the
-      // thing the page is about. `frame` is widened so the foam lies across the
-      // whole page rather than making a bright patch behind the middle column,
-      // which is exactly where the sheet is.
+      // thing the page is about.
+      //
+      // It used to widen `frame` and `spacing` as well, to spread the foam
+      // across the page instead of leaving a bright patch behind the middle
+      // column. That was right for a primary whose foam sat over its jets and
+      // wrong for one that already fills its frame — `Time bubbles` is a thin
+      // field of specks everywhere, and widening it only made the backdrop
+      // emptier. Turning the gas down is enough.
       const primary = PRESETS[0]!.settings
       const water = createBubbles(
         canvas,
@@ -57,8 +62,6 @@ const { hue } = primary
           ...primary,
           gas: primary.gas * 0.4,
           count: Math.round(primary.count * 0.5),
-          span: primary.span * 1.7,
-          spread: primary.spread * 1.7,
         }),
       )
       water.start()

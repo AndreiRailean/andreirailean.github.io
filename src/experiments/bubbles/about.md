@@ -212,8 +212,8 @@ allowed to spend.
 A few places worth going:
 
 - **`depth`, first.** It is the difference between a hotel spa and a lake, and
-  presets 1 and 2 are the same scene at two metres and at fifteen centimetres so
-  you can see what it does without hunting for it.
+  `deep water` and `shallow` are the same scene at two metres and at fifteen
+  centimetres, so you can see what it does without hunting for it.
 - **`speed`** slows the whole thing down without changing anything about the
   water. Depth is the honest way to calm the surface; this is the camera. Both
   are worth having and they do not do the same thing.
@@ -229,7 +229,7 @@ A few places worth going:
 - **`coalesce` down, for foam.** It is the answer to "how do I make it
   accumulate": bring it under about one event a second and touching bubbles stay
   neighbours instead of joining, so the surface packs. Take it up to the top and
-  the same scene dissolves into a handful of large circles. Preset 3 is the
+  the same scene dissolves into a handful of large circles. `foam` is the scene at the
   packed end.
 - **`rupture` to zero.** Every contact that resolves becomes a merge, so the
   foam can only ever coarsen. Up near 1 and a crowd keeps destroying itself.
@@ -242,8 +242,7 @@ A few places worth going:
   the same film life whatever its size, so the small ones still outlast the big
   ones — they just have less to lose.
 - **`holds at` right up, with `torn by` down.** Soapy water: films hold a much
-  bigger bubble together, so the calm fills with large circles. `slick` and
-  `meniscus` are both that.
+  bigger bubble together, so the calm fills with large circles. `slick` and `meniscus` are both that.
 - **`churn` up and `jet power` down.** The jets stop mattering and the background
   is the whole picture — the clearest look you can get at a divergence-free
   field, because the foam wanders without ever collecting anywhere.

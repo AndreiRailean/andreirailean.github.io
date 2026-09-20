@@ -92,6 +92,23 @@ const MAX_STEPS = 4
 /** How long the water runs before a reduced-motion still is taken, in seconds. */
 const STILL_SECONDS = 22
 
+/**
+ * Frames actually drawn at the end of a `settle`, so a wake has time to build.
+ *
+ * **A picture that accumulates has to be drawn into, not merely advanced to.**
+ * `trail` keeps a share of the previous frame, so the streaks are a rendering
+ * artefact rather than simulation state: stepping the water forward a hundred
+ * seconds and drawing once gives a frame with no wake in it at all, however
+ * settled the water is. All three surfaces that arrive somewhere without
+ * watching it happen fall into this together — the captured poster, the note's
+ * backdrop and the reduced-motion still.
+ *
+ * Thirty is generous. At `trail` 0.95 the oldest visible frame is about sixty
+ * back; below 0.8 it is under ten. The section's record on this is the posters
+ * part of `../AGENTS.md`, and psyxels hit it first.
+ */
+const WAKE_FRAMES = 60
+
 /** How far outside the frame a bubble is still simulated, as a fraction of `span`. */
 const MARGIN = 0.18
 
@@ -1280,8 +1297,15 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
       window.addEventListener("resize", onResize)
       if (still.matches) {
         // A picture of the instant the jets were switched on is not a picture of
-        // this piece, so the still is of water that has been going a while.
-        for (let t = 0; t < STILL_SECONDS; t += STEP) step(STEP)
+        // this piece, so the still is of water that has been going a while —
+        // and its last frames are drawn rather than stepped past, so a scene
+        // with a wake keeps it.
+        const drawn = settings.trail > 0 ? WAKE_FRAMES * STEP : 0
+        for (let t = 0; t < STILL_SECONDS - drawn; t += STEP) step(STEP)
+        for (let t = 0; t < drawn; t += STEP) {
+          step(STEP)
+          draw()
+        }
         draw()
         return
       }
@@ -1323,7 +1347,14 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
 
     settle(seconds) {
       const bounded = Math.max(0, Math.min(600, seconds))
-      for (let t = 0; t < bounded; t += STEP) step(STEP)
+      // The tail is drawn frame by frame rather than stepped past, so a scene
+      // with a wake arrives with its wake. See `WAKE_FRAMES`.
+      const drawn = settings.trail > 0 ? Math.min(bounded, WAKE_FRAMES * STEP) : 0
+      for (let t = 0; t < bounded - drawn; t += STEP) step(STEP)
+      for (let t = 0; t < drawn; t += STEP) {
+        step(STEP)
+        draw()
+      }
       draw()
     },
 
