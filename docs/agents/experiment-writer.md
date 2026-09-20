@@ -159,7 +159,11 @@ covers.
 1. This file.
 2. `src/experiments/AGENTS.md` — the `## Presets` section and `## Adding a
 piece`. Those two cover `settings.ts`, the primary, and what registers a slug.
-3. The layout block at the top of that file, so nothing lands in the wrong place.
+3. The layout block at the top of that file, so nothing lands in the wrong
+   place, **and the six records above it** — they are short, and one of them,
+   _building a runner is not publishing it_, is the only place in the section a
+   session learns the showcase exists at all. Deferring those six is how two
+   pieces got built by sessions that had never heard of the wall.
 
 **Then, as you touch each area** — and before changing anything the section
 already decided:
@@ -215,6 +219,14 @@ to read.
 **And a change that contradicts an invariant is worth saying so out loud**,
 in the commit and in `seed.md` — not quietly overriding it, which is the section
 rule for ADRs and applies the same way to a piece's own notes.
+
+**Amending also raises the showcase question, and starting does not.** A piece
+that has been around may have scenes published on the wall, pinned to a runner
+built from the code you are about to change. So ask, once, whether those
+scenes should move — the answer is usually no, and _asking_ is the obligation
+rather than acting. See _The showcase consumes your piece_ below. A new piece
+has nothing published, which is why this is an amend-path concern and why two
+sessions starting pieces never met it.
 
 ## Starting a piece: the order, and where it is forced
 
@@ -284,6 +296,48 @@ survive this session, and everything below is easier to judge against it.
 its content store at startup, so a new file 500s the about page and renders the
 index's empty state until you do. `pnpm run build` is unaffected, which is why
 `pnpm run preview` is the right tool anyway.
+
+## The showcase consumes your piece, and you will not find it by accident
+
+**There is a wall of published scenes at `/showcase/`**, hand-curated in
+`src/showcase/wall.ts`, where each entry pins a **frozen runner by content
+hash**. It is a separate bounded context with its own owner and its own
+`src/showcase/AGENTS.md`, and it is the section's first real load test.
+
+**Two sessions built pieces without knowing it existed**, and found out only
+when Andrei asked them to add presets to it. That is a routing failure rather
+than theirs: `CONTEXT-MAP.md` names two contexts and the showcase is in
+neither, so a session told to read the map and then its own context never meets
+it. The one mention inside `src/experiments/AGENTS.md` is the _building a
+runner is not publishing it_ record, which the staged reading above defers —
+so read that record when starting a piece, not later.
+
+**What is yours here is small and real.** The showcase's own doc says it in a
+heading: _publishing a runner is part of changing a piece_.
+
+- **Building is not publishing.** `pnpm run runners` writes your piece's
+  current bytes into `public/showcase/runners/` as an **untracked** file. The
+  directory is self-describing: tracked is published, untracked is build
+  output. Nothing obliges you to commit it.
+- **Changing a piece obliges you to _ask_ whether published scenes move**, and
+  the answer is usually no. A pinned scene keeps rendering the bytes it was
+  published against — that freeze is the guarantee, not a staleness bug. Re-pin
+  only when the new runner fixes something that is wrong **for the wall**; the
+  worked example is #169, a listener leak that only bites a host mounting and
+  unmounting repeatedly. A rendering change nobody asked for is the opposite
+  case: leave it, and the approved scene stays approved.
+- **Old runners are never deleted**, and an untracked one beside a tracked one
+  is just a newer build. Leave both.
+
+**What is not yours:** everything inside `src/showcase/`. It is owned end to
+end, and `src/showcase/AGENTS.md` asserts that boundary deliberately rather
+than by geography. **Deciding what goes on the wall is Andrei's** — the wall is
+hand-curated and a visitor sees every entry, so it is the third gate. You may
+tell him a piece has scenes worth publishing; you do not add them unasked, and
+you do not edit `wall.ts` on your own authority.
+
+**If you need something from the showcase side, ask rather than reach.** Its
+doc records that this is how #168 got fixed properly instead of worked around.
 
 ## `seed.md`: the record of what he actually said
 
