@@ -63,11 +63,12 @@ export type WallEntry = {
  * crossing pieces tears one down and mounts another. Judged worth it, and the
  * order is a source edit away from any other opinion.
  *
- * **Embers leads, because it is the newest published scene and `/showcase/` is
- * entry zero.** Its piece is also the one that has changed most since any of
- * its neighbours were pinned, which is the freeze doing its job rather than a
- * reason to move them: `winter blues` renders the bytes it was published
- * against, and what Embers does next cannot reach it.
+ * **Bubbles leads, on the rule Embers led on: `/showcase/` is entry zero and that
+ * is the newest published scene.** Embers is second and its own argument is
+ * unchanged — its piece has moved further since it was pinned than any of its
+ * neighbours have, which is the freeze doing its job rather than a reason to
+ * move it. `winter blues` renders the bytes it was published against, and what
+ * Embers does next cannot reach it.
  *
  * It was pinned twice before it ever shipped, and the second pin is the only
  * kind that needs no argument: **a scene inside an unmerged branch has not been
@@ -77,7 +78,12 @@ export type WallEntry = {
  * day one would have been publishing a known defect and then owing it the
  * freeze.
  *
- * **Twenty-three of the twenty-four presets are here.** The one missing is
+ * **Five of Bubbles' eleven scenes are here, chosen rather than swept in.** It is
+ * the first piece published from a selection. The others were seeded whole; this
+ * one arrived with eleven presets of which several exist to demonstrate a
+ * control rather than to be looked at, and Andrei named the five.
+ *
+ * **Twenty-three of the other six pieces' twenty-four presets are here.** The one missing is
  * Psyxels' `maker`, the only scene in any piece whose subject is a photograph
  * rather than a glyph. Its runner has no way to be handed an image, and how a
  * frozen runner carries an asset is undecided — see the note at the top of
@@ -85,6 +91,15 @@ export type WallEntry = {
  * nothing and are here.
  */
 export const WALL: readonly WallEntry[] = [
+  {
+    id: "bubbles-time-bubbles",
+    title: "time bubbles",
+    piece: "bubbles",
+    pieceTitle: "Bubbles",
+    note: "Water from directly above, with four jets turning the same way somewhere underneath it. Nothing holds together for long at this depth — the boil shreds a bubble almost as fast as it arrives — so what you are watching is not really the bubbles. It is the flow they are written in, several thousand specks each dragging its own wake.",
+    runner: "bubbles.b1f1e25e4c22.js",
+    scene: "_4_177vX_0BiMTEjANGtCgUSTRIAZybEKnQA0aIK6CADLZzA-4gfiAQA",
+  },
   {
     id: "embers-winter-blues",
     title: "winter blues",
@@ -138,6 +153,15 @@ export const WALL: readonly WallEntry[] = [
     note: "Many faint layers on a dark sky. The starting point.",
     runner: "starry-night.490e5f9452c8.js",
     scene: "__9ADSDBSQfRYeR7imQ",
+  },
+  {
+    id: "bubbles-foam",
+    title: "foam",
+    piece: "bubbles",
+    pieceTitle: "Bubbles",
+    note: "Films that hold, so two bubbles that touch stay neighbours instead of becoming one. The surface packs into a raft and keeps its structure — which is the only reason foam exists at all, and the thing a bubble that joins whatever it meets can never make.",
+    runner: "bubbles.b1f1e25e4c22.js",
+    scene: "_4_177vX_0BgWEDxQM8PIggb1pkYIBC8EYjHwsKCKXxkcGYo7WgGCh6A",
   },
   {
     id: "flotsam-windrows",
@@ -194,6 +218,15 @@ export const WALL: readonly WallEntry[] = [
     scene: "_____2AABNfBAAhqZMQkhQCCK3WikZkHgMfQYHvA8ZKAoZMhQAWRJY",
   },
   {
+    id: "bubbles-ring-breathing",
+    title: "ring, breathing",
+    piece: "bubbles",
+    pieceTitle: "Bubbles",
+    note: "A closed tub has to give back everything its jets push out, and somewhere between them the two cancel exactly. Foam carried outward arrives at that radius and can go no further; foam beyond it is brought back. Nothing places the ring — it falls out of the arithmetic — and with a little churn underneath it grows lobes and wanders instead of holding a circle.",
+    runner: "bubbles.b1f1e25e4c22.js",
+    scene: "_4_177vX_0BiMTEhQNGtRgUSTRIAZ0zEKnQA0aIK6FADLZzA-4gfiAQA",
+  },
+  {
     id: "psyxels-ampersand",
     title: "ampersand",
     piece: "psyxels",
@@ -248,6 +281,15 @@ export const WALL: readonly WallEntry[] = [
     scene: "______9AnD0RmALNu6TLbDgoAWo1F4AYAD0xQCgo8wEc-FHoABlsA",
   },
   {
+    id: "bubbles-slick",
+    title: "slick",
+    piece: "bubbles",
+    pieceTitle: "Bubbles",
+    note: "Soapy water: barely any gas, films that will hold a big bubble together, and coalescing so rare that two bubbles can rest against each other for ten seconds before they join. A few large circles drift, gather, and burst.",
+    runner: "bubbles.b1f1e25e4c22.js",
+    scene: "_4_177vX_0BUYGDxANSJGAgcNZ4kQBS4M5FIZEMAcXyV-jTptUACRh7Q",
+  },
+  {
     id: "flotsam-pond",
     title: "pond",
     piece: "flotsam",
@@ -300,6 +342,15 @@ export const WALL: readonly WallEntry[] = [
     note: "White water with flotsam-shaped holes in it: overlapping pieces blown past white, and the only dark left is the gaps between them.",
     runner: "flotsam.b2c2cc0608a3.js",
     scene: "_____2AADQEfg3zKdny0AEAVHQlExFCHBSVaOAKCUyECInEwCoE0Hg",
+  },
+  {
+    id: "bubbles-surging",
+    title: "surging",
+    piece: "bubbles",
+    pieceTitle: "Bubbles",
+    note: "Every jet surging on its own clock, a few seconds long and never in step with its neighbours, so the surface never settles into anything and stays there.",
+    runner: "bubbles.b1f1e25e4c22.js",
+    scene: "_4_177vX_0BgYEGR4gyXHiCCMo9IIBS6GPLWwcIA6XwyXLWIPMgd1B8g",
   },
 ]
 

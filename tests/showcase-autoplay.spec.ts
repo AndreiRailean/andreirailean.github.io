@@ -1,4 +1,5 @@
 import { expect, test } from "./support/experiment.ts"
+import { WALL } from "@/showcase/wall"
 
 /**
  * Autoplay: the wall stepping through itself, for a screen nobody is standing at.
@@ -30,8 +31,16 @@ const index = () => (window as unknown as WallWindow).showcaseWall!.at()
 /**
  * Where every test starts. The end of the wall is reached by walking rather than
  * by address, so nothing here hardcodes a length — see the wrap test.
+ *
+ * **Read off the wall rather than written down.** It was the literal
+ * `"embers-winter-blues"`, and the day a newer piece was published to the front
+ * every test here opened at index 1 — so `at() !== 0` was already true before
+ * anything moved, and the step test passed its wait instantly and then failed on
+ * a scene that had never changed. A check that names the first entry goes red
+ * for the one reason it is not about, and it goes red *late*, which is worse:
+ * nothing is wrong with the wall.
  */
-const FIRST = "embers-winter-blues"
+const FIRST = WALL[0]!.id
 
 async function openWall(page: import("@playwright/test").Page, id: string, query: string) {
   await page.goto(`/showcase/${id}/${query}`)
@@ -58,13 +67,20 @@ test("the wall stays where it was put when nothing asked it to move", async ({ p
 test("`?play` steps on by itself", async ({ page }) => {
   await openWall(page, FIRST, "?play=1&idle=0")
 
+  // Read before the wall moves rather than written down. This named the first
+  // entry's title — "winter blues" — and went red the day a newer piece was
+  // published to the front of the wall, which is a check failing for the one
+  // reason it was never about. What it is for is that the wall moved.
+  const opened = await page.evaluate(() => document.querySelector(".placard .scene")?.textContent)
+  expect(opened, "no scene on the placard to move away from").toBeTruthy()
+
   await page.waitForFunction(() => (window as unknown as WallWindow).showcaseWall!.at() !== 0)
 
   // And it is a real move rather than a counter ticking: the entry on screen is
   // a different one, read off the wall rather than off the address — which by
   // design no longer moves. See the kiosk test below.
   const entry = await page.evaluate(() => document.querySelector(".placard .scene")?.textContent)
-  expect(entry).not.toBe("winter blues")
+  expect(entry).not.toBe(opened)
 })
 
 test("it wraps at the end rather than parking on the last entry", async ({ page }) => {

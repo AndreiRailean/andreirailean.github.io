@@ -404,3 +404,31 @@ keys reach — `standing still` and `surging` are mouse only.
 - Every reference to the three by name is gone from `about.md`, the piece's
   `AGENTS.md`, `poster.ts` and the note — the ones left in this file are yours
   and stay.
+
+## 2026-09-20 — published
+
+> ok. i think that's enough for now. add presets 1, 3, 5, 8, 11 to showcase.
+> open PR and merge when green. we're releasing this to the public.
+
+`time bubbles`, `foam`, `ring, breathing`, `slick` and `surging` are on the wall,
+woven through it rather than grouped, with `time bubbles` at entry zero — which
+is the rule the wall already had: `/showcase/` is entry zero and that is the
+newest published scene.
+
+Publishing a piece needs a `runner.ts`, which is a fifth registration point that
+`## Adding a piece` does not mention. Nothing lists the slug — `scripts/runners.ts`
+scans for the file — so the failure is silent: the piece simply has no runner and
+the wall cannot name one.
+
+**Two shared checks went red, and both for the one reason they were not about.**
+
+- `tests/showcase-autoplay.spec.ts` had `FIRST = "embers-winter-blues"`. Every
+  test there opened at index 1 once a newer piece led, so `at() !== 0` was true
+  before anything moved: the step test passed its wait instantly and then failed
+  on a scene that had never changed. It reads `WALL[0].id` now.
+- `tests/reel.spec.ts` moves a slider off its preset to check the kit stops
+  claiming one. It picked a value 0.37 along the track and compared it to the
+  held value _before_ applying it — and bubbles' first slider is `jets`, 1 to 8
+  on a step of 1, so 3.59 differs from a held 4 and is applied as 4. Its own
+  docblock names two earlier shapes of exactly this; this is the third. It now
+  applies candidates until the piece actually lands somewhere else.

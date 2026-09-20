@@ -153,10 +153,18 @@ test("the kit publishes which preset is on screen, and forgets when it is nobody
   //   numeric setting is a population on a log track with a step of ten, and it
   //   is the piece that found this.
   //
-  // So the move is taken from the piece's own control rather than invented: a
-  // slider knows its bounds, and two candidates along its track means one of
-  // them is not whatever is held. Any piece with a slider satisfies this, and a
-  // piece with none says so rather than being quietly skipped.
+  // - Two candidates along the track, compared to the held value *before*
+  //   being applied, was the third — and it is the same fault as the second
+  //   wearing a different hat. The comparison has to happen after
+  //   `normalizeSettings`, because a candidate that differs from the held value
+  //   as a raw number can snap straight back onto it. Bubbles' first slider is
+  //   `jets`, 1 to 8 on a step of 1: at 0.37 along the track that is 3.59, which
+  //   differs from a held 4 and is applied as 4.
+  //
+  // So the move is taken from the piece's own control *and* confirmed against
+  // what the piece did with it: candidates are applied until one actually
+  // lands somewhere else. A slider knows its bounds, the piece knows its grid,
+  // and neither this file nor the next piece has to know either.
   const before = await experiment.api(({ api }) => api.get())
   // Narrowed out here rather than inside the page: `api()` serialises its result,
   // so a discriminated union comes back as the whole union whatever the callback
@@ -165,14 +173,18 @@ test("the kit publishes which preset is on screen, and forgets when it is nobody
   if (track === undefined) throw new Error("no slider to move — this piece needs its own version of this check")
 
   const held = before[track.key]
-  const candidates = [0.37, 0.63].map((along) => track.min + (track.max - track.min) * along)
-  const wanted = candidates.find((value) => value !== held) ?? candidates[0]!
-
-  const moved = await experiment.api(({ api, arg }) => api.set({ [arg.key]: arg.value } as never), {
-    key: track.key,
-    value: wanted,
-  })
-  expect(moved[track.key], `${track.key} did not take the new value, so nothing was tested`).not.toBe(held)
+  let moved = before
+  for (const along of [0.37, 0.63, 0.13, 0.87, 0, 1]) {
+    moved = await experiment.api(({ api, arg }) => api.set({ [arg.key]: arg.value } as never), {
+      key: track.key,
+      value: track.min + (track.max - track.min) * along,
+    })
+    if (moved[track.key] !== held) break
+  }
+  expect(
+    moved[track.key],
+    `${track.key} could not be moved off ${String(held)} anywhere along its track, so nothing was tested`,
+  ).not.toBe(held)
   expect(await sceneIndex(page)).toBeUndefined()
 })
 
