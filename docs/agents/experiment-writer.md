@@ -154,12 +154,49 @@ nothing else; every one is opt-in, seen only by a session that goes looking. Tha
 is why this role is a skill rather than a paragraph somebody remembers — and why
 the skill's first step is to read the short list above, not all of it.
 
+## Two modes, and the gate means something different in each
+
+**Read this before the order below, because most of that order applies to
+exactly one of the two.**
+
+**Starting a piece.** Nothing renders yet, so the gate is literal: get it on
+screen with a panel. The numbered order below is for this case and only this
+case.
+
+**Amending a piece.** It already renders and it already has chrome, so "make it
+interactable" is already true and the order below is mostly noise — skip the
+registration points, the poster, `about.md` and the route; they exist. **The
+gate becomes: make the change drivable and comparable.** Put what you changed
+behind a control, or behind a preset per option, so the difference can be moved
+rather than described. A change he can only look at returns an impression; one
+he can toggle returns a decision.
+
+This is the same discipline as the second scope gate and #117 is the worked
+case — a mechanism nobody can isolate cannot be judged, however visible it is.
+Amending is where that bites most, because the piece looks finished and the
+temptation is to land the change and describe it.
+
+**What amending requires that starting does not:** the piece's own `AGENTS.md`
+and its `seed.md`, both read in full, first. The `AGENTS.md` holds the traps and
+the invariants somebody already paid for. The `seed.md` holds what he asked for
+originally, which is what stops a change that improves the piece against the
+wrong target. Neither is deferrable here, where when starting there is nothing
+to read.
+
+**And a change that contradicts an invariant is worth saying so out loud**,
+in the commit and in `seed.md` — not quietly overriding it, which is the section
+rule for ADRs and applies the same way to a piece's own notes.
+
 ## Starting a piece: the order, and where it is forced
 
 Every step below is stated in `src/experiments/AGENTS.md`. The **sequence** is
 not stated anywhere, and three of its edges are forced: the gate at step 4, the
 poster before the `poster:` line at step 8, and a route before there is anything
 to show.
+
+**Before any of it: write `src/experiments/<slug>/seed.md` with his instruction
+in it, verbatim.** It costs a minute, it is the only copy of the brief that will
+survive this session, and everything below is easier to judge against it.
 
 1. **`src/experiments/<slug>/`, and `settings.ts` first.** `TRACKS` written out
    rather than computed, `BOUNDS` narrowed from it, `/* @__PURE__ */` on any call
@@ -206,6 +243,52 @@ its content store at startup, so a new file 500s the about page and renders the
 index's empty state until you do. `pnpm run build` is unaffected, which is why
 `pnpm run preview` is the right tool anyway.
 
+## `seed.md`: the record of what he actually said
+
+**Every piece keeps `src/experiments/<slug>/seed.md`**, holding his own words:
+the seed instruction that started it, then each round of corrective feedback,
+each dated and appended. You write it; he never has to.
+
+**Write the seed in before you write any code.** It is the first file, ahead of
+`settings.ts`, and the reason is the one this repo keeps rediscovering: **a
+session's transcript dies with the session, and dying is the normal case.** The
+prose he typed exists nowhere else — not in the code, not in the commits, not in
+`about.md` — so a session that ends abruptly at minute forty takes the entire
+brief with it, and the next one starts from a piece whose purpose can only be
+guessed from its source.
+
+**Verbatim, not summarised.** This is the part that is easy to get wrong, because
+a tidy paraphrase looks more useful and is not. The section's own aim is named in
+`CONTEXT.md` as **organic change** — and the glossary records that it was "named
+by the pieces' author across four of them". His phrasing _is_ the primary source
+for the concept the whole section is trading against, so the words are the
+artefact. Keep them; add your own reading underneath if it helps, marked as
+yours.
+
+What goes in:
+
+- **The seed**, in full, as the first entry.
+- **Each piece of corrective feedback**, as it arrives, dated. These are
+  reliably about how natural the piece reads and what would make it feel more
+  organic — the recurring shape of what he notices, which is worth being able to
+  re-read across pieces rather than only within one.
+- **Questions you could not answer**, since you are not going to ask him: what
+  you assumed, and what would settle it. He reads them when he chooses.
+- **Nothing else.** Not decisions — those are ADRs. Not traps — those are the
+  piece's `AGENTS.md`. Not the visitor-facing write-up — that is `about.md`, and
+  the two are easy to confuse because both are prose about the piece. `seed.md`
+  faces inward and records _him_; `about.md` faces outward and describes the
+  work.
+
+**No check holds this yet, and that is worth stating rather than hiding.** The
+six pieces that already exist have no `seed.md` and their seeds are gone — they
+lived only in transcripts — so a check asserting every piece has one would fail
+six times on history nobody can recover, and a check that skips them is a list
+that goes stale. It becomes checkable the day every piece has one. Until then
+this is a rule that depends on being remembered, which `AGENTS.md` names as a
+defect; the mitigation is that it is the _first_ step rather than a tidy-up at
+the end, because the steps a session never reaches are the ones at the end.
+
 ## How Andrei works
 
 **He approves what he sees in a browser, not what you describe.** Putting the
@@ -233,31 +316,43 @@ practical reason the panel is not a finishing step — a build he cannot drive
 returns you an impression, where one he can returns you a setting, a number and a
 direction.
 
-### When he is not there
+### Assume he is not watching. Always.
 
-He will sometimes start a piece and step away — "something I can interact with in
-the morning" is a real brief and it has already happened. **The gate does not
-relax; it becomes the deliverable.** What he opens first is the thing you were
-going to show him anyway, so build to interactable and leave it there running.
+**This is the default and there is no other mode.** He gives one instruction and
+goes — he should not have to say he is stepping away, and you must never make
+him declare it. A session that waits for an answer he was never going to give
+wastes the whole night, which is the most expensive thing that can happen here
+and costs him nothing to avoid only if you never do it.
 
-What changes is everything after the gate, because the correction loop is gone:
+**So never block.** Not for approval, not for a preference, not for "which of
+these two did you mean". You have a running piece and a record file; both reach
+him without his attention, and neither stops if he is asleep.
 
-- **Substitute measurement for the glance, and expect a different catch.** A
-  session that ran unattended on `crowd` reported that measuring found things a
+**Reaching interactable is still the first thing, and it is now also how you
+report.** There is no showing without a build, so the build _is_ the message:
+leave the server up and hand over the URL. Then keep going.
+
+**After the gate: widen, do not commit.** This is the rule that makes unattended
+work safe. Prefer anything that enlarges what he can explore — another preset, a
+wider range on a control, a setting where you had a constant — over anything
+that settles a question. A widening is useful whichever way he steers; a
+commitment is a coin-flip that costs a night when it loses. A piece under
+exploration owes its URLs nothing, so making it adjustable is nearly always
+cheaper than picking well.
+
+- **Substitute measurement for the glance, and expect a different catch.** The
+  session that ran unattended on `crowd` reported that measuring found what a
   look would not have: a force term deleted by an edit, a docblock claiming
   something the code no longer did, a check passing against broken code, and a
-  crash. Assert on numbers — that is what the section's runners are for, and
-  almost every bug here was invisible in a screenshot anyway.
-- **Bias toward the choices that are cheap to reverse**, and leave the expensive
-  ones for him. With nobody to correct a wrong guess, a guess costs the whole
-  night rather than two minutes. A piece under exploration owes its URLs nothing,
-  so the cheap direction is usually "make it adjustable" rather than "pick well".
-- **Spend the time on correctness and range, not on polish.** Polish is the part
-  he would have redirected, and it is the part most likely to be thrown away by
-  his first sentence.
-- **Leave him the questions you could not answer**, in the piece where he will
-  meet them — a preset per candidate answer beats a paragraph, because it is
-  answered by dragging rather than by replying.
+  crash. Assert on numbers — almost every bug here was invisible in a screenshot
+  anyway.
+- **Spend the time on correctness and range, not on polish.** Polish is what he
+  would have redirected, and what his first sentence is most likely to discard.
+- **Put every question you could not answer into `seed.md`**, not into a message
+  to him. Better still, put it in the piece: a preset per candidate answer is
+  answered by dragging, which is how he answers anyway.
+- **Stopping early is a failure mode too.** "I have reached the gate" is not a
+  reason to idle until morning — it is the point at which widening begins.
 
 **A visual complaint is a mechanism to find, not a number to tune.** When he says
 something looks wrong, the useful response is to work out what in the physics or

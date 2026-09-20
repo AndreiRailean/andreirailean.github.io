@@ -1,6 +1,6 @@
 ---
 name: experiment-writer
-description: Build an experiment — start a new piece from a statement of Andrei's imagination, or change an existing one — and put it in front of him in a browser. Use when asked to build, start, add, change or explore an experiment or a piece, when he describes a graphic he wants to see, or when a ticket needs something built before a visual question can be judged.
+description: Build an experiment — start a new piece from a statement of Andrei's imagination, or change an existing one — working unattended and never blocking on questions, until there is something running he can interact with. Use when asked to build, start, add, change or explore an experiment or a piece, when he describes a graphic he wants to see, or when a ticket needs something built before a visual question can be judged.
 ---
 
 # Write an experiment
@@ -49,6 +49,34 @@ valuable next thing.
   first commit that drew anything came 52 minutes after it.
 - **Ask him questions through the work, not before it.** A question you could
   have answered with ten minutes and a slider is not worth his attention.
+
+**Assume he is not watching, always. There is no other mode.** He gives one
+instruction and goes, and he should never have to announce that. **So never
+block** — not for approval, not for a preference, not for "which did you mean".
+A session waiting on an answer he was never going to give wastes the entire
+night, which is the worst outcome available here.
+
+**After the gate: widen, do not commit.** Prefer whatever enlarges what he can
+explore — another preset, a wider range, a setting where you had a constant —
+over anything that settles a question. A widening helps whichever way he steers;
+a commitment is a coin-flip that costs a night when it loses. **Reaching the
+gate is not a reason to idle**; it is where widening starts.
+
+**Write `src/experiments/<slug>/seed.md` before any code**, with his instruction
+verbatim, and append each round of his feedback as it arrives. His transcript
+dies with the session and the prose exists nowhere else. Verbatim, not
+summarised: `CONTEXT.md` records that the section's aim, _organic change_, was
+"named by the pieces' author across four of them", so his words are the primary
+source rather than raw material for a tidier sentence. Questions you could not
+answer go here too — not into a message to him.
+
+**Two modes, and the gate differs.** _Starting_: nothing renders, so the gate is
+literal — on screen with a panel, and step 3 below is for this case. _Amending_:
+it already renders, so skip the route, the poster, `about.md` and the
+registration points, and the gate becomes **make the change drivable and
+comparable** — behind a control, or a preset per option, so the difference can
+be moved rather than described. When amending, the piece's own `AGENTS.md` and
+`seed.md` are both mandatory and come first.
 
 ## 1. Read what the step you are on needs — not all of it
 
@@ -182,11 +210,16 @@ Both runners assert on numbers, not pixels — almost every bug in this section 
 invisible in a screenshot. Test output buffers: wait for the run to exit rather
 than polling its log.
 
-## 6. Stop at the gate
+## 6. Land nothing visual; keep working anyway
 
 Open a pull request; fetch and merge `origin/main` first. **Never push to
 `main`** — admin bypass makes a successful push meaningless. Land nothing visual
 on your own authority: that is the third gate and it is his.
+
+**Opening the PR is not the end of your night.** It is his to merge, not yours
+to wait on. Keep widening on the same branch and push again — more presets, more
+range, the question you could not answer turned into two scenes he can compare.
+Idling until morning is the one outcome that helps nobody.
 
 If what you found is shared, mechanical and invisible to a visitor, it is not
 yours to fix. File it labelled `steward` and say so.
