@@ -25,6 +25,7 @@ exports[`crowd > has not edited a slot in place 1`] = `
   "seed num grid=1 origin=0 bits=17",
   "reach num grid=0.5 origin=8 bits=9",
   "width num grid=0.5 origin=3 bits=9",
+  "companions num grid=1 origin=0 bits=2",
 ]
 `;
 
