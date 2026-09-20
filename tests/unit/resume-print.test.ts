@@ -271,3 +271,65 @@ describe("the resume's stylesheet independence", () => {
     expect(readFileSync(RESUME_CSS, "utf8")).toMatch(pattern)
   })
 })
+
+/**
+ * The resume stays out of search results.
+ *
+ * Nothing on the site links to `/resume`, and there is no sitemap — so it was
+ * already unlisted. It was also shipping `<meta name="robots" content="index,
+ * follow">`, which is the weakest possible combination: obscurity doing all the
+ * work while the page itself asks to be crawled. Andrei prints this page; he
+ * does not want it turning up in a search for his name.
+ *
+ * **What this is not.** It hides the page from crawlers that honour the tag, not
+ * from people — the URL still works for anyone holding it, which is the point of
+ * having one. Nothing here is a security control, and a check that read as one
+ * would be worse than none.
+ *
+ * Deliberately no `robots.txt` `Disallow` beside it: that file is public, so it
+ * would publish a list of the paths worth looking at. Asserted here because the
+ * whole mechanism is one line of frontmatter that any edit to this file could
+ * drop without anything failing.
+ */
+describe("the resume", () => {
+  const RESUME_MD = "src/pages/resume.md"
+  const META_TAGS = "src/components/MetaTags.astro"
+
+  it("asks not to be indexed", () => {
+    expect(
+      readFileSync(RESUME_MD, "utf8"),
+      `${RESUME_MD} no longer sets noIndex, so the page is back to advertising itself to ` +
+        `crawlers as \`index, follow\`. Nothing links to it, but nothing hides it either.`,
+    ).toMatch(/^noIndex:\s*true\s*$/m)
+  })
+
+  /**
+   * The other end of the chain, because the flag is only worth the layout that
+   * reads it. Without this, renaming the prop would leave a frontmatter line
+   * that looks like a setting and does nothing — the declared-fact-nobody-can-
+   * clear shape.
+   */
+  it("is wired to a layout that turns that into a robots tag", () => {
+    expect(readFileSync(RESUME_LAYOUT, "utf8"), `${RESUME_LAYOUT} does not pass noIndex on`).toMatch(
+      /noIndex=\{noIndex\}/,
+    )
+    expect(readFileSync(META_TAGS, "utf8"), `${META_TAGS} does not emit a robots tag from noIndex`).toMatch(
+      /name="robots"[\s\S]{0,80}noIndex \? "noindex"/,
+    )
+  })
+
+  /**
+   * Paired presence: the site itself must stay indexable.
+   *
+   * An assertion that one page is hidden passes just as well if *every* page is,
+   * which would be a quiet catastrophe for the site Andrei does want found.
+   */
+  it("hides itself without hiding the site", () => {
+    expect(readFileSync(META_TAGS, "utf8"), "the robots tag no longer has an indexable branch").toMatch(
+      /"index, follow"/,
+    )
+    expect(readFileSync("src/pages/index.astro", "utf8"), "the home page now sets noIndex").not.toMatch(
+      /noIndex(=\{true\}|:\s*true)/,
+    )
+  })
+})
