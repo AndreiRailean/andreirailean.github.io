@@ -44,7 +44,7 @@ export function announceApi(): void {
     ["experiment.pause()", "hold the water where it is, or let it run on"],
     ["experiment.idle(false)", "stop the chrome hiding itself"],
     ["experiment.fullscreen()", "toggle fullscreen (or press f)"],
-    ["experiment.stats()", "bubbles alive, the biggest, merges, pops, fps"],
+    ["experiment.stats()", "bubbles alive, biggest, mean, speed, merges, pops, fps"],
     ["experiment.decode(url)", "what scene an address describes"],
     ["experiment.url()", "a link that restores this exact state"],
   ]

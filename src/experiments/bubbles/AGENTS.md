@@ -144,3 +144,94 @@ from `rate num grid=1 origin=2 bits=9` to the same with `RETIRED` on the end.
 What makes it legal is that `grid`, `origin`, `bits` and the slot's _position_
 are all untouched. If any of those moved, the check is telling you something.
 Section-wide, that gap is #208.
+
+## The correction that reshaped the piece: a jet is at the bottom
+
+**The first build had one field doing two jobs**, and it was wrong in a way that
+typechecked, passed everything and looked plausible. A jet's outflow decided both
+where a bubble was born _and_ how fast it then skidded across the surface. Andrei
+named it in his first round of feedback and `seed.md` has his words; the short
+version is that those are different mechanisms and only the second one is water.
+
+A bubble leaving a nozzle quickly does not skid across the surface. It floats up
+to it. The jet decides **where** it appears; the surface current decides **where
+it then goes**, and that current is much gentler because the push has spread over
+the whole depth on the way up.
+
+So:
+
+- `emit` scatters births across the **plume's footprint** with a Gaussian spread,
+  and gives each bubble the velocity of the water it arrives into — nothing of
+  the jet's own.
+- `flow` uses the **boil's** width, not the nozzle's, and attenuates the jet.
+
+**Do not reintroduce a birth velocity from the jet.** It is the single change
+that would undo the piece.
+
+## `surfaceFade` is derived, and its first version was not
+
+The attenuation is `core / boilRadius()` — the ratio of the nozzle's width to
+the boil's. A round turbulent jet conserves momentum flux while spreading over a
+cone, so `u² × area` is constant, area goes as width squared, and the speed falls
+exactly as the width grows.
+
+**The first version was `1 / (1 + depth / 0.5)`, invented to look like a falloff,
+and measuring caught it.** Across the entire range of `depth` it moved the foam's
+mean speed from 318 mm/s to 164 — a factor of two — while the docblock beside it
+claimed "the whole of deep water does not move violently at the surface". The
+derived form gives about nine times at the same settings and ties the falloff to
+`core` and `plume`, which is correct: a wider nozzle carries further, and a jet
+that fans out harder gives up its speed sooner.
+
+**`stats().speed` exists because of this.** "The surface moves too fast" is a
+claim about a number and the piece could not report that number, so the only way
+to check it was to look — which is the thing this section says not to rely on.
+The useful derived figure is _seconds to cross the frame_, `span / speed`: the
+primary is about eleven, and the presets Andrei called too fast were under two.
+
+## Gas is a quantity, not a count, and that is a growth-path fix
+
+`gas` is square centimetres of bubble surface per second. It was bubbles per
+second, and that silently broke the only way anything grows: halving the born
+size quartered the foam's coverage, encounters became rare, and small bubbles
+could never coarsen. The symptom Andrei reported was "if I bring down the top
+bracket I never see big bubbles even if the little ones collide" — which reads
+as a tuning complaint and was a mechanism that could not run.
+
+**The emitter has a birth ceiling per jet per step** (`made < 400`). Without it a
+large flux with a tiny born size spins tens of thousands of iterations inside one
+frame, which is a freeze rather than a busy tub.
+
+## Below `pop at` the hazard is exactly zero, so `fragile` is the other death
+
+Nothing made a large film shorter-lived than a small one, so a bubble born big
+just sat there. `fragile` scales the drain rate with radius, which is what
+gravity does to a wide film. The useful consequence is that growth costs
+something and the foam settles where coalescence and drainage balance, instead of
+running away.
+
+## The noise cost is in the corner hashing, not in sampling per bubble
+
+`rolling boil` fell to **12.8 fps**, and the obvious suspect — the contact sweep
+— was the wrong one. Isolating inside one run said so: churn off gave 53 fps,
+contacts off gave 17.4.
+
+`hashSeed(seed, ix, iy, iz)` is four rounds of an avalanche mixer and `noise3`
+needs it **eight times**, once per cube corner. `water.ts` now builds a
+permutation table once per seed, which makes the same decision in three array
+reads: 12.8 → 36 fps with nothing else changed, and 50 after the scene was
+trimmed.
+
+**Sampling per bubble was still the right shape** — it is exact at any eddy size
+where a grid has to be sized for the smallest one the control offers. The first
+version got the constant wrong, not the choice. If this ever needs to go faster
+again, the next cheap thing is analytic gradients instead of four finite
+differences, not a grid.
+
+## The contact grid sizes cells from the typical bubble, not the largest
+
+One 52mm bubble used to force a 12cm cell on everybody. Each bubble is now
+entered into every cell its own reach covers, so the big ones pay for themselves;
+`seen` is the stamp that stops a pair sharing several cells being jostled twice.
+This was not what made `rolling boil` slow — see above — but it was a real flaw
+found while looking for it.

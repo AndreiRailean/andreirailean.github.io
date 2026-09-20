@@ -53,3 +53,53 @@ role asks for instead of picking.
   the motion of the circles, and a wake shows it by not moving them. It is there
   because it is the clearest possible look at the field, and because it may be a
   better piece.
+
+## 2026-09-20 — first round of feedback, after driving it
+
+> i'm looking at slick and trying to understand what I like about it. i made
+> others use rings and that doesn't seem to be it. I like that you added ring as
+> an option. They're a little too thick to work as bubbles, but it's a good
+> start. I'm trying to make the water move slower. All your presets, except for
+> slick move very fast, which is probably indicative of shallow water. When water
+> is deper and jets are not industrial grade, the surface of the water does not
+> violently move. Bubbles gently show up on the surface and the rest of the work
+> is done by the swirling and waving motion.
+>
+> born at: is a strange name. I thought that's the size bubbles appear when
+> they're born. if I bring down the top bracket i never see big bubbles even if
+> the little ones collide. when I let big bubbles be born, they appear to linger.
+> I haven't found the control that makes bigger bubbles live less.
+>
+> I'm looking at this and am trying to get the "birth" place to slow down without
+> killing all motion. there's power in water moving that is not reflected by
+> bubbles appearing at a fast speed. Keep in mind we can't see into the water,
+> we're only seeing the surface. If bubbles come out of the jet under water fast,
+> doesn't mean they will skid accross the surface - they will just float to the
+> surface from the jet. So the jet being at the bottom would make all bubbles
+> appear in a circular pattern. A jet on the side would push the bubbles
+> linearly, but that only determines the origin of their birth, doesn't give them
+> lateral motion. The jets release bubbles AND move water. Water motion on the
+> surface is what makes bubbles on the surface move. Jets are not on the surface
+>
+> - that's not what we're experimenting with here.
+
+**My reading, marked as mine.** The last paragraph is a structural correction and
+the rest follows from it. The first build had **one** field doing two jobs: the
+jet's outflow decided both where a bubble was born and how fast it then skidded
+away. Those are different things and only the second is water.
+
+A jet is at the bottom. Its gas rises and **arrives** at the surface across a
+footprint — circular for a jet pointing up, displaced for one pointing sideways —
+and it arrives with no lateral momentum of its own. What moves it afterwards is
+the surface current, which is a much gentler thing: the upwelling spreads out
+over the whole depth before it gets there. So depth is the variable that was
+missing, and "the presets move too fast" and "shallow water" are the same
+observation.
+
+The other three are each a mechanism that is absent rather than mistuned:
+
+- small bubbles never coarsened because `gas` was _bubbles per second_, so
+  halving the birth size halved the foam's coverage and coalescence stopped;
+- big bubbles lingered because nothing made a large film drain faster than a
+  small one, and below `pop at` the hazard is exactly zero;
+- the water could not be slowed at all, because there was no clock.

@@ -9,13 +9,32 @@
  * white circles move — which is the constraint the piece is built around rather
  * than a style choice, and is why the velocity field has to be worth inferring.
  *
+ * ## The jets are at the bottom, and that is two separate things
+ *
+ * **This is the correction that shaped the piece.** The first build had one
+ * field doing two jobs: a jet's outflow decided both where a bubble was born
+ * and how fast it then skidded away across the surface. Those are different
+ * things, and only the second one is water.
+ *
+ * A jet sits on the bottom. Its gas rises, fanning out as it climbs, and
+ * **arrives** at the surface across a footprint — with no lateral momentum of
+ * its own. A bubble leaving a nozzle fast does not skid across the surface; it
+ * floats up to it. What moves it afterwards is the surface current, and that is
+ * a much gentler thing, because the upwelling has spread its push over the whole
+ * depth before it gets there.
+ *
+ * So `depth` governs both halves and in opposite directions: it **widens** the
+ * circle bubbles appear in, and it **weakens** the current they appear into,
+ * roughly as one over the depth. Deep water with a jet that is not industrial
+ * gives bubbles arriving gently and nearly all of the motion coming from the
+ * swirl and the waver — which is what the surface of real water does.
+ *
  * ## The field has three parts, and each is a different kind of thing
  *
- * 1. **The jets.** Each is a softened point source at the surface: radial speed
- *    peaks at the mouth and falls away like 1/r outside it, which is what a
- *    source in shallow water does. Analytic, sampled per bubble, and sharp — a
- *    grid fine enough to hold a 5cm mouth across a 3m tub would be 240 cells on
- *    a side.
+ * 1. **The jets' upwelling.** A softened source whose width is the *plume's*
+ *    width at the surface rather than the nozzle's, and whose strength is the
+ *    jet's power divided down by the depth. Analytic and sampled per bubble,
+ *    because a grid fine enough to hold it would be hundreds of cells a side.
  * 2. **The churn**, which is the curl of a scalar noise field. Taking a curl is
  *    not decoration: it makes the flow *divergence-free*, so the background can
  *    only move water around and never make or destroy any. A noise field used
@@ -36,12 +55,28 @@
  * a bubble with its age — is much easier and produces a picture where size means
  * time instead of meaning history.
  *
+ * **Which is why `gas` is a quantity and not a count.** It was bubbles per
+ * second in the first build, and that silently broke the only growth path there
+ * is: halving the born size quartered the foam's coverage, so encounters became
+ * rare and small bubbles could never coarsen into big ones. Measuring the gas
+ * instead — how much surface a second's worth of bubbles covers — means smaller
+ * bubbles simply means more of them, coverage holds, and the size a scene
+ * settles at is decided by the foam rather than by the emitter.
+ *
  * ## Popping is a hazard rate, not a ceiling
  *
  * Past `popSize` the chance of bursting climbs with the square of the excess, so
  * a bubble that keeps feeding goes quickly and one that stops just over the line
  * can last a while. A hard ceiling makes every large bubble the same size, which
  * is the tell that a number rather than a process is in charge.
+ *
+ * **Bursting is not the only way a big bubble dies, and it used to be.** Below
+ * `popSize` the hazard is exactly zero, so a bubble born large simply sat there
+ * — there was nothing anywhere in the piece that made a big film shorter-lived
+ * than a small one. `fragile` is that: a wide film held up against gravity
+ * drains faster than a narrow one, so the drain rate scales with radius. The
+ * consequence is the useful part — growth now has a cost, and the foam settles
+ * at a size where coalescence and drainage balance instead of running away.
  */
 
 import { gaussian, hashSeed, makeRng } from "@/experiments/random"
@@ -170,6 +205,16 @@ export type BubblesStats = {
   biggest: number
   /** The average of them, in millimetres of radius. */
   mean: number
+  /**
+   * How fast the foam is actually moving, in millimetres a second.
+   *
+   * Here because "the surface moves too fast" is a claim about a number, and
+   * the piece could not report that number — so the only way to answer it was
+   * to look, which is exactly what this section says not to rely on. It is the
+   * bubbles' speed rather than the water's, deliberately: the bubbles are the
+   * whole of what anybody can see.
+   */
+  speed: number
   /** Coalescences and bursts in the last second. */
   merges: number
   pops: number
@@ -218,7 +263,10 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
   // heads and a `next` chain rather than arrays of arrays, for the same reason
   // the pool exists.
   let heads = new Int32Array(0)
-  let next = new Int32Array(capacity)
+  let entryOf = new Int32Array(0)
+  let entryNext = new Int32Array(0)
+  let seen = new Int32Array(capacity)
+  let stamp = 1
   let cellSize = 0.05
   let cols = 1
   let rows = 1
@@ -253,7 +301,7 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
     hertz = new Float32Array(capacity)
     live = new Uint8Array(capacity)
     free = new Int32Array(capacity)
-    next = new Int32Array(capacity)
+    seen = new Int32Array(capacity)
     freeCount = capacity
     for (let i = 0; i < capacity; i++) free[i] = capacity - 1 - i
     alive = 0
@@ -311,19 +359,30 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
     let ux = 0
     let uy = 0
 
+    const boil = boilRadius()
+    const fade = surfaceFade()
+    const reaching = settings.outflow * fade
+    // The twist is attenuated by the same factor, and it has to be: a jet's
+    // rotation spreads over the depth it climbs exactly as its push does.
+    // Exempting it would make `depth` calm the spokes and leave the spirals,
+    // which is not a thing water does.
+    const twisting = settings.swirl * fade
     for (const jet of jets) {
       const dx = x - jet.x
       const dy = y - jet.y
       const d2 = dx * dx + dy * dy
       const d = Math.sqrt(d2)
       if (d < 1e-6) continue
-      // Peaks at exactly `outflow` when d is the mouth radius, and falls away
-      // like 1/d outside it. A bare 1/d would be infinite over the jet.
-      const profile = surgeOf(jet) * ((2 * settings.core * d) / (d2 + settings.core * settings.core))
+      // Peaks where the plume breaks the surface and falls away like 1/d
+      // outside it. A bare 1/d would be infinite over the jet. The width is the
+      // *plume's* at the surface, not the nozzle's: what a viewer can see of a
+      // jet is as wide as the boil, and the boil is as wide as the gas by the
+      // time it has climbed.
+      const profile = surgeOf(jet) * ((2 * boil * d) / (d2 + boil * boil))
       const nx = dx / d
       const ny = dy / d
-      ux += settings.outflow * profile * nx + settings.swirl * profile * -ny * jet.spin
-      uy += settings.outflow * profile * ny + settings.swirl * profile * nx * jet.spin
+      ux += reaching * profile * nx + twisting * profile * -ny * jet.spin
+      uy += reaching * profile * ny + twisting * profile * nx * jet.spin
     }
 
     if (settings.churn > 0) {
@@ -344,6 +403,41 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
   const sample = { x: 0, y: 0 }
 
   /**
+   * How wide the plume is by the time it reaches the surface, in metres.
+   *
+   * A bubble plume entrains water as it climbs and spreads roughly in
+   * proportion to how far it has come, so the boil over a jet is the nozzle
+   * plus a share of the depth. This is the width of the visible disturbance and
+   * the width of the circle bubbles arrive in; they are the same thing, which
+   * is the point.
+   */
+  const boilRadius = () => settings.core + settings.depth * settings.plume
+
+  /**
+   * What share of a jet's work reaches the surface at all.
+   *
+   * **It is the ratio of the nozzle's width to the boil's, and that is not a
+   * curve somebody drew.** A round turbulent jet conserves its momentum flux
+   * while spreading over a cone, so `u² × area` is constant; area goes as the
+   * square of the width, and the centreline speed therefore falls as the width
+   * grows. Deeper water means a wider boil means a slower one, in exactly that
+   * proportion, and `plume` sets both because it is one spreading rate.
+   *
+   * This is the whole of "deep water does not move violently at the surface",
+   * and it is why `depth` is the control to reach for rather than the clock: it
+   * changes what the jets do instead of how fast we watch them.
+   *
+   * **The first version of this was invented rather than derived** — a plain
+   * `1/(1 + depth/0.5)` — and measuring said so. Over the entire range of
+   * `depth` it moved the foam's mean speed from 318 mm/s to 164, where the
+   * docblock beside it claimed an order of magnitude. The derived form gives
+   * about nine times at the same settings, and it ties the falloff to `core`
+   * and `plume`, which is correct: a wider nozzle carries further, and a jet
+   * that fans out harder gives up its speed sooner.
+   */
+  const surfaceFade = () => settings.core / boilRadius()
+
+  /**
    * How hard one jet is working right now, as a multiple of its settings.
    *
    * The same number scales the gas and the push, because they have the same
@@ -356,41 +450,92 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
     return 1 + settings.pulse * Math.sin((clock / jet.period) * Math.PI * 2 + jet.phase)
   }
 
+  /**
+   * Gas arriving at the surface.
+   *
+   * **The debt is in square metres, not in bubbles**, so a jet delivers a
+   * quantity of gas and the born size decides how many bubbles that comes to.
+   * Halving the size therefore quadruples the count and the foam keeps its
+   * coverage — which is what makes coalescence survive a small born size, and
+   * is the whole of why this is not a counter.
+   *
+   * **A bubble arrives; it is not fired.** It appears somewhere in the plume's
+   * footprint with a Gaussian spread, because a plume's gas flux is densest on
+   * its axis, and it takes the velocity of the water *it arrives into* rather
+   * than anything of the jet's own. A jet at the bottom gives a bubble a place,
+   * not a direction.
+   */
   function emit(dt: number) {
     if (jets.length === 0) return
     const low = settings.birthMin
     const high = Math.max(settings.birthMin, settings.birthMax)
+    // cm² a second, as the control reads, to m² of bubble cross-section.
+    const flux = settings.gas * 1e-4
+    const footprint = boilRadius()
 
     for (let index = 0; index < jets.length; index++) {
       const jet = jets[index]!
-      owed[index] = (owed[index] ?? 0) + settings.rate * surgeOf(jet) * dt
-      while (owed[index]! >= 1) {
-        owed[index]! -= 1
-        const angle = rng() * Math.PI * 2
-        const at = settings.core * (0.2 + rng() * 0.75)
-        const x = jet.x + Math.cos(angle) * at
-        const y = jet.y + Math.sin(angle) * at
-        // Sizes clustered toward the small end of the band: a bubble leaving a
-        // nozzle is graded by how much gas broke off, not drawn from a hat.
+      owed[index] = (owed[index] ?? 0) + flux * surgeOf(jet) * dt
+
+      // A ceiling on births per jet per step. Without it a scene with a large
+      // flux and a tiny born size spins here for tens of thousands of
+      // iterations in one frame, which is a freeze rather than a busy tub.
+      let made = 0
+      while (owed[index]! > 0 && made < 400) {
+        // Sizes clustered toward the small end of the band: a bubble breaking
+        // off a plume is graded by how much gas went with it, not drawn from a
+        // hat.
         const t = Math.min(1, Math.max(0, 0.5 + gaussian(rng) * 0.28))
+        const r = low + (high - low) * t * t
+        owed[index]! -= Math.PI * r * r
+        made++
+
+        // Gaussian across the footprint, clamped, because a plume has no edge.
+        const x = jet.x + gaussian(rng) * footprint * 0.45
+        const y = jet.y + gaussian(rng) * footprint * 0.45
         flow(x, y, sample)
-        born(x, y, low + (high - low) * t * t, sample.x, sample.y)
+        born(x, y, r, sample.x, sample.y)
       }
+      if (owed[index]! < 0) owed[index] = 0
     }
   }
 
+  /**
+   * The contact grid, rebuilt each step.
+   *
+   * **The cell is sized from the *typical* bubble, not the largest**, and each
+   * bubble is entered into every cell its own reach covers. The obvious
+   * arrangement — one cell per bubble, sized to hold the largest pair, swept
+   * 3x3 — is what this replaced, and it has a failure that only shows up in the
+   * scenes worth looking at: a single 52mm bubble forces a 12cm cell on
+   * everybody, so `rolling boil`'s 5,800 four-millimetre bubbles landed about
+   * fifty to a cell and the sweep came to two and a half million pair tests a
+   * step. Measured at **10 fps**, against 58 for the same scene before it had
+   * anything big enough in it.
+   *
+   * Entering a bubble into every cell it covers costs one pass and makes the
+   * big ones pay for themselves instead of taxing the small ones. Two bubbles
+   * can touch only if their reaches overlap, and if they do they share at least
+   * one cell, so nothing is missed. A pair can share several cells, which is
+   * what `seen` is for — without it a jostle would be applied twice to exactly
+   * the pairs that overlap most.
+   */
   function rebuildGrid() {
+    let total = 0
+    let count = 0
     let biggest = settings.birthMax
     for (let i = 0; i < capacity; i++) {
-      if (live[i] === 1 && radius[i]! > biggest) biggest = radius[i]!
+      if (live[i] === 0) continue
+      total += radius[i]!
+      count++
+      if (radius[i]! > biggest) biggest = radius[i]!
     }
+    const typical = count > 0 ? total / count : settings.birthMax
 
     const extentX = view.halfWidth + view.margin
     const extentY = view.halfHeight + view.margin
-    // A cell must hold the largest pair *at the current reach*, or a 3x3 sweep
-    // misses contacts. `pack` above 1 lets films reach for each other before
-    // they meet, so it widens what counts as a pair and has to be in here.
-    let size = Math.max(biggest * 2 * Math.max(1, settings.pack) * 1.1, 0.004)
+    const reach = Math.max(1, settings.pack)
+    let size = Math.max(typical * 2.5 * reach, 0.003)
     cols = Math.ceil((extentX * 2) / size)
     rows = Math.ceil((extentY * 2) / size)
     if (cols > MAX_CELLS || rows > MAX_CELLS) {
@@ -406,15 +551,45 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
     if (heads.length !== wanted) heads = new Int32Array(wanted)
     heads.fill(-1)
 
+    // One entry per (bubble, cell) pair, so the arrays are sized by coverage
+    // rather than by population. They only ever grow.
+    let entries = 0
     for (let i = 0; i < capacity; i++) {
       if (live[i] === 0) continue
-      const cx = Math.min(cols - 1, Math.max(0, Math.floor((px[i]! - originX) / cellSize)))
-      const cy = Math.min(rows - 1, Math.max(0, Math.floor((py[i]! - originY) / cellSize)))
-      const cell = cy * cols + cx
-      next[i] = heads[cell]!
-      heads[cell] = i
+      const r = radius[i]! * reach
+      const x0 = cellX(px[i]! - r)
+      const x1 = cellX(px[i]! + r)
+      const y0 = cellY(py[i]! - r)
+      const y1 = cellY(py[i]! + r)
+      entries += (x1 - x0 + 1) * (y1 - y0 + 1)
+    }
+    if (entryOf.length < entries) {
+      entryOf = new Int32Array(entries * 2)
+      entryNext = new Int32Array(entries * 2)
+    }
+
+    let at = 0
+    for (let i = 0; i < capacity; i++) {
+      if (live[i] === 0) continue
+      const r = radius[i]! * reach
+      const x0 = cellX(px[i]! - r)
+      const x1 = cellX(px[i]! + r)
+      const y0 = cellY(py[i]! - r)
+      const y1 = cellY(py[i]! + r)
+      for (let cy = y0; cy <= y1; cy++) {
+        for (let cx = x0; cx <= x1; cx++) {
+          const cell = cy * cols + cx
+          entryOf[at] = i
+          entryNext[at] = heads[cell]!
+          heads[cell] = at
+          at++
+        }
+      }
     }
   }
+
+  const cellX = (x: number) => Math.min(cols - 1, Math.max(0, Math.floor((x - originX) / cellSize)))
+  const cellY = (y: number) => Math.min(rows - 1, Math.max(0, Math.floor((y - originY) / cellSize)))
 
   /**
    * Coalescence and jostling, in one sweep over touching pairs.
@@ -429,66 +604,72 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
     rebuildGrid()
 
     const chance = 1 - Math.exp(-settings.merge * MERGE_EAGERNESS * dt)
+    const reach = Math.max(1, settings.pack)
+    stamp++
 
-    for (let cy = 0; cy < rows; cy++) {
-      for (let cx = 0; cx < cols; cx++) {
-        for (let i = heads[cy * cols + cx]!; i >= 0; i = next[i]!) {
-          if (live[i] === 0) continue
-          for (let oy = -1; oy <= 1; oy++) {
-            const ny = cy + oy
-            if (ny < 0 || ny >= rows) continue
-            for (let ox = -1; ox <= 1; ox++) {
-              const nx = cx + ox
-              if (nx < 0 || nx >= cols) continue
-              for (let j = heads[ny * cols + nx]!; j >= 0; j = next[j]!) {
-                // Each unordered pair once, and never a bubble with itself.
-                if (j <= i || live[j] === 0 || live[i] === 0) continue
+    for (let i = 0; i < capacity; i++) {
+      if (live[i] === 0) continue
+      const ri = radius[i]!
+      const ir = ri * reach
+      const x0 = cellX(px[i]! - ir)
+      const x1 = cellX(px[i]! + ir)
+      const y0 = cellY(py[i]! - ir)
+      const y1 = cellY(py[i]! + ir)
 
-                const dx = px[j]! - px[i]!
-                const dy = py[j]! - py[i]!
-                const ri = radius[i]!
-                const rj = radius[j]!
-                const reach = (ri + rj) * settings.pack
-                const d2 = dx * dx + dy * dy
-                if (d2 > reach * reach) continue
-                const d = Math.sqrt(d2) || 1e-6
+      for (let cy = y0; cy <= y1; cy++) {
+        for (let cx = x0; cx <= x1; cx++) {
+          for (let e = heads[cy * cols + cx]!; e >= 0; e = entryNext[e]!) {
+            const j = entryOf[e]!
+            // Each unordered pair once per step, however many cells it shares,
+            // and never a bubble with itself.
+            if (j <= i || live[j] === 0 || live[i] === 0) continue
+            if (seen[j] === stamp) continue
+            seen[j] = stamp
 
-                const mi = ri * ri
-                const mj = rj * rj
-                const total = mi + mj
+            const dx = px[j]! - px[i]!
+            const dy = py[j]! - py[i]!
+            const rj = radius[j]!
+            const span = (radius[i]! + rj) * settings.pack
+            const d2 = dx * dx + dy * dy
+            if (d2 > span * span) continue
+            const d = Math.sqrt(d2) || 1e-6
 
-                if (chance > 0 && rng() < chance) {
-                  // Area conserved, so radius goes as the square root: four
-                  // bubbles to double one.
-                  px[i] = (px[i]! * mi + px[j]! * mj) / total
-                  py[i] = (py[i]! * mi + py[j]! * mj) / total
-                  vx[i] = (vx[i]! * mi + vx[j]! * mj) / total
-                  vy[i] = (vy[i]! * mi + vy[j]! * mj) / total
-                  radius[i] = Math.sqrt(total)
-                  if (rj > ri) {
-                    phase[i] = phase[j]!
-                    hertz[i] = hertz[j]!
-                  }
-                  release(j)
-                  merges++
-                  continue
-                }
+            const mi = radius[i]! * radius[i]!
+            const mj = rj * rj
+            const total = mi + mj
 
-                if (settings.bounce <= 0) continue
-                const overlap = ri + rj - d
-                if (overlap <= 0) continue
-                const push = overlap * settings.bounce * 0.5
-                const ux = dx / d
-                const uy = dy / d
-                px[i]! -= ux * push * (mj / total) * 2
-                py[i]! -= uy * push * (mj / total) * 2
-                px[j]! += ux * push * (mi / total) * 2
-                py[j]! += uy * push * (mi / total) * 2
+            if (chance > 0 && rng() < chance) {
+              // Area conserved, so radius goes as the square root: four
+              // bubbles to double one.
+              px[i] = (px[i]! * mi + px[j]! * mj) / total
+              py[i] = (py[i]! * mi + py[j]! * mj) / total
+              vx[i] = (vx[i]! * mi + vx[j]! * mj) / total
+              vy[i] = (vy[i]! * mi + vy[j]! * mj) / total
+              radius[i] = Math.sqrt(total)
+              if (rj > radius[i]!) {
+                phase[i] = phase[j]!
+                hertz[i] = hertz[j]!
               }
+              release(j)
+              merges++
+              continue
             }
+
+            if (settings.bounce <= 0) continue
+            const overlap = radius[i]! + rj - d
+            if (overlap <= 0) continue
+            const push = overlap * settings.bounce * 0.5
+            const ux = dx / d
+            const uy = dy / d
+            px[i]! -= ux * push * (mj / total) * 2
+            py[i]! -= uy * push * (mj / total) * 2
+            px[j]! += ux * push * (mi / total) * 2
+            py[j]! += uy * push * (mi / total) * 2
           }
         }
       }
+      // A fresh stamp per bubble, so `seen` means "already paired with i".
+      stamp++
     }
   }
 
@@ -560,7 +741,14 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
       px[i]! += vx[i]! * dt
       py[i]! += vy[i]! * dt
 
-      if (settings.dissolve > 0) radius[i]! -= settings.dissolve * dt
+      if (settings.dissolve > 0) {
+        // A wide film held against gravity drains faster than a narrow one, so
+        // the rate climbs with radius. At `fragile` 0 this is the flat rate it
+        // has always been; above it, growth costs something and the foam finds
+        // a size where coalescence and drainage balance.
+        const wear = settings.dissolve * (1 + settings.fragile * 9 * (radius[i]! / 0.02))
+        radius[i]! -= wear * dt
+      }
 
       if (radius[i]! <= GONE || Math.abs(px[i]!) > killX || Math.abs(py[i]!) > killY) {
         release(i)
@@ -668,8 +856,12 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
       return
     }
 
-    const elapsed = last === 0 ? STEP : Math.min(0.25, (now - last) / 1000)
+    const wall = last === 0 ? STEP : Math.min(0.25, (now - last) / 1000)
     last = now
+    // Seconds of water per second of wall clock. Substeps are still capped at
+    // STEP, so slow motion is smooth rather than the stop-motion an accumulator
+    // draining a fixed step produces below about a fifth speed.
+    const elapsed = wall * settings.playback
 
     let remaining = elapsed
     let steps = 0
@@ -746,6 +938,7 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
       }
       if (before.seed !== nextSettings.seed) rng = makeRng(hashSeed(nextSettings.seed, 0x51ed))
       if (before.span !== nextSettings.span) resize()
+      if (before.gas !== nextSettings.gas) owed.fill(0)
       if (held || !running) draw()
     },
 
@@ -763,15 +956,18 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
     stats: () => {
       let biggest = 0
       let total = 0
+      let pace = 0
       for (let i = 0; i < capacity; i++) {
         if (live[i] === 0) continue
         total += radius[i]!
+        pace += Math.hypot(vx[i]!, vy[i]!)
         if (radius[i]! > biggest) biggest = radius[i]!
       }
       return {
         alive,
         biggest: Number((biggest * 1000).toFixed(2)),
         mean: Number(((alive > 0 ? total / alive : 0) * 1000).toFixed(2)),
+        speed: Number(((alive > 0 ? pace / alive : 0) * 1000).toFixed(1)),
         merges: mergesShown,
         pops: popsShown,
         fps: Number(fps.toFixed(1)),

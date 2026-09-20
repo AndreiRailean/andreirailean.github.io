@@ -18,12 +18,17 @@
  * ## Sampled per bubble, not on a grid
  *
  * The usual arrangement is a velocity grid rebuilt each frame and sampled
- * bilinearly. That was rejected here on the arithmetic: at a 5cm eddy across a
- * three-metre tub the grid needs about 240 cells a side to resolve its own
- * features, which is 58,000 samples a frame *whatever the bubble count*.
- * Sampling per bubble costs eight lookups each — under a quarter of that at two
- * and a half thousand bubbles, exact at any eddy size, and it scales with the
- * thing the piece is actually spending its budget on.
+ * bilinearly. It was rejected here on the arithmetic: at the smallest eddy this
+ * piece offers, across the widest frame, the grid needs hundreds of cells a
+ * side to resolve its own features — and pays for them *whatever the bubble
+ * count*. Sampling per bubble is exact at any eddy size and costs nothing in a
+ * sparse scene.
+ *
+ * **What the first version got wrong was the constant, not the choice.** Eight
+ * lookups a bubble is fine; eight lookups that each hash four coordinates
+ * through an avalanche mixer is not, and at 5,800 bubbles that alone took the
+ * piece to 12.8 fps. See `PERM` below. The fix left the shape alone and made
+ * each lookup about ten times cheaper.
  *
  * ## Two octaves, and why the second is not half the first
  *
@@ -34,7 +39,7 @@
  * water — and leaves the small one as texture on top.
  */
 
-import { hashSeed } from "@/experiments/random"
+import { hashSeed, makeRng } from "@/experiments/random"
 
 /** Quintic fade: zero first *and* second derivative at the ends, so cells do not crease. */
 const fade = (t: number): number => t * t * t * (t * (t * 6 - 15) + 10)
@@ -42,21 +47,64 @@ const fade = (t: number): number => t * t * t * (t * (t * 6 - 15) + 10)
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * t
 
 /**
- * The twelve edge gradients of a cube, chosen by the corner's hash.
+ * A shuffled permutation, which is how a corner gets its gradient.
+ *
+ * **This replaced hashing the corner's coordinates directly, and the reason is
+ * a measurement.** `hashSeed(seed, ix, iy, iz)` is four rounds of an avalanche
+ * mixer — about sixteen multiplies — and a single `noise3` needs it eight
+ * times, once per corner of the cube. At `rolling boil`'s 5,800 bubbles that is
+ * two and a half million mixer rounds a second just to decide which way eight
+ * corners point, and the piece ran at **12.8 fps**. Turning the churn off alone
+ * took it to 53, which is what said the noise rather than the contact sweep was
+ * the cost.
+ *
+ * A permutation table makes the same decision in three array reads. It is built
+ * once per seed and cached, because the seed changes only when somebody rerolls.
+ *
+ * 512 entries rather than 256 so the lookups below never have to mask twice.
+ */
+const PERM = new Uint8Array(512)
+
+/** Which seed `PERM` currently holds. NaN until the first build, and NaN !== NaN. */
+let permSeed = Number.NaN
+
+function usePerm(seed: number): void {
+  if (seed === permSeed) return
+  permSeed = seed
+  const rng = makeRng(hashSeed(seed, 0x9e3779b9))
+  for (let i = 0; i < 256; i++) PERM[i] = i
+  // Fisher-Yates, so every ordering is equally likely and no corner's gradient
+  // correlates with its neighbour's.
+  for (let i = 255; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1))
+    const swap = PERM[i]!
+    PERM[i] = PERM[j]!
+    PERM[j] = swap
+  }
+  PERM.copyWithin(256, 0, 256)
+}
+
+/**
+ * The twelve edge gradients of a cube, chosen by the corner's place in `PERM`.
  *
  * Edge midpoints rather than random directions: they are uniform enough and
  * every one is a pair of ±1 with a zero, so the dot product below is two adds
  * and no multiplies.
  */
-function gradient(seed: number, ix: number, iy: number, iz: number, x: number, y: number, z: number): number {
-  const h = hashSeed(seed, ix, iy, iz) & 15
+function gradient(ix: number, iy: number, iz: number, x: number, y: number, z: number): number {
+  const h = PERM[(PERM[(PERM[ix & 255]! + iy) & 255]! + iz) & 255]! & 15
   const u = h < 8 ? x : y
   const v = h < 4 ? y : h === 12 || h === 14 ? x : z
   return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v)
 }
 
-/** Gradient noise in three dimensions, roughly in [-1, 1]. Time is the third. */
-export function noise3(seed: number, x: number, y: number, z: number): number {
+/**
+ * Gradient noise in three dimensions, roughly in [-1, 1]. Time is the third.
+ *
+ * `usePerm` must have been called for the seed in play. `curlAt` does it once
+ * per sample rather than once per octave, which is the only place it matters.
+ */
+export function noise3(x: number, y: number, z: number): number {
   const ix = Math.floor(x)
   const iy = Math.floor(y)
   const iz = Math.floor(z)
@@ -67,14 +115,14 @@ export function noise3(seed: number, x: number, y: number, z: number): number {
   const v = fade(fy)
   const w = fade(fz)
 
-  const x0y0z0 = gradient(seed, ix, iy, iz, fx, fy, fz)
-  const x1y0z0 = gradient(seed, ix + 1, iy, iz, fx - 1, fy, fz)
-  const x0y1z0 = gradient(seed, ix, iy + 1, iz, fx, fy - 1, fz)
-  const x1y1z0 = gradient(seed, ix + 1, iy + 1, iz, fx - 1, fy - 1, fz)
-  const x0y0z1 = gradient(seed, ix, iy, iz + 1, fx, fy, fz - 1)
-  const x1y0z1 = gradient(seed, ix + 1, iy, iz + 1, fx - 1, fy, fz - 1)
-  const x0y1z1 = gradient(seed, ix, iy + 1, iz + 1, fx, fy - 1, fz - 1)
-  const x1y1z1 = gradient(seed, ix + 1, iy + 1, iz + 1, fx - 1, fy - 1, fz - 1)
+  const x0y0z0 = gradient(ix, iy, iz, fx, fy, fz)
+  const x1y0z0 = gradient(ix + 1, iy, iz, fx - 1, fy, fz)
+  const x0y1z0 = gradient(ix, iy + 1, iz, fx, fy - 1, fz)
+  const x1y1z0 = gradient(ix + 1, iy + 1, iz, fx - 1, fy - 1, fz)
+  const x0y0z1 = gradient(ix, iy, iz + 1, fx, fy, fz - 1)
+  const x1y0z1 = gradient(ix + 1, iy, iz + 1, fx - 1, fy, fz - 1)
+  const x0y1z1 = gradient(ix, iy + 1, iz + 1, fx, fy - 1, fz - 1)
+  const x1y1z1 = gradient(ix + 1, iy + 1, iz + 1, fx - 1, fy - 1, fz - 1)
 
   return lerp(
     lerp(lerp(x0y0z0, x1y0z0, u), lerp(x0y1z0, x1y1z0, u), v),
@@ -96,9 +144,16 @@ const FINE_HASTE = 2.4
 const NUDGE = 0.12
 
 /** The scalar potential the flow is the curl of. Two octaves, energy in the large one. */
-function potential(seed: number, x: number, y: number, t: number, size: number, drift: number): number {
-  const coarse = noise3(seed, x / size, y / size, t * drift * 0.55)
-  const fine = noise3(seed ^ 0x5bf03635, x / (size * FINE_SIZE), y / (size * FINE_SIZE), t * drift * 0.55 * FINE_HASTE)
+function potential(x: number, y: number, t: number, size: number, drift: number): number {
+  const coarse = noise3(x / size, y / size, t * drift * 0.55)
+  // The second octave is offset in the noise's own space rather than given its
+  // own seed, so both read one permutation table. A separate table would be a
+  // second cache to keep warm for no gain: the offset already decorrelates them.
+  const fine = noise3(
+    x / (size * FINE_SIZE) + 137.13,
+    y / (size * FINE_SIZE) - 91.57,
+    t * drift * 0.55 * FINE_HASTE + 53.29,
+  )
   // Amplitude scaled by eddy size, because velocity is the derivative: equal
   // amplitudes would hand all of the motion to the smallest octave.
   return size * (coarse + FINE_SIZE * FINE_SHARE * fine)
@@ -120,9 +175,10 @@ export function curlAt(
   drift: number,
   out: { x: number; y: number },
 ): void {
+  usePerm(seed)
   const e = Math.max(1e-4, size * NUDGE)
-  const dy = potential(seed, x, y + e, t, size, drift) - potential(seed, x, y - e, t, size, drift)
-  const dx = potential(seed, x + e, y, t, size, drift) - potential(seed, x - e, y, t, size, drift)
+  const dy = potential(x, y + e, t, size, drift) - potential(x, y - e, t, size, drift)
+  const dx = potential(x + e, y, t, size, drift) - potential(x - e, y, t, size, drift)
   const k = strength / (2 * e)
   out.x = dy * k
   out.y = -dx * k

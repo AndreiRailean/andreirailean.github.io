@@ -55,7 +55,7 @@ const { hue } = primary
         canvas,
         normalizeSettings({
           ...primary,
-          rate: primary.rate * 0.4,
+          gas: primary.gas * 0.4,
           count: Math.round(primary.count * 0.5),
           span: primary.span * 1.7,
           spread: primary.spread * 1.7,
@@ -65,7 +65,7 @@ const { hue } = primary
       // The surface is empty at t=0 and takes twenty seconds of jets to hold the
       // foam the settings actually describe. Without a run-up the sheet sits
       // over a black rectangle for the first half-minute of every visit.
-      water.settle(24)
+      water.settle(30)
     }
   </script>
 </Note>

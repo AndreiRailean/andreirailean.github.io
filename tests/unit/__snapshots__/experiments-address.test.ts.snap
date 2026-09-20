@@ -30,11 +30,17 @@ exports[`bubbles > has not edited a slot in place 1`] = `
   "span num grid=0.05 origin=0.3 bits=7",
   "hue num grid=1 origin=0 bits=9",
   "seed num grid=1 origin=1 bits=14",
-  "rate num grid=1 origin=2 bits=11",
+  "rate num grid=1 origin=2 bits=11 RETIRED",
   "pulse num grid=0.02 origin=0 bits=6",
   "pack num grid=0.02 origin=0.5 bits=6",
   "look enum disc|ring|mixed",
-  "rim num grid=0.02 origin=0.08 bits=5",
+  "rim num grid=0.02 origin=0.08 bits=5 RETIRED",
+  "depth num grid=0.05 origin=0.1 bits=7",
+  "plume num grid=0.01 origin=0.02 bits=7",
+  "gas num grid=1 origin=2 bits=12",
+  "fragile num grid=0.02 origin=0 bits=6",
+  "playback num grid=0.01 origin=0.05 bits=8",
+  "rim num grid=0.01 origin=0.02 bits=6",
 ]
 `;
 
