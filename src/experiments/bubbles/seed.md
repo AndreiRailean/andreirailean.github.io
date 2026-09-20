@@ -103,3 +103,31 @@ The other three are each a mechanism that is absent rather than mistuned:
 - big bubbles lingered because nothing made a large film drain faster than a
   small one, and below `pop at` the hazard is exactly zero;
 - the water could not be slowed at all, because there was no clock.
+
+## 2026-09-20 — what I assumed in answering that round
+
+- **Ring thickness.** "A little too thick" — `wall` now goes down to 0.02 of the
+  radius where it used to stop at 0.08, and `meniscus` sits at 0.03, which is a
+  hairline. I did not make the wall a fixed width in millimetres instead, though
+  that is the other reading: a real meniscus catches light in a band that is
+  roughly proportional to the bubble, so a fraction is the more physical of the
+  two. If he wants every ring the same weight regardless of size, that is a
+  different control and worth saying so.
+- **The primary is still discs.** He said the rings are a good option and that
+  making everything use them "doesn't seem to be it", so `deep water` draws
+  discs and `meniscus` is the ring scene. `slick` draws `mixed`.
+- **Which scene leads.** He was looking at `slick` and trying to work out what he
+  liked about it. I did not promote it: `deep water` is the widest reading of the
+  seed, and `slick` is what it looks like with the gas right down and `fragile`
+  up. Promoting `slick` is a one-line move if the answer turns out to be that it
+  was the sparseness he liked rather than the calm.
+- **How slow is slow.** The primary takes about eleven seconds for a bubble to
+  cross the frame, against under two for the presets he called fast. That was
+  chosen by measuring rather than by eye, and it may still be the wrong number —
+  `slow water` is the same tub at a third of that again, and `speed` moves it
+  continuously.
+- **What I did not add.** He mentioned a jet on the side pushing bubbles
+  linearly, "but that only determines the origin of their birth". That implies a
+  per-jet tilt, which would displace and stretch the footprint without giving
+  bubbles any lateral motion. It is the natural next widening and it is not
+  built; the footprint is circular for every jet.
