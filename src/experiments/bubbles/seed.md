@@ -131,3 +131,95 @@ The other three are each a mechanism that is absent rather than mistuned:
   per-jet tilt, which would displace and stretch the footprint without giving
   bubbles any lateral motion. It is the natural next widening and it is not
   built; the footprint is circular for every jet.
+
+## 2026-09-20 — second round of feedback
+
+> one thing the real jet from the bottom in a jacuzzi does is make the water move
+> in a way that small bubbles can't linger in their "birth" place. they radiate
+> out and get caught in swirls. swirls are also pushed out from the center. so
+> the center of the emergence has this wavy nature and everything leaves it.
+> current simulation, even when shallow makes the bubbles linger in the center of
+> the jet and big bubbles tend to become big in the middle. in a real jacuzzi,
+> bigger bubbles form outside of emergence area it's unlikely a big bubble will
+> emerge big and stay around. if it's a big pocket of air coming from below, it
+> never turns into a bubble. it doesn't mean that bubbles are born the same size.
+> it just means that there's a natural limit to how big they can be at birth.
+> they can become much bigger as smaller ones collide, but big one has zero
+> chance of emerging unless we're talking about very soapy water.
+>
+> also, looking at this, i see that my adjustments only apply to 1 jet. the other
+> jet only spits out tiny dots like it's congested. i think it's natural for jets
+> to have variability, but we're not modelling a clogged pipe here.
+>
+> http://10.1.11.11:4456/experiments/bubbles/?s=_7___7t4QJgwwaAAFPDwwMKzWiCUMIkAQXw2AY2ARw2y6-I
+
+**My reading, marked as mine.** The second paragraph is a plain bug and the first
+is a missing mechanism that happens to produce the same complaint from two
+directions.
+
+The bug: jets were served in order out of one pool of slots, so when demand
+exceeded the pool's turnover the first jet took every freed slot and the rest
+starved. Nothing about it was variability — it was a queue with no fairness in
+it, and it reads as a blocked nozzle.
+
+The mechanism: there is nothing in the piece that stops a bubble being large. The
+boil is where the foam is densest, density is what drives coalescence, so the
+biggest bubbles necessarily formed exactly where he says they never do. The
+answer is not to move the births — it is that **a violent place breaks bubbles
+up**. Above a size that depends on how hard the water is being worked, a bubble
+fragments rather than surviving, which is the Kolmogorov–Hinze scale and is why a
+big pocket of air rising through a jacuzzi never arrives as one bubble. That one
+mechanism covers all three of his observations: nothing large survives in the
+boil, large ones therefore assemble outside it in calm water, and there is a
+natural ceiling on birth size without anybody declaring one.
+
+## 2026-09-20 — third round, mid-build
+
+> interesting. at born size 1mm-1mm, no bubbles are produced
+
+> i think the smalle the bubble the longer it can stay. drain is scaled
+> incorrectly. the only interesting values there are very close to zero. anything
+> above that makes them disappear too fast.
+
+**My reading, marked as mine.** Both were real and neither was tuning.
+
+The first was `GONE`, the radius at which a bubble counts as drained away. It was
+1.2mm, which was fine when the birth band's floor was 2mm — and when I lowered
+that floor to half a millimetre in the same round, it silently became a filter on
+birth. A bubble born at 1mm was already past the test and was released on its
+first step.
+
+The second was worse, because the control beside it claimed the opposite of what
+the arithmetic did. `drain` was a radius loss in metres per second, so a big
+bubble simply had more to lose and **outlasted** the small ones `fragile` was
+written to make short-lived. Both halves of what he noticed follow from that: the
+scaling is inverted, and a rate large enough to matter for a big bubble deletes a
+small one instantly, so only values near zero were usable. It is a film lifetime
+now — a time, not a rate — and the life shortens with width.
+
+Looking for those turned up a third that nobody reported: `emit` forgave the gas
+debt at the end of every frame, so a jet emitted exactly one bubble per step
+whatever its size. Every claim about "smaller bubbles simply means more of them"
+was false while that stood, including the one in `about.md`.
+
+## 2026-09-20 — what I assumed in answering that round
+
+- **The presets are freshly tuned against corrected physics and will need your
+  eye.** Three mechanisms changed underneath them in one round — tearing, film
+  life, and an emitter that was delivering a twelfth of the gas it claimed — so
+  every number in every scene was chosen against numbers, not against a look.
+  `bigOut` in `experiment.stats()` is mean bubble radius outside a boil over mean
+  radius inside one: it runs 1.0 to 1.68 across the presets now, where it was
+  under 1 before.
+- **`pop at` / `pop rate` may now be redundant.** Tearing covers "too big to
+  hold" and film life covers "time ran out", so size-triggered bursting is a
+  third death mechanism doing similar work. I left it because removing a control
+  is a commitment and you have not asked for one.
+- **`gas` is scaled for the old emitter's range.** It runs to 4000 cm²/s and the
+  presets now sit between 20 and 70, because the emitter finally delivers what it
+  is told. The top of that range is only reachable with very fine bubbles and a
+  large pool. It wants narrowing once you have decided where you actually live.
+- **`rolling boil` is the only preset under 60fps**, at 44. It is the deliberately
+  extreme one; every other scene holds 60.
+- **Still not built:** the per-jet tilt you described — a side jet displacing and
+  stretching the footprint without giving bubbles lateral motion.

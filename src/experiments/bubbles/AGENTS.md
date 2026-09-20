@@ -235,3 +235,75 @@ entered into every cell its own reach covers, so the big ones pay for themselves
 `seen` is the stamp that stops a pair sharing several cells being jostled twice.
 This was not what made `rolling boil` slow — see above — but it was a real flaw
 found while looking for it.
+
+## Tearing, and why one mechanism answers three complaints
+
+Andrei's second round said big bubbles formed in the middle of each boil, that a
+big bubble born big lingers, and that a big pocket of air never arrives as one
+bubble. Those are the same finding: **there was nothing in the piece that stopped
+a bubble being large**, and the boil is where the foam is densest, so the biggest
+bubbles necessarily formed in the one place a real tub never has them. No amount
+of moving the births could have fixed it.
+
+`stableAt` is the answer — the harder the water is worked, the smaller the bubble
+that survives it, which is the Kolmogorov–Hinze scale. It caps birth size without
+anybody declaring one, keeps the boil to fine foam, and pushes the big ones out
+into the calm.
+
+**Two things it needed before it worked:**
+
+- **Hysteresis.** Tearing cut a bubble to exactly the limit, so a merge that
+  landed just over it was torn straight back apart: measured at **200,000
+  tearings among 5,000 bubbles in ninety seconds**. It tears only past
+  `limit * 1.2` now.
+- **Worked water must refuse coalescence too.** Films need a moment of quiet to
+  drain and rupture between two bubbles, and a boil does not give them one. Until
+  that was in, the place bubbles were torn apart fastest was also the place they
+  were joined fastest — a treadmill in the arithmetic and a waste of a frame on
+  screen. `worked[]` carries the agitation from the step loop into the contact
+  sweep so neither samples the field twice.
+
+`stats().bigOut` is mean radius outside a boil over mean radius inside one. Above
+1 is the property the piece is supposed to have. Its first version compared
+above-mean with below-mean bubbles by distance and was too blunt to steer by —
+with a skewed distribution nearly everything sits below the mean.
+
+## Three measurement faults, all of which produced confident wrong numbers
+
+These cost more than any of the code did, and the pattern is worth recognising.
+
+1. **`merges` and `pops` were per-second windows flushed from the animation
+   frame**, so under `settle` — the only way anything measures this piece — they
+   read as a stale number or zero. They are cumulative since the last sweep now,
+   along with `made` and `torn`. A rate is a subtraction away; a number nobody
+   wrote down is not.
+2. **A lifetime test that loops until a population halves measures refill, not
+   lifetime.** Two attempts died this way. What works is the steady state: alive
+   = births per second × mean life, and `made` gives births exactly, so one
+   settle answers it with no loop.
+3. **Deriving births per second from the gas arithmetic instead of measuring
+   it.** That is what hid the emitter bug below for an hour — the arithmetic said
+   38 a second and the truth was 180.
+
+## The gas debt must never be forgiven
+
+`emit` subtracted a bubble's area from the jet's debt whether or not the debt
+covered it, and zeroed anything negative at the end of the frame. So a jet
+emitted **exactly one bubble per step whatever its size** — 180 a second at three
+jets, identical at 5mm, 10mm and 14mm, which is impossible if gas is a quantity.
+Every claim in this piece about smaller bubbles meaning more of them was false
+while that line stood, including the ones written into `about.md`.
+
+It now draws the size first and emits only if the debt covers it. Births match
+the gas exactly: measured 153/153 and 38/38 against what the flux predicts.
+
+## A widened range walks into old constants
+
+`GONE`, the radius at which a bubble counts as drained away, was **1.2mm** —
+fine when the birth band's floor was 2mm. Lowering that floor to half a
+millimetre made it a filter on birth: a bubble born at 1mm was already past the
+test and was released on its first step, so `born size` at 1mm–1mm produced **no
+bubbles at all**. Andrei found it within a minute of the widening.
+
+The same shape as the section's rule about hues typed as literals. When widening
+a control, grep for the constants its old range never reached.

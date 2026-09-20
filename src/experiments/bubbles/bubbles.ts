@@ -98,8 +98,23 @@ const MARGIN = 0.18
 /** Contacts per second at `merge` 1. Below a contact lasting a frame or two. */
 const MERGE_EAGERNESS = 14
 
-/** A bubble thinner than this many metres has drained away. */
-const GONE = 0.0012
+/**
+ * A bubble thinner than this many metres has drained away.
+ *
+ * **It must stay well under the smallest radius the birth band can ask for**,
+ * and it did not. It was 1.2mm, chosen when the band's floor was 2mm, and when
+ * that floor came down to half a millimetre this quietly became a filter on
+ * birth: a bubble born at 1mm was already past the "gone" test and was released
+ * on its first step, so setting the band to 1mm–1mm produced **no bubbles at
+ * all**. Andrei found it within a minute of the range widening.
+ *
+ * The lesson is the one the section already has about literals: widening a
+ * control's range can walk it into a constant that was fine on the day it was
+ * written and was never about that control. 0.12mm is a quarter of the band's
+ * floor, which leaves room for drainage and tearing to produce something
+ * genuinely spent.
+ */
+const GONE = 0.00012
 
 /** Biggest the contact grid may get on a side, so a fine scene cannot allocate wildly. */
 const MAX_CELLS = 220
@@ -215,9 +230,36 @@ export type BubblesStats = {
    * whole of what anybody can see.
    */
   speed: number
-  /** Coalescences and bursts in the last second. */
+  /**
+   * Births, coalescences, bursts and tearings **since the last sweep**.
+   *
+   * Cumulative rather than a per-second window, and that is a fix rather than a
+   * preference: the window was flushed from the animation frame, so every one
+   * of them read as a stale number or a zero under `settle` — which is the only
+   * way anything measures this piece. Two sessions' worth of lifetime
+   * measurements were wrong before that was noticed. A rate is a subtraction
+   * away; a number that was never written down is not.
+   */
+  made: number
   merges: number
   pops: number
+  torn: number
+  /**
+   * Mean radius out in the calm, over mean radius inside a boil.
+   *
+   * **Above 1 means bubbles are bigger away from the jets**, which is what a
+   * real tub does and what this piece did not do until tearing arrived: the
+   * boil is where the foam is densest, density is what drives coalescence, so
+   * the biggest bubbles necessarily formed in the one place they never should.
+   *
+   * Here because "big bubbles tend to become big in the middle" is a claim
+   * about a number and the piece could not report that number. The first
+   * version of it compared *above-mean* bubbles with *below-mean* ones by
+   * distance, which was too blunt to steer by — with a skewed distribution
+   * almost everything sits below the mean. This asks the question the way it
+   * was actually put: inside the boil, or outside it.
+   */
+  bigOut: number
   /** Frames per second, averaged over the last second. */
   fps: number
 }
@@ -254,6 +296,13 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
   let radius = new Float32Array(capacity)
   let phase = new Float32Array(capacity)
   let hertz = new Float32Array(capacity)
+  // How far through its film life each bubble is, 0 at birth and 1 when the
+  // film gives way. A fraction rather than an age in seconds, because the rate
+  // it fills at depends on the radius, and a bubble's radius changes.
+  let spent = new Float32Array(capacity)
+  // How hard the jets are working where each bubble is, carried from the step
+  // loop into the contact sweep so neither has to sample the field twice.
+  let worked = new Float32Array(capacity)
   let live = new Uint8Array(capacity)
   let free = new Int32Array(capacity)
   let freeCount = 0
@@ -282,10 +331,10 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
   let frame = 0
   let last = 0
 
+  let made = 0
   let merges = 0
   let pops = 0
-  let mergesShown = 0
-  let popsShown = 0
+  let torn = 0
   let frames = 0
   let fps = 0
   let tallyAt = 0
@@ -299,6 +348,8 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
     radius = new Float32Array(capacity)
     phase = new Float32Array(capacity)
     hertz = new Float32Array(capacity)
+    spent = new Float32Array(capacity)
+    worked = new Float32Array(capacity)
     live = new Uint8Array(capacity)
     free = new Int32Array(capacity)
     seen = new Int32Array(capacity)
@@ -337,11 +388,13 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
   function born(x: number, y: number, r: number, bx: number, by: number) {
     const index = take()
     if (index < 0) return
+    made++
     px[index] = x
     py[index] = y
     vx[index] = bx
     vy[index] = by
     radius[index] = r
+    spent[index] = 0
     phase[index] = rng() * Math.PI * 2
     // Each bubble wavers on its own clock, spread around the setting. One shared
     // frequency makes the whole surface breathe together, which is the single
@@ -355,9 +408,14 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
    * Sampled once per bubble per step, which is the budget: the churn costs eight
    * noise lookups and each jet costs about ten operations.
    */
-  function flow(x: number, y: number, out: { x: number; y: number }) {
+  function flow(x: number, y: number, out: { x: number; y: number; jetted: number }) {
     let ux = 0
     let uy = 0
+    // How hard the jets are working *here*, in m/s, kept apart from the total.
+    // It is what decides whether a bubble can hold together, and the churn is
+    // deliberately not in it: the churn is a smooth large-scale advection that
+    // a bubble rides without being sheared, where a boil is the violent part.
+    let jetted = 0
 
     const boil = boilRadius()
     const fade = surfaceFade()
@@ -383,6 +441,7 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
       const ny = dy / d
       ux += reaching * profile * nx + twisting * profile * -ny * jet.spin
       uy += reaching * profile * ny + twisting * profile * nx * jet.spin
+      jetted += (reaching + twisting) * profile
     }
 
     if (settings.churn > 0) {
@@ -398,9 +457,82 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
 
     out.x = ux
     out.y = uy
+    out.jetted = jetted
   }
 
-  const sample = { x: 0, y: 0 }
+  const sample = { x: 0, y: 0, jetted: 0 }
+
+  /** The speed at which a patch of water counts as fully worked. */
+  const WORKED = 0.06
+
+  /** The radius `fragile` is measured against: half a centimetre. */
+  const FILM_REFERENCE = 0.005
+
+  /**
+   * How long this bubble's film will hold, in seconds.
+   *
+   * **A total life, not a decay constant, and the difference is the whole
+   * point.** This was a radius loss in metres per second, which inverted the
+   * control that depends on it: a flat rate means a big bubble simply has more
+   * to lose, so it outlasted the small ones `fragile` was written to outlive.
+   * Andrei reported it as "drain is scaled incorrectly — the only interesting
+   * values are very close to zero", and both halves of that are the same fault.
+   *
+   * Exponential shrinking does not fix it either, and was tried: decaying
+   * toward a fixed floor takes a 40mm bubble *longer* to disappear than a 1mm
+   * one, because it has so much further to fall. What was wrong was modelling
+   * the film as something that thins away to nothing. A real surface bubble
+   * holds its size and then ruptures, and how long it holds is what depends on
+   * how wide the film is.
+   */
+  const filmLife = (r: number) => settings.life / (1 + (settings.fragile * r) / FILM_REFERENCE)
+
+  /**
+   * The largest a bubble can hold together at a point, in metres.
+   *
+   * **This is the mechanism that keeps big bubbles out of the boil**, and it is
+   * the Kolmogorov–Hinze scale in the only form this piece needs: the harder the
+   * water is being worked, the smaller the bubble that survives it. A pocket of
+   * air rising through a jacuzzi does not arrive as one bubble for exactly this
+   * reason, which is also why the birth band has a low ceiling and does not need
+   * one written down.
+   *
+   * Without it, the biggest bubbles necessarily formed where the foam was
+   * densest, which is directly over a jet — the one place a real tub never has
+   * them. Density drives coalescence, so no amount of tuning the birth positions
+   * could have fixed that; something had to take large bubbles apart again.
+   */
+  const stableAt = (jetted: number) =>
+    settings.shatter > 0 ? settings.stable / (1 + (settings.shatter * jetted) / WORKED) : settings.stable
+
+  /**
+   * Cut a bubble down to what the water there will hold, and give the rest to a
+   * sibling.
+   *
+   * Tearing is not bursting: the gas stays in the tub, it is simply carried by
+   * more bubbles. The parent is always cut to the limit whether or not a slot is
+   * free, so the ceiling holds even with the pool full — a remainder too small
+   * to draw, or with nowhere to go, is lost the way real fines are.
+   */
+  function tear(index: number, limit: number) {
+    const r = radius[index]!
+    const rest = Math.sqrt(Math.max(0, r * r - limit * limit))
+    radius[index] = limit
+    torn++
+    if (rest <= GONE) return
+    const angle = rng() * Math.PI * 2
+    const apart = limit + rest
+    const before = freeCount
+    born(
+      px[index]! + Math.cos(angle) * apart,
+      py[index]! + Math.sin(angle) * apart,
+      rest,
+      vx[index]! + Math.cos(angle) * 0.05,
+      vy[index]! + Math.sin(angle) * 0.05,
+    )
+    // Tearing does not refresh a film: the halves carry the parent's wear.
+    if (freeCount < before) spent[free[freeCount]!] = spent[index]!
+  }
 
   /**
    * How wide the plume is by the time it reaches the surface, in metres.
@@ -474,29 +606,55 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
     const footprint = boilRadius()
 
     for (let index = 0; index < jets.length; index++) {
-      const jet = jets[index]!
-      owed[index] = (owed[index] ?? 0) + flux * surgeOf(jet) * dt
+      // A backlog of at most a second, so a tab coming back does not empty a
+      // held-up queue into one frame.
+      owed[index] = Math.min(flux, (owed[index] ?? 0) + flux * surgeOf(jets[index]!) * dt)
+    }
 
-      // A ceiling on births per jet per step. Without it a scene with a large
-      // flux and a tiny born size spins here for tens of thousands of
-      // iterations in one frame, which is a freeze rather than a busy tub.
-      let made = 0
-      while (owed[index]! > 0 && made < 400) {
+    // **Round robin, and this is not tidiness.** Serving the jets in order out
+    // of one pool meant the first jet took every slot freed that step, and the
+    // rest got whatever was left — which at a small born size is nothing, since
+    // demand runs to thousands of bubbles a second against a pool of a couple
+    // of thousand. On screen it read as one working jet and two blocked
+    // nozzles, and Andrei reported it as exactly that. Nothing about it was
+    // variability; it was a queue with no fairness in it.
+    let made = 0
+    const ceiling = 400 * jets.length
+    for (let pending = true; pending && made < ceiling;) {
+      pending = false
+      for (let index = 0; index < jets.length && made < ceiling; index++) {
+        if (owed[index]! <= 0) continue
+
         // Sizes clustered toward the small end of the band: a bubble breaking
         // off a plume is graded by how much gas went with it, not drawn from a
         // hat.
         const t = Math.min(1, Math.max(0, 0.5 + gaussian(rng) * 0.28))
         const r = low + (high - low) * t * t
-        owed[index]! -= Math.PI * r * r
+
+        // **Only if the jet can afford it**, and the overdraft is never
+        // forgiven. It used to subtract the cost whether or not the debt
+        // covered it and zero anything negative at the end of the frame, which
+        // silently made this a counter again: a jet emitted exactly one bubble
+        // per step whatever its size, so 180 a second at three jets no matter
+        // what `gas` or `born size` said. Measured — the births came out
+        // identical at 5mm, 10mm and 14mm, which is impossible if gas is a
+        // quantity. Everything this file claims about smaller bubbles meaning
+        // more of them was false while that line stood.
+        const cost = Math.PI * r * r
+        if (owed[index]! < cost) continue
+        owed[index]! -= cost
+        pending = true
         made++
 
-        // Gaussian across the footprint, clamped, because a plume has no edge.
+        // Gaussian across the footprint, because a plume has no edge, and it
+        // takes the velocity of the water it arrives into rather than anything
+        // of the jet's own.
+        const jet = jets[index]!
         const x = jet.x + gaussian(rng) * footprint * 0.45
         const y = jet.y + gaussian(rng) * footprint * 0.45
         flow(x, y, sample)
         born(x, y, r, sample.x, sample.y)
       }
-      if (owed[index]! < 0) owed[index] = 0
     }
   }
 
@@ -603,7 +761,7 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
     if (settings.merge <= 0 && settings.bounce <= 0) return
     rebuildGrid()
 
-    const chance = 1 - Math.exp(-settings.merge * MERGE_EAGERNESS * dt)
+    const base = settings.merge * MERGE_EAGERNESS * dt
     const reach = Math.max(1, settings.pack)
     stamp++
 
@@ -638,6 +796,16 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
             const mj = rj * rj
             const total = mi + mj
 
+            // **Worked water does not let bubbles join either.** Films need a
+            // moment of quiet to drain and rupture between two bubbles, and a
+            // boil does not give them one — so agitation suppresses coalescence
+            // by the same factor it lowers the size a bubble can hold. It is
+            // also what stops the merge-and-tear treadmill: without it, the one
+            // place bubbles are torn apart fastest was also the place they were
+            // joined fastest.
+            const busy = Math.max(worked[i]!, worked[j]!)
+            const chance = base > 0 ? 1 - Math.exp(-base / (1 + (settings.shatter * busy) / WORKED)) : 0
+
             if (chance > 0 && rng() < chance) {
               // Area conserved, so radius goes as the square root: four
               // bubbles to double one.
@@ -645,6 +813,9 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
               py[i] = (py[i]! * mi + py[j]! * mj) / total
               vx[i] = (vx[i]! * mi + vx[j]! * mj) / total
               vy[i] = (vy[i]! * mi + vy[j]! * mj) / total
+              // Area-weighted, so swallowing a fresh bubble buys a little time
+              // and swallowing a tired one costs it.
+              spent[i] = (spent[i]! * mi + spent[j]! * mj) / total
               radius[i] = Math.sqrt(total)
               if (rj > radius[i]!) {
                 phase[i] = phase[j]!
@@ -712,6 +883,7 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
       if (live[i] === 0) continue
 
       flow(px[i]!, py[i]!, sample)
+      worked[i] = sample.jetted
       let ux = sample.x
       let uy = sample.y
 
@@ -741,18 +913,30 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
       px[i]! += vx[i]! * dt
       py[i]! += vy[i]! * dt
 
-      if (settings.dissolve > 0) {
-        // A wide film held against gravity drains faster than a narrow one, so
-        // the rate climbs with radius. At `fragile` 0 this is the flat rate it
-        // has always been; above it, growth costs something and the foam finds
-        // a size where coalescence and drainage balance.
-        const wear = settings.dissolve * (1 + settings.fragile * 9 * (radius[i]! / 0.02))
-        radius[i]! -= wear * dt
+      // The film clock. It fills faster the wider the bubble is, so a speck
+      // can sit in a quiet corner for minutes while a big one is on its way out
+      // from the moment it becomes big — and a bubble that grows by swallowing
+      // others brings its own share of wear with it.
+      spent[i]! += dt / filmLife(radius[i]!)
+      if (spent[i]! >= 1) {
+        burst(i)
+        continue
       }
 
       if (radius[i]! <= GONE || Math.abs(px[i]!) > killX || Math.abs(py[i]!) > killY) {
         release(i)
         continue
+      }
+
+      if (settings.shatter > 0 || settings.stable < 0.06) {
+        const limit = stableAt(sample.jetted)
+        // A fifth over before it goes, so a merge that lands just above the
+        // limit is not torn straight back apart. Without the gap, a high
+        // `coalesce` next to a low limit is a treadmill: two bubbles at the
+        // limit merge, exceed it, split, and do it again — measured at 200,000
+        // tearings among 5,000 bubbles in ninety seconds, which is a dynamic
+        // equilibrium in the arithmetic and a waste of a frame on screen.
+        if (radius[i]! > limit * 1.2) tear(i, limit)
       }
 
       if (settings.popRate > 0 && radius[i]! > settings.popSize) {
@@ -877,10 +1061,6 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
     frames++
     if (now - tallyAt >= 1000) {
       fps = (frames * 1000) / (now - tallyAt)
-      mergesShown = merges
-      popsShown = pops
-      merges = 0
-      pops = 0
       frames = 0
       tallyAt = now
     }
@@ -950,6 +1130,11 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
 
     clear() {
       resetPool(settings.count)
+      made = 0
+      merges = 0
+      pops = 0
+      torn = 0
+      clock = 0
       draw()
     },
 
@@ -963,13 +1148,40 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
         pace += Math.hypot(vx[i]!, vy[i]!)
         if (radius[i]! > biggest) biggest = radius[i]!
       }
+      // Inside a boil, or outside it, in one pass over the live bubbles.
+      const boil = boilRadius()
+      let inside = 0
+      let insideCount = 0
+      let outside = 0
+      let outsideCount = 0
+      for (let i = 0; i < capacity; i++) {
+        if (live[i] === 0) continue
+        let nearest = Infinity
+        for (const jet of jets) {
+          const d = Math.hypot(px[i]! - jet.x, py[i]! - jet.y)
+          if (d < nearest) nearest = d
+        }
+        if (nearest <= boil) {
+          inside += radius[i]!
+          insideCount++
+        } else {
+          outside += radius[i]!
+          outsideCount++
+        }
+      }
+      const insideMean = insideCount > 0 ? inside / insideCount : 0
+      const outsideMean = outsideCount > 0 ? outside / outsideCount : 0
+
       return {
         alive,
         biggest: Number((biggest * 1000).toFixed(2)),
+        bigOut: Number((insideMean > 0 ? outsideMean / insideMean : 0).toFixed(3)),
         mean: Number(((alive > 0 ? total / alive : 0) * 1000).toFixed(2)),
         speed: Number(((alive > 0 ? pace / alive : 0) * 1000).toFixed(1)),
-        merges: mergesShown,
-        pops: popsShown,
+        made,
+        merges,
+        pops,
+        torn,
         fps: Number(fps.toFixed(1)),
       }
     },

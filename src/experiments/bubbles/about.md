@@ -104,6 +104,28 @@ disappear rather than making them earned. Measuring gas instead means smaller
 bubbles simply means more of them, and the size a scene settles at is decided by
 the foam rather than by the emitter.
 
+### Nothing large survives over a jet
+
+A boil is the most violently worked water in the tub, and violently worked water
+takes bubbles apart. Past a size that depends on how hard the water is being
+worked, a film cannot hold its own shape and tears in two — which is not the
+same as bursting, since the gas stays and is simply carried by more bubbles.
+That is the Kolmogorov–Hinze scale, and it is why a big pocket of air rising
+through a jacuzzi never arrives as one bubble.
+
+**One mechanism, and it settles three separate things.** Nothing large survives
+in a boil. Large bubbles therefore assemble out in the calm instead, which is
+where a real tub has them. And there is a natural ceiling on birth size without
+anybody writing one down. Worked water also refuses to let bubbles _join_ — two
+films need a moment of quiet to drain and rupture between them, and a boil does
+not give them one — so the place bubbles are torn apart fastest is not also the
+place they are joined fastest.
+
+Without it, the biggest bubbles necessarily formed where the foam was densest,
+which is directly over a jet: density is what drives coalescence, so no amount
+of moving the births could have fixed it. Something had to take them apart
+again.
+
 ### Two ways to die, and they are not the same way
 
 Past `pop at`, a bubble's chance of bursting climbs with the square of how far
@@ -113,19 +135,24 @@ same size, which is the tell that a number rather than a process is in charge. A
 burst throws out a ring of droplets, because a film letting go is what a film
 actually does; the flow takes them straight back into whatever is nearby.
 
-But below that line the chance of bursting is exactly zero, so bursting alone
-leaves a bubble born large with nothing to do but sit there. **`fragile` is the
-other way.** A wide film held up against gravity drains faster than a narrow
-one, so the rate a bubble thins at scales with its radius. The consequence is
-the useful part: growth now costs something, and the foam settles at a size
-where coalescence and drainage balance instead of running away.
+The other way is simply time. A film holds for a while and then gives out, and
+**how long it holds depends on how wide it is** — a big film drains faster than
+a small one, so a speck can sit in a quiet corner for minutes while a large
+bubble is on its way out from the moment it becomes large. A bubble that grows
+by swallowing others brings their wear along with it.
+
+That is a _lifetime_, not a rate of thinning, and the distinction is the whole
+of it: a flat rate of thinning means a big bubble simply has more to lose, so it
+outlasts the small ones it is supposed to outlive. The piece had it that way
+round at first and it was wrong in exactly that way.
 
 ## What you can do with it
 
 The panel is in four parts. **jets** is what is happening on the bottom — how
 many, where, how deep, how hard, and how far their gas fans out on the way up.
 **water** is the surface they feed and how it carries things. **foam** is what
-happens when bubbles meet each other, and how long they last. **picture** is
+happens when bubbles meet each other, how big they can get, and how long they
+last. **picture** is
 where you are standing, how fast you are watching, and how much the piece is
 allowed to spend.
 
@@ -137,14 +164,22 @@ A few places worth going:
 - **`speed`** slows the whole thing down without changing anything about the
   water. Depth is the honest way to calm the surface; this is the camera. Both
   are worth having and they do not do the same thing.
-- **`pop rate` to zero.** Nothing bursts, and if `fragile` is also down
-  coalescence runs away — within half a minute the tub is a handful of enormous
-  circles. It is the quickest way to see that growth really is nothing but
-  merging.
+- **`torn by` to zero.** Nothing is broken up any more, and the big bubbles
+  march straight back into the middle of every boil — which is where they were
+  before the mechanism existed, and the fastest way to see what it is for.
+- **`pop rate` to zero with `lasts` right up.** Nothing bursts and nothing times
+  out, so coalescence runs away: within half a minute the tub is a handful of
+  enormous circles. It is the quickest way to see that growth really is nothing
+  but merging.
 - **`coalesce` to zero** is the other end: nothing ever grows, and the piece
   becomes a pure read-out of the flow with a few thousand tracers in it.
-- **`fragile` up with a wide `born size`.** Big bubbles stop lingering, and the
-  picture becomes a population turning over rather than an accumulation.
+- **`fragile` up.** Big bubbles stop lingering and the picture becomes a
+  population turning over rather than an accumulation. At 0 every bubble gets
+  the same film life whatever its size, so the small ones still outlast the big
+  ones — they just have less to lose.
+- **`holds at` right up, with `torn by` down.** Soapy water: films hold a much
+  bigger bubble together, so the calm fills with large circles. `slick` and
+  `meniscus` are both that.
 - **`churn` up and `jet power` down.** The jets stop mattering and the background
   is the whole picture — the clearest look you can get at a divergence-free
   field, because the foam wanders without ever collecting anywhere.
