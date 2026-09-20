@@ -2,6 +2,18 @@
 title: Andrei Railean - Resume
 description: Resume of Andrei Railean, Software Engineer
 layout: ../layouts/ResumeLayout.astro
+# Kept out of search results. This page exists to be printed, by Andrei, and
+# nothing on the site links to it — but "unlisted" was doing all the work while
+# the page itself shipped `index, follow` and invited crawlers in. There is no
+# sitemap and no robots.txt, so this meta tag is the whole mechanism.
+#
+# Deliberately not a robots.txt `Disallow`: that file is public, so it would
+# publish a list of the paths worth looking at. A noindex tag asks to be
+# forgotten without announcing what is being forgotten.
+#
+# This hides the page from search, not from people. The URL still works for
+# anyone who has it, which is what it is for.
+noIndex: true
 ---
 
 # Andrei Railean
