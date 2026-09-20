@@ -187,8 +187,8 @@ same-day cases of a documented rule broken by its own author within the hour,
 
 Land your own infrastructure work once CI is green — that is a standing
 authorisation, so do not stop to ask for each step. Leave visual work to Andrei's
-review. Never push to `main`; after a merge, fast-forward `main` in its own
-worktree or it silently drifts.
+review. Never push to `main`. Fast-forwarding it after a merge is a global rule
+now — `~/.claude/CLAUDE.md` and `ff-probe.sh` — so it is not repeated here.
 
 **Re-derive the queue before you say it is empty.** The list you built in step 2
 is a snapshot, and a ticket filed while you were working is invisible to it —
