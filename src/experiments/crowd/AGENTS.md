@@ -100,6 +100,18 @@ stays inside a few degrees, which is what walls are.
   body. About 40° and a metre away is inside the frame's corner: there without
   being looked at, and centred by a glance.
 
+- **The gaze invents its subjects, and that is the mechanism rather than a
+  workaround.** "We're only drawing heads. if we only followed things that are
+  there, we'd only be following heads. we want to follow birds, rocks, etc. So
+  sometimes we need to invent a thing to look at (and not show it)."
+
+  About two glances in five go to a point in the world with nothing rendered at
+  it — 9% overhead and moving, 30% on or near the ground. **Do not "fix" this by
+  restricting the gaze to drawn objects.** In a piece whose only object is a
+  head, that produces a gaze that tracks heads and nothing else, which is the
+  renderer's gaze rather than a person's. If something ever _is_ drawn up there,
+  the invented subjects stay: a person looks at more than a piece renders.
+
 - **A companion is for perspective, and that bounds how much to build.** "Just
   having some companions provides perspective. because i see what i 'see',
   having a companion makes it look somewhat like a third person view." A head at

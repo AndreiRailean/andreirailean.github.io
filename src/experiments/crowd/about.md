@@ -78,6 +78,13 @@ the ground a few metres ahead, at a face, at a child's head which is most of a
 metre below your own. Peripheral vision is what lets you look down and keep
 walking, which is why the control is a resting point rather than a fixed angle.
 
+**Some of what it looks at is not there.** Only heads are drawn, so a gaze
+restricted to what you can see would be a gaze that only ever followed heads.
+The ground a few metres ahead, a stall you are passing, a bird crossing — those
+are points the walk invents and does not render, and about two glances in five
+go to one. It is the difference between a person looking around and a camera
+tracking its own contents.
+
 Looking down reaches further than looking up, because that is where everything
 is. It is also the control that decides where the crowd sits in the frame — with
 heads and no bodies, every head is within a metre of eye height, so the picture

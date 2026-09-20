@@ -118,6 +118,17 @@ Followed immediately by:
 > "family at the market and everyone is trying to keep together while being
 > interested in different things" dynamic.
 
+## 2026-09-20 — why the gaze follows what is not drawn
+
+Answering a question this file had listed as unresolved. Kept because it is the
+clearest statement of the principle anywhere, and sharper than the version the
+code had:
+
+> gaze should follow things that aren't there. we're only drawing heads. if we
+> only followed things that are there, we'd only be following heads. we want to
+> follow birds, rocks, etc. So sometimes we need to invent a thing to look at
+> (and not show it).
+
 ---
 
 ## Questions I could not answer, and what I assumed
