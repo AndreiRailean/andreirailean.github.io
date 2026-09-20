@@ -95,8 +95,24 @@ const STILL_SECONDS = 22
 /** How far outside the frame a bubble is still simulated, as a fraction of `span`. */
 const MARGIN = 0.18
 
-/** Contacts per second at `merge` 1. Below a contact lasting a frame or two. */
-const MERGE_EAGERNESS = 14
+/**
+ * Contacts per second at `merge` 1.
+ *
+ * **Raised from 14, and the reason is what overlap actually is.** At 14 a
+ * touching pair took about five frames to decide to join, and for all five the
+ * flow went on pressing them together — so comparable bubbles sat visibly
+ * interpenetrated by a quarter of their tangent distance while they waited.
+ * Real bubbles do not pass through each other on the way to coalescing; they
+ * touch, flatten against a shared wall, and go. Circles cannot show the
+ * flattening, so the nearest honest thing is for the wait to be short.
+ */
+const MERGE_EAGERNESS = 55
+
+/** How quickly a touching pair is brought to a common velocity, at `cling` 1. */
+const CLING_RATE = 26
+
+/** How hard bubbles within reach are drawn together, in m/s per second. */
+const CLING_PULL = 0.6
 
 /**
  * A bubble thinner than this many metres has drained away.
@@ -260,6 +276,37 @@ export type BubblesStats = {
    * was actually put: inside the boil, or outside it.
    */
   bigOut: number
+  /**
+   * How deeply **comparable** bubbles interpenetrate, as a percentage of the
+   * distance at which they would rest tangent, averaged over those pairs.
+   *
+   * Zero is bubbles resting against each other; 100 would be concentric. A disc
+   * hides interpenetration — the union of two white discs is one white blob —
+   * and an outline cannot, which is why rings revealed this rather than caused
+   * it.
+   *
+   * **Comparable** means both are at least four times the largest birth size —
+   * bubbles that got big by merging rather than by arriving — and the
+   * qualifier is the whole usefulness of the number. It took two goes to get
+   * right. Over every pair it read 731%, swamped by half-millimetre specks
+   * sitting inside fifty-millimetre rings for the frame before they are
+   * absorbed. Restricted only to pairs of *similar* size it read about 20% and
+   * barely moved, because dust-on-dust pairs outnumber the big rings by
+   * hundreds to one and they are similar to each other.
+   *
+   * Neither of those is the pair anybody is looking at. This one is.
+   */
+  overlap: number
+  /**
+   * How fast touching bubbles slide against each other, in millimetres a
+   * second, averaged over every touching pair.
+   *
+   * Foam is bound by shared walls and a raft travels as a unit, so this should
+   * be small next to the speed the foam is moving at. Both numbers are here
+   * because "they appear on top of one another" and "they stick together and
+   * move together" are claims about numbers the piece could not report.
+   */
+  slip: number
   /** Frames per second, averaged over the last second. */
   fps: number
 }
@@ -331,6 +378,15 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
   let frame = 0
   let last = 0
 
+  // Accumulated over every touching pair since the last sweep, for `stats`.
+  // **Not the last step's average**, which is what they were: at any instant
+  // only a handful of large bubbles are in contact, so a per-step mean came
+  // back as 15, then 45, then 14 for the same scene. Averaging over the run
+  // makes them steerable.
+  let overlapSum = 0
+  let overlapCount = 0
+  let slipSum = 0
+  let slipCount = 0
   let made = 0
   let merges = 0
   let pops = 0
@@ -765,6 +821,10 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
     const reach = Math.max(1, settings.pack)
     stamp++
 
+    // "Big" is four times the largest a bubble can arrive at, so it means
+    // assembled here rather than delivered.
+    const grown = settings.birthMax * 4
+
     for (let i = 0; i < capacity; i++) {
       if (live[i] === 0) continue
       const ri = radius[i]!
@@ -826,16 +886,95 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
               continue
             }
 
-            if (settings.bounce <= 0) continue
-            const overlap = radius[i]! + rj - d
-            if (overlap <= 0) continue
-            const push = overlap * settings.bounce * 0.5
             const ux = dx / d
             const uy = dy / d
-            px[i]! -= ux * push * (mj / total) * 2
-            py[i]! -= uy * push * (mj / total) * 2
-            px[j]! += ux * push * (mi / total) * 2
-            py[j]! += uy * push * (mi / total) * 2
+            const overlap = radius[i]! + rj - d
+
+            slipSum += Math.hypot(vx[j]! - vx[i]!, vy[j]! - vy[i]!)
+            slipCount++
+            if (overlap > 0 && radius[i]! >= grown && rj >= grown) {
+              overlapSum += overlap / (radius[i]! + rj)
+              overlapCount++
+            }
+
+            // **Contact acts on velocity, not on position.** It used to shove
+            // the two apart by a share of the overlap every step, which is a
+            // teleport: undamped, not carried in the motion, and undone by the
+            // flow on the next step. Between two large bubbles that came to
+            // about 100mm/s of positional noise against a foam moving at 60,
+            // which is what "big ones jump around randomly" was.
+            const shareI = mj / total
+            const shareJ = mi / total
+
+            if (settings.cling > 0) {
+              // **Foam is bound by shared walls and travels as a unit.** Nothing
+              // here made bubbles stick: they could only become one or push
+              // apart, so a crowd was a set of tracers that happened to be near
+              // each other and slid freely through the overlap. This pulls a
+              // touching pair toward a common velocity, which is what turns a
+              // crowd into a raft.
+              //
+              // The attraction below it is the same effect one layer out: two
+              // bubbles on a water surface deform the meniscus between them and
+              // are drawn together — the reason cereal clumps in a bowl — so
+              // within reach but not yet touching, they close.
+              const bind = settings.cling * (1 - Math.exp(-CLING_RATE * dt))
+              const rvx = vx[j]! - vx[i]!
+              const rvy = vy[j]! - vy[i]!
+              vx[i]! += rvx * shareI * bind
+              vy[i]! += rvy * shareI * bind
+              vx[j]! -= rvx * shareJ * bind
+              vy[j]! -= rvy * shareJ * bind
+
+              if (overlap <= 0) {
+                const pull = settings.cling * CLING_PULL * dt
+                vx[i]! += ux * pull * shareI
+                vy[i]! += uy * pull * shareI
+                vx[j]! -= ux * pull * shareJ
+                vy[j]! -= uy * pull * shareJ
+              }
+            }
+
+            if (settings.bounce <= 0 || overlap <= 0) continue
+
+            // **Resolve the overlap in the positions, and damp the approach in
+            // the velocities.** Both halves are needed and the piece has now had
+            // each one alone.
+            //
+            // Positions only was the original, and it jittered: two bubbles were
+            // shoved apart every step, the flow pushed them straight back, and
+            // nothing in the motion remembered either — which between two large
+            // bubbles came to about 100mm/s of noise against a foam moving at
+            // 60. That is what "big ones jump around randomly" was.
+            //
+            // Velocity only was the first attempt at a fix, and it does not
+            // separate anything: a spring soft enough to be stable needs about
+            // three seconds to clear an overlap a fifth of the way in, so the
+            // pair stays visibly interpenetrated for its whole life. Measured at
+            // 20% mean overlap between grown bubbles, barely moved by `bounce`.
+            //
+            // So the position correction does the separating, at full strength,
+            // and the normal velocity is damped so the pair stops arriving at
+            // each other again. The tangential half is `cling`'s.
+            // Capped at the smaller bubble's radius. Without it a speck caught
+            // near the middle of a large bubble has an overlap of nearly the
+            // large one's whole radius, and separating "fully" flings it that
+            // far in one step. They almost always merge before it matters, but
+            // "almost always" is not a thing to leave in a contact solver.
+            const push = Math.min(overlap, Math.min(radius[i]!, rj)) * settings.bounce
+            px[i]! -= ux * push * shareI
+            py[i]! -= uy * push * shareI
+            px[j]! += ux * push * shareJ
+            py[j]! += uy * push * shareJ
+
+            const closing = (vx[j]! - vx[i]!) * ux + (vy[j]! - vy[i]!) * uy
+            if (closing < 0) {
+              const kill = closing * settings.bounce
+              vx[i]! += ux * kill * shareI
+              vy[i]! += uy * kill * shareI
+              vx[j]! -= ux * kill * shareJ
+              vy[j]! -= uy * kill * shareJ
+            }
           }
         }
       }
@@ -1134,6 +1273,10 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
       merges = 0
       pops = 0
       torn = 0
+      overlapSum = 0
+      overlapCount = 0
+      slipSum = 0
+      slipCount = 0
       clock = 0
       draw()
     },
@@ -1178,6 +1321,8 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
         bigOut: Number((insideMean > 0 ? outsideMean / insideMean : 0).toFixed(3)),
         mean: Number(((alive > 0 ? total / alive : 0) * 1000).toFixed(2)),
         speed: Number(((alive > 0 ? pace / alive : 0) * 1000).toFixed(1)),
+        overlap: Number((overlapCount > 0 ? (overlapSum / overlapCount) * 100 : 0).toFixed(1)),
+        slip: Number((slipCount > 0 ? (slipSum / slipCount) * 1000 : 0).toFixed(1)),
         made,
         merges,
         pops,

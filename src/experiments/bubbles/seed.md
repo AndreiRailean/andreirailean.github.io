@@ -223,3 +223,49 @@ was false while that stood, including the one in `about.md`.
   extreme one; every other scene holds 60.
 - **Still not built:** the per-jet tilt you described — a side jet displacing and
   stretching the footprint without giving bubbles lateral motion.
+
+## 2026-09-20 — fourth round, on an adjusted meniscus
+
+> This is an adjusted meniscus preset. Here, big bubbles have a strange
+> overlapping actoin. I can't quite understand what's going one there. most
+> bubbles are file, but big ones just appear to jump around randomly. i guess
+> because the bubbles are hollow here, we can see multiple circles on top of one
+> another before they join or pop. in watter, bubbles tend to stick together and
+> move together. here we have them apearing on top of one another.
+>
+> http://10.1.11.11:4456/experiments/bubbles/?s=_4_977vfeEBYUGAg0YoWCCOYoniCgEsQqdMgRgwDpfBAF6PHHda
+
+**My reading, marked as mine.** The last sentence is the mechanism and the rest
+is what it looks like. Bubbles in this piece can only do two things to each
+other: become one, or push apart. **Nothing makes them stick.** Real foam is
+bound by shared walls — a raft translates as a unit and neighbours keep their
+places in it — and none of that exists here, so a crowd is a set of independent
+tracers that happen to be near each other and slide freely through the overlap.
+
+Rings did not cause it; they revealed it. A disc hides interpenetration because
+the union of two white discs is one white blob, and an outline cannot hide it.
+
+"Jump around randomly" is likely a second, separate fault rather than the same
+one, and tearing is the suspect: a tear places the remainder a full diameter away
+in one step and cuts the parent's radius instantly, which for a big bubble is a
+visible teleport rather than a break-up.
+
+## 2026-09-20 — what I assumed answering the fourth round
+
+- **`cling` is new and every preset carries a value for it**, 0.4 to 0.82. It
+  damps a touching pair toward a common velocity and draws bubbles together
+  within reach. Set it to 0 on a ringed scene to see what the foam did before.
+- **`bounce` changed meaning in practice**, from a soft shove to how rigidly two
+  bubbles refuse to share water. Every preset's value went up, most to about
+  0.8. Overlap between grown bubbles now measures 0 in eight of the ten.
+- **`jostle` is now called `bounce` in my head and `bounce` on the panel**; the
+  label reads as the old soft-collision idea and may want renaming once you have
+  decided whether rigid contact is right.
+- **I did not add bubble flattening.** Real foam bubbles press into polygons
+  against each other and we draw circles, so the closest honest thing was to
+  make them refuse to interpenetrate at all. If the raft ought to look packed
+  rather than merely touching, that is a rendering change — drawing the
+  Voronoi-ish cell rather than the circle — and it is a much bigger piece of
+  work than anything here.
+- **`one jet` still measures 54% overlap** where every other scene is at or near 0. It has very few grown bubbles so the sample is small, and I did not chase
+  it.

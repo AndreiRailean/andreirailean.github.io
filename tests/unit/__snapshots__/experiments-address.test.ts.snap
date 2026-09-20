@@ -47,6 +47,7 @@ exports[`bubbles > has not edited a slot in place 1`] = `
   "shatter num grid=0.02 origin=0 bits=6",
   "count num grid=100 origin=200 bits=8",
   "life num grid=1 origin=2 bits=9",
+  "cling num grid=0.02 origin=0 bits=6",
   "fragile num grid=0.02 origin=0 bits=6",
 ]
 `;

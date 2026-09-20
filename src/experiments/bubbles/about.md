@@ -126,6 +126,26 @@ which is directly over a jet: density is what drives coalescence, so no amount
 of moving the births could have fixed it. Something had to take them apart
 again.
 
+### Foam sticks together
+
+Bubbles here could originally do two things to each other: become one, or push
+apart. **Nothing made them stick**, and that is not a small omission — real foam
+is bound by shared walls, so a raft of it travels as a unit and neighbours keep
+their places in it. Without that, a crowd is a set of independent tracers that
+happen to be near each other, sliding freely through the overlap.
+
+`cling` is the binding. It pulls a touching pair toward a common velocity, and
+it draws two bubbles together when they are close but not yet touching — the
+same surface effect that makes cereal clump in a bowl, and a real one: two
+bubbles on a water surface deform the meniscus between them and are drawn in.
+
+`bounce` is the other half, and the two work together rather than against each
+other: `cling` keeps neighbours together, `bounce` keeps them out of each other.
+Near 1 they rest against each other the way bubbles on a surface do. Turn it
+down and they pass through one another — which a solid disc hides, since the
+union of two white discs is one white blob, and an outline does not. That is why
+this was invisible until the piece could be drawn as rings.
+
 ### Two ways to die, and they are not the same way
 
 Past `pop at`, a bubble's chance of bursting climbs with the square of how far
@@ -151,8 +171,8 @@ round at first and it was wrong in exactly that way.
 The panel is in four parts. **jets** is what is happening on the bottom — how
 many, where, how deep, how hard, and how far their gas fans out on the way up.
 **water** is the surface they feed and how it carries things. **foam** is what
-happens when bubbles meet each other, how big they can get, and how long they
-last. **picture** is
+happens when bubbles meet each other — whether they stick, join or shove — how
+big they can get, and how long they last. **picture** is
 where you are standing, how fast you are watching, and how much the piece is
 allowed to spend.
 
@@ -173,6 +193,10 @@ A few places worth going:
   but merging.
 - **`coalesce` to zero** is the other end: nothing ever grows, and the piece
   becomes a pure read-out of the flow with a few thousand tracers in it.
+- **`cling` to zero, drawn as rings.** The foam comes apart into separate
+  circles that slide through each other, which is what it did before the
+  binding existed. It is the fastest way to see what holding a raft together
+  actually buys.
 - **`fragile` up.** Big bubbles stop lingering and the picture becomes a
   population turning over rather than an accumulation. At 0 every bubble gets
   the same film life whatever its size, so the small ones still outlast the big

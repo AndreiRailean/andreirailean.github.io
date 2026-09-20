@@ -307,3 +307,56 @@ bubbles at all**. Andrei found it within a minute of the widening.
 
 The same shape as the section's rule about hues typed as literals. When widening
 a control, grep for the constants its old range never reached.
+
+## Contact needs both halves, and the piece has had each one alone
+
+Andrei, on a ringed scene: _"big bubbles have a strange overlapping action…
+in water, bubbles tend to stick together and move together. here we have them
+appearing on top of one another."_ Rings did not cause that; they revealed it. A
+disc hides interpenetration — the union of two white discs is one white blob —
+and an outline cannot.
+
+Two separate faults, and fixing either alone does not work:
+
+- **Positions only** was the original. Two bubbles were shoved apart every step,
+  the flow pushed them straight back, and nothing in the motion remembered
+  either. Between two large bubbles that came to about 100mm/s of positional
+  noise against a foam moving at 60, which is what _"big ones just appear to jump
+  around randomly"_ was.
+- **Velocity only** was the first attempt at a fix, and it separates nothing: a
+  spring soft enough to be stable at this step needs about three seconds to clear
+  an overlap a fifth of the way in. Measured at 20% mean overlap between grown
+  bubbles and barely moved by `bounce`.
+
+So the position correction separates, at full strength and capped at the smaller
+radius, and the **normal** velocity is damped so the pair stops arriving at each
+other again. `cling` damps the **tangential** half, which is what makes a raft
+travel as a unit, and pulls bubbles together within reach — the Cheerios effect,
+which is a real thing surface bubbles do.
+
+**Do not remove the cap on the positional push.** A speck near the middle of a
+large bubble has an overlap of nearly that bubble's whole radius, and separating
+"fully" flings it that far in one step.
+
+## Getting `overlap` to mean anything took three tries
+
+The metric, not the mechanism, and it is the most transferable thing in this
+file. Each version was confidently wrong in a different way:
+
+1. **Every overlapping pair, normalised by the smaller radius** — 731%. Swamped
+   by half-millimetre specks sitting inside fifty-millimetre rings for the frame
+   before they are absorbed.
+2. **Only pairs of similar size** — about 20%, and it barely moved when `bounce`
+   went to 1. Dust-on-dust pairs outnumber the big rings by hundreds to one, and
+   dust is similar to dust.
+3. **Both bubbles at least four times the largest birth size** — assembled here
+   rather than delivered. That is the pair a viewer is actually looking at.
+
+And a fourth fault on top: it was a per-step average, so the same scene read 15,
+then 45, then 14. Only a handful of large bubbles are in contact at any instant.
+It accumulates over the run now, like `made` and `merges`, and reads 0 in eight
+of the ten presets.
+
+**The shape to recognise: a population statistic is meaningless until you have
+said which population.** Twice the number moved for reasons that had nothing to
+do with the thing being changed.
