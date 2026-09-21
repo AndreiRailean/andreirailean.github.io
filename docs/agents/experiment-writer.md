@@ -305,12 +305,15 @@ hash**. It is a separate bounded context with its own owner and its own
 `src/showcase/AGENTS.md`, and it is the section's first real load test.
 
 **Two sessions built pieces without knowing it existed**, and found out only
-when Andrei asked them to add presets to it. That is a routing failure rather
-than theirs: `CONTEXT-MAP.md` names two contexts and the showcase is in
-neither, so a session told to read the map and then its own context never meets
-it. The one mention inside `src/experiments/AGENTS.md` is the _building a
-runner is not publishing it_ record, which the staged reading above defers —
-so read that record when starting a piece, not later.
+when Andrei asked them to add presets to it. That was a routing failure rather
+than theirs: `CONTEXT-MAP.md` named two contexts and the showcase was in
+neither, so a session told to read the map and then its own context never met
+it. **The map now carries it as a third context**, with the consumer direction
+and this obligation on it (#212), so the routing reaches you — this section
+says what is yours once it has. The one mention inside
+`src/experiments/AGENTS.md` is the _building a runner is not publishing it_
+record, which the staged reading above defers — so read that record when
+starting a piece, not later.
 
 **What is yours here is small and real.** The showcase's own doc says it in a
 heading: _publishing a runner is part of changing a piece_.

@@ -122,6 +122,56 @@ describe("the conventions reach a session that reads nothing", () => {
   })
 })
 
+/**
+ * A context nobody is routed to is a context nobody finds.
+ *
+ * `CONTEXT-MAP.md` is load-bearing in a way a list of directories does not look:
+ * `CLAUDE.md` and `docs/agents/experiment-writer.md` both say **read the context
+ * you are working in, not all of them**, and both make the map the thing that
+ * decides which. So an area missing from the map is not merely undocumented —
+ * the routing actively steers past it, and a session that follows the
+ * instruction faithfully is *guaranteed* to miss it.
+ *
+ * That is #212, and it cost two sessions: `crowd` and `bubbles` were both built
+ * without their authors learning the showcase existed, because `src/showcase/`
+ * — its own owner, its own 347-line `AGENTS.md`, its own boundary section — was
+ * in neither of the two contexts the map named. They found out when Andrei
+ * asked them to add presets to a wall they had never heard of.
+ *
+ * **The predicate is a directory under `src/` that grew its own `AGENTS.md`.**
+ * That is somebody asserting a boundary, which is what a context is; `src/`
+ * subdirectories without one (`components`, `layouts`, `lib`) belong to the
+ * Site and need no row. `tests/AGENTS.md` is excluded by the same rule without
+ * needing to be named — it is not under `src/` and is not a context.
+ *
+ * Derived rather than listed, for the reason the assertion above it gives: a
+ * hard-coded pair could never fail for the fourth context, which is the only
+ * one that will actually go missing.
+ */
+describe("the map routes to every context that exists", () => {
+  const CONTEXTS = readdirSync("src", { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && existsSync(`src/${entry.name}/AGENTS.md`))
+    .map((entry) => entry.name)
+
+  it("finds context directories at all, so an empty run cannot pass for a clean one", () => {
+    expect(
+      CONTEXTS.length,
+      "no directory under src/ has its own AGENTS.md, so the assertion below is vacuous",
+    ).toBeGreaterThan(1)
+  })
+
+  it.each(CONTEXTS)("names src/%s", (name) => {
+    const map = readFileSync("CONTEXT-MAP.md", "utf8")
+
+    expect(
+      map.includes(`src/${name}`),
+      `CONTEXT-MAP.md does not mention src/${name}, which asserts a boundary by having its own ` +
+        `AGENTS.md. Everything that routes a session reads this map and offers only what is on it, ` +
+        `so that area is unreachable by anyone following the instructions — see #212.`,
+    ).toBe(true)
+  })
+})
+
 describe("every skill is well formed enough to be surfaced", () => {
   const names = readdirSync(SKILLS, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
