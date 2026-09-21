@@ -387,21 +387,25 @@ contemporaneous, which is the right handling. It also reported nearly losing
 the exact phrasing of two rounds of his feedback, and that his phrasing was
 load-bearing in both. That is the cost the rule exists to avoid, measured.
 
-**No check holds this yet, and that is worth stating rather than hiding.** The
-six pieces that already exist have no `seed.md`, so a check asserting every
-piece has one fails six times today, and one that skips them is a list that goes
-stale. Until then this is a rule that depends on being remembered, which
-`AGENTS.md` names as a defect; the mitigation is that it is the _first_ step
-rather than a tidy-up at the end, because the steps a session never reaches are
-the ones at the end.
+**A check holds this now.** `tests/unit/experiments-seeds.test.ts` fails a piece
+with no `seed.md`, and fails one whose `seed.md` contains no quoted lines —
+because a stub satisfies the first assertion and carries nothing, and a summary
+written in your own voice is the failure this convention exists to prevent. A
+piece is found by having a `settings.ts` rather than by being on a list, so the
+next piece is covered without anyone remembering.
 
-**The six are being backfilled, and then the check becomes trivial.** Their
-seeds are not lost: session transcripts persist under
-`/root/.claude/projects/<worktree-slug>/*.jsonl` and the first human message of
-an experiment's session is usually the seed verbatim. #204 tracks it. Once every
-piece has one, "every piece has a `seed.md`" is a four-line test with nothing
-stale in it — which is the right end state, since this rule is otherwise held
-only by being remembered.
+This used to say no check held it, because the six older pieces had none and a
+check would have failed six times. They were backfilled from session transcripts
+in #204 — all six recovered, including `walkers`, which was expected to be lost
+with a temp file and turned out to survive in its originating session's
+transcript. So the exception list that would have gone stale never had to exist.
+
+**It still does not check that a seed is verbatim**, which is the requirement
+that actually matters and the one no check can reach: the transcripts live in
+`/root/.claude/projects/<worktree-slug>/*.jsonl`, which no CI runner has. The
+backfill verified its own 105 quoted paragraphs against them with a throwaway
+script and found one wrapping error, so it is worth doing by hand when you
+transcribe rather than write as you go.
 
 ## How Andrei works
 
