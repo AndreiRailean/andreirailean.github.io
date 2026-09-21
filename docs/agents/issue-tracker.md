@@ -25,9 +25,9 @@ Settled in favour of GitHub issues, recorded in
   reader is usually an agent with no memory of the conversation.
 - State what is **not** in scope, and link the ADR when a decision constrains
   the work. An issue that omits this gets re-litigated.
-- Triage state is a GitHub label. See `triage-labels.md`, and note that most of
-  the vocabulary it describes does not exist on the repo — only `wontfix` of its
-  five has ever been created.
+- Triage state is a GitHub label, and there is exactly one: `steward`. See
+  `triage-labels.md`, which used to map five canonical roles of which four had
+  never been created, and now describes the label that exists.
 - Discussion belongs in issue comments.
 
 ## `steward` is a state, not a subject
@@ -62,7 +62,7 @@ ticket is not a kit ticket, and the label never meant "about
 
 There is deliberately no second label for "considered and declined". A comment
 carries the reasoning and a label cannot; and a declared label nobody maintains
-is exactly how `triage-labels.md` came to describe four labels that do not
+is exactly how `triage-labels.md` came to describe four labels that did not
 exist.
 
 ## When a skill says "publish to the issue tracker"

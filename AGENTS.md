@@ -140,7 +140,7 @@ GitHub issues. `.scratch/` is gitignored private scratch space, never a tracker.
 
 ### Triage labels
 
-The five canonical triage roles, used verbatim as `Status:` values on each issue file. See `docs/agents/triage-labels.md`.
+One label, `steward`, applied with `gh issue edit <n> --add-label steward`. There are no issue files and no `Status:` field — the tracker is GitHub issues. See `docs/agents/triage-labels.md`.
 
 ### Domain docs
 
