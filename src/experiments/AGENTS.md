@@ -195,10 +195,27 @@ What to do, by case:
 | **changing a `grid`, `origin`, `bits` or option list** | You may not edit the slot. Retire it, append a new one with the same `key`. Later slots win, so both can appear in one address.                         |
 | **changing what a value _means_**, numbers unchanged   | Retire the slot anyway. Nothing can detect this — the encoding guarantees the number survives, not its meaning — and a seventh of a character is cheap. |
 
-`tests/unit/experiments-address.test.ts` holds a snapshot of every registry, so
-an edit that is not an append fails rather than being noticed later by nobody.
-**If that snapshot diff shows an existing line changing, that is the check
+`tests/unit/experiments-address.test.ts` holds **two** snapshots of every
+registry, so an edit that is not an append fails rather than being noticed later
+by nobody. Every case in the table above shows up in exactly one of them, as an
+appended line:
+
+| Snapshot                 | A legal change appends            | A fault looks like                             |
+| ------------------------ | --------------------------------- | ---------------------------------------------- |
+| `has not edited a slot…` | a new slot, at the end            | an existing line changed, removed or reordered |
+| `retires a slot…`        | the index of the slot you retired | a line **disappearing** — a slot un-retired    |
+
+**If the first snapshot shows an existing line changing, that is the check
 working**, not a snapshot needing updating.
+
+**Retiring a slot does not touch the first snapshot at all**, which is the whole
+reason there are two. Three of the four rows above tell you to set
+`retired: true` on an existing slot and leave it where it is, so retirement used
+to be the one edit a _correct_ author would ever make that showed up as an
+existing line changing — under a rule saying that meant they had done something
+illegal. The obvious way out is to un-retire the slot, which is the actual
+fault. That cost a session real time on `bubbles` (#208); now retirement appends
+to the second snapshot and nothing else moves.
 
 **A slot's range is the range of values the setting can hold, which is not
 always its control's bounds.** Walkers' `traces` has an _off_ value of 0 below

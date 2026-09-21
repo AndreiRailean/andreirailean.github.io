@@ -19,8 +19,32 @@ import { bitsOf, decodeScene, encodeScene, type Slot } from "@/experiments/addre
  * different scene for anyone holding a link. Nothing about the code makes that
  * hard to do by accident, so it is held here instead.
  *
- * The snapshot below is not a formality. **Update it only by appending**, and if
- * a diff shows an existing line changing, that is the check working.
+ * The snapshots below are not a formality. **Update them only by appending**,
+ * and if a diff shows an existing line changing, that is the check working.
+ *
+ * **There are two of them, because retirement is the one legal in-place edit
+ * and a single snapshot could not tell it from the illegal ones.** Three of the
+ * four cases in the registry table in `src/experiments/AGENTS.md` instruct an
+ * author to set `retired: true` on an existing slot and leave it where it is —
+ * so the only edit a *correct* author will ever make was also the only one that
+ * showed up here as an existing line changing, under a rule saying that is the
+ * check working. A reader who trusted it concluded they had done something
+ * illegal after doing the prescribed thing, and the obvious way out — un-retire
+ * the slot — is the actual fault. That is #208, hit while taking `bubbles`'
+ * `rate` from 9 bits to 11.
+ *
+ * Split so each edit has its own unmistakable signal:
+ *
+ * | Snapshot | Legal change | What a fault looks like |
+ * | --- | --- | --- |
+ * | the slots | a line appended at the end | an existing line changed, removed or reordered |
+ * | the retired ones | a line appended | a line removed — somebody un-retired a slot |
+ *
+ * The first no longer mentions retirement at all, so it is exactly the
+ * immutable identity of each slot: `(key, kind, grid, origin, bits, options)`
+ * and its position. Whether a slot is live is not part of what an old address
+ * means — it decodes the same either way — so it never belonged in the
+ * assertion about addresses changing meaning.
  */
 
 const EXPERIMENTS = "src/experiments"
@@ -40,17 +64,33 @@ async function registryOf(slug: string) {
   return module
 }
 
-/** A slot as one line, so a snapshot diff reads as a list rather than a blob. */
+/**
+ * A slot's immutable identity as one line, so a snapshot diff reads as a list
+ * rather than a blob.
+ *
+ * `retired` is deliberately absent — it is the one field an author is told to
+ * change in place, and it changes nothing about what an existing address
+ * decodes to. It is snapshotted separately below.
+ */
 const line = (slot: Slot) =>
   [
     slot.key,
     slot.kind,
     slot.kind === "num" ? `grid=${slot.grid} origin=${slot.origin} bits=${slot.bits}` : "",
     slot.kind === "enum" || slot.kind === "set" ? slot.options.join("|") : "",
-    slot.retired ? "RETIRED" : "",
   ]
     .filter(Boolean)
     .join(" ")
+
+/**
+ * A retired slot as `<index> <key>`.
+ *
+ * The index is the point — a slot's position is what an address refers to, so
+ * it is the thing that identifies the slot being retired. The key is carried
+ * alongside only so the diff is readable by a human, since several slots share
+ * a key once one has been replaced.
+ */
+const retirement = (slot: Slot, index: number) => `${index} ${slot.key}`
 
 it("finds the experiments, so an empty run cannot pass for a clean one", () => {
   expect(slugs.length).toBeGreaterThan(0)
@@ -63,6 +103,16 @@ describe.each(slugs)("%s", (slug) => {
     // changed line, a removed one, a reordering — is an address quietly
     // changing meaning, and is what this exists to refuse.
     expect(REGISTRY.map(line)).toMatchSnapshot()
+  })
+
+  it("retires a slot by appending to the retired list, never by editing one", async () => {
+    const { REGISTRY } = await registryOf(slug)
+    // A retirement appends one line here and leaves the snapshot above
+    // untouched, which is what makes it distinguishable from the edits that
+    // are actually forbidden. A line *disappearing* from this list is a slot
+    // being un-retired — the fault the old single-snapshot arrangement
+    // actively invited, by telling a correct author their change was illegal.
+    expect(REGISTRY.flatMap((slot, index) => (slot.retired ? [retirement(slot, index)] : []))).toMatchSnapshot()
   })
 
   it("gives every setting exactly one live slot", async () => {

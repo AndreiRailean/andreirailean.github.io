@@ -9,9 +9,9 @@ exports[`bubbles > has not edited a slot in place 1`] = `
   "core num grid=0.01 origin=0.02 bits=6",
   "outflow num grid=0.02 origin=0 bits=8",
   "swirl num grid=0.02 origin=0 bits=7",
-  "rate num grid=1 origin=2 bits=9 RETIRED",
-  "birthMin num grid=0.001 origin=0.002 bits=6 RETIRED",
-  "birthMax num grid=0.001 origin=0.002 bits=6 RETIRED",
+  "rate num grid=1 origin=2 bits=9",
+  "birthMin num grid=0.001 origin=0.002 bits=6",
+  "birthMax num grid=0.001 origin=0.002 bits=6",
   "churn num grid=0.02 origin=0 bits=7",
   "scale num grid=0.01 origin=0.05 bits=7",
   "drift num grid=0.02 origin=0 bits=7",
@@ -19,28 +19,28 @@ exports[`bubbles > has not edited a slot in place 1`] = `
   "wave num grid=0.02 origin=0 bits=7",
   "waveHz num grid=0.05 origin=0.1 bits=7",
   "lag num grid=0.02 origin=0 bits=6",
-  "merge num grid=0.02 origin=0 bits=6 RETIRED",
+  "merge num grid=0.02 origin=0 bits=6",
   "bounce num grid=0.02 origin=0 bits=6",
-  "dissolve num grid=0.0005 origin=0 bits=6 RETIRED",
+  "dissolve num grid=0.0005 origin=0 bits=6",
   "popSize num grid=0.002 origin=0.01 bits=7",
   "popRate num grid=0.05 origin=0 bits=7",
   "spray num grid=1 origin=0 bits=4",
-  "count num grid=50 origin=200 bits=7 RETIRED",
+  "count num grid=50 origin=200 bits=7",
   "trail num grid=0.05 origin=0 bits=5",
   "span num grid=0.05 origin=0.3 bits=7",
   "hue num grid=1 origin=0 bits=9",
   "seed num grid=1 origin=1 bits=14",
-  "rate num grid=1 origin=2 bits=11 RETIRED",
+  "rate num grid=1 origin=2 bits=11",
   "pulse num grid=0.02 origin=0 bits=6",
   "pack num grid=0.02 origin=0.5 bits=6",
   "look enum disc|ring|mixed",
-  "rim num grid=0.02 origin=0.08 bits=5 RETIRED",
+  "rim num grid=0.02 origin=0.08 bits=5",
   "depth num grid=0.05 origin=0.1 bits=7",
   "plume num grid=0.01 origin=0.02 bits=7",
   "gas num grid=1 origin=2 bits=12",
-  "fragile num grid=0.02 origin=0 bits=6 RETIRED",
+  "fragile num grid=0.02 origin=0 bits=6",
   "playback num grid=0.01 origin=0.05 bits=8",
-  "rim num grid=0.01 origin=0.02 bits=6 RETIRED",
+  "rim num grid=0.01 origin=0.02 bits=6",
   "birthMin num grid=0.0005 origin=0.0005 bits=6",
   "birthMax num grid=0.0005 origin=0.0005 bits=6",
   "stable num grid=0.001 origin=0.002 bits=6",
@@ -52,6 +52,21 @@ exports[`bubbles > has not edited a slot in place 1`] = `
   "rupture num grid=0.02 origin=0 bits=6",
   "rim num grid=0.1 origin=0.5 bits=6",
   "fragile num grid=0.02 origin=0 bits=6",
+]
+`;
+
+exports[`bubbles > retires a slot by appending to the retired list, never by editing one 1`] = `
+[
+  "7 rate",
+  "8 birthMin",
+  "9 birthMax",
+  "17 merge",
+  "19 dissolve",
+  "23 count",
+  "28 rate",
+  "32 rim",
+  "36 fragile",
+  "38 rim",
 ]
 `;
 
@@ -83,6 +98,8 @@ exports[`crowd > has not edited a slot in place 1`] = `
   "companions num grid=1 origin=0 bits=2",
 ]
 `;
+
+exports[`crowd > retires a slot by appending to the retired list, never by editing one 1`] = `[]`;
 
 exports[`dangler > has not edited a slot in place 1`] = `
 [
@@ -117,6 +134,8 @@ exports[`dangler > has not edited a slot in place 1`] = `
 ]
 `;
 
+exports[`dangler > retires a slot by appending to the retired list, never by editing one 1`] = `[]`;
+
 exports[`embers > has not edited a slot in place 1`] = `
 [
   "count num grid=10 origin=100 bits=10",
@@ -144,10 +163,16 @@ exports[`embers > has not edited a slot in place 1`] = `
   "hueSpread num grid=1 origin=0 bits=7",
   "exposure num grid=0.01 origin=0.05 bits=11",
   "flare num grid=0.05 origin=0 bits=6",
-  "trail num grid=0.02 origin=0 bits=6 RETIRED",
+  "trail num grid=0.02 origin=0 bits=6",
   "mark enum ember|spark|mote|flake",
   "shutter num grid=0.005 origin=0 bits=7",
   "playback num grid=0.01 origin=0.05 bits=8",
+]
+`;
+
+exports[`embers > retires a slot by appending to the retired list, never by editing one 1`] = `
+[
+  "25 trail",
 ]
 `;
 
@@ -185,6 +210,8 @@ exports[`flotsam > has not edited a slot in place 1`] = `
   "playback num grid=0.01 origin=0 bits=8",
 ]
 `;
+
+exports[`flotsam > retires a slot by appending to the retired list, never by editing one 1`] = `[]`;
 
 exports[`psyxels > has not edited a slot in place 1`] = `
 [
@@ -227,6 +254,8 @@ exports[`psyxels > has not edited a slot in place 1`] = `
 ]
 `;
 
+exports[`psyxels > retires a slot by appending to the retired list, never by editing one 1`] = `[]`;
+
 exports[`starry-night > has not edited a slot in place 1`] = `
 [
   "mode enum depth|random|identical",
@@ -246,6 +275,8 @@ exports[`starry-night > has not edited a slot in place 1`] = `
   "maxLifetimeMs num grid=500 origin=1000 bits=7",
 ]
 `;
+
+exports[`starry-night > retires a slot by appending to the retired list, never by editing one 1`] = `[]`;
 
 exports[`walkers > has not edited a slot in place 1`] = `
 [
@@ -274,3 +305,5 @@ exports[`walkers > has not edited a slot in place 1`] = `
   "seed num grid=1 origin=0 bits=17",
 ]
 `;
+
+exports[`walkers > retires a slot by appending to the retired list, never by editing one 1`] = `[]`;
