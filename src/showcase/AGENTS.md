@@ -317,8 +317,7 @@ All five, because two cover what the others miss:
 ```
 pnpm run prettier        # repo-wide. `prettier --write <files>` is not this
 pnpm run lint
-pnpm typecheck           # does NOT type .astro files
-pnpm exec astro check    # the only thing that does
+pnpm run typecheck       # now `astro check`; was tsc, which did NOT type .astro
 pnpm test
 ```
 

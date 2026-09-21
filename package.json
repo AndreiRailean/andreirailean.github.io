@@ -16,7 +16,7 @@
     "prettier:write": "prettier . --write",
     "lint": "eslint . ",
     "lint:fix": "eslint . --fix",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "astro check",
     "test": "pnpm run test:unit && pnpm run test:browser",
     "test:unit": "vitest run",
     "test:watch": "vitest",

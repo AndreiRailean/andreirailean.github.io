@@ -252,14 +252,23 @@ pnpm exec vitest <name>              # milliseconds, while working
 pnpm run build                       # the full thing, including astro check
 ```
 
-**Pipe it through `grep errors`, and do not use `tail`.** Its summary prints
-errors, then warnings, then hints, then **two blank lines** — so the obvious
-cheap check, `| tail -3`, shows you warnings, hints and a blank line and
-scrolls the one number you need off the top. A session ran `astro check` after
-every edit for several rounds while it reported four errors, saw a clean-looking
-tail each time, and kept 1,187 green tests: both runners strip types and eslint
-does not typecheck, so nothing else could catch it. `grep errors` matches that
-line exactly once and nothing else.
+**Read its exit code and do not pipe it at all.** `pnpm run typecheck` exits 0
+clean and 1 on errors; that is the whole read, and it is the only one that has
+not been wrong yet.
+
+Both cheap reads of the summary have failed, for the same reason in opposite
+directions:
+
+- **`| tail -3`** shows warnings, hints and a blank line. The summary prints
+  errors, warnings, hints, then **two blank lines**, so the number you need is
+  fourth from the end. A session ran `astro check` after every edit piped that
+  way for several rounds while it reported four errors, saw a clean-looking
+  tail each time, and kept 1,187 green tests.
+- **`| grep errors`** — which was written down here as the fix — **misses the
+  single-error case.** With exactly one error the line reads `- 1 error`,
+  singular, so the pattern matches nothing and the pipeline looks clean. It was
+  wrong in precisely the way it was meant to prevent. If you want the number,
+  `grep -E '^- [0-9]+ errors?$'`.
 
 **`pnpm exec astro check` is the one to reach for constantly.** `pnpm test` types
 nothing — vitest strips types and Playwright compiles per file — so in CI the

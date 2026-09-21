@@ -27,7 +27,16 @@ in the queue, and do not ask before taking one:
   - a **timing-dependent negative** — "nothing failed" measured over a window too
     short for anything to fail in;
   - a **declared fact nobody can clear**, which outlives the session that wrote
-    it and then reads as current.
+    it and then reads as current;
+  - a check that is fine and **whose output defeats the cheap way of reading
+    it** — the instrument works and the reading is blind, so nothing about the
+    green looks wrong. `astro check` prints its error count above two counts
+    you do not want and two trailing blank lines, so `| tail -3` scrolls it
+    off; a session ran it after every edit for several rounds while it reported
+    four errors (#209). **The replacement keystroke had the same defect**:
+    `| grep errors` misses `- 1 error`, singular, which is the commonest case.
+    Prefer the exit status, which cannot be misparsed, and treat any pipe you
+    add to a check as a second check needing its own failing test.
 
 - **Derive it; do not declare it.** A fact a session writes down is a fact that
   dies with the session, and **dying is the case that matters** — abruptly is how
@@ -47,6 +56,16 @@ above has in common. `tests/unit/browser-suite.test.ts` and
 `tests/unit/opt-out.test.ts` go further and test the gate itself against cases
 the repo does not contain, which is the version to copy when a check reads
 source rather than behaviour.
+
+**And the same sentence holds one layer down: a branch nobody has seen taken is
+a claim too.** `crowd` shipped `if (Math.abs(yawOffset) > NECK_LIMIT)` where
+`yawOffset` springs, critically damped, toward a target already clamped to
+`NECK_LIMIT` — so it never overshoots, the branch never ran, and the turning it
+implemented did not exist. The piece's note and its own `AGENTS.md` both
+described the behaviour as working; only Andrei looking at it found out.
+`bubbles` hit the same class independently. The recognisable shape is **a
+conditional whose guard is bounded by the same constant that bounds its
+subject**, and it is invisible in a still — measuring is what catches it.
 
 **A rule written in prose has the same failure and a different test.** A rule can
 be true, agreed and unfollowable — when it assumes something the reader was never
