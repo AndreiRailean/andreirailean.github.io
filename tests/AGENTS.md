@@ -38,10 +38,54 @@ all, and a test declaring `type Record` — which silently shadows TypeScript's 
 generic, so `Record<string, string>` in the same file became "Type 'Record' is
 not generic". Both were invisible to a green `pnpm test`.
 
-**So run `pnpm exec astro check` before pushing, not just the suites.** It is the
-cheap half of `pnpm run build` and takes seconds. The failure mode is not a
-broken build — it is a red pull request after you thought you were done, which is
-the most expensive place to find a one-word mistake.
+**So run `pnpm run typecheck` before pushing, not just the suites.** It is
+`astro check` — the cheap half of `pnpm run build`, about twelve seconds. The
+failure mode is not a broken build — it is a red pull request after you thought
+you were done, which is the most expensive place to find a one-word mistake.
+
+### Read its exit code, not its summary
+
+**Every cheap way of reading that summary has been wrong, including the one
+written down to replace the last wrong one.** The command is fine; reading it is
+where this keeps failing, so use the thing that cannot be misparsed:
+
+```sh
+pnpm run typecheck            # exit 0 = clean, exit 1 = errors. That is the whole read.
+```
+
+Two failures behind that line, both measured here rather than reasoned about:
+
+- **`| tail -3` shows you warnings, hints and a blank line.** The summary prints
+  errors, warnings, hints, then **two trailing blank lines**, so the one number
+  you need is fourth from the end. A session ran `astro check` after every edit
+  piped through `tail -3`, saw a clean-looking tail each time, and kept 1,187
+  green tests while it reported four errors — #209.
+- **`| grep errors` misses the single-error case**, which is the common one. With
+  exactly one error the line reads `- 1 error`, **singular**, so the pattern
+  matches nothing and the pipeline looks clean — the same shape as the `tail`
+  bug it was written to replace. Measured by injecting one error: `grep errors`
+  printed nothing while `astro check` exited 1. If you want the number rather
+  than the status, `grep -E '^- [0-9]+ errors?$'` survives both.
+
+### `pnpm run typecheck` is `astro check`, and `tsc` is not enough
+
+It used to be `tsc --noEmit`, which **does not type `.astro` files at all** — so
+a script named `typecheck`, and a CI step named "Typecheck all code", both
+passed cleanly on a type error in a page. That is the defect the root
+`AGENTS.md` lists first, wearing a reassuring name.
+
+Measured across four locations by injecting one error in each:
+
+| Error in             | `tsc --noEmit`     | `astro check` |
+| -------------------- | ------------------ | ------------- |
+| `.astro` frontmatter | **exit 0 — blind** | exit 1        |
+| `src/**/*.ts`        | exit 2             | exit 1        |
+| `tests/**/*.ts`      | exit 2             | exit 1        |
+| `scripts/*.ts`       | exit 2             | exit 1        |
+
+`astro check` is a strict superset, so the swap lost nothing and cost about
+seven seconds on the lint job. `tests/unit/typecheck-script.test.ts` holds it,
+because the weaker command is the one a person reaches for by habit.
 
 ## The server the browser suite drives
 
