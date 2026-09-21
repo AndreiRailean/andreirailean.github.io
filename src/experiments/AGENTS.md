@@ -9,12 +9,19 @@ say so explicitly if your work contradicts one rather than quietly overriding
 it. Vocabulary and decisions belonging to a single experiment stay in that
 experiment's own folder.
 
-**Read the piece's own `AGENTS.md` before changing that piece.** Six of them
-exist, they run 130–459 lines, and they are where the traps are. Nothing loads
-them for you — Claude Code reads `CLAUDE.md` and nothing else — so this sentence
-is the pointer, and `tests/unit/agent-docs.test.ts` fails if it goes missing.
-That check covers the six by covering this rule rather than by listing them,
-because a list of piece names is a list that goes stale.
+**Read the piece's own `AGENTS.md` before changing that piece.** There is one
+per piece, they run to several hundred lines each, and they are where the traps
+are. Nothing loads them for you — Claude Code reads `CLAUDE.md` and nothing else
+— so this sentence is the pointer, and `tests/unit/agent-docs.test.ts` fails if
+it goes missing. That check covers them by covering this rule rather than by
+listing them, because a list of piece names is a list that goes stale.
+
+**Writing one is part of adding a piece**, and the checklist there says so.
+
+_This paragraph said "six of them exist" while there were eight, which is the
+declared fact the root `AGENTS.md` warns about: written true, never cleared, and
+read as current. The count is gone rather than corrected, because correcting it
+only resets the clock._
 
 Six of those records are rules you will otherwise rediscover the hard way:
 
@@ -256,6 +263,67 @@ fail loudly while the fourth fails by silently leaving the piece out:
 A piece also needs `src/pages/experiments/<slug>/{index,about}.astro`, and an
 `about.md` whose `poster:` line is added _after_ the first capture — the
 collection resolves it through `image()` and a missing file 500s the index.
+
+### Inside the piece's own folder
+
+Two files a builder working from the list above will not otherwise reach. Both
+were shipped only by inference by the sessions that hit this (#201).
+
+- **`AGENTS.md`, the piece's own.** The layout block above lists it and this
+  checklist never mentioned it, so a piece can ship without one. That is worse
+  than a missing file: **it is where the traps you just paid for are supposed to
+  land**, and a piece without one loses them silently, so the next session pays
+  again. Write it as you go rather than at the end — the traps are the things
+  that cost you an hour, and they are not memorable afterwards.
+- **`runner.ts`, if the piece is ever to be published.** The showcase wall at
+  `/showcase/` serves a **frozen runner pinned by content hash**, and a piece
+  opts in purely by having this file — nothing holds a list of slugs, so
+  `pnpm run runners` simply prints no line for a piece without one, among
+  several lines that all look correct. **Nothing fails.** The piece is just
+  permanently unpublishable, and whoever finds out is whoever tries, months
+  later. A runner **must tear itself down**: a wall mounts and unmounts
+  repeatedly and is the only host that surfaces a leaked listener (#168);
+  `embers/runner.ts` says so in its header.
+
+  No check demands one, deliberately — a piece may legitimately not be ready
+  for a wall, which is the same "a check would have to fail on the right
+  answer" shape as the repin judgement in `src/showcase/AGENTS.md`. See
+  `CONTEXT-MAP.md` for what else the showcase obliges you to.
+
+### Two rules your preset literals must satisfy
+
+Both are already enforced, and neither is enforced where you are typing. **The
+one place values are written by hand is the one place nothing snaps them** —
+`normalizeSettings` catches every other route in, so reading `## Presets` in
+full beforehand does not prevent this. The session that reported it had done
+exactly that and still wrote **18 off-grid values across 6 presets**.
+
+- **Every numeric literal must already sit on its grid.**
+  `tests/unit/experiments-grid.test.ts` fails a preset that moves under
+  `normalizeSettings`, naming the piece, the preset and the key. They are not
+  careless values — `outflow: 0.45` against a `0.02` step, `popSize: 0.035`
+  against `0.002`, `dissolve: 0.0006` against `0.0005`. Every one is the round
+  number a person reaches for, off a grid whose step is not a power of ten.
+- **Every preset needs a usable `hue`**, or an explicit `kit-opt-out(hue):`
+  line. `tests/unit/experiments-presets.test.ts` holds this, including for a
+  monochrome piece — the chrome and the note still use the hue even when
+  nothing on the canvas does.
+
+**Do not wait for the full suite to tell you.** That is what made this expensive
+rather than merely wrong — `pnpm run test:unit` runs for minutes, so the failure
+arrives at the end of a build when the values are no longer in your head. These
+two modules answer in **about a second**:
+
+```
+pnpm exec vitest run experiments-grid experiments-presets
+```
+
+**And an off-grid set is mechanically fixable, so do not hand-correct 18 of
+them.** `experiment.preset(n)` returns the value _after_ `normalizeSettings`, so
+driving the piece once and writing `get()` back into `settings.ts` snaps them
+all with no judgement involved. Reach for `FINER_GRID` only when a scene was
+genuinely recorded before its control was cut as it is now — that is what it is
+for, and it is not the fix for a value you just typed.
 
 ## The `about.md` collection
 
