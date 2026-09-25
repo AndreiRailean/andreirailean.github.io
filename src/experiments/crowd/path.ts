@@ -50,6 +50,8 @@ export type Path = {
    * others below it, and the line of heads draws the shape of the hillside.
    */
   ground: (x: number) => number
+  /** Gradient of the ground at `x`, along +x: rise over run. */
+  groundSlope: (x: number) => number
   /** Steepest gradient of the ground, rise over run. */
   steepestClimb: number
 }
@@ -120,8 +122,8 @@ function createGround(
   hills: number,
   phaseC: number,
   phaseD: number,
-): { flat: boolean; ground: (x: number) => number; steepestClimb: number } {
-  if (climb <= 0) return { flat: true, ground: () => 0, steepestClimb: 0 }
+): { flat: boolean; ground: (x: number) => number; groundSlope: (x: number) => number; steepestClimb: number } {
+  if (climb <= 0) return { flat: true, ground: () => 0, groundSlope: () => 0, steepestClimb: 0 }
   const k1 = (Math.PI * 2) / hills
   const k2 = k1 / SECOND
   const a1 = climb * (1 - SECOND_SHARE)
@@ -130,6 +132,27 @@ function createGround(
   return {
     flat: false,
     ground: (x) => a1 * Math.sin(k1 * x + phaseC) + a2 * Math.sin(k2 * x + phaseD) - offset,
+    groundSlope: (x) => a1 * k1 * Math.cos(k1 * x + phaseC) + a2 * k2 * Math.cos(k2 * x + phaseD),
     steepestClimb: a1 * k1 + a2 * k2,
   }
+}
+
+/**
+ * How much a gradient changes somebody's walking speed, as a multiplier.
+ *
+ * **Tobler's hiking function**, `6·exp(−3.5·|grade + 0.05|)` km/h, taken
+ * relative to level ground so it multiplies whatever pace a person already
+ * has. Its fastest point is a gentle descent of 5%, and it is asymmetric:
+ * climbing 25% is about 0.44 of level pace, descending it about 0.58. `effort`
+ * blends from no effect at 0 to the whole function at 1, so the difference it
+ * makes — the crowd concertinaing on every climb — can be switched off and
+ * looked at.
+ *
+ * `grade` is along the direction of travel, so the same hillside is a climb
+ * for one person and a descent for the one coming the other way.
+ */
+export function hikingPace(grade: number, effort: number): number {
+  if (effort <= 0) return 1
+  const tobler = Math.exp(-3.5 * Math.abs(grade + 0.05)) / Math.exp(-3.5 * 0.05)
+  return 1 + effort * (tobler - 1)
 }

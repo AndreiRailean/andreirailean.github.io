@@ -51,7 +51,7 @@
 import { BOB_RISE, BOB_SWAY, bodyRadius, cadence, eyeHeight } from "@/experiments/crowd/body"
 import { avoid } from "@/experiments/crowd/steering"
 import type { Person } from "@/experiments/crowd/throng"
-import type { Path } from "@/experiments/crowd/path"
+import { hikingPace, type Path } from "@/experiments/crowd/path"
 import { makeRng, hashSeed, type Rng } from "@/experiments/random"
 import type { Settings } from "@/experiments/crowd/settings"
 
@@ -629,7 +629,10 @@ export function createStroll(settings: Settings, seed: number) {
       aim -= off * confine * 1.4 * dt
     }
 
-    const wanted = walking ? current.walk : 0
+    // The hill has its say on my pace too, by the same function as everybody
+    // else's — or I would stride up a climb past a crowd that is labouring.
+    const grade = crowd.path.flat ? 0 : crowd.path.groundSlope(x) * Math.cos(aim)
+    const wanted = walking ? current.walk * hikingPace(grade, current.effort) : 0
     const desiredX = Math.cos(aim) * wanted
     const desiredY = Math.sin(aim) * wanted
 

@@ -82,6 +82,8 @@ export type Settings = {
   climb: number
   /** Distance from one crest to the next like it, in metres. */
   hills: number
+  /** How much a gradient slows people down. 0 ignores it, 1 is Tobler's hiking function. */
+  effort: number
   /** Hue of the crowd, in degrees. */
   hue: number
   /** How much of that hue the heads actually carry. 0 is white. */
@@ -254,10 +256,10 @@ export const CONTROLS: Control[] = [
     label: "with me",
     group: "me",
     min: 0,
-    max: 3,
+    max: 15,
     step: 1,
     format: (v) => (v < 0.5 ? "alone" : v < 1.5 ? "one" : `${Math.round(v)}`),
-    hint: "How many people are walking with me. They keep station beside me rather than being met and passed, they hold their place while the crowd goes round them, and I look at them — a conversation is most of where the head goes when there is one to be had. It changes the walk more than the number suggests: alone you are reading the crowd, and with somebody you are only half watching it.",
+    hint: "How many people are walking with me. They keep station beside me rather than being met and passed, they hold their place while the crowd goes round them, and I look at them — a conversation is most of where the head goes when there is one to be had. It changes the walk more than the number suggests: alone you are reading the crowd, and with somebody you are only half watching it. Past three it stops being company and becomes my team: a block of rows walking in step with me at the back of it, so every one of them is in front of me or beside me and none is behind, where I could not see them.",
   },
   {
     kind: "slider",
@@ -396,6 +398,17 @@ export const CONTROLS: Control[] = [
   },
   {
     kind: "slider",
+    key: "effort",
+    label: "effort",
+    group: "route",
+    min: 0,
+    max: 1,
+    step: 0.05,
+    format: (v) => (v <= 0 ? "none" : `${Math.round(v * 100)}%`),
+    hint: "How much the hill slows everybody. At 1 it is Tobler's hiking function, from field measurement: a 25% climb is walked at under half of level pace, and the fastest ground is a gentle descent. What it does to a crowd on a trail is make it concertina — it bunches on every climb and strings out on every descent — so the density along the line becomes a second picture of the hillside. At 0 the ground is scenery.",
+  },
+  {
+    kind: "slider",
     key: "team",
     label: "team",
     group: "crowd",
@@ -488,6 +501,7 @@ export const DEFAULT_SETTINGS: Settings = {
   team: 0,
   climb: 0,
   hills: 400,
+  effort: 0,
   hue: 210,
   tint: 0,
   playback: 1,
@@ -538,6 +552,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       team: 0,
       climb: 0,
       hills: 400,
+      effort: 0,
       hue: 208,
       tint: 0,
       playback: 1,
@@ -575,6 +590,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       team: 0,
       climb: 0,
       hills: 400,
+      effort: 0,
       hue: 196,
       tint: 0,
       playback: 1,
@@ -612,6 +628,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       team: 0,
       climb: 0,
       hills: 400,
+      effort: 0,
       hue: 222,
       tint: 0,
       playback: 1,
@@ -649,6 +666,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       team: 0,
       climb: 0,
       hills: 400,
+      effort: 0,
       hue: 200,
       tint: 0,
       playback: 1,
@@ -686,6 +704,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       team: 0,
       climb: 0,
       hills: 400,
+      effort: 0,
       hue: 202,
       tint: 0,
       playback: 1,
@@ -723,6 +742,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       team: 0,
       climb: 0,
       hills: 400,
+      effort: 0,
       hue: 216,
       tint: 0,
       playback: 1,
@@ -760,6 +780,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       team: 0,
       climb: 0,
       hills: 400,
+      effort: 0,
       hue: 28,
       tint: 0,
       playback: 1,
@@ -783,7 +804,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       pausing: 0,
       height: 1.8,
       pitch: -3,
-      companions: 3,
+      companions: 9,
       looking: 1.1,
       bob: 1,
       fov: 64,
@@ -797,6 +818,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       team: 10,
       climb: 0,
       hills: 400,
+      effort: 0,
       hue: 140,
       tint: 0,
       playback: 1,
@@ -834,6 +856,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       team: 0,
       climb: 18,
       hills: 600,
+      effort: 1,
       hue: 100,
       tint: 0,
       playback: 1,
@@ -867,7 +890,7 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   pausing: { min: 0, max: 1, step: 0.05 },
   height: { min: 1, max: 2.05, step: 0.01 },
   pitch: { min: -25, max: 15, step: 0.5 },
-  companions: { min: 0, max: 3, step: 1 },
+  companions: { min: 0, max: 15, step: 1 },
   looking: { min: 0, max: 1.5, step: 0.05 },
   bob: { min: 0, max: 3, step: 0.05 },
   fov: { min: 35, max: 120, step: 1 },
@@ -881,6 +904,7 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   team: { min: 0, max: 16, step: 1 },
   climb: { min: 0, max: 40, step: 0.5 },
   hills: { min: 40, max: 800, step: 5 },
+  effort: { min: 0, max: 1, step: 0.05 },
   hue: { min: 0, max: 359, step: 1 },
   tint: { min: 0, max: 1, step: 0.02 },
   playback: { min: 0, max: 2, step: 0.05 },
@@ -1024,7 +1048,7 @@ export const REGISTRY: readonly Slot[] = [
   // size away from `fade`, which used to derive it — see `throng.ts`.
   { key: "reach", kind: "num", grid: 0.5, origin: 8, bits: 9 },
   { key: "width", kind: "num", grid: 0.5, origin: 3, bits: 9 },
-  { key: "companions", kind: "num", grid: 1, origin: 0, bits: 2 },
+  { key: "companions", kind: "num", grid: 1, origin: 0, bits: 2, retired: true },
   // Appended for the structured crowd: a parade's lining, a trail's bends, teams.
   { key: "lining", kind: "num", grid: 0.5, origin: 0, bits: 5 },
   { key: "watchers", kind: "num", grid: 5, origin: 0, bits: 6 },
@@ -1033,6 +1057,10 @@ export const REGISTRY: readonly Slot[] = [
   { key: "team", kind: "num", grid: 1, origin: 0, bits: 5 },
   { key: "climb", kind: "num", grid: 0.5, origin: 0, bits: 7 },
   { key: "hills", kind: "num", grid: 5, origin: 40, bits: 8 },
+  { key: "effort", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  // `companions` again, retired above and re-appended: its range grew from 3 to
+  // 15 for a team walking with me, and a slot's bits are immutable.
+  { key: "companions", kind: "num", grid: 1, origin: 0, bits: 4 },
 ]
 
 /**

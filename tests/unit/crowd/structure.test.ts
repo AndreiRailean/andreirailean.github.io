@@ -97,6 +97,16 @@ describe("teams", () => {
     expect(stats.teams).toBeGreaterThan(5)
     for (const group of crowd.groups) expect(group.size).toBe(settings.team)
   })
+
+  it("puts me at the back of a team of my own, with nobody behind me", () => {
+    const { crowd, settings } = walk("teams", 6)
+    const mates = crowd.companions
+    expect(settings.companions).toBeGreaterThan(3)
+    expect(mates.length).toBe(settings.companions)
+    for (const mate of mates) expect(mate.besideAhead).toBeGreaterThanOrEqual(0)
+    const ahead = mates.filter((mate) => mate.besideAhead > 0.5).length
+    expect(ahead).toBeGreaterThan(mates.length / 2)
+  })
 })
 
 describe("the trail", () => {
@@ -152,5 +162,48 @@ describe("the trail", () => {
     }
     expect(n).toBeGreaterThan(100)
     expect(sum / n).toBeLessThan(0.55)
+  })
+})
+
+describe("effort", () => {
+  /**
+   * The concertina: a crowd walking a hill by Tobler's function bunches on the
+   * climbs. **The ratio is against the control at effort 0**, which measured
+   * 0.92 over ninety seconds, so an effort that stopped doing anything fails
+   * rather than passing on the seed's terrain. 1.87 with it.
+   */
+  function bunching(effort: number): number {
+    const preset = PRESETS.find((p) => p.label === "the trail")!
+    const settings = normalizeSettings({ ...preset.settings, effort })
+    const me = createStroll(settings, settings.seed)
+    const crowd = createThrong(settings, me)
+    let up = 0
+    let down = 0
+    let upLen = 0
+    let downLen = 0
+    for (let step = 0; step < 75 * 120; step++) {
+      me.step(STEP, crowd)
+      crowd.step(STEP)
+      if (step < 45 * 120 || step % 240 !== 0) continue
+      for (let x = me.x - 200; x < me.x + 200; x += 1) {
+        const g = crowd.path.groundSlope(x)
+        if (g > 0.1) upLen++
+        else if (g < -0.1) downLen++
+      }
+      for (const person of crowd.people) {
+        if (Math.abs(person.x - me.x) > 200) continue
+        const g = crowd.path.groundSlope(person.x)
+        if (g > 0.1) up++
+        else if (g < -0.1) down++
+      }
+    }
+    return up / upLen / (down / downLen)
+  }
+
+  it("bunches the crowd on the climbs, and only when it is on", () => {
+    const off = bunching(0)
+    const on = bunching(1)
+    expect(off).toBeLessThan(1.25)
+    expect(on).toBeGreaterThan(off * 1.4)
   })
 })

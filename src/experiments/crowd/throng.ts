@@ -52,7 +52,7 @@ import {
   CHILD_AGES,
 } from "@/experiments/crowd/body"
 import { bandEntry, bandPoint, corridorPoint, entryAngle, heading } from "@/experiments/crowd/random"
-import { createPath, type Path } from "@/experiments/crowd/path"
+import { createPath, hikingPace, type Path } from "@/experiments/crowd/path"
 import { avoid } from "@/experiments/crowd/steering"
 import { hashSeed, makeRng, type Rng } from "@/experiments/random"
 import { BOUNDS, type Settings } from "@/experiments/crowd/settings"
@@ -97,6 +97,32 @@ const COMPANION_SLOTS: readonly (readonly [number, number])[] = [
   [-0.62, 0.7],
   [0.45, 1.95],
 ]
+
+/**
+ * Where my team goes when more than three walk with me: a block of rows, in my
+ * own frame, with me in the middle of the back row.
+ *
+ * **At the back, so the rule above still holds** — a companion behind is no
+ * reference, and a team is a dozen of them. The spacing is the crowd's teams'
+ * (0.8 m abreast, 1.05 m between rows), so mine reads as one of theirs.
+ */
+function teamSlots(mates: number): (readonly [number, number])[] {
+  const size = mates + 1
+  const across = Math.min(4, Math.ceil(Math.sqrt(size)))
+  const rows = Math.ceil(size / across)
+  const mine = { row: rows - 1, col: Math.floor((size - (rows - 1) * across - 1) / 2) }
+  const slots: (readonly [number, number])[] = []
+  for (let n = 0; n < size; n++) {
+    const row = Math.floor(n / across)
+    const col = n % across
+    if (row === mine.row && col === mine.col) continue
+    // A partial back row is centred under the full ones.
+    const inRow = row === rows - 1 ? size - (rows - 1) * across : across
+    const right = (col - (inRow - 1) / 2) * 0.8 - (mine.col - (size - (rows - 1) * across - 1) / 2) * 0.8
+    slots.push([right, (mine.row - row) * 1.05])
+  }
+  return slots
+}
 
 /** How firmly a companion holds their place, per second squared. Stiffer than a crowd group's. */
 const COMPANION_SPRING = 3.4
@@ -403,11 +429,12 @@ export function createThrong(settings: Settings, observer: Observer) {
     // and a companion standing on the kerb would be no companion at all.
     const walkers = people.filter((person) => !person.watcher).length
     const wanted = Math.min(Math.round(current.companions), walkers)
+    const slots = wanted <= COMPANION_SLOTS.length ? COMPANION_SLOTS : teamSlots(wanted)
     for (let i = 0; i < wanted; i++) {
       const mate = people[i]!
       mate.companion = true
-      mate.besideRight = COMPANION_SLOTS[i % COMPANION_SLOTS.length]![0]
-      mate.besideAhead = COMPANION_SLOTS[i % COMPANION_SLOTS.length]![1]
+      mate.besideRight = slots[i]![0]
+      mate.besideAhead = slots[i]![1]
       mate.standing = false
       mate.group = -1
       // Beside the observer from the first frame, rather than converging on them
@@ -837,11 +864,23 @@ export function createThrong(settings: Settings, observer: Observer) {
    */
   function desired(person: Person, out: { x: number; y: number }): void {
     wanted(person, out)
-    if (path.straight || person.companion) return
-    const { cos, sin } = alongPath(person.x)
-    const x = out.x
-    out.x = x * cos - out.y * sin
-    out.y = x * sin + out.y * cos
+    if (person.companion) return
+    if (!path.straight) {
+      const { cos, sin } = alongPath(person.x)
+      const x = out.x
+      out.x = x * cos - out.y * sin
+      out.y = x * sin + out.y * cos
+    }
+    // Slower up a climb and a little slower down a steep one. A companion is
+    // exempt because they match the observer, who has already been slowed.
+    if (!path.flat && current.effort > 0) {
+      const speed = Math.sqrt(out.x * out.x + out.y * out.y)
+      if (speed > 1e-6) {
+        const pace = hikingPace((path.groundSlope(person.x) * out.x) / speed, current.effort)
+        out.x *= pace
+        out.y *= pace
+      }
+    }
   }
 
   function wanted(person: Person, out: { x: number; y: number }): void {
