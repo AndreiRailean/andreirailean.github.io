@@ -207,3 +207,64 @@ describe("effort", () => {
     expect(on).toBeGreaterThan(off * 1.4)
   })
 })
+
+describe("keeping to a side", () => {
+  /**
+   * The share of walkers on their own side of the way. **The control is the
+   * same scene at `keep` 0**, which measured 0.45 — random, and a little under
+   * half because the middle counts for neither side — so a lane force that
+   * stopped doing anything fails rather than passing on the seed's luck.
+   */
+  function sides(keep: number) {
+    const preset = PRESETS.find((p) => p.label === "keep left")!
+    const settings = normalizeSettings({ ...preset.settings, keep })
+    const me = createStroll(settings, settings.seed)
+    const crowd = createThrong(settings, me)
+    let withMe = 0
+    let withMeLeft = 0
+    let oncoming = 0
+    let oncomingRight = 0
+    let mine = 0
+    let samples = 0
+    for (let step = 0; step < 25 * 120; step++) {
+      me.step(STEP, crowd)
+      crowd.step(STEP)
+      if (step < 12 * 120 || step % 120 !== 0) continue
+      mine += crowd.path.lateral(me.x, me.y)
+      samples++
+      for (const person of crowd.people) {
+        if (Math.hypot(person.x - me.x, person.y - me.y) > 40) continue
+        const speed = Math.hypot(person.vx, person.vy)
+        if (speed < 0.3) continue
+        const along = Math.atan(crowd.path.slope(person.x))
+        const heading = (person.vx * Math.cos(along) + person.vy * Math.sin(along)) / speed
+        const lateral = crowd.path.lateral(person.x, person.y)
+        if (heading > 0.7) {
+          withMe++
+          if (lateral > 0) withMeLeft++
+        } else if (heading < -0.7) {
+          oncoming++
+          if (lateral < 0) oncomingRight++
+        }
+      }
+    }
+    return { withMe: withMeLeft / withMe, oncoming: oncomingRight / oncoming, me: mine / samples }
+  }
+
+  it("puts my stream on the left and the oncoming one on my right", () => {
+    const off = sides(0)
+    const on = sides(1)
+    expect(off.withMe).toBeLessThan(0.65)
+    expect(off.oncoming).toBeLessThan(0.65)
+    expect(on.withMe).toBeGreaterThan(0.95)
+    expect(on.oncoming).toBeGreaterThan(0.95)
+    expect(on.me).toBeGreaterThan(0.5)
+  })
+
+  it("mirrors when told to keep right", () => {
+    const right = sides(-1)
+    expect(right.withMe).toBeLessThan(0.05)
+    expect(right.oncoming).toBeLessThan(0.05)
+    expect(right.me).toBeLessThan(-0.5)
+  })
+})

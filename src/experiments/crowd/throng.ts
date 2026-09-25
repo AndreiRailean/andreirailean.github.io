@@ -52,7 +52,7 @@ import {
   CHILD_AGES,
 } from "@/experiments/crowd/body"
 import { bandEntry, bandPoint, corridorPoint, entryAngle, heading } from "@/experiments/crowd/random"
-import { createPath, hikingPace, type Path } from "@/experiments/crowd/path"
+import { createPath, hikingPace, lanePush, type Path } from "@/experiments/crowd/path"
 import { avoid } from "@/experiments/crowd/steering"
 import { hashSeed, makeRng, type Rng } from "@/experiments/random"
 import { BOUNDS, type Settings } from "@/experiments/crowd/settings"
@@ -1033,6 +1033,20 @@ export function createThrong(settings: Settings, observer: Observer) {
       } else {
         const outside = Math.abs(person.y) - halfWidth + WALL_SOFTEN
         if (outside > 0) force.y -= Math.sign(person.y) * outside * 7
+      }
+
+      // Which side of the way to walk on. Only for somebody going somewhere:
+      // a watcher, a standing person and a companion — who follows me — are
+      // exempt, and so is open ground, which has no sides.
+      if (current.keep !== 0 && !person.standing && !person.companion && Number.isFinite(halfWidth)) {
+        const speed = Math.sqrt(want.x * want.x + want.y * want.y)
+        if (speed > 1e-6) {
+          const { cos, sin } = alongPath(person.x)
+          const heading = (want.x * cos + want.y * sin) / speed
+          const push = lanePush(path.lateral(person.x, person.y), halfWidth, heading, current.keep)
+          force.x += -sin * push
+          force.y += cos * push
+        }
       }
 
       const magnitudeSq = force.x * force.x + force.y * force.y

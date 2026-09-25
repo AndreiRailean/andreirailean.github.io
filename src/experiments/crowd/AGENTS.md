@@ -423,6 +423,11 @@ file was taken on them. Do not generalise that branch away without re-measuring.
   concertina — density on climbs over density on descents — was 1.3 at forty
   seconds and 2.1 at seventy-five, against 0.8 with it off. A shorter test would
   read the mechanism as weak.
+- **`keep` saturates by 0.4.** The share of walkers on their own side of a
+  4.5 m two-way trail was 0.45 with no rule, 0.88 at 0.2, 0.997 at 0.4 and 1.000
+  at 1. Its first hint claimed an overtake "still steps across the middle" at
+  any strength; measured, at the top nobody does. Say what a setting does at a
+  value only after reading the number at that value.
 - **Past three companions the slots are a team block with me in the back row**
   (`teamSlots`), which keeps the rule above: nobody behind me. `companions`'
   address slot was retired and re-appended when its range grew from 3 to 15.

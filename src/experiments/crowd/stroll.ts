@@ -51,7 +51,7 @@
 import { BOB_RISE, BOB_SWAY, bodyRadius, cadence, eyeHeight } from "@/experiments/crowd/body"
 import { avoid } from "@/experiments/crowd/steering"
 import type { Person } from "@/experiments/crowd/throng"
-import { hikingPace, type Path } from "@/experiments/crowd/path"
+import { hikingPace, lanePush, type Path } from "@/experiments/crowd/path"
 import { makeRng, hashSeed, type Rng } from "@/experiments/random"
 import type { Settings } from "@/experiments/crowd/settings"
 
@@ -662,6 +662,16 @@ export function createStroll(settings: Settings, seed: number) {
         force.x += s * c * Math.sign(lat) * outside * 7
         force.y -= c * Math.sign(lat) * outside * 7
       }
+    }
+
+    // My side of the way, by the same rule as everybody else's.
+    if (current.keep !== 0 && walking) {
+      const s = crowd.path.straight ? 0 : crowd.path.slope(x)
+      const c = 1 / Math.sqrt(1 + s * s)
+      const heading = Math.cos(aim - Math.atan(s))
+      const push = lanePush(crowd.path.lateral(x, y), crowd.halfWidth, heading, current.keep)
+      force.x += -s * c * push
+      force.y += c * push
     }
 
     const magnitude = Math.sqrt(force.x * force.x + force.y * force.y)

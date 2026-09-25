@@ -233,3 +233,10 @@ Questions I could not answer, and what I assumed:
 > great, thanks. how about a meander along a two way path where I and everyone
 > going in my direction walks on the left, and those moving in the opposite
 > direction (towards me) are on the right.
+
+Built as a `keep to` slider under **route** (left, right, or either side, with a
+strength) and a **keep left** preset: the trail made two-way, everybody keeping
+left of their own direction of travel. Open question: the preset uses the full
+strength, which is a strict procession in both directions — nobody on the wrong
+side at all. Below about 0.3 the rule is loose enough that people step across to
+overtake and come back. Which of those he meant is his to say.

@@ -151,6 +151,32 @@ function createGround(
  * `grade` is along the direction of travel, so the same hillside is a climb
  * for one person and a descent for the one coming the other way.
  */
+/**
+ * How hard somebody is pulled toward their own side of the way, per second
+ * squared per metre off their lane.
+ *
+ * **A pull, not a wall** — a fifth of the wall's stiffness — and it still
+ * saturates early. On a 4.5 m two-way trail the share of walkers on their own
+ * side was 0.45 with no rule, 0.88 at `keep` 0.2, 0.997 at 0.4 and 1.000 at 1:
+ * the avoidance that would carry an overtake across the middle loses to it well
+ * before the top of the track.
+ */
+export const LANE_SPRING = 1.4
+
+/**
+ * The across-the-way push toward a lane, for somebody heading `along` the path
+ * (+1 with the path's +x, −1 against it, anything between for a diagonal).
+ *
+ * `keep` is signed: positive keeps left of one's own direction of travel,
+ * negative keeps right, 0 is no rule. Returned as a signed magnitude along the
+ * path's normal, the direction in which `lateral` grows.
+ */
+export function lanePush(lateral: number, halfWidth: number, along: number, keep: number): number {
+  if (keep === 0 || !Number.isFinite(halfWidth)) return 0
+  const target = Math.sign(keep) * along * halfWidth * 0.5
+  return (target - lateral) * LANE_SPRING * Math.abs(keep)
+}
+
 export function hikingPace(grade: number, effort: number): number {
   if (effort <= 0) return 1
   const tobler = Math.exp(-3.5 * Math.abs(grade + 0.05)) / Math.exp(-3.5 * 0.05)
