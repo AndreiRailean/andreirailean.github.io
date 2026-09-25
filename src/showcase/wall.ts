@@ -63,8 +63,12 @@ export type WallEntry = {
  * crossing pieces tears one down and mounts another. Judged worth it, and the
  * order is a source edit away from any other opinion.
  *
- * **Bubbles leads, on the rule Embers led on: `/showcase/` is entry zero and that
- * is the newest published scene.** Embers is second and its own argument is
+ * **Crowd's `keep left` leads, on the rule Bubbles and Embers led on:
+ * `/showcase/` is entry zero and that is the newest published scene.** Andrei
+ * chose it with `parade` and `teams`, which are woven further down. Bubbles
+ * follows it.
+ *
+ * **Bubbles led before it, on the rule Embers led on.** Embers is second and its own argument is
  * unchanged — its piece has moved further since it was pinned than any of its
  * neighbours have, which is the freeze doing its job rather than a reason to
  * move it. `winter blues` renders the bytes it was published against, and what
@@ -83,7 +87,11 @@ export type WallEntry = {
  * whole; this one arrived with eleven presets of which several exist to
  * demonstrate a control rather than to be looked at, and Andrei named the five.
  *
- * **Twenty-nine of the other pieces' thirty presets are here.** The one missing is
+ * **Crowd's structured scenes are the second selection**: of the five added
+ * after it was seeded — parade, teams, two trails and keep left — Andrei named
+ * three. The six it was seeded with are all here.
+ *
+ * **Of the rest, twenty-nine of the pieces' thirty seeded presets are here.** The one missing is
  * Psyxels' `maker`, the only scene in any piece whose subject is a photograph
  * rather than a glyph. Its runner has no way to be handed an image, and how a
  * frozen runner carries an asset is undecided — see the note at the top of
@@ -91,6 +99,15 @@ export type WallEntry = {
  * nothing and are here.
  */
 export const WALL: readonly WallEntry[] = [
+  {
+    id: "crowd-keep-left",
+    title: "keep left",
+    piece: "crowd",
+    pieceTitle: "Crowd",
+    note: "A two-way trail winding over a hill, and everybody keeps left — my stream on one half, the people coming towards me on the other. Nothing draws the trail. It is the shape the crowd makes following it, two ribbons of heads running off into the distance and lifting over the rise.",
+    runner: "crowd.2efce767655c.js",
+    scene: "____735PyMkFCUscwCYskojwxQAKJef8gDAA8aAMOFAo",
+  },
   {
     id: "bubbles-time-bubbles",
     title: "time bubbles",
@@ -182,6 +199,15 @@ export const WALL: readonly WallEntry[] = [
     scene: "__9ADSDBSQfRYeR7imQ",
   },
   {
+    id: "crowd-parade",
+    title: "parade",
+    piece: "crowd",
+    pieceTitle: "Crowd",
+    note: "Walking in a parade, at the pace of everybody around me, with a crowd three deep standing on both kerbs to watch it pass. The stationary crowd is what moves.",
+    runner: "crowd.2efce767655c.js",
+    scene: "____7347yAEFAeqc0CYssodXwOAKKNecAONIAaAAJABU",
+  },
+  {
     id: "bubbles-foam",
     title: "foam",
     piece: "bubbles",
@@ -270,6 +296,15 @@ export const WALL: readonly WallEntry[] = [
     note: "Nine trains from every quarter and none of them dominant — a confused sea that gathers in patches rather than lines.",
     runner: "flotsam.b2c2cc0608a3.js",
     scene: "_____2AABNfBAAhqZMQkhQCCK3WikZkHgMfQYHvA8ZKAoZMhQAWRJY",
+  },
+  {
+    id: "crowd-teams",
+    title: "teams",
+    piece: "crowd",
+    pieceTitle: "Crowd",
+    note: "The parade thinned out into teams — blocks of ten walking together, spaced along the way with empty road between, and me at the back of one of them.",
+    runner: "crowd.2efce767655c.js",
+    scene: "____734JyAKAAgmcyCgssoda5GAKOtNhASNIAaKAJAJU",
   },
   {
     id: "bubbles-ring-breathing",
