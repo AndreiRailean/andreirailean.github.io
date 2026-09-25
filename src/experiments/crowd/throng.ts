@@ -53,7 +53,7 @@ import {
 } from "@/experiments/crowd/body"
 import { bandEntry, bandPoint, corridorPoint, entryAngle, heading } from "@/experiments/crowd/random"
 import { createPath, hikingPace, lanePush, type Path } from "@/experiments/crowd/path"
-import { avoid } from "@/experiments/crowd/steering"
+import { avoid, CUTOFF } from "@/experiments/crowd/steering"
 import { hashSeed, makeRng, type Rng } from "@/experiments/random"
 import { BOUNDS, type Settings } from "@/experiments/crowd/settings"
 
@@ -69,6 +69,20 @@ export const MAX_PEOPLE = 9000
 
 /** Metres. Inside this people avoid each other; outside it they walk. See the docblock. */
 export const DETAIL = 24
+
+/**
+ * The detail radius a scene actually needs, which is `DETAIL` unless I am
+ * running.
+ *
+ * **Derived per scene rather than raised for everybody**, because what sizes it
+ * is the fastest closing pair — the top of the crowd's band plus my own pace —
+ * and only a runner takes that past 24 m. Raising the constant to cover the top
+ * of `walk`'s track would have cost every walking scene 1.8 times the
+ * anticipation for encounters none of them can have.
+ */
+export function detailFor(settings: Pick<Settings, "paceHigh" | "walk">): number {
+  return Math.max(DETAIL, CUTOFF * (settings.paceHigh + Math.max(settings.walk, settings.paceHigh)) + 2)
+}
 
 /**
  * Where somebody walking with you goes, in the observer's own frame:
@@ -303,6 +317,7 @@ export function createThrong(settings: Settings, observer: Observer) {
   const people: Person[] = []
   let groups: Group[] = []
   let current = settings
+  let detail = detailFor(settings)
   let world = 1
   let budgeted = false
   let halfWidth = 1e6
@@ -828,7 +843,7 @@ export function createThrong(settings: Settings, observer: Observer) {
       const person = people[i]!
       const dx = person.x - observer.x
       const dy = person.y - observer.y
-      if (dx * dx + dy * dy > DETAIL * DETAIL) continue
+      if (dx * dx + dy * dy > detail * detail) continue
       avoiding++
       const k = key(Math.floor(person.x / CELL), Math.floor(person.y / CELL))
       const bucket = cells.get(k)
@@ -919,7 +934,7 @@ export function createThrong(settings: Settings, observer: Observer) {
     hash()
 
     const strength = 1.9 * current.spacing * current.spacing
-    const detailSq = DETAIL * DETAIL
+    const detailSq = detail * detail
     const neighbourSq = NEIGHBOUR * NEIGHBOUR
     const worldSq = world * world
     const accelSq = MAX_ACCEL * MAX_ACCEL
@@ -1179,6 +1194,7 @@ export function createThrong(settings: Settings, observer: Observer) {
     resettle(next: Settings): void {
       const before = current
       current = next
+      detail = detailFor(current)
       for (const person of people) {
         person.radius = bodyRadius(person.stature) * current.spacing
       }
@@ -1191,6 +1207,7 @@ export function createThrong(settings: Settings, observer: Observer) {
     /** Change how big the world is and how many people are in it. */
     restock(next: Settings): void {
       current = next
+      detail = detailFor(current)
       // Re-derived rather than continued, so the crowd at a given density is the
       // same crowd however it was arrived at — dragged up from below, down from
       // above, or landed on.

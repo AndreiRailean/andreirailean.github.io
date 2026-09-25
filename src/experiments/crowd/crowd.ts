@@ -48,7 +48,16 @@ import { needsRecast, needsRestock, type Settings } from "@/experiments/crowd/se
 
 export type CrowdStats = ThrongStats & {
   /** Where I am and what I am doing. */
-  me: { x: number; y: number; yaw: number; course: number; speed: number; walking: boolean; stature: number }
+  me: {
+    x: number
+    y: number
+    yaw: number
+    course: number
+    speed: number
+    walking: boolean
+    running: boolean
+    stature: number
+  }
   /**
    * Heads that reached the glass last frame.
    *

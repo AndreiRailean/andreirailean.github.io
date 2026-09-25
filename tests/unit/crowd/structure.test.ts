@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest"
 import { createPath } from "@/experiments/crowd/path"
 import { createStroll } from "@/experiments/crowd/stroll"
 import { createThrong } from "@/experiments/crowd/throng"
-import { normalizeSettings, PRESETS } from "@/experiments/crowd/settings"
+import { bodyRadius } from "@/experiments/crowd/body"
+import { normalizeSettings, PRESETS, type Settings } from "@/experiments/crowd/settings"
 
 /**
  * The structured crowd: a lining that stands, a way that bends, teams.
@@ -266,5 +267,55 @@ describe("keeping to a side", () => {
     expect(right.withMe).toBeLessThan(0.05)
     expect(right.oncoming).toBeLessThan(0.05)
     expect(right.me).toBeLessThan(-0.5)
+  })
+})
+
+describe("the runner", () => {
+  /**
+   * "i can increase my pace … but not enough to make it feel like a jog. maybe
+   * because my bobbing is still walk-like." Both were true: the track stopped at
+   * 2.2 m/s, which is the walk-run transition, and the bob was a walk's at any
+   * speed. So this asserts the gait, not the pace.
+   */
+  function run(patch: Partial<Settings>, seconds: number) {
+    const preset = PRESETS.find((p) => p.label === "runner")!
+    const settings = normalizeSettings({ ...preset.settings, ...patch })
+    const me = createStroll(settings, settings.seed)
+    const crowd = createThrong(settings, me)
+    let running = 0
+    let steps = 0
+    let low = Infinity
+    let high = -Infinity
+    let lateral = 0
+    let hits = 0
+    for (let step = 0; step < seconds * 120; step++) {
+      me.step(STEP, crowd)
+      crowd.step(STEP)
+      if (step < 5 * 120) continue
+      steps++
+      if (me.stats().running) running++
+      const z = me.eye().z
+      low = Math.min(low, z)
+      high = Math.max(high, z)
+      lateral += Math.abs(crowd.path.lateral(me.x, me.y))
+      for (const person of crowd.neighbours(me.x, me.y, 1.5)) {
+        if (Math.hypot(person.x - me.x, person.y - me.y) < person.radius + bodyRadius(settings.height)) hits++
+      }
+    }
+    return { running: running / steps, bounce: high - low, lateral: lateral / steps, hits }
+  }
+
+  it("runs, bouncing twice as far as a walk, down the middle, into nobody", () => {
+    const runner = run({}, 20)
+    expect(runner.running).toBeGreaterThan(0.95)
+    expect(runner.bounce).toBeGreaterThan(0.065)
+    expect(runner.lateral).toBeLessThan(0.5)
+    expect(runner.hits).toBe(0)
+  })
+
+  it("walks, with a walk's bob, at a walking pace", () => {
+    const walker = run({ walk: 1.3 }, 12)
+    expect(walker.running).toBe(0)
+    expect(walker.bounce).toBeLessThan(0.055)
   })
 })

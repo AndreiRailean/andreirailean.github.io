@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { CUTOFF } from "@/experiments/crowd/steering"
 import { createStroll } from "@/experiments/crowd/stroll"
-import { createThrong, DETAIL, MAX_PEOPLE } from "@/experiments/crowd/throng"
+import { createThrong, DETAIL, detailFor, MAX_PEOPLE } from "@/experiments/crowd/throng"
 import { BOUNDS, normalizeSettings, PRESETS, type Settings } from "@/experiments/crowd/settings"
 
 /**
@@ -281,8 +281,12 @@ describe("nobody walks through anybody where it can be seen", () => {
     // cut off at `CUTOFF` seconds. If the detail radius is shorter than that, the
     // crowd is skipping encounters it has already decided are worth having, and
     // nothing about the picture says so.
+    // Derived per scene now, since only a runner needs more than `DETAIL`: so
+    // the invariant is on the function, at the corner of the tracks where it
+    // is hardest, and at an ordinary walk where it must not have grown.
     const fastest = BOUNDS.paceHigh.max + BOUNDS.walk.max
-    expect(DETAIL).toBeGreaterThanOrEqual(CUTOFF * fastest)
+    expect(detailFor({ paceHigh: BOUNDS.paceHigh.max, walk: BOUNDS.walk.max })).toBeGreaterThanOrEqual(CUTOFF * fastest)
+    expect(detailFor({ paceHigh: 1.8, walk: 1.3 })).toBe(DETAIL)
   })
 })
 

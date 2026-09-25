@@ -48,10 +48,21 @@
  * and is why the looking never feels random.
  */
 
-import { BOB_RISE, BOB_SWAY, bodyRadius, cadence, eyeHeight } from "@/experiments/crowd/body"
+import {
+  BOB_RISE,
+  BOB_SWAY,
+  bodyRadius,
+  cadence,
+  eyeHeight,
+  RUN_RISE,
+  RUN_SWAY,
+  runBounce,
+  runCadence,
+  runSpeed,
+} from "@/experiments/crowd/body"
 import { avoid } from "@/experiments/crowd/steering"
 import type { Person } from "@/experiments/crowd/throng"
-import { hikingPace, lanePush, type Path } from "@/experiments/crowd/path"
+import { hikingPace, LANE_SPRING, lanePush, type Path } from "@/experiments/crowd/path"
 import { makeRng, hashSeed, type Rng } from "@/experiments/random"
 import type { Settings } from "@/experiments/crowd/settings"
 
@@ -388,6 +399,10 @@ export function createStroll(settings: Settings, seed: number) {
 
   /** Radians. One full cycle of the head's rise per step. */
   let phase = 0
+  /** Whether my gait is a run. See `runSpeed`: it is a threshold on my own legs, not on a setting. */
+  let running = false
+  /** How far the bob has moved from a walk's to a run's, 0 to 1. */
+  let runMix = 0
   let clock = 0
 
   let stature = current.height
@@ -664,12 +679,16 @@ export function createStroll(settings: Settings, seed: number) {
       }
     }
 
-    // My side of the way, by the same rule as everybody else's.
-    if (current.keep !== 0 && walking) {
+    // My side of the way: my own line if I am holding one, otherwise the same
+    // rule as everybody else's.
+    if ((current.keep !== 0 || current.hold > 0) && walking && Number.isFinite(crowd.halfWidth)) {
       const s = crowd.path.straight ? 0 : crowd.path.slope(x)
       const c = 1 / Math.sqrt(1 + s * s)
-      const heading = Math.cos(aim - Math.atan(s))
-      const push = lanePush(crowd.path.lateral(x, y), crowd.halfWidth, heading, current.keep)
+      const lateral = crowd.path.lateral(x, y)
+      const push =
+        current.hold > 0
+          ? (current.line * crowd.halfWidth - lateral) * LANE_SPRING * current.hold
+          : lanePush(lateral, crowd.halfWidth, Math.cos(aim - Math.atan(s)), current.keep)
       force.x += -s * c * push
       force.y += c * push
     }
@@ -696,7 +715,17 @@ export function createStroll(settings: Settings, seed: number) {
 
     // The gait, which drives the bob. The same two lines every other person in
     // the crowd gets, off the same anatomy in `body.ts`.
-    phase += cadence(stature, speed, Math.max(0.4, current.walk)) * dt * Math.PI * 2
+    // **Walking or running is a gait, not a speed**, and it switches with
+    // hysteresis — a person does not flicker between the two at the threshold,
+    // they commit. Up at the Froude threshold, down a little below it.
+    const threshold = runSpeed(stature)
+    if (!running && speed > threshold * 1.04) running = true
+    else if (running && speed < threshold * 0.9) running = false
+    // The switch itself is eased over a couple of steps, or the frame would
+    // jump from one bob to the other in a single frame.
+    runMix += ((running ? 1 : 0) - runMix) * Math.min(1, dt * 3)
+    const stepRate = running ? runCadence(stature, speed) : cadence(stature, speed, Math.max(0.4, current.walk))
+    phase += stepRate * dt * Math.PI * 2
 
     // **The head: a glance is a departure and a return.** Between glances the
     // commanded offset is zero, which is straight ahead, so the rest state of the
@@ -864,9 +893,13 @@ export function createStroll(settings: Settings, seed: number) {
     eye(): { z: number; sway: number } {
       const amount = current.bob
       const moving = Math.min(1, Math.hypot(vx, vy) / 0.35)
+      const walkRise = Math.sin(phase) * BOB_RISE
+      const runRise = runBounce(phase / (Math.PI * 2)) * RUN_RISE
+      const rise = walkRise + (runRise - walkRise) * runMix
+      const sway = BOB_SWAY + (RUN_SWAY - BOB_SWAY) * runMix
       return {
-        z: eyeHeight(stature) + Math.sin(phase) * BOB_RISE * amount * moving,
-        sway: Math.sin(phase / 2) * BOB_SWAY * amount * moving,
+        z: eyeHeight(stature) + rise * amount * moving,
+        sway: Math.sin(phase / 2) * sway * amount * moving,
       }
     },
 
@@ -878,7 +911,7 @@ export function createStroll(settings: Settings, seed: number) {
     },
 
     stats() {
-      return { x, y, yaw, course, speed: Math.hypot(vx, vy), walking, stature, clock }
+      return { x, y, yaw, course, speed: Math.hypot(vx, vy), walking, running, stature, clock }
     },
   }
 }
