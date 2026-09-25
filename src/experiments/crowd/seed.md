@@ -227,3 +227,9 @@ Questions I could not answer, and what I assumed:
   is the piece's existing constraint rather than a new one.
 - **The showcase is unaffected.** Published crowd scenes are pinned to frozen
   runners; nothing here asks them to move.
+
+## 2026-09-25 — a two-way trail that keeps left
+
+> great, thanks. how about a meander along a two way path where I and everyone
+> going in my direction walks on the left, and those moving in the opposite
+> direction (towards me) are on the right.
