@@ -188,7 +188,7 @@ export function createCrowd(canvas: HTMLCanvasElement, initial: Settings): Crowd
     return makeCamera(
       me.x + Math.cos(right) * sway,
       me.y + Math.sin(right) * sway,
-      z,
+      z + crowd.path.ground(me.x),
       me.yaw,
       me.pitch,
       settings.fov,
@@ -204,6 +204,7 @@ export function createCrowd(canvas: HTMLCanvasElement, initial: Settings): Crowd
     const result = drawFrame(context, {
       people: crowd.people,
       camera: eyeCamera(),
+      ground: crowd.path.ground,
       settings,
       width,
       height,

@@ -51,7 +51,8 @@ import {
   statureAtAge,
   CHILD_AGES,
 } from "@/experiments/crowd/body"
-import { corridorPoint, entryAngle, heading } from "@/experiments/crowd/random"
+import { bandEntry, bandPoint, corridorPoint, entryAngle, heading } from "@/experiments/crowd/random"
+import { createPath, type Path } from "@/experiments/crowd/path"
 import { avoid } from "@/experiments/crowd/steering"
 import { hashSeed, makeRng, type Rng } from "@/experiments/random"
 import { BOUNDS, type Settings } from "@/experiments/crowd/settings"
@@ -155,6 +156,14 @@ export type Person = {
   child: boolean
   standing: boolean
   /**
+   * Standing in the lining at the side of the way, watching it go by.
+   *
+   * A role rather than a mood: a watcher is always standing, is only ever put
+   * back into the lining, and is held there by walls on both sides — the way's
+   * kerb on one and the back of the crowd on the other.
+   */
+  watcher: boolean
+  /**
    * Walking with the observer, and therefore not part of the traffic.
    *
    * A companion keeps station rather than being met and passed, and is never
@@ -196,6 +205,14 @@ export type ThrongStats = {
   grouped: number
   /** How many are walking with the observer. */
   companions: number
+  /** How many are standing in the lining, watching. */
+  watchers: number
+  /** How many groups are teams. Zero unless `team` is set. */
+  teams: number
+  /** Tightest radius of turn on the way, in metres. Infinite when it runs straight. */
+  minRadius: number
+  /** Steepest gradient of the ground, rise over run. Zero when it is level. */
+  steepestClimb: number
   /** Metres of clearance at the closest pair in the detail radius. Negative means an overlap. */
   closest: number
   /**
@@ -270,6 +287,20 @@ export function createThrong(settings: Settings, observer: Observer) {
   let overlapsSeen = 0
   let reentries = 0
   let nearest = Infinity
+  /** The line the way is laid along. Straight unless `bend` says otherwise. */
+  let path: Path = createPath(0, 1, 0, 0)
+  /** Metres of lining each side, or 0. Always 0 on open ground, which has no sides. */
+  let lining = 0
+  /**
+   * Whether this scene needs the structured placement at all.
+   *
+   * A straight, unlined corridor is placed and re-entered exactly as it always
+   * was, because every scene before the structured ones was measured on that
+   * code — so it is kept rather than generalised out of existence.
+   */
+  let structured = false
+  /** Salt for bodies made in a structured scene, so a removal and an addition never share one. */
+  let spawned = 0
 
   /**
    * **Three streams, because the section's `random.ts` says to use three.**
@@ -313,11 +344,24 @@ export function createThrong(settings: Settings, observer: Observer) {
    * crash; it is a crowd at the wrong density in a narrow street, which looks
    * like a crowd.
    */
-  function groundArea(radius: number): number {
-    const h = halfWidth
+  function groundArea(radius: number, h: number = halfWidth): number {
     if (h >= radius) return Math.PI * radius * radius
     return 2 * (radius * radius * Math.asin(h / radius) + h * Math.sqrt(radius * radius - h * h))
   }
+
+  /** Ground in the lining out to `radius`: both sides, between the kerb and the back. */
+  const liningArea = (radius: number) => (lining > 0 ? groundArea(radius, halfWidth + lining) - groundArea(radius) : 0)
+
+  /**
+   * How many people a world of this radius holds, walkers and watchers together.
+   *
+   * On a bend the way is longer inside the disc than a straight one, so this is
+   * an underestimate there by the path's mean `sec θ` — a few per cent at the
+   * bends this piece allows, and it only moves the density, never the budget
+   * past its ceiling, because `MAX_PEOPLE` clamps the count separately.
+   */
+  const population = (radius: number) =>
+    (current.density / 100) * groundArea(radius) + (current.watchers / 100) * liningArea(radius)
 
   /**
    * The largest world the budget affords, in metres.
@@ -330,14 +374,12 @@ export function createThrong(settings: Settings, observer: Observer) {
    * bisections is exact to a millimetre and runs once per restock.
    */
   function affordableRadius(): number {
-    const perSquareMetre = current.density / 100
-    const wanted = MAX_PEOPLE / Math.max(1e-6, perSquareMetre)
     let low = 1
     let high = 4000
-    if (groundArea(high) <= wanted) return high
+    if (population(high) <= MAX_PEOPLE) return high
     for (let i = 0; i < 30; i++) {
       const mid = (low + high) / 2
-      if (groundArea(mid) > wanted) high = mid
+      if (population(mid) > MAX_PEOPLE) high = mid
       else low = mid
     }
     return low
@@ -357,7 +399,10 @@ export function createThrong(settings: Settings, observer: Observer) {
       person.besideRight = 0
       person.besideAhead = 0
     }
-    const wanted = Math.min(Math.round(current.companions), people.length)
+    // Watchers sort to the end of the array, so the first few are walkers —
+    // and a companion standing on the kerb would be no companion at all.
+    const walkers = people.filter((person) => !person.watcher).length
+    const wanted = Math.min(Math.round(current.companions), walkers)
     for (let i = 0; i < wanted; i++) {
       const mate = people[i]!
       mate.companion = true
@@ -390,10 +435,38 @@ export function createThrong(settings: Settings, observer: Observer) {
     // wall force, no pull toward the line, and a plain disc to place into. The
     // control's own `format` already reads "open ground" there.
     halfWidth = current.width >= BOUNDS.width.max ? Infinity : current.width / 2
+    lining = Number.isFinite(halfWidth) ? current.lining : 0
+    // The bends are the seed's, like everything else about the world, so two
+    // trails at the same settings are the same trail.
+    const bends = makeRng(hashSeed(current.seed, 5))
+    path = createPath(
+      current.bend,
+      current.meander,
+      bends() * Math.PI * 2,
+      bends() * Math.PI * 2,
+      current.climb,
+      current.hills,
+      bends() * Math.PI * 2,
+      bends() * Math.PI * 2,
+    )
+    structured = Number.isFinite(halfWidth) && (lining > 0 || !path.straight)
     const asked = Math.max(6, current.reach)
     const affordable = affordableRadius()
     budgeted = affordable < asked
     world = Math.min(asked, affordable)
+
+    if (structured) {
+      placeStructured()
+      hash()
+      return
+    }
+
+    // Back from a lined scene: the watchers have nowhere to stand.
+    if (people.some((person) => person.watcher)) {
+      const kept = people.filter((person) => !person.watcher)
+      people.length = 0
+      people.push(...kept)
+    }
 
     const target = Math.min(MAX_PEOPLE, Math.round((current.density / 100) * groundArea(world)))
 
@@ -476,13 +549,79 @@ export function createThrong(settings: Settings, observer: Observer) {
   }
 
   /**
+   * Fill a lined or bending way: walkers on it, watchers either side.
+   *
+   * Two populations with two densities, so each is counted, trimmed and topped
+   * up on its own — and then walkers are sorted ahead of watchers, which is
+   * what lets a group be a contiguous run of walkers and a companion be one of
+   * the first few people, both of which the rest of this file relies on.
+   */
+  function placeStructured(): void {
+    const scale = Math.min(1, MAX_PEOPLE / Math.max(1, population(world)))
+    const wantWalkers = Math.round((current.density / 100) * groundArea(world) * scale)
+    const wantWatchers = Math.round((current.watchers / 100) * liningArea(world) * scale)
+
+    let walkers = 0
+    let watchers = 0
+    for (let i = people.length - 1; i >= 0; i--) {
+      if (people[i]!.watcher) watchers++
+      else walkers++
+    }
+    for (let i = people.length - 1; i >= 0 && (walkers > wantWalkers || watchers > wantWatchers); i--) {
+      const person = people[i]!
+      if (person.companion) continue
+      if (person.watcher && watchers > wantWatchers) {
+        people.splice(i, 1)
+        watchers--
+      } else if (!person.watcher && walkers > wantWalkers) {
+        people.splice(i, 1)
+        walkers--
+      }
+    }
+
+    // Anybody left over from a scene with a different shape is put back where
+    // their role says they belong, rather than left standing in the road.
+    // Only those out of place, so dragging a slider does not reshuffle a crowd
+    // that was already where it should be.
+    for (const person of people) {
+      if (person.companion) continue
+      const lat = Math.abs(path.lateral(person.x, person.y))
+      const inside = person.watcher ? lat >= halfWidth && lat <= halfWidth + lining : lat <= halfWidth
+      const dx = person.x - observer.x
+      const dy = person.y - observer.y
+      if (inside && dx * dx + dy * dy <= world * world) continue
+      const spot = person.watcher
+        ? bandPoint(place, world, observer.x, observer.y, path, halfWidth, halfWidth + lining)
+        : bandPoint(place, world, observer.x, observer.y, path, 0, halfWidth)
+      person.x = spot.x
+      person.y = spot.y
+    }
+
+    while (walkers < wantWalkers) {
+      const spot = bandPoint(place, world, observer.x, observer.y, path, 0, halfWidth)
+      spawn(500_000 + spawned++, spot.x, spot.y, false)
+      walkers++
+    }
+    while (watchers < wantWatchers) {
+      const spot = bandPoint(place, world, observer.x, observer.y, path, halfWidth, halfWidth + lining)
+      spawn(500_000 + spawned++, spot.x, spot.y, true)
+      watchers++
+    }
+
+    // Stable, so the walkers keep their order and the companions stay first.
+    const sorted = [...people.filter((p) => !p.watcher), ...people.filter((p) => p.watcher)]
+    people.length = 0
+    people.push(...sorted)
+  }
+
+  /**
    * Make one person at a stated place.
    *
    * Everything that distinguishes them is drawn here and never redrawn, which is
    * what makes a seed mean something: the same seed puts the same strangers in
    * the same order, whatever else is dragged afterwards.
    */
-  function spawn(index: number, x: number, y: number): Person {
+  function spawn(index: number, x: number, y: number, watcher = false): Person {
     const rng = bodyRng(index)
     const child = rng() < current.children
     const stature = child ? statureAtAge(CHILD_AGES.min + rng() * (CHILD_AGES.max - CHILD_AGES.min)) : adultStature(rng)
@@ -491,7 +630,7 @@ export function createThrong(settings: Settings, observer: Observer) {
     const adultSpeed = current.paceLow + rng() * band
     const preferred = child ? freeSpeed(stature, adultSpeed / 1.34) : adultSpeed
 
-    const standing = rng() < current.standing
+    const standing = rng() < current.standing || watcher
     const angle = heading(rng, observer.axis, current.stream, current.against)
 
     const person: Person = {
@@ -512,6 +651,7 @@ export function createThrong(settings: Settings, observer: Observer) {
       slotBack: 0,
       child,
       standing,
+      watcher,
       companion: false,
       besideRight: 0,
       besideAhead: 0,
@@ -536,6 +676,21 @@ export function createThrong(settings: Settings, observer: Observer) {
     // A shade inside the boundary, so the same person is not re-entered on the
     // very next step by a rounding error.
     const r = world * 0.985
+    if (structured) {
+      const spot = person.watcher
+        ? bandEntry(place, angle, r, observer.x, observer.y, path, halfWidth, halfWidth + lining)
+        : bandEntry(place, angle, r, observer.x, observer.y, path, 0, halfWidth)
+      person.x = spot.x
+      person.y = spot.y
+      const next = heading(place, observer.axis, current.stream, current.against)
+      person.standing = person.watcher || (person.group === -1 && place() < current.standing)
+      person.gx = person.standing ? 0 : Math.cos(next)
+      person.gy = person.standing ? 0 : Math.sin(next)
+      const along = alongPath(person.x)
+      person.vx = (person.gx * along.cos - person.gy * along.sin) * person.preferred
+      person.vy = (person.gx * along.sin + person.gy * along.cos) * person.preferred
+      return
+    }
     // In a corridor most of the circle is outside the walls, so the flux angle
     // is resampled until it lands somewhere a person could actually be. It
     // converges fast because a corridor crowd is walking along the corridor, so
@@ -577,16 +732,20 @@ export function createThrong(settings: Settings, observer: Observer) {
       person.slotBack = 0
     }
 
-    const wanted = Math.round(people.length * current.grouping)
+    // Watchers are sorted to the end and never grouped, so only walkers count.
+    let walkers = people.length
+    while (walkers > 0 && people[walkers - 1]!.watcher) walkers--
+    const wanted = Math.round(walkers * current.grouping)
+    const team = Math.round(current.team)
     let bound = 0
     let at = 0
 
-    while (bound < wanted && at < people.length) {
+    while (bound < wanted && at < walkers) {
       // Pairs are much the commonest, then threes; anything bigger is rare and
-      // is what the arc formation exists for.
+      // is what the arc formation exists for. A team is its own size, always.
       const roll = cut()
-      const size = roll < 0.58 ? 2 : roll < 0.84 ? 3 : roll < 0.95 ? 4 : 5
-      if (at + size > people.length) break
+      const size = team >= 2 ? team : roll < 0.58 ? 2 : roll < 0.84 ? 3 : roll < 0.95 ? 4 : 5
+      if (at + size > walkers) break
 
       const lead = people[at]!
       const angle = Math.atan2(lead.gy, lead.gx)
@@ -600,15 +759,24 @@ export function createThrong(settings: Settings, observer: Observer) {
       const index = nextGroup++
       groups.push(group)
 
+      // A team walks in a block: rows, a few abreast, with the lead at the
+      // front corner and everybody placed relative to them.
+      const across = Math.min(4, Math.ceil(Math.sqrt(size)))
+
       for (let i = 0; i < size; i++) {
         const member = people[at + i]!
         member.group = index
-        // Abreast, 0.75 m apart, centred. Four and more bend into a shallow arc
-        // with the middle lagging, which is the arrangement in which everyone
-        // can see everyone else's face — and it flattens under pressure on its
-        // own, because the formation is a preference and avoidance is a force.
-        member.slotRight = (i - (size - 1) / 2) * 0.75
-        member.slotBack = size >= 4 ? -0.35 * (1 - Math.abs(i - (size - 1) / 2) / ((size - 1) / 2)) : 0
+        if (team >= 2) {
+          member.slotRight = (i % across) * 0.8
+          member.slotBack = -Math.floor(i / across) * 1.05
+        } else {
+          // Abreast, 0.75 m apart, centred. Four and more bend into a shallow arc
+          // with the middle lagging, which is the arrangement in which everyone
+          // can see everyone else's face — and it flattens under pressure on its
+          // own, because the formation is a preference and avoidance is a force.
+          member.slotRight = (i - (size - 1) / 2) * 0.75
+          member.slotBack = size >= 4 ? -0.35 * (1 - Math.abs(i - (size - 1) / 2) / ((size - 1) / 2)) : 0
+        }
         member.standing = group.standing
         // A group walks at its slowest member's pace, which is how a family with
         // a four-year-old in it comes out slow without anything saying so.
@@ -642,8 +810,41 @@ export function createThrong(settings: Settings, observer: Observer) {
     }
   }
 
-  /** What one person would like to be doing, before anybody is in the way. */
+  /** Scratch for `alongPath`. */
+  const along = { cos: 1, sin: 0 }
+
+  /** Which way the path runs at `x`, as a unit vector. `(1, 0)` everywhere on a straight one. */
+  function alongPath(x: number): { cos: number; sin: number } {
+    if (path.straight) {
+      along.cos = 1
+      along.sin = 0
+      return along
+    }
+    const s = path.slope(x)
+    const c = 1 / Math.sqrt(1 + s * s)
+    along.cos = c
+    along.sin = s * c
+    return along
+  }
+
+  /**
+   * What one person would like to be doing, before anybody is in the way.
+   *
+   * **A heading is held in the path's frame, not the world's**, and turned onto
+   * the path wherever the person happens to be. On a straight way the turn is
+   * the identity; on a trail it is what makes the stream follow the bends,
+   * which nothing else in the piece knows about.
+   */
   function desired(person: Person, out: { x: number; y: number }): void {
+    wanted(person, out)
+    if (path.straight || person.companion) return
+    const { cos, sin } = alongPath(person.x)
+    const x = out.x
+    out.x = x * cos - out.y * sin
+    out.y = x * sin + out.y * cos
+  }
+
+  function wanted(person: Person, out: { x: number; y: number }): void {
     if (person.companion) {
       // Matching the observer rather than pursuing their own errand. A companion
       // who drew their own preferred speed would spend the walk drifting ahead
@@ -728,8 +929,11 @@ export function createThrong(settings: Settings, observer: Observer) {
           const group = groups[person.group]!
           const lead = people[i - indexInGroup(i)]!
           if (person !== lead) {
-            const slotX = lead.x + group.hx * person.slotBack - group.hy * person.slotRight
-            const slotY = lead.y + group.hy * person.slotBack + group.hx * person.slotRight
+            const { cos, sin } = alongPath(lead.x)
+            const hx = group.hx * cos - group.hy * sin
+            const hy = group.hx * sin + group.hy * cos
+            const slotX = lead.x + hx * person.slotBack - hy * person.slotRight
+            const slotY = lead.y + hy * person.slotBack + hx * person.slotRight
             force.x += (slotX - person.x) * 1.6
             force.y += (slotY - person.y) * 1.6
           }
@@ -767,9 +971,30 @@ export function createThrong(settings: Settings, observer: Observer) {
       }
 
       // The corridor, if there is one. One-sided and linear, so it reads as the
-      // ground running out rather than as a barrier being hit.
-      const outside = Math.abs(person.y) - halfWidth + WALL_SOFTEN
-      if (outside > 0) force.y -= Math.sign(person.y) * outside * 7
+      // ground running out rather than as a barrier being hit. Pushed along the
+      // path's normal, which on a straight one is `y`.
+      if (structured) {
+        const lat = path.lateral(person.x, person.y)
+        const { cos, sin } = alongPath(person.x)
+        const side = Math.sign(lat)
+        let push = 0
+        if (person.watcher) {
+          // Held in the lining from both sides: off the way, and not wandering
+          // off the back of the crowd.
+          const kerb = halfWidth + WALL_SOFTEN - Math.abs(lat)
+          if (kerb > 0) push += kerb * 7
+          const back = Math.abs(lat) - (halfWidth + lining) + WALL_SOFTEN
+          if (back > 0) push -= back * 7
+        } else {
+          const outside = Math.abs(lat) - halfWidth + WALL_SOFTEN
+          if (outside > 0) push -= outside * 7
+        }
+        force.x += -sin * side * push
+        force.y += cos * side * push
+      } else {
+        const outside = Math.abs(person.y) - halfWidth + WALL_SOFTEN
+        if (outside > 0) force.y -= Math.sign(person.y) * outside * 7
+      }
 
       const magnitudeSq = force.x * force.x + force.y * force.y
       if (magnitudeSq > accelSq) {
@@ -857,6 +1082,11 @@ export function createThrong(settings: Settings, observer: Observer) {
       return halfWidth
     },
 
+    /** The line the way follows, so the observer walks the same bends the crowd does. */
+    get path() {
+      return path
+    },
+
     step,
 
     /**
@@ -899,7 +1129,7 @@ export function createThrong(settings: Settings, observer: Observer) {
       for (const person of people) {
         person.radius = bodyRadius(person.stature) * current.spacing
       }
-      if (before.grouping !== current.grouping) {
+      if (before.grouping !== current.grouping || before.team !== current.team) {
         regroup()
         pairUp()
       }
@@ -922,10 +1152,12 @@ export function createThrong(settings: Settings, observer: Observer) {
       let children = 0
       let grouped = 0
       let withMe = 0
+      let watching = 0
       for (const person of people) {
         if (person.child) children++
         if (person.group >= 0) grouped++
         if (person.companion) withMe++
+        if (person.watcher) watching++
       }
       return {
         people: people.length,
@@ -937,6 +1169,10 @@ export function createThrong(settings: Settings, observer: Observer) {
         children,
         grouped,
         companions: withMe,
+        watchers: watching,
+        teams: current.team >= 2 ? groups.length : 0,
+        minRadius: path.minRadius,
+        steepestClimb: path.steepestClimb,
         closest: Number.isFinite(closest) ? closest : 0,
         overlaps,
         overlapsSeen,

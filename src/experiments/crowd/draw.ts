@@ -117,6 +117,8 @@ export function drawFrame(
   options: {
     people: Person[]
     camera: Camera
+    /** Height of the ground under a point, so a head on a hillside is drawn on it. */
+    ground: (x: number) => number
     settings: Settings
     width: number
     height: number
@@ -142,7 +144,7 @@ export function drawFrame(
     // discs. `moving` fades it out as somebody stops.
     const speed = Math.hypot(person.vx, person.vy)
     const moving = Math.min(1, speed / 0.35)
-    const z = person.head + Math.sin(person.phase) * BOB_RISE * bob * moving
+    const z = options.ground(person.x) + person.head + Math.sin(person.phase) * BOB_RISE * bob * moving
     const sway = Math.sin(person.phase / 2) * BOB_SWAY * bob * moving
     // Perpendicular to the way they are walking, which is where a sway goes.
     const nx = speed > 1e-4 ? -person.vy / speed : 0

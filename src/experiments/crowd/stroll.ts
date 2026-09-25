@@ -51,6 +51,7 @@
 import { BOB_RISE, BOB_SWAY, bodyRadius, cadence, eyeHeight } from "@/experiments/crowd/body"
 import { avoid } from "@/experiments/crowd/steering"
 import type { Person } from "@/experiments/crowd/throng"
+import type { Path } from "@/experiments/crowd/path"
 import { makeRng, hashSeed, type Rng } from "@/experiments/random"
 import type { Settings } from "@/experiments/crowd/settings"
 
@@ -339,6 +340,8 @@ export type Neighbourhood = {
   companions: Person[]
   /** Half the corridor the crowd is confined to, so the observer is held by the same walls. */
   halfWidth: number
+  /** The line the way follows. Walking along a street is walking along this. */
+  path: Path
 }
 
 export type Stroll = ReturnType<typeof createStroll>
@@ -618,7 +621,9 @@ export function createStroll(settings: Settings, seed: number) {
     // reason — it is the room running out, not a rail.
     const confine = Math.max(0, Math.min(1, 1 - crowd.halfWidth / 25))
     if (confine > 0) {
-      let off = aim
+      // Along the way *here*: on a trail the line to hold is the one the path
+      // runs in at my feet, which is what walking a bend is.
+      let off = aim - (crowd.path.straight ? 0 : Math.atan(crowd.path.slope(x)))
       while (off > Math.PI / 2) off -= Math.PI
       while (off < -Math.PI / 2) off += Math.PI
       aim -= off * confine * 1.4 * dt
@@ -642,8 +647,19 @@ export function createStroll(settings: Settings, seed: number) {
     // The same corridor wall the crowd gets. **Without it the observer walks out
     // through the side of the street** and stands in the empty ground beside it
     // watching the crowd file past, which is a different piece.
-    const outside = Math.abs(y) - crowd.halfWidth + 0.8
-    if (outside > 0) force.y -= Math.sign(y) * outside * 7
+    if (crowd.path.straight) {
+      const outside = Math.abs(y) - crowd.halfWidth + 0.8
+      if (outside > 0) force.y -= Math.sign(y) * outside * 7
+    } else {
+      const lat = crowd.path.lateral(x, y)
+      const outside = Math.abs(lat) - crowd.halfWidth + 0.8
+      if (outside > 0) {
+        const s = crowd.path.slope(x)
+        const c = 1 / Math.sqrt(1 + s * s)
+        force.x += s * c * Math.sign(lat) * outside * 7
+        force.y -= c * Math.sign(lat) * outside * 7
+      }
+    }
 
     const magnitude = Math.sqrt(force.x * force.x + force.y * force.y)
     if (magnitude > MAX_ACCEL) {

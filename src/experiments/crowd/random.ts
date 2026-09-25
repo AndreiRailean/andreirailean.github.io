@@ -15,6 +15,7 @@
  */
 
 import type { Rng } from "@/experiments/random"
+import type { Path } from "@/experiments/crowd/path"
 
 /** A point drawn uniformly over a disc. `sqrt` because area grows with r². */
 export function discPoint(rng: Rng, radius: number): { x: number; y: number } {
@@ -134,4 +135,85 @@ export function heading(rng: Rng, axis: number, stream: number, against: number)
   // anticipation that makes the files form in the first place.
   const slop = (rng() - 0.5) * 0.35
   return (rng() < against ? axis + Math.PI : axis) + slop
+}
+
+/**
+ * A point drawn uniformly over the part of a **band along a path** that falls
+ * inside a disc, as an absolute position.
+ *
+ * The band is `|lateral|` between `inner` and `outer` — `0` and the half-width
+ * for the way itself, the half-width and beyond it for a lining on either side.
+ * `corridorPoint` is the straight, unlined case of this and stays the one that
+ * scene uses, because the scenes built on it were measured against it.
+ *
+ * **Uniform along the path, not along `x`.** A sample uniform in `x` puts fewer
+ * people per metre of path where it runs steeply across the axis, since a metre
+ * of `x` there is more than a metre of way. Accepting in proportion to
+ * `sec θ` undoes that, normalised by the steepest the path gets.
+ */
+export function bandPoint(
+  rng: Rng,
+  radius: number,
+  ox: number,
+  oy: number,
+  path: Path,
+  inner: number,
+  outer: number,
+): { x: number; y: number } {
+  const secMax = Math.sqrt(1 + path.steepest * path.steepest)
+  const across = () => {
+    const side = inner > 0 ? (rng() < 0.5 ? -1 : 1) : 1
+    return inner > 0 ? side * (inner + rng() * (outer - inner)) : (rng() * 2 - 1) * outer
+  }
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const x = ox + (rng() * 2 - 1) * radius
+    const s = path.slope(x)
+    const sec = Math.sqrt(1 + s * s)
+    if (!path.straight && rng() * secMax > sec) continue
+    const y = path.centre(x) + across() * sec
+    const dy = y - oy
+    if ((x - ox) * (x - ox) + dy * dy <= radius * radius) return { x, y }
+  }
+  const s = path.slope(ox)
+  return { x: ox, y: path.centre(ox) + across() * Math.sqrt(1 + s * s) }
+}
+
+/**
+ * Where somebody re-enters a band along a path: the point on it at `radius`
+ * from the observer, on the side the flux says they come from.
+ *
+ * `entryAngle` still decides the side — ahead or behind along the way — which
+ * is the part of it that carries the flux. The rest of the angle is thrown
+ * away, because in a band a few metres wide the circle meets it at only two
+ * places and the across-the-band position is drawn uniformly instead.
+ * Bisected along the path, since on a bend there is no closed form.
+ */
+export function bandEntry(
+  rng: Rng,
+  angle: number,
+  radius: number,
+  ox: number,
+  oy: number,
+  path: Path,
+  inner: number,
+  outer: number,
+): { x: number; y: number } {
+  const along = Math.atan(path.slope(ox))
+  const side = Math.cos(angle - along) >= 0 ? 1 : -1
+  const lateral = inner > 0 ? (rng() < 0.5 ? -1 : 1) * (inner + rng() * (outer - inner)) : (rng() * 2 - 1) * outer
+  const at = (t: number) => {
+    const x = ox + side * t
+    const s = path.slope(x)
+    return { x, y: path.centre(x) + lateral * Math.sqrt(1 + s * s) }
+  }
+  let low = 0
+  let high = radius * 2
+  for (let i = 0; i < 24; i++) {
+    const mid = (low + high) / 2
+    const p = at(mid)
+    const d = (p.x - ox) * (p.x - ox) + (p.y - oy) * (p.y - oy)
+    if (d > radius * radius) high = mid
+    else low = mid
+  }
+  return at(low)
 }
