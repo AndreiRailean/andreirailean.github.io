@@ -170,3 +170,28 @@ Written for him to read when he chooses, not to block on.
   not a worry" — which is a more interesting answer than yes or no, because it
   says the companion glance is not legible _as_ a glance at them. It does not
   need to be. Whatever it reads as, it reads as fluid.
+
+---
+
+## 2026-09-25 — a structured crowd: the parade, the teams, the trail
+
+A new brief, given to a fresh session with the question of where it belongs
+left open:
+
+> we have a crowd experiment. it looks great. it's main feel is of a person
+> walking through different kinds of crowd and looking around.
+> i want to try experiment with a structured crowd and cannot decide whether it
+> is a new experiment or if we should keep going with the existing one and pile
+> on more.
+> i would like to see a walker being part of a parade where there are stationary
+> observers on both sides and a stream of walkers going in the same direction
+> past the stationary crowd on both sides.
+> another variation is of similar kind but where the number of walkers is
+> smaller, i.e. they're like sports teams in small groups going in the same
+> direction spaced out
+> next version would see a crowd going through structured space that is not all
+> straight. so we are all walking as a river meandering without sharp turns, but
+> the path we follow is relatively narrow, like a mountain trail or a firetrail
+> through a forest. the trail is seen by the shape of the crowd following it.
+> again, like in crowd experiment, we're only seeing people and here we're
+> seeing the shape of the world by the space people occupy or not.
