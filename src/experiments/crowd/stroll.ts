@@ -62,7 +62,7 @@ import {
 } from "@/experiments/crowd/body"
 import { avoid } from "@/experiments/crowd/steering"
 import type { Person } from "@/experiments/crowd/throng"
-import { hikingPace, LANE_SPRING, lanePush, type Path } from "@/experiments/crowd/path"
+import { hikingPace, LANE_SPRING, lanePush, type Frame, type Path, type PathHint } from "@/experiments/crowd/path"
 import { makeRng, hashSeed, type Rng } from "@/experiments/random"
 import type { Settings } from "@/experiments/crowd/settings"
 
@@ -410,6 +410,9 @@ export function createStroll(settings: Settings, seed: number) {
   let stature = current.height
 
   const force = { x: 0, y: 0 }
+  /** My place on the way, and my nearest point on a loop from last step. */
+  const frame: Frame = { lateral: 0, cos: 1, sin: 0 }
+  const hint: PathHint = { pathAt: -1 }
 
   /**
    * Seconds the next stretch of walking, or of standing, should last.
@@ -644,11 +647,13 @@ export function createStroll(settings: Settings, seed: number) {
     // to the corridor's line grows as the corridor narrows and is nothing at all
     // on open ground, which is the same shape as the wall force and for the same
     // reason — it is the room running out, not a rail.
+    // Where I am on the way, once a step, for the line, the walls and my lane.
+    const here = crowd.path.frame(x, y, frame, hint)
     const confine = Math.max(0, Math.min(1, 1 - crowd.halfWidth / 25))
     if (confine > 0) {
       // Along the way *here*: on a trail the line to hold is the one the path
       // runs in at my feet, which is what walking a bend is.
-      let off = aim - (crowd.path.straight ? 0 : Math.atan(crowd.path.slope(x)))
+      let off = aim - (crowd.path.straight ? 0 : Math.atan2(here.sin, here.cos))
       while (off > Math.PI / 2) off -= Math.PI
       while (off < -Math.PI / 2) off += Math.PI
       aim -= off * confine * 1.4 * dt
@@ -689,28 +694,24 @@ export function createStroll(settings: Settings, seed: number) {
       const outside = Math.abs(y) - crowd.halfWidth + 0.8
       if (outside > 0) force.y -= Math.sign(y) * outside * 7
     } else {
-      const lat = crowd.path.lateral(x, y)
+      const lat = here.lateral
       const outside = Math.abs(lat) - crowd.halfWidth + 0.8
       if (outside > 0) {
-        const s = crowd.path.slope(x)
-        const c = 1 / Math.sqrt(1 + s * s)
-        force.x += s * c * Math.sign(lat) * outside * 7
-        force.y -= c * Math.sign(lat) * outside * 7
+        force.x += here.sin * Math.sign(lat) * outside * 7
+        force.y -= here.cos * Math.sign(lat) * outside * 7
       }
     }
 
     // My side of the way: my own line if I am holding one, otherwise the same
     // rule as everybody else's.
     if ((current.keep !== 0 || current.hold > 0) && walking && Number.isFinite(crowd.halfWidth)) {
-      const s = crowd.path.straight ? 0 : crowd.path.slope(x)
-      const c = 1 / Math.sqrt(1 + s * s)
-      const lateral = crowd.path.lateral(x, y)
+      const lateral = here.lateral
       const push =
         current.hold > 0
           ? (current.line * crowd.halfWidth - lateral) * LANE_SPRING * current.hold
-          : lanePush(lateral, crowd.halfWidth, Math.cos(aim - Math.atan(s)), current.keep)
-      force.x += -s * c * push
-      force.y += c * push
+          : lanePush(lateral, crowd.halfWidth, Math.cos(aim - Math.atan2(here.sin, here.cos)), current.keep)
+      force.x += -here.sin * push
+      force.y += here.cos * push
     }
 
     const magnitude = Math.sqrt(force.x * force.x + force.y * force.y)

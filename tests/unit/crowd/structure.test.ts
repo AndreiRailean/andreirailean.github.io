@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { createPath } from "@/experiments/crowd/path"
+import { createLoop, createPath } from "@/experiments/crowd/path"
 import { createStroll } from "@/experiments/crowd/stroll"
 import { createThrong } from "@/experiments/crowd/throng"
 import { bodyRadius } from "@/experiments/crowd/body"
@@ -122,7 +122,7 @@ describe("the trail", () => {
   it("keeps me on it, facing along it", () => {
     const lat = crowd.path.lateral(me.x, me.y)
     expect(Math.abs(lat)).toBeLessThan(crowd.halfWidth)
-    const along = Math.atan(crowd.path.slope(me.x))
+    const along = crowd.path.along(me.x, me.y)
     const off = Math.abs(Math.atan2(Math.sin(me.course - along), Math.cos(me.course - along)))
     expect(off).toBeLessThan(0.35)
     expect(me.x).toBeGreaterThan(15)
@@ -135,7 +135,7 @@ describe("the trail", () => {
     for (const person of crowd.people) {
       const speed = Math.hypot(person.vx, person.vy)
       if (speed < 0.3) continue
-      const along = Math.atan(crowd.path.slope(person.x))
+      const along = crowd.path.along(person.x, person.y)
       counted++
       if (Math.abs(along) > 0.2) bent++
       if ((person.vx * Math.cos(along) + person.vy * Math.sin(along)) / speed > 0.9) aligned++
@@ -157,7 +157,7 @@ describe("the trail", () => {
     let sum = 0
     let n = 0
     for (const person of crowd.people) {
-      if (Math.abs(Math.atan(crowd.path.slope(person.x))) < 0.3) continue
+      if (Math.abs(crowd.path.along(person.x, person.y)) < 0.3) continue
       sum += Math.abs(crowd.path.lateral(person.x, person.y)) / crowd.halfWidth
       n++
     }
@@ -237,7 +237,7 @@ describe("keeping to a side", () => {
         if (Math.hypot(person.x - me.x, person.y - me.y) > 40) continue
         const speed = Math.hypot(person.vx, person.vy)
         if (speed < 0.3) continue
-        const along = Math.atan(crowd.path.slope(person.x))
+        const along = crowd.path.along(person.x, person.y)
         const heading = (person.vx * Math.cos(along) + person.vy * Math.sin(along)) / speed
         const lateral = crowd.path.lateral(person.x, person.y)
         if (heading > 0.7) {
@@ -356,5 +356,51 @@ describe("the chase", () => {
     const { crowd } = walk("market", 1)
     expect(crowd.quarry).toBeNull()
     expect(crowd.stats().quarry).toBe(0)
+  })
+})
+
+describe("the loop", () => {
+  it("closes on itself, where it started, facing the way I am", () => {
+    const loop = createLoop(700, 0.85, 1, 2, 5, -3, 0.4)
+    expect(loop.closed).toBe(true)
+    const f = { lateral: 0, cos: 1, sin: 0 }
+    loop.frame(5, -3, f)
+    expect(Math.abs(f.lateral)).toBeLessThan(0.01)
+    expect(Math.atan2(f.sin, f.cos)).toBeCloseTo(0.4, 2)
+    expect(loop.lengthWithin(5, -3, 5000)).toBeCloseTo(700, -1)
+    expect(loop.minRadius).toBeGreaterThan(8)
+    expect(loop.minRadius).toBeLessThan(40)
+  })
+
+  /**
+   * The run has to go round, not merely stay on a curve. **Thinned for speed**
+   * — the lining is what costs, and what is asserted is my own course — and
+   * the turning is checked by sign as well as size, since a loop turns one way
+   * and a street that bends turns both.
+   */
+  it("takes me round it, always turning the same way, smoothly, on the way", () => {
+    const preset = PRESETS.find((p) => p.label === "loop run")!
+    const settings = normalizeSettings({ ...preset.settings, watchers: 30 })
+    const me = createStroll(settings, settings.seed)
+    const crowd = createThrong(settings, me)
+    let last = me.course
+    let turned = 0
+    let fastest = 0
+    let off = 0
+    for (let step = 0; step < 40 * 120; step++) {
+      me.step(STEP, crowd)
+      crowd.step(STEP)
+      const d = Math.atan2(Math.sin(me.course - last), Math.cos(me.course - last))
+      last = me.course
+      if (step < 3 * 120) continue
+      turned += d
+      fastest = Math.max(fastest, Math.abs(d / STEP))
+      off = Math.max(off, Math.abs(crowd.path.lateral(me.x, me.y)))
+    }
+    // Forty seconds at 3 m/s is a sixth of a 700 m lap: about 60° of left turn.
+    expect(turned).toBeGreaterThan(0.6)
+    expect(fastest).toBeLessThan(0.6)
+    expect(off).toBeLessThan(crowd.halfWidth)
+    expect(crowd.stats().companions).toBe(3)
   })
 })

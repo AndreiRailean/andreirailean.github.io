@@ -15,7 +15,7 @@
  */
 
 import type { Rng } from "@/experiments/random"
-import type { Path } from "@/experiments/crowd/path"
+import type { GraphPath } from "@/experiments/crowd/path"
 
 /** A point drawn uniformly over a disc. `sqrt` because area grows with r². */
 export function discPoint(rng: Rng, radius: number): { x: number; y: number } {
@@ -156,7 +156,7 @@ export function bandPoint(
   radius: number,
   ox: number,
   oy: number,
-  path: Path,
+  path: GraphPath,
   inner: number,
   outer: number,
 ): { x: number; y: number } {
@@ -194,7 +194,7 @@ export function bandEntry(
   radius: number,
   ox: number,
   oy: number,
-  path: Path,
+  path: GraphPath,
   inner: number,
   outer: number,
 ): { x: number; y: number } {

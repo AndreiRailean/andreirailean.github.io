@@ -48,7 +48,7 @@
  * when you look at a crowd.
  */
 
-import { BOB_RISE, BOB_SWAY } from "@/experiments/crowd/body"
+import { BOB_RISE, BOB_SWAY, RUN_RISE, RUN_SWAY, runBounce } from "@/experiments/crowd/body"
 import { CULL_ALPHA, project, type Camera } from "@/experiments/crowd/camera"
 import type { Person } from "@/experiments/crowd/throng"
 import type { Settings } from "@/experiments/crowd/settings"
@@ -151,8 +151,9 @@ export function drawFrame(
     // discs. `moving` fades it out as somebody stops.
     const speed = Math.hypot(person.vx, person.vy)
     const moving = Math.min(1, speed / 0.35)
-    const z = options.ground(person.x) + person.head + Math.sin(person.phase) * BOB_RISE * bob * moving
-    const sway = Math.sin(person.phase / 2) * BOB_SWAY * bob * moving
+    const rise = person.running ? runBounce(person.phase / TAU) * RUN_RISE : Math.sin(person.phase) * BOB_RISE
+    const z = options.ground(person.x) + person.head + rise * bob * moving
+    const sway = Math.sin(person.phase / 2) * (person.running ? RUN_SWAY : BOB_SWAY) * bob * moving
     // Perpendicular to the way they are walking, which is where a sway goes.
     const nx = speed > 1e-4 ? -person.vy / speed : 0
     const ny = speed > 1e-4 ? person.vx / speed : 0
