@@ -240,3 +240,32 @@ left of their own direction of travel. Open question: the preset uses the full
 strength, which is a strict procession in both directions — nobody on the wrong
 side at all. Below about 0.3 the rule is loose enough that people step across to
 overtake and come back. Which of those he meant is his to say.
+
+## 2026-09-26 — the showcase, a runner, a loop, and somebody to chase
+
+> great. let's add keep left, parade and teams to the showcase. i like how in
+> "keep left" the crowd goes into far distance. there's just enough people to
+> see the train and give it the right shape into the horison.
+>
+> let's do a few more:
+> runner - i am the only one running. everyone else is walking, like they do in
+> "keep left" in both direction. i'm running in between the two streams. i can
+> increase my pace with a slider on "keep left" but not enough to make it feel
+> like a jog. maybe because my bobbing is still walk-like. either way, running
+> between the two streams would be great.
+>
+> loop run - like teams, i am canvassed on both sides by a standing croud. but
+> i'm not walking into the straight infinity, instead I go in a loop with a few
+> companions running next to me in a similar pace. keen to see if the loop is
+> detectable and whether it is sufficient to just have a curved street - like
+> parade or teams but with smooth and sharp turns. the sides of the path can be
+> smooth or straight, but the run needs to be smooth without abrupt turns - like
+> a car turning would follow a curve.
+>
+> one thing i keep thinking about when looking at the crowd animations is that
+> it would be nice to have a target to follow. like a child, or a friend who is
+> running away and I'm trying to catch up with them. obviously it is impossible
+> to tell a random dot apart from the crowd in the distance, so i'm imagining it
+> being red in colour. i think 2 key actors would change the simulation dynamic:
+> a red dot would at first appear to be the main actor, but the actor is the
+> "me" who's looking at the world.
