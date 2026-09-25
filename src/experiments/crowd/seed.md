@@ -269,3 +269,29 @@ overtake and come back. Which of those he meant is his to say.
 > being red in colour. i think 2 key actors would change the simulation dynamic:
 > a red dot would at first appear to be the main actor, but the actor is the
 > "me" who's looking at the world.
+
+### What I did with it, and what I could not decide
+
+- **Showcase:** keep left, parade and teams are on the wall, keep left first as
+  the newest. Pinned to a runner built from this branch, so they can be
+  re-pinned freely until it merges.
+- **runner:** the keep-left trail with me running down the middle. The cause of
+  "not enough to feel like a jog" was two things, both fixed: the pace track
+  stopped at 2.2 m/s, and the bob stayed a walk's at any speed. `my line` and
+  `hold` put me anywhere across the way.
+- **loop run** and **street run:** the same run, kerbs and three companions,
+  on a closed 700 m circuit and on a bending street, so the question — is a
+  loop detectable, or is a curved street enough — can be answered by switching
+  between the two. `loop` and `corners` make any scene a circuit.
+- **catch me:** the market with somebody in red. `chase` and `their pace`.
+
+Questions I could not answer:
+
+- **Is the loop detectable?** Unlooked-at in motion. Across the infield the far
+  kerb is 150–200 m away and faint at this `fade`; a longer `distance` shows
+  more of it and costs clarity near by.
+- **Should the red head resist the fog?** It fades exactly as everybody does,
+  so past about 20 m it is a few red pixels. A person looking for a child sees
+  red further than physics says; whether the piece should is a taste.
+- **Who is the one in red?** Whoever the seed makes them — often an adult. The
+  brief said "like a child, or a friend"; a setting could pick.

@@ -432,6 +432,43 @@ file was taken on them. Do not generalise that branch away without re-measuring.
   (`teamSlots`), which keeps the rule above: nobody behind me. `companions`'
   address slot was retired and re-appended when its range grew from 3 to 15.
 
+## The runner, the chase and the loop
+
+Added 2026-09-26.
+
+- **Running is a gait, not a speed.** Above a Froude number of 0.5 (`runSpeed`,
+  about 2.1 m/s for 1.76 m) the bob becomes a bounce: lowest at footfall,
+  ballistic in flight, 8 cm peak to peak, at a nearly flat 170–180 steps a
+  minute. With hysteresis, for me and for everybody else. Andrei's report was
+  "not enough to make it feel like a jog", and it had two causes: the pace
+  track stopped at 2.2 m/s, the threshold itself, and the bob was a walk's at
+  any speed.
+- **The detail radius is derived per scene** (`detailFor`) from the fastest
+  closing pair. Raising `DETAIL` to cover a runner would have cost every walking
+  scene 1.8 times the anticipation.
+- **A chase built on a pace that varies smoothly with distance settles.** Any
+  such law has a distance where the quarry's pace equals mine, and two minutes
+  of the market ended on 4 m, 4 m, 4 m. The chase is a two-state oscillator —
+  run until far, dawdle until I am near — with thresholds redrawn at each
+  switch. The test asserts on the range over the _last_ minute, which is the
+  number a settled chase gets wrong.
+- **The red head is painted in depth order**, flushing the batch around it, so
+  a nearer stranger still hides it. Over ten frames it was hidden once.
+- **The path is an interface, and the graph path's arithmetic is unchanged
+  behind it.** `frame()` once per person per step answers across and along;
+  `sample`, `entry` and `lengthWithin` replace the corridor's closed forms only
+  for a loop. `lengthWithin` returning null is what keeps every older scene on
+  the formula it was measured with.
+- **A loop is anchored where I stand when it is built, so it is rebuilt only
+  when its own settings change** (`pathShape`). Rebuilding it on a density drag
+  would pick the circuit up and put it down somewhere else.
+- **A loop inside the world has no re-entries at all** — nobody on it ever
+  leaves the disc — so its cost is the whole lining at once. `loop run` holds
+  5,065 people at 120 watchers/100m², 319 ms per second of run; at 160 it was
+  6,720 and 460.
+- **`density` cannot be 0**; its track stops at 0.5. A preset that wants an
+  empty way says 0.5, or the grid check fails it.
+
 ## What is not here, and would be worth having
 
 - **Nobody is going anywhere in particular.** People carry a heading, not a
