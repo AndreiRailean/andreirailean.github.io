@@ -353,6 +353,8 @@ export type Neighbourhood = {
   halfWidth: number
   /** The line the way follows. Walking along a street is walking along this. */
   path: Path
+  /** The one I am chasing, if anybody. */
+  quarry: Person | null
 }
 
 export type Stroll = ReturnType<typeof createStroll>
@@ -532,6 +534,14 @@ export function createStroll(settings: Settings, seed: number) {
     // through to the next one, and looking at the sky went from 9% of glances to
     // 59%. Measured as a gaze above level a quarter of the time, walking alone,
     // with no downward range left at all.
+    // **The one I am chasing takes glances first**, as many as `chase` gives
+    // them — keeping somebody in sight is what a chase is — and the rest of the
+    // gaze is shared out below exactly as it was.
+    const runaway = crowd.quarry
+    if (runaway && current.chase > 0 && rng() < 0.55 * current.chase) {
+      return { look: { kind: "person", person: runaway, wide: NECK_LIMIT }, hold: between(HOLD_STOPPED, rng()) }
+    }
+
     const pCompanion = mates.length > 0 ? SHARE_COMPANION : 0
     if (mates.length > 0 && roll < pCompanion) {
       const mate = mates[Math.floor(rng() * mates.length)]!
@@ -647,6 +657,16 @@ export function createStroll(settings: Settings, seed: number) {
     // The hill has its say on my pace too, by the same function as everybody
     // else's — or I would stride up a climb past a crowd that is labouring.
     const grade = crowd.path.flat ? 0 : crowd.path.groundSlope(x) * Math.cos(aim)
+    // **After them.** The line I mean to walk turns toward the person in red,
+    // by as much as `chase` says. It is the aim that turns, not the course, so
+    // the negotiation with the crowd still decides where I actually go.
+    const runaway = crowd.quarry
+    if (runaway && current.chase > 0) {
+      let off = Math.atan2(runaway.y - y, runaway.x - x) - aim
+      while (off > Math.PI) off -= Math.PI * 2
+      while (off < -Math.PI) off += Math.PI * 2
+      aim += off * current.chase * 2.5 * dt
+    }
     const wanted = walking ? current.walk * hikingPace(grade, current.effort) : 0
     const desiredX = Math.cos(aim) * wanted
     const desiredY = Math.sin(aim) * wanted

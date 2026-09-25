@@ -68,7 +68,14 @@ const bucketOf = (alpha: number): number =>
 const alphaOfBucket = (bucket: number): number => CULL_ALPHA * Math.exp((bucket / (BUCKETS - 1)) * LOG_RANGE)
 
 /** One head, ready to draw. */
-type Sighted = { sx: number; sy: number; r: number; depth: number; alpha: number }
+type Sighted = { sx: number; sy: number; r: number; depth: number; alpha: number; red: boolean }
+
+/**
+ * The colour of the one person I am chasing. Red because it is the colour the
+ * eye finds first against white and black, and it is the only hue in the
+ * piece that is not the scene's own — so it carries no hint of the settings.
+ */
+const QUARRY = "hsl(2, 88%, 56%)"
 
 /**
  * The per-frame working set, owned by the scene and handed back in every frame.
@@ -162,9 +169,10 @@ export function drawFrame(
 
     let slot = pool[seen]
     if (!slot) {
-      slot = { sx: 0, sy: 0, r: 0, depth: 0, alpha: 0 }
+      slot = { sx: 0, sy: 0, r: 0, depth: 0, alpha: 0, red: false }
       pool[seen] = slot
     }
+    slot.red = person.quarry
     slot.sx = sighting.sx
     slot.sy = sighting.sy
     slot.r = r
@@ -196,6 +204,29 @@ export function drawFrame(
         context.beginPath()
       }
       bucket = next
+    }
+    // **The one red head is painted in order, not on top.** Flushing the batch
+    // and drawing it on its own keeps painter's order, so somebody nearer who
+    // steps in front still hides them — which is half of what makes a chase
+    // through a crowd a chase.
+    if (head.red) {
+      if (bucket >= 0) {
+        context.globalAlpha = alphaOfBucket(bucket)
+        context.fill()
+        fills++
+      }
+      context.beginPath()
+      context.fillStyle = QUARRY
+      context.globalAlpha = head.alpha
+      context.moveTo(head.sx + head.r, head.sy)
+      context.arc(head.sx, head.sy, head.r, 0, TAU)
+      context.fill()
+      fills++
+      context.fillStyle = headColour(settings)
+      context.beginPath()
+      bucket = -1
+      if (head.r > largest) largest = head.r
+      continue
     }
     // `moveTo` first, or the arc is joined to the previous subpath by a line
     // across the frame — which looks exactly like a rendering bug and is one.

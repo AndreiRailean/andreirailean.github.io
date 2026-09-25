@@ -319,3 +319,42 @@ describe("the runner", () => {
     expect(walker.bounce).toBeLessThan(0.055)
   })
 })
+
+describe("the chase", () => {
+  /**
+   * The gap to the person in red has to keep opening and closing. **The first
+   * version settled** — a pace varying smoothly with distance always has a
+   * distance where it equals mine, and two minutes of the market ended on
+   * 4 m, 4 m, 4 m — so the assertion is on the range over the *last* minute,
+   * where a settled chase has none. The ceiling catches the other failure: a
+   * quarry that only ever runs is gone.
+   */
+  it("keeps the gap opening and closing, and never loses them", () => {
+    const preset = PRESETS.find((p) => p.label === "catch me")!
+    // Thinned and pulled in, because the chase does not depend on how many
+    // strangers there are and the full market is forty seconds of test.
+    const settings = normalizeSettings({ ...preset.settings, density: 12, reach: 40 })
+    const me = createStroll(settings, settings.seed)
+    const crowd = createThrong(settings, me)
+    const late: number[] = []
+    let furthest = 0
+    for (let step = 0; step < 100 * 120; step++) {
+      me.step(STEP, crowd)
+      crowd.step(STEP)
+      if (step % 60 !== 0) continue
+      const gap = crowd.stats().quarry
+      furthest = Math.max(furthest, gap)
+      if (step > 40 * 120) late.push(gap)
+    }
+    expect(crowd.quarry).not.toBeNull()
+    expect(Math.max(...late) - Math.min(...late)).toBeGreaterThan(8)
+    expect(Math.min(...late)).toBeLessThan(5)
+    expect(furthest).toBeLessThan(35)
+  })
+
+  it("has nobody in red when there is nothing to chase", () => {
+    const { crowd } = walk("market", 1)
+    expect(crowd.quarry).toBeNull()
+    expect(crowd.stats().quarry).toBe(0)
+  })
+})

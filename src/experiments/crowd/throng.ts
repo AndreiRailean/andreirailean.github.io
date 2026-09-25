@@ -214,6 +214,13 @@ export type Person = {
   /** Their place beside the observer, in the observer's frame. Only meaningful for a companion. */
   besideRight: number
   besideAhead: number
+  /**
+   * The one I am chasing, drawn red.
+   *
+   * Taken from the crowd like a companion and, like a companion, never
+   * re-entered: they are the other person who is still there in a minute.
+   */
+  quarry: boolean
 }
 
 export type Group = {
@@ -249,6 +256,8 @@ export type ThrongStats = {
   watchers: number
   /** How many groups are teams. Zero unless `team` is set. */
   teams: number
+  /** How far away the person in red is, in metres. Zero when there is nobody to chase. */
+  quarry: number
   /** Tightest radius of turn on the way, in metres. Infinite when it runs straight. */
   minRadius: number
   /** Steepest gradient of the ground, rise over run. Zero when it is level. */
@@ -442,6 +451,7 @@ export function createThrong(settings: Settings, observer: Observer) {
     }
     // Watchers sort to the end of the array, so the first few are walkers —
     // and a companion standing on the kerb would be no companion at all.
+    for (const person of people) person.quarry = false
     const walkers = people.filter((person) => !person.watcher).length
     const wanted = Math.min(Math.round(current.companions), walkers)
     const slots = wanted <= COMPANION_SLOTS.length ? COMPANION_SLOTS : teamSlots(wanted)
@@ -460,6 +470,24 @@ export function createThrong(settings: Settings, observer: Observer) {
       mate.y = observer.y + sin * mate.besideAhead + cos * mate.besideRight
       mate.vx = observer.vx
       mate.vy = observer.vy
+    }
+    // The person in red: the first walker who is not with me, put a little way
+    // ahead so the chase starts in view rather than across the square.
+    if (current.chase > 0 && walkers > wanted) {
+      fleeing = true
+      farGap = 9 + place() * 12
+      const runaway = people[wanted]!
+      runaway.quarry = true
+      runaway.standing = false
+      runaway.group = -1
+      const cos = Math.cos(observer.axis)
+      const sin = Math.sin(observer.axis)
+      runaway.x = observer.x + cos * 7
+      runaway.y = observer.y + sin * 7
+      runaway.gx = cos
+      runaway.gy = sin
+      runaway.vx = cos * runaway.preferred
+      runaway.vy = sin * runaway.preferred
     }
   }
 
@@ -697,6 +725,7 @@ export function createThrong(settings: Settings, observer: Observer) {
       companion: false,
       besideRight: 0,
       besideAhead: 0,
+      quarry: false,
     }
     people.push(person)
     return person
@@ -898,6 +927,63 @@ export function createThrong(settings: Settings, observer: Observer) {
     }
   }
 
+  /** Whether the person in red is running off, or dawdling and letting me close. */
+  let fleeing = true
+  /** How far they run before stopping, and how close they let me get before running again. Redrawn each time. */
+  let farGap = 14
+  let nearGap = 3
+
+  /**
+   * How the person in red wants to move: two states, and the switching between
+   * them is the chase.
+   *
+   * **A pace that varies smoothly with distance does not make a chase — it was
+   * built first and measured.** Any such law has a distance at which their pace
+   * equals mine, and the gap settles there: two minutes of the market ended on
+   * 4 m, 4 m, 4 m, 4 m, whatever the shape of the ramp. What a child who has
+   * run off actually does is a relaxation oscillator. They run until they are
+   * far enough away to feel safe, stop and dawdle — looking at something,
+   * looking back — until you are nearly on them, and run again. Two states with
+   * a gap between their thresholds cannot settle, which is the point.
+   *
+   * Both thresholds are redrawn at every switch, so the rhythm does not repeat.
+   * On open ground their heading wanders and bends away from me when I am
+   * close; in a corridor it is the way itself, like everybody's.
+   */
+  function flee(person: Person, dt: number): void {
+    const dx = person.x - observer.x
+    const dy = person.y - observer.y
+    const d = Math.sqrt(dx * dx + dy * dy)
+    if (fleeing && d > farGap) {
+      fleeing = false
+      nearGap = 2 + place() * 2.5
+    } else if (!fleeing && d < nearGap) {
+      fleeing = true
+      farGap = 9 + place() * 12
+    }
+    let heading = Math.atan2(person.gy, person.gx)
+    heading += (place() - 0.5) * (fleeing ? 0.9 : 3) * Math.sqrt(dt) * 2
+    if (!Number.isFinite(halfWidth) && d > 1e-3) {
+      // Away from me, harder the closer I am, and only while running: a child
+      // dawdling is not steering.
+      const away = Math.atan2(dy, dx)
+      let off = away - heading
+      while (off > Math.PI) off -= Math.PI * 2
+      while (off < -Math.PI) off += Math.PI * 2
+      if (fleeing) heading += off * Math.min(1, 4 / Math.max(1, d)) * dt * 2
+    } else {
+      // Along the way, forward: in a corridor nobody runs off sideways.
+      let off = heading
+      while (off > Math.PI) off -= Math.PI * 2
+      while (off < -Math.PI) off += Math.PI * 2
+      heading -= off * dt * 2
+    }
+    person.gx = Math.cos(heading)
+    person.gy = Math.sin(heading)
+    const mine = Math.max(0.6, current.walk)
+    person.preferred = fleeing ? mine * current.flee : mine * 0.2
+  }
+
   function wanted(person: Person, out: { x: number; y: number }): void {
     if (person.companion) {
       // Matching the observer rather than pursuing their own errand. A companion
@@ -947,6 +1033,7 @@ export function createThrong(settings: Settings, observer: Observer) {
     for (let i = 0; i < people.length; i++) {
       const person = people[i]!
 
+      if (person.quarry) flee(person, dt)
       desired(person, want)
 
       force.x = (want.x - person.vx) * RETURN
@@ -1088,7 +1175,7 @@ export function createThrong(settings: Settings, observer: Observer) {
 
       // A companion is never re-entered: being the one person still there in a
       // minute's time is the whole of what they are.
-      if (!person.companion) {
+      if (!person.companion && !person.quarry) {
         const ndx = person.x - observer.x
         const ndy = person.y - observer.y
         if (ndx * ndx + ndy * ndy > worldSq) reenter(person)
@@ -1116,6 +1203,11 @@ export function createThrong(settings: Settings, observer: Observer) {
   regroup()
   pairUp()
   hash()
+
+  function quarryDistance(): number {
+    const runaway = people.find((person) => person.quarry)
+    return runaway ? Math.hypot(runaway.x - observer.x, runaway.y - observer.y) : 0
+  }
 
   /** Scratch for `neighbours`, reused: this is called twice per step. */
   const found: Person[] = []
@@ -1148,6 +1240,11 @@ export function createThrong(settings: Settings, observer: Observer) {
 
     get halfWidth() {
       return halfWidth
+    },
+
+    /** The one in red, if there is one. */
+    get quarry(): Person | null {
+      return people.find((person) => person.quarry) ?? null
     },
 
     /** The line the way follows, so the observer walks the same bends the crowd does. */
@@ -1241,6 +1338,7 @@ export function createThrong(settings: Settings, observer: Observer) {
         companions: withMe,
         watchers: watching,
         teams: current.team >= 2 ? groups.length : 0,
+        quarry: quarryDistance(),
         minRadius: path.minRadius,
         steepestClimb: path.steepestClimb,
         closest: Number.isFinite(closest) ? closest : 0,
