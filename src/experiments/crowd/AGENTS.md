@@ -393,6 +393,40 @@ So this is a rejected approach rather than an unbuilt one. If it is ever
 revisited, the thing to preserve is that no landmark stays in frame long enough
 to be navigated by.
 
+## The structured crowd: a lining, a path, teams
+
+Added 2026-09-25 for the parade, teams and trail scenes. **Everything in it is
+off at the values every older preset states** — `lining: 0`, `bend: 0`,
+`climb: 0`, `team: 0` — and the old placement and re-entry are kept verbatim
+for that case (`structured` in `throng.ts`), because every measurement in this
+file was taken on them. Do not generalise that branch away without re-measuring.
+
+- **Watchers are a role, not a mood.** A watcher is always standing, is only
+  re-entered into the lining, and is held there by walls on both sides. They
+  are sorted to the end of `people`, and two things depend on it: a group is a
+  contiguous run of walkers, and companions are the first few people. Anything
+  that reorders `people` in a lined scene has to keep that partition.
+- **A heading is held in the path's frame.** `desired()` turns it onto the path
+  at the person's `x`. On a straight path that is the identity and is skipped.
+- **On a narrow trail the walls steer everybody round the bends on their own**,
+  so "is the crowd moving along the path" cannot tell the rotation from its
+  absence — that check was watched passing with the rotation deleted. What the
+  walls cannot do is spread people across the way: a crowd shoved round a bend
+  rides its outside edge. `tests/unit/crowd/structure.test.ts` asserts on that,
+  0.47 of the half-width from the centre with the rotation against 0.64 without.
+- **On level ground a winding trail is invisible from inside it.** Every head
+  is within a metre of eye height, so the whole line collapses onto the horizon
+  and its bends are only a spread from left to right. That is why `climb`
+  exists: relief lifts the far bends off the horizon. The ground is added to the
+  eye and to every head, and nowhere else — the simulation is still 2D.
+- **`effort` is Tobler's hiking function and it takes a minute to show.** The
+  concertina — density on climbs over density on descents — was 1.3 at forty
+  seconds and 2.1 at seventy-five, against 0.8 with it off. A shorter test would
+  read the mechanism as weak.
+- **Past three companions the slots are a team block with me in the back row**
+  (`teamSlots`), which keeps the rule above: nobody behind me. `companions`'
+  address slot was retired and re-appended when its range grew from 3 to 15.
+
 ## What is not here, and would be worth having
 
 - **Nobody is going anywhere in particular.** People carry a heading, not a

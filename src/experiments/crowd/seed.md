@@ -195,3 +195,35 @@ left open:
 > through a forest. the trail is seen by the shape of the crowd following it.
 > again, like in crowd experiment, we're only seeing people and here we're
 > seeing the shape of the world by the space people occupy or not.
+
+### What I did with it, and what I could not decide
+
+**Built into `crowd` rather than as a new piece**, as presets — _parade_,
+_teams_, _the trail_, _fire trail_ — behind new settings under **route**
+(`lining`, `watchers`, `bend`, `meander`, `climb`, `hills`, `effort`) and a
+`team` size under **crowd**. The reason is reversibility, not a view on which is
+right: every one of the three is the existing corridor generalised, so this was
+the fastest way to something he could drive, and splitting the presets out into
+a piece of their own later is a copy, whereas merging two pieces is not. **Which
+it should be is his question and is still open.**
+
+Questions I could not answer, and what I assumed:
+
+- **A trail on level ground does not show its shape from eye height.** Every
+  head sits on the horizon, so the bends are only a left-right spread. I added
+  relief (`climb`) so the far bends lift off the horizon, and Tobler's hiking
+  function (`effort`) so the crowd bunches on climbs. Both are sliders and the
+  trail presets use them; set `climb` to 0 to see the level version. Is the
+  ground allowed to rise, given the brief said "we're only seeing people"?
+  Nothing but people is drawn — the hill is only where the heads are.
+- **Is the parade's walking stream too sparse?** At 30/100m² on a 10 m road it
+  is a procession rather than a march. `density` moves it.
+- **Teams are spaced at random, not evenly.** A parade of delegations has
+  regular gaps; these have the gaps random placement gives, and teams at
+  slightly different speeds close up over a long walk. An even spacing would be
+  a new mechanism — say if it matters.
+- **Do the watchers want to face or follow the parade?** A head gives away
+  nothing about which way it is turned (see `AGENTS.md`), so they do not; that
+  is the piece's existing constraint rather than a new one.
+- **The showcase is unaffected.** Published crowd scenes are pinned to frozen
+  runners; nothing here asks them to move.
