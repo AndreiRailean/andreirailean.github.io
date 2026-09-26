@@ -63,10 +63,11 @@ export type WallEntry = {
  * crossing pieces tears one down and mounts another. Judged worth it, and the
  * order is a source edit away from any other opinion.
  *
- * **Crowd's `keep left` leads, on the rule Bubbles and Embers led on:
- * `/showcase/` is entry zero and that is the newest published scene.** Andrei
- * chose it with `parade` and `teams`, which are woven further down. Bubbles
- * follows it.
+ * **Crowd's `catch me` leads, on the rule Bubbles and Embers led on:
+ * `/showcase/` is entry zero and that is the newest published scene.** It is
+ * also the piece's primary. `keep left` follows it, and `parade`, `teams`,
+ * `runner` and `street run` are woven further down. Bubbles comes after
+ * `keep left`.
  *
  * **Bubbles led before it, on the rule Embers led on.** Embers is second and its own argument is
  * unchanged — its piece has moved further since it was pinned than any of its
@@ -87,9 +88,9 @@ export type WallEntry = {
  * whole; this one arrived with eleven presets of which several exist to
  * demonstrate a control rather than to be looked at, and Andrei named the five.
  *
- * **Crowd's structured scenes are the second selection**: of the five added
- * after it was seeded — parade, teams, two trails and keep left — Andrei named
- * three. The six it was seeded with are all here.
+ * **Crowd's later scenes are the second selection**: of the ten added after it
+ * was seeded, Andrei named six — catch me, keep left, parade, teams, runner and
+ * street run. The six it was seeded with are all here.
  *
  * **Of the rest, twenty-nine of the pieces' thirty seeded presets are here.** The one missing is
  * Psyxels' `maker`, the only scene in any piece whose subject is a photograph
@@ -100,13 +101,22 @@ export type WallEntry = {
  */
 export const WALL: readonly WallEntry[] = [
   {
+    id: "crowd-catch-me",
+    title: "catch me",
+    piece: "crowd",
+    pieceTitle: "Crowd",
+    note: "A market whose stalls nobody can see, and one person in red I am trying to catch. They duck round corners and wait for me to nearly reach them; my eyes go between them and the way ahead. The red head looks like the subject for a moment — the subject is whoever is doing the chasing.",
+    runner: "crowd.9810eb51f4a2.js",
+    scene: "_-__7___QF8syctZLJ4JCqihtGAAAo-hVSe4AABoAAkABQ6oCkAABQ4",
+  },
+  {
     id: "crowd-keep-left",
     title: "keep left",
     piece: "crowd",
     pieceTitle: "Crowd",
     note: "A two-way trail winding over a hill, and everybody keeps left — my stream on one half, the people coming towards me on the other. Nothing draws the trail. It is the shape the crowd makes following it, two ribbons of heads running off into the distance and lifting over the rise.",
-    runner: "crowd.2efce767655c.js",
-    scene: "____735PyMkFCUscwCYskojwxQAKJef8gDAA8aAMOFAo",
+    runner: "crowd.9810eb51f4a2.js",
+    scene: "_-__7___QE_IyQUJSxwJiySiPDFAAol5_yAMADxoAw4UCgwoACgAAA4",
   },
   {
     id: "bubbles-time-bubbles",
@@ -204,8 +214,8 @@ export const WALL: readonly WallEntry[] = [
     piece: "crowd",
     pieceTitle: "Crowd",
     note: "Walking in a parade, at the pace of everybody around me, with a crowd three deep standing on both kerbs to watch it pass. The stationary crowd is what moves.",
-    runner: "crowd.2efce767655c.js",
-    scene: "____7347yAEFAeqc0CYssodXwOAKKNecAONIAaAAJABU",
+    runner: "crowd.9810eb51f4a2.js",
+    scene: "_-__7___QDvIAQUB6pwJiyyh1fA4Aoo15wA40gBoAAkAFQ0oACgAAA4",
   },
   {
     id: "bubbles-foam",
@@ -271,6 +281,15 @@ export const WALL: readonly WallEntry[] = [
     scene: "____fwAAdiEOCQSgCAAAIvIaAEwfKEJSZEwZgCwEY",
   },
   {
+    id: "crowd-runner",
+    title: "runner",
+    piece: "crowd",
+    pieceTitle: "Crowd",
+    note: "A two-way trail winding over a hill, both streams keeping to their sides — and me the only one running, down the gap between them, my stream falling back towards me and the other coming at me twice as fast.",
+    runner: "crowd.9810eb51f4a2.js",
+    scene: "_-__7___QE_IyQUJSxwJixiiPDAUApFxryAUADxoAw4UCiApQCgAAA4",
+  },
+  {
     id: "starry-night-clay",
     title: "clay",
     piece: "starry-night",
@@ -303,8 +322,8 @@ export const WALL: readonly WallEntry[] = [
     piece: "crowd",
     pieceTitle: "Crowd",
     note: "The parade thinned out into teams — blocks of ten walking together, spaced along the way with empty road between, and me at the back of one of them.",
-    runner: "crowd.2efce767655c.js",
-    scene: "____734JyAKAAgmcyCgssoda5GAKOtNhASNIAaKAJAJU",
+    runner: "crowd.9810eb51f4a2.js",
+    scene: "_-__7___QAnIAoACCZwKCyyh1rkYAo602EBI0gBooAkAlQyoACgAAA4",
   },
   {
     id: "bubbles-ring-breathing",
@@ -323,6 +342,15 @@ export const WALL: readonly WallEntry[] = [
     note: "A script ampersand, held still and lit from within: no frame changes at all, only breathing.",
     runner: "psyxels.3d3ba1c0d12f.js",
     scene: "______9AnD0ZGwGJitjvH5woAWmBngBcAfshQdgBaK6djtJUxyI2Q",
+  },
+  {
+    id: "crowd-street-run",
+    title: "street run",
+    piece: "crowd",
+    pieceTitle: "Crowd",
+    note: "Running with three others at my shoulder down a street that bends and straightens, a standing crowd on both kerbs the whole way.",
+    runner: "crowd.9810eb51f4a2.js",
+    scene: "_-__7___QADIAAACCZwKCySh2RBQApYMmsAg0FBQAAkANR4oACgAAA4",
   },
   {
     id: "walkers-busy",
