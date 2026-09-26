@@ -141,6 +141,67 @@ html[data-idle="true"] #ui {
   display: none;
 }
 
+/*
+ * The split layout — `layout: "split"` in `createControls`, #223.
+ *
+ * Presets down the left edge in columns of five, the actions and `adjust` top
+ * right with the panel opening beneath them, `about` alone bottom right.
+ *
+ * `#ui` spans the window so the three can sit in its corners, and **takes no
+ * pointer itself** — it would otherwise cover the piece. Each corner takes the
+ * pointer back, which means each has to give it up again while idle: the idle
+ * rule above only reaches `#ui`, and a child's own `pointer-events: auto`
+ * beats an inherited `none`. Without the second rule the hidden chrome would
+ * still swallow clicks.
+ */
+#ui[data-layout="split"] {
+  inset: 1.25rem;
+  display: block;
+  pointer-events: none;
+}
+
+#ui[data-layout="split"] > * {
+  position: absolute;
+  pointer-events: auto;
+}
+
+html[data-idle="true"] #ui[data-layout="split"] > * {
+  pointer-events: none;
+}
+
+#ui[data-layout="split"] .presets {
+  top: 0;
+  left: 0;
+  display: grid;
+  grid-template-rows: repeat(5, auto);
+  grid-auto-columns: max-content;
+  grid-auto-flow: column;
+  gap: 0.35rem;
+}
+
+#ui[data-layout="split"] .preset {
+  text-align: left;
+}
+
+#ui[data-layout="split"] .bar {
+  top: 0;
+  right: 0;
+}
+
+/* Beneath the bar, and short of the corner `about` holds. `max-height` is the
+   content box, so the panel's own padding and border (about 1.6rem) come on
+   top of it — measured, it overran `about` by 14px without them. */
+#ui[data-layout="split"] .panel {
+  top: 2.4rem;
+  right: 0;
+  max-height: calc(100vh - 2.5rem - 2.4rem - 2.6rem - 1.6rem);
+}
+
+#ui[data-layout="split"] > .about {
+  right: 0;
+  bottom: 0;
+}
+
 #ui .group {
   margin-top: 0.5rem;
   color: var(--ui-heading, rgb(255 255 255 / 34%));

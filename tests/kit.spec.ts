@@ -16,7 +16,18 @@ import { expect, openExperiment, test } from "./support/experiment.ts"
 const PIECES = ["bubbles", "crowd", "dangler", "embers", "flotsam", "psyxels", "starry-night", "walkers"]
 
 for (const slug of PIECES) {
-  test(`${slug}: the panel opens above the bar, not below it`, async ({ page }) => {
+  /**
+   * **Two layouts, each with its own contract** — `layout` in `createControls`,
+   * #223. The default bar sits bottom right and the panel grows upward out of
+   * it. `"split"` puts the bar top right, so the panel opens downward beneath
+   * it and must stop short of `about`, which has the bottom-right corner to
+   * itself. Asserted per layout rather than loosened to either, so neither can
+   * drift into the other's shape unnoticed.
+   */
+  const layoutOf = (page: Parameters<typeof openExperiment>[0]) =>
+    page.evaluate(() => document.querySelector("#ui")?.getAttribute("data-layout") ?? "bar")
+
+  test(`${slug}: the panel opens away from the bar's corner`, async ({ page }) => {
     const experiment = await openExperiment<BaseApi>(page, slug, { idle: false })
     await experiment.api(({ api }) => api.panel(true))
 
@@ -24,18 +35,32 @@ for (const slug of PIECES) {
     const bar = await page.locator(".bar").boundingBox()
     if (!panel || !bar) throw new Error(`${slug}: no chrome on the page`)
 
-    // The bar is what is anchored to the corner; the panel grows upward from it.
-    // Starry Night used to do the opposite, which nobody had decided.
-    expect(panel.y + panel.height).toBeLessThanOrEqual(bar.y + 1)
+    if ((await layoutOf(page)) === "split") {
+      const about = await page.locator("#ui > .about").boundingBox()
+      if (!about) throw new Error(`${slug}: split, and no about in its corner`)
+      expect(panel.y, `${slug}: the panel is not beneath the bar`).toBeGreaterThanOrEqual(bar.y + bar.height - 1)
+      expect(panel.y + panel.height, `${slug}: the panel runs over about`).toBeLessThanOrEqual(about.y + 1)
+    } else {
+      // The bar is what is anchored to the corner; the panel grows upward from it.
+      // Starry Night used to do the opposite, which nobody had decided.
+      expect(panel.y + panel.height).toBeLessThanOrEqual(bar.y + 1)
+    }
   })
 
-  test(`${slug}: the bar ends with adjust, then the way to the note`, async ({ page }) => {
+  test(`${slug}: the bar ends with adjust, and the note is reachable`, async ({ page }) => {
     await openExperiment<BaseApi>(page, slug, { idle: false })
 
     const labels = await page.locator(".bar button, .bar a").allTextContents()
-    expect(labels.slice(-2)).toEqual(["adjust", "about"])
-    // Presets are numbered from one and lead the bar, because the digits load them.
-    expect(labels[0]).toMatch(/^1 /)
+    if ((await layoutOf(page)) === "split") {
+      expect(labels.at(-1)).toBe("adjust")
+      await expect(page.locator("#ui > .about")).toHaveText("about")
+      // Presets are numbered from one and lead their column, because the digits load them.
+      expect((await page.locator("#ui .presets .preset").allTextContents())[0]).toMatch(/^1 /)
+    } else {
+      expect(labels.slice(-2)).toEqual(["adjust", "about"])
+      // Presets are numbered from one and lead the bar, because the digits load them.
+      expect(labels[0]).toMatch(/^1 /)
+    }
   })
 
   test(`${slug}: c opens the panel, Escape closes it, and a digit loads a preset`, async ({ page }) => {
@@ -68,7 +93,7 @@ for (const slug of PIECES) {
     const shown = () => page.evaluate(() => document.documentElement.dataset.preset)
 
     const titles = await page
-      .locator(".bar button.preset")
+      .locator("#ui button.preset")
       .evaluateAll((buttons) => buttons.map((b) => b.getAttribute("title") ?? ""))
     const claims = titles.flatMap((title, index) => {
       const key = /\(key ([^,)]+)/.exec(title)?.[1]
