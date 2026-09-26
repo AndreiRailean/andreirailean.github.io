@@ -494,6 +494,24 @@ distracted child is about to fall over".
   with the gait rather than at a speed of its own. Every multiplier is 1 at a
   walk, which is why no walking scene moved.
 
+## Being caught, and keeping them in sight
+
+- **A turn chosen at a crossing is finished outside it.** At a run the body
+  takes most of an aisle to come round, so a runaway came out of a crossing
+  facing a stall and stayed there — 172 seconds on seed 2222, with me pressed
+  behind them. `keepToAisle` lays any heading that crosses its own aisle back
+  along it, for everybody; the runaway does the same inside `flee`.
+- **Caught is a state** (`caughtFor`): within 1.1 m we both stand for 2.5–5 s,
+  then they bolt away along their aisle with a head start. In 40% of their
+  waits they do not notice me coming (`CAUGHT_SHARE`), which is what makes
+  catches happen at all against a runaway faster than me.
+- **Glances alone cannot keep somebody in view at a run**, because the head
+  rests straight ahead between them and at a run that is most of the time:
+  0.56–0.61 in view with three glances in four going to them. Resting the head
+  toward them between glances (`REST_ON_QUARRY`) took it to 0.85–0.89 while the
+  body's heading stayed off them — 16–24% of the time within 5° of my course,
+  so the crosshair did not come back.
+
 ## What is not here, and would be worth having
 
 - **Nobody is going anywhere in particular.** People carry a heading, not a

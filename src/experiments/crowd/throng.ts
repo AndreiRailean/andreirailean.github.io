@@ -141,6 +141,15 @@ function teamSlots(mates: number): (readonly [number, number])[] {
   return slots
 }
 
+/** Metres. Close enough that I have caught the person in red: an arm's reach and a body. */
+const CAUGHT_AT = 1.1
+
+/** Share of their waits in which they do not notice me coming, so the chase ends in a catch. */
+const CAUGHT_SHARE = 0.4
+
+/** Seconds we stand together once caught, before they bolt again. */
+const CAUGHT_FOR = [2.5, 5]
+
 /** How firmly a companion holds their place, per second squared. Stiffer than a crowd group's. */
 const COMPANION_SPRING = 3.4
 
@@ -503,6 +512,7 @@ export function createThrong(settings: Settings, observer: Observer) {
     // ahead so the chase starts in view rather than across the square.
     if (current.chase > 0 && walkers > wanted) {
       fleeing = true
+      caughtFor = 0
       farGap = 9 + place() * 12
       const runaway = people[wanted]!
       runaway.quarry = true
@@ -1008,6 +1018,7 @@ export function createThrong(settings: Settings, observer: Observer) {
    * corner.
    */
   function turnAtCrossing(person: Person, i: number): void {
+    keepToAisle(person, i)
     const crossing = stalls.junction(person.x, person.y)
     if (crossing < 0 || crossing === person.junction) return
     person.junction = crossing
@@ -1026,8 +1037,46 @@ export function createThrong(settings: Settings, observer: Observer) {
     person.gy = gx * side
   }
 
+  /**
+   * Re-aim anybody whose heading does not fit the aisle they are in.
+   *
+   * **A turn chosen at a crossing is finished outside it.** At a run the body
+   * takes most of an aisle's width to come round, so a runaway who decided at
+   * the edge of a crossing came out of the far side facing across the next
+   * stretch — straight into a stall, where they stayed. Measured on one seed:
+   * pinned for 172 seconds with me half a metre behind, which is the
+   * "wrestling" Andrei saw. So a heading that crosses its own aisle is laid
+   * back along it, whichever way along is nearer to where they were facing.
+   */
+  function keepToAisle(person: Person, i: number): void {
+    const runs = stalls.runs(person.x, person.y)
+    if (runs === 3 || runs === 0) return
+    const group = person.group >= 0 ? groups[person.group]! : null
+    if (group && indexInGroup(i) !== 0) return
+    const hx = group ? group.hx : person.gx
+    const hy = group ? group.hy : person.gy
+    const along = runs === 1 ? Math.abs(hx) : Math.abs(hy)
+    if (along > 0.7) return
+    const nx = runs === 1 ? (hx >= 0 ? 1 : -1) : 0
+    const ny = runs === 2 ? (hy >= 0 ? 1 : -1) : 0
+    if (group) {
+      group.hx = nx
+      group.hy = ny
+    } else {
+      person.gx = nx
+      person.gy = ny
+    }
+  }
+
   /** Whether the person in red is running off, or dawdling and letting me close. */
   let fleeing = true
+  /**
+   * Seconds left of being caught, or 0. **Being caught is a state of its own**:
+   * "if i catch them we can stand together for a little bit, then they run away
+   * and I chase them again. tom and jerry style." Without it a catch was a
+   * runaway dawdling beside me while I circled them, which read as wrestling.
+   */
+  let caughtFor = 0
   /** How far they run before stopping, and how close they let me get before running again. Redrawn each time. */
   let farGap = 14
   let nearGap = 3
@@ -1053,9 +1102,33 @@ export function createThrong(settings: Settings, observer: Observer) {
     const dx = person.x - observer.x
     const dy = person.y - observer.y
     const d = Math.sqrt(dx * dx + dy * dy)
+    // Caught: stand together, then bolt with a head start. The bolt goes down
+    // whichever way along their aisle is further from me.
+    if (caughtFor > 0) {
+      caughtFor -= dt
+      person.preferred = 0
+      if (caughtFor <= 0) {
+        caughtFor = 0
+        fleeing = true
+        farGap = 9 + place() * 12
+        const away = Math.atan2(dy, dx)
+        const quarter = Math.PI / 2
+        const heading = stalls.active ? Math.round(away / quarter) * quarter : away
+        person.gx = Math.cos(heading)
+        person.gy = Math.sin(heading)
+        person.preferred = Math.max(0.6, current.walk) * current.flee * 1.3
+      }
+      return
+    }
+    if (d < CAUGHT_AT) {
+      caughtFor = CAUGHT_FOR[0] + place() * (CAUGHT_FOR[1] - CAUGHT_FOR[0])
+      person.preferred = 0
+      return
+    }
     if (fleeing && d > farGap) {
       fleeing = false
-      nearGap = 2 + place() * 2.5
+      // Some of the time they do not see me coming, and I catch them.
+      nearGap = place() < CAUGHT_SHARE ? 0 : 2 + place() * 2.5
     } else if (!fleeing && d < nearGap) {
       fleeing = true
       farGap = 9 + place() * 12
@@ -1090,6 +1163,15 @@ export function createThrong(settings: Settings, observer: Observer) {
       }
       person.gx = Math.cos(heading)
       person.gy = Math.sin(heading)
+      // Laid back along the aisle if a turn has carried them past the crossing.
+      const runs = stalls.runs(person.x, person.y)
+      if (runs === 1 && Math.abs(person.gx) < 0.7) {
+        person.gx = person.gx >= 0 ? 1 : -1
+        person.gy = 0
+      } else if (runs === 2 && Math.abs(person.gy) < 0.7) {
+        person.gx = 0
+        person.gy = person.gy >= 0 ? 1 : -1
+      }
       const mine = Math.max(0.6, current.walk)
       person.preferred = fleeing ? mine * current.flee : mine * 0.2
       return
@@ -1397,6 +1479,11 @@ export function createThrong(settings: Settings, observer: Observer) {
     /** The stalls, so I walk round the same ones everybody else does. */
     get stalls() {
       return stalls
+    },
+
+    /** Whether I have just caught the one in red, and we are standing together. */
+    get caught(): boolean {
+      return caughtFor > 0
     },
 
     /** The one in red, if there is one. */

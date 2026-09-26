@@ -47,6 +47,11 @@ export type Stalls = {
   blocked: (x: number, y: number, margin: number) => boolean
   /** Which aisle crossing a point is standing in, as an id, or −1 between crossings. */
   junction: (x: number, y: number) => number
+  /**
+   * Which way the aisle under a point runs: 1 along x, 2 along y, 3 at a
+   * crossing where both do, 0 inside a stall or an open square's middle.
+   */
+  runs: (x: number, y: number) => number
 }
 
 const NONE: Stalls = {
@@ -56,6 +61,7 @@ const NONE: Stalls = {
   push: () => {},
   blocked: () => false,
   junction: () => -1,
+  runs: () => 3,
 }
 
 /** A cheap integer hash to [0, 1), so each block has a fixed size of its own. */
@@ -135,6 +141,11 @@ export function createStalls(coverage: number, aisle: number, seed: number): Sta
     },
     blocked(x, y, margin) {
       return nearest(x, y).d < margin
+    },
+    runs(x, y) {
+      const inX = Math.abs(y - Math.round(y / period) * period) <= aisle / 2
+      const inY = Math.abs(x - Math.round(x / period) * period) <= aisle / 2
+      return (inX ? 1 : 0) + (inY ? 2 : 0)
     },
     junction(x, y) {
       const i = Math.round(x / period)

@@ -348,3 +348,24 @@ them and how many glances they get.
 > the right. i can't quite tell whether we're walking together or we're
 > wrestling. i think if i catch them we can stand together for a little bit,
 > then they run away and I chase them again. tom and jerry style
+
+## 2026-09-26 — occlusion
+
+> i think what this experiment really needs is some sort of occlusion. dense
+> static people forming a street seem to help build a sense of space, as well as
+> the crowd following in a line. it's the negative space that makes it feel
+> "spacey". market has it's charm, but eventually it looks like structure-less
+> wander among the sea of others, which is what it is. because the scene is
+> deep, no stall-like structure emerges because everything is transparent. too
+> much occlusion kills infinity, but it also brings the "reveal" feeling when
+> something appears that couldn't be seen before. seeing the line of people
+> disappearing around the bend and then coming onto a clearing that shows how
+> far the line goes could help bring more visual variety to a scene. let me know
+> if this is something that needs its own session.
+
+Not built in the session that received it; see the reply there. What it would
+take, for whoever picks it up: the stalls (`stalls.ts`) and a trail's edges are
+already geometry nobody draws, so occlusion is a line-of-sight test from the eye
+to each head against them — heads behind a stall or a bank of trees are not
+drawn. The reveal he describes needs occluders beside a bending trail (trees,
+a hillside) that end at a clearing, which the trail does not yet have.

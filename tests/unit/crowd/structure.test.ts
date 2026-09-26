@@ -484,3 +484,57 @@ describe("chasing through the stalls", () => {
     expect(crowdIn / crowdN).toBeLessThan(0.02)
   })
 })
+
+describe("catching them", () => {
+  /**
+   * Seed 2222 is the one that stuck: a runaway pinned against a stall for 172
+   * seconds with me half a metre behind — "i can't quite tell whether we're
+   * walking together or we're wrestling". What it should be instead: "if i
+   * catch them we can stand together for a little bit, then they run away and
+   * I chase them again. tom and jerry style."
+   */
+  function chase(patch: Partial<Settings>) {
+    const preset = PRESETS.find((p) => p.label === "catch me")!
+    const settings = normalizeSettings({ ...preset.settings, density: 12, reach: 40, seed: 2222, ...patch })
+    const me = createStroll(settings, settings.seed)
+    const crowd = createThrong(settings, me)
+    let catches = 0
+    let was = false
+    let stuck = 0
+    let longestStuck = 0
+    let escapedAfterCatch = false
+    let samples = 0
+    let inView = 0
+    for (let step = 0; step < 240 * 120; step++) {
+      me.step(STEP, crowd)
+      crowd.step(STEP)
+      const runaway = crowd.quarry!
+      if (crowd.caught && !was) catches++
+      was = crowd.caught
+      if (catches > 0 && !crowd.caught && crowd.stats().quarry > 6) escapedAfterCatch = true
+      const trapped = !crowd.caught && runaway.preferred > 1 && Math.hypot(runaway.vx, runaway.vy) < 0.4
+      stuck = trapped ? stuck + 1 : 0
+      longestStuck = Math.max(longestStuck, stuck)
+      if (step < 10 * 120 || step % 30 !== 0) continue
+      samples++
+      const bearing = Math.atan2(runaway.y - me.y, runaway.x - me.x) - me.yaw
+      if (Math.abs(Math.atan2(Math.sin(bearing), Math.cos(bearing))) < 0.54) inView++
+    }
+    return { catches, escapedAfterCatch, longestStuck: longestStuck * STEP, inView: inView / samples }
+  }
+
+  it("catches them, stands with them, and they get away again — never wrestling", () => {
+    const run = chase({})
+    expect(run.catches).toBeGreaterThan(0)
+    expect(run.escapedAfterCatch).toBe(true)
+    expect(run.longestStuck).toBeLessThan(2)
+  })
+
+  it("keeps them in sight most of the time, and only because of the chase", () => {
+    // The control is the same chase at a quarter of the strength, where the
+    // head barely leans toward them: measured about 0.6 at full strength
+    // before the head rested on them, and 0.85-0.89 with it.
+    expect(chase({}).inView).toBeGreaterThan(0.75)
+    expect(chase({ chase: 0.25 }).inView).toBeLessThan(0.7)
+  })
+})

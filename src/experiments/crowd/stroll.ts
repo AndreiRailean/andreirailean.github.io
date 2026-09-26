@@ -300,6 +300,12 @@ const SPOT_AHEAD = [3.2, 8]
  */
 const SPOT_BEARING_MIN = 0.65
 
+/** How far toward the person in red my head rests between glances, at full `chase`. Not all the way: eyes on them, not locked. */
+const REST_ON_QUARRY = 0.85
+
+/** Radians. Further off my line of sight than this and I have lost sight of the person in red. About half a field of view. */
+const LOST_SIGHT = 0.5
+
 /** Seconds between notes of where the person in red is. At a run, about a metre and a half apart. */
 const CRUMB_EVERY = 0.5
 
@@ -370,6 +376,8 @@ export type Neighbourhood = {
   quarry: Person | null
   /** The stalls, which I walk round like anybody. */
   stalls: Stalls
+  /** Whether I have just caught the one in red, and we are standing together. */
+  caught: boolean
 }
 
 export type Stroll = ReturnType<typeof createStroll>
@@ -569,11 +577,15 @@ export function createStroll(settings: Settings, seed: number) {
     // **The one I am chasing takes glances first**, as many as `chase` gives
     // them — keeping somebody in sight is what a chase is — and the rest of the
     // gaze is shared out below exactly as it was.
+    // **A chase is mostly looking at who you are chasing.** "the chaser isn't
+    // focusing on the chasee as much as they should." Three in four glances at
+    // full `chase`, and held nearly as long running as walking — the running
+    // gaze shortens glances at scenery, and the person in red is not scenery.
     const runaway = crowd.quarry
-    if (runaway && current.chase > 0 && rng() < 0.55 * current.chase) {
+    if (runaway && current.chase > 0 && (crowd.caught || rng() < 0.75 * current.chase)) {
       return {
         look: { kind: "person", person: runaway, wide: NECK_LIMIT },
-        hold: between(HOLD_STOPPED, rng()) * brief,
+        hold: between(HOLD_STOPPED, rng()) * (1 - 0.2 * run),
       }
     }
 
@@ -747,7 +759,8 @@ export function createStroll(settings: Settings, seed: number) {
         aim -= off * 1.4 * dt
       }
     }
-    const wanted = walking ? current.walk * hikingPace(grade, current.effort) : 0
+    // Caught: we stand together until they bolt.
+    const wanted = walking && !crowd.caught ? current.walk * hikingPace(grade, current.effort) : 0
     const desiredX = Math.cos(aim) * wanted
     const desiredY = Math.sin(aim) * wanted
 
@@ -854,6 +867,19 @@ export function createStroll(settings: Settings, seed: number) {
         glanceUp = 0
       }
     } else {
+      // **Between glances, a chaser's eyes rest on who they are chasing.** The
+      // rest state is otherwise straight ahead, which at a run is most of the
+      // time — so glances alone kept the person in red in view little more than
+      // half of it, however many went to them. Now the head leans toward them
+      // by `chase` of the way, the body keeps to its path, and every other
+      // glance is a short departure from them rather than from the road.
+      const runaway = crowd.quarry
+      if (runaway && current.chase > 0) {
+        const toward = aimAt({ kind: "person", person: runaway, wide: NECK_LIMIT })
+        const share = toward.worth ? REST_ON_QUARRY * current.chase : 0
+        glanceTo = toward.yaw * share
+        glanceUp = toward.up * share
+      }
       untilGlance -= dt
       if (untilGlance <= 0) {
         const pick = pickGlance(crowd, Math.min(sweep, NECK_LIMIT))
@@ -868,6 +894,14 @@ export function createStroll(settings: Settings, seed: number) {
         // And longer between glances when running: more of the run is spent
         // simply looking where it is going.
         untilGlance = holdLeft + between(gap, rng()) * (1 + 0.8 * runMix)
+        // Lost sight of them: the next look comes sooner, and it is at them.
+        const runaway = crowd.quarry
+        if (runaway && current.chase > 0 && look.kind !== "person") {
+          const bearing = Math.atan2(runaway.y - y, runaway.x - x) - yaw
+          if (Math.abs(Math.atan2(Math.sin(bearing), Math.cos(bearing))) > LOST_SIGHT) {
+            untilGlance = holdLeft + between(gap, rng()) * 0.3
+          }
+        }
       }
     }
 
