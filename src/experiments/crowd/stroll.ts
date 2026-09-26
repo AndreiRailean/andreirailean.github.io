@@ -299,6 +299,9 @@ const SPOT_AHEAD = [3.2, 8]
  */
 const SPOT_BEARING_MIN = 0.65
 
+/** How far ahead a running glance at a spot lands, in metres. Far enough that the world is not rushing past it. */
+const SPOT_FAR = [18, 45]
+
 /**
  * Seconds an overhead look is held, and how far off the thing being watched is.
  *
@@ -524,6 +527,16 @@ export function createStroll(settings: Settings, seed: number) {
     const sin = Math.sin(course)
     const roll = rng()
 
+    // **Running narrows the gaze.** "It is much harder to run and follow birds
+    // right over your head - the world is moving too fast past me and
+    // accidents are more likely." A runner looks where they are going and a
+    // long way ahead: glances get shorter, the sky and the ground at your feet
+    // mostly drop out, and what is left is looked at far off. `run` is the
+    // same easing the bob uses, so the gaze changes with the gait and not at
+    // a speed of its own.
+    const run = runMix
+    const brief = 1 - 0.55 * run
+
     // **A conversation is most of where the head goes when there is one.** A
     // companion is reachable with the whole neck rather than the walking sweep,
     // because turning to talk to somebody beside you is exactly the movement the
@@ -542,17 +555,24 @@ export function createStroll(settings: Settings, seed: number) {
     // gaze is shared out below exactly as it was.
     const runaway = crowd.quarry
     if (runaway && current.chase > 0 && rng() < 0.55 * current.chase) {
-      return { look: { kind: "person", person: runaway, wide: NECK_LIMIT }, hold: between(HOLD_STOPPED, rng()) }
+      return {
+        look: { kind: "person", person: runaway, wide: NECK_LIMIT },
+        hold: between(HOLD_STOPPED, rng()) * brief,
+      }
     }
 
     const pCompanion = mates.length > 0 ? SHARE_COMPANION : 0
     if (mates.length > 0 && roll < pCompanion) {
       const mate = mates[Math.floor(rng() * mates.length)]!
-      return { look: { kind: "person", person: mate, wide: NECK_LIMIT }, hold: between(HOLD_STOPPED, rng()) }
+      return { look: { kind: "person", person: mate, wide: NECK_LIMIT }, hold: between(HOLD_STOPPED, rng()) * brief }
     }
 
     // Something overhead, followed rather than stared at. See `HOLD_UP`.
-    if (roll < pCompanion + SHARE_UP) {
+    // The sky's share goes almost entirely when running; its probability falls
+    // through to the spots below rather than to the sky, which is the chained
+    // roll done the safe way — the boundaries are built from the shares.
+    const pUp = SHARE_UP * (1 - 0.9 * run)
+    if (roll < pCompanion + pUp) {
       const range = between(UP_RANGE, rng())
       const bearing = course + (rng() - 0.5) * 1.4
       const heading = rng() * Math.PI * 2
@@ -568,29 +588,33 @@ export function createStroll(settings: Settings, seed: number) {
           vz: (rng() - 0.55) * 1.6,
           wide: NECK_LIMIT,
         },
-        hold: between(HOLD_UP, rng()),
+        hold: between(HOLD_UP, rng()) * brief,
       }
     }
 
     // Something on the ground, or on it: a stall, a dog, a stone, the paving two
     // metres in front of your feet. All the same thing — a point that does not
     // move — and half of them are the ground itself.
-    if (roll < pCompanion + SHARE_UP + SHARE_SPOT) {
-      const range = between(SPOT_AHEAD, rng())
-      const spread = Math.min(NECK_LIMIT, Math.max(SPOT_BEARING_MIN, sweep))
+    if (roll < pCompanion + pUp + SHARE_SPOT) {
+      // Walking, a spot is a stone at your feet or a stall beside you. Running,
+      // it is something far down the way: at head height, tens of metres off,
+      // and near the line you are running on.
+      const near = between(SPOT_AHEAD, rng())
+      const range = near + (between(SPOT_FAR, rng()) - near) * run
+      const spread = Math.min(NECK_LIMIT, Math.max(SPOT_BEARING_MIN, sweep)) * (1 - 0.6 * run)
       const bearing = course + (rng() - 0.5) * 2 * spread
       return {
         look: {
           kind: "spot",
           x: x + Math.cos(bearing) * range,
           y: y + Math.sin(bearing) * range,
-          z: rng() < 0.55 ? 0 : rng() * 1.3,
+          z: rng() < 0.55 * (1 - run) ? 0 : rng() * 1.3 + run * 0.6,
           vx: 0,
           vy: 0,
           vz: 0,
           wide: NECK_LIMIT,
         },
-        hold: between(HOLD_GROUND, rng()),
+        hold: between(HOLD_GROUND, rng()) * brief,
       }
     }
 
@@ -604,7 +628,9 @@ export function createStroll(settings: Settings, seed: number) {
       const dx = person.x - x
       const dy = person.y - y
       const distance = Math.sqrt(dx * dx + dy * dy)
-      if (distance < 0.6 || distance > 14) continue
+      // Somebody about to pass at a run is past before the head has turned, so
+      // a runner looks at who is coming, further off.
+      if (distance < 0.6 + 5 * run || distance > 14) continue
       const ahead = (dx * cos + dy * sin) / distance
       if (ahead < -0.2) continue
       const score = distance * (1.6 - ahead)
@@ -614,7 +640,7 @@ export function createStroll(settings: Settings, seed: number) {
       }
     }
 
-    const hold = between(walking ? HOLD_WALKING : HOLD_STOPPED, rng())
+    const hold = between(walking ? HOLD_WALKING : HOLD_STOPPED, rng()) * brief
     if (!found) return { look: { kind: "ahead" }, hold }
     return { look: { kind: "person", person: found, wide: sweep }, hold }
   }
@@ -787,7 +813,9 @@ export function createStroll(settings: Settings, seed: number) {
         // A conversation has a rhythm to it, so the gaps are shorter when there
         // is somebody to have one with.
         const gap = crowd.companions.length > 0 ? GAP_TALKING : stopped ? GAP_STOPPED : GAP_WALKING
-        untilGlance = holdLeft + between(gap, rng())
+        // And longer between glances when running: more of the run is spent
+        // simply looking where it is going.
+        untilGlance = holdLeft + between(gap, rng()) * (1 + 0.8 * runMix)
       }
     }
 

@@ -404,3 +404,41 @@ describe("the loop", () => {
     expect(crowd.stats().companions).toBe(3)
   })
 })
+
+describe("glancing at a run", () => {
+  /**
+   * "Current glancing model breaks the loop running illusion because it appears
+   * like a distracted child is about to fall over." The same scene walked and
+   * run, so the comparison is the gait alone: measured on the loop, running
+   * took wide head turns from 19.5% of the time to 4.7% and glances up or down
+   * from 10% to under 1%.
+   */
+  function gaze(walk: number) {
+    const preset = PRESETS.find((p) => p.label === "loop run")!
+    const settings = normalizeSettings({ ...preset.settings, watchers: 30, walk })
+    const me = createStroll(settings, settings.seed)
+    const crowd = createThrong(settings, me)
+    const bias = (settings.pitch * Math.PI) / 180
+    let n = 0
+    let wide = 0
+    let steep = 0
+    for (let step = 0; step < 60 * 120; step++) {
+      me.step(STEP, crowd)
+      crowd.step(STEP)
+      if (step < 5 * 120) continue
+      n++
+      const yaw = Math.abs(Math.atan2(Math.sin(me.yaw - me.course), Math.cos(me.yaw - me.course)))
+      if (yaw > (25 * Math.PI) / 180) wide++
+      if (Math.abs(me.pitch - bias) > (10 * Math.PI) / 180) steep++
+    }
+    return { wide: wide / n, steep: steep / n }
+  }
+
+  it("keeps a runner's eyes on the way ahead", () => {
+    const walking = gaze(1.3)
+    const running = gaze(3)
+    expect(running.wide).toBeLessThan(walking.wide * 0.5)
+    expect(running.steep).toBeLessThan(0.02)
+    expect(walking.steep).toBeGreaterThan(running.steep * 3)
+  })
+})
