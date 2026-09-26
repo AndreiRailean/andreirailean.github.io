@@ -517,13 +517,62 @@ distracted child is about to fall over".
   next step caught them again: 55 catches in four minutes on seed 31337.
   `REARM_AT` makes them get 5 m away first.
 
+## Boulders: occlusion by black spheres
+
+Added 2026-09-26, from Andrei's idea on #224: "just another type of circles,
+but much larger and of black colour so the blend in with the background".
+`boulders.ts` places them, `camera.ts` (`sightSphere`) throws their outline and
+`draw.ts` decides what each one hides.
+
+- **A boulder is never seen, only missed**, which is why it does not break the
+  landmark rule below. Painted the ground's black, it has no edge except where
+  the crowd behind it stops. `shade` paints them grey, for finding out what is
+  doing the hiding; at 0 it is the piece.
+- **The outline is the projected grazing ring, not `focal · r / depth`.** The
+  head's shortcut is a third too small for a boulder five metres across at six,
+  and a head hidden by the exact test then vanished in plain view, in the gap
+  between the drawn disc and the true edge. The ring is clipped to the near
+  plane before projecting, so a boulder beside me is a wall at the side of the
+  frame and not a mirrored blob.
+- **Occlusion is per sight line, not painter's order.** A sphere has no single
+  depth: sorted at its centre, somebody just behind its rim shows through;
+  sorted at its nearest point, somebody just in front of it vanishes. So every
+  head asks each boulder whether its line of sight enters the sphere first
+  (hidden, not drawn), grazes its rim from behind (painted before the
+  boulders, so the edge cuts it), or neither (painted after). Boulders are
+  black on black, so their order among themselves cannot show.
+  `tests/unit/crowd/boulders.test.ts` pairs each hidden case with a visible one,
+  and each branch has been broken and seen to fail it.
+- **The first grazing test was wrong because the eye is not at the centre's
+  height.** The centre is on the ground and the eye 1.6 m up, so a level sight
+  line grazes a smaller circle than `r`. A test written with `asin(r / d)`
+  passed against a broken grazing branch.
+- **How much is hidden is steep in `boulders` and depends on where you stand.**
+  On the market at 6 m: 4% coverage hid 8% of the heads in frame, 8% hid 54%.
+  The mean free path is what matters, and at a 160 m horizon a few boulders is
+  already most of it — "too much occlusion kills infinity", measured.
+- **A trail's bends decide whether anything is hidden at all.** Boulders stand
+  beside the way, never on it, so they only hide across the inside of a bend.
+  At `the trail`'s bend 30 / meander 300 nothing was hidden in fifty frames;
+  at 45 / 220, `round the bend`, 11%.
+- **Only the detail radius is pushed off them.** Past it somebody walking into
+  a boulder is inside it and hidden by it, which looks exactly like walking
+  behind it. Pushing everybody cost 38% of the step; as built, boulders cost
+  about 10–14% in a like-for-like run at 9,000 people.
+- **Round obstacles need a steer as well as a wall.** A walker heading at the
+  centre is pushed straight back along their own line and stands there. The
+  steer bends them round on whichever side they already lean, or the boulder's
+  own `side` when dead on. Measured on the market: the longest anybody stays
+  slow against a boulder is 7 s, and nobody is stuck at the end of a run.
+- **Rebuilt only when their own inputs change** (`boulderShape` in
+  `throng.ts`), and kept clear of wherever I stand when they are built, since
+  on a loop that is not the origin.
+
 ## What is not here, and would be worth having
 
 - **Nobody is going anywhere in particular.** People carry a heading, not a
   destination, so nothing walks up to something, waits, and leaves. The standing
   people are standing where they happened to be.
-- **Nothing to walk around.** The avoidance already handles it — an obstacle is a
-  disc that is not moving — but nothing is placed.
 - **A head gives away nothing about which way it is turned**, so the most legible
   thing in a real crowd, the moment somebody looks at you, is missing from a
   piece that is otherwise entirely about being looked past. Whatever answers that

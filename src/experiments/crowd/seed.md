@@ -386,3 +386,47 @@ re-caught them the next step, 55 times in four minutes on one seed.
 
 > promote "catch me" to first preset. push today's presets to showcase: catch
 > me, teams, runner, street run. open PR and merge when ready
+
+## 2026-09-26 — occlusion as black circles
+
+> there's an occlusion ticket and I think I may have a simple solution that
+> could work for now. i was interested in occlusion for crowd and we blocked on
+> the complexity of it and needing more research. i was thinking about it and
+> thought that perhaps first type of occlusion could be just another type of
+> circles, but much larger and of black colour so the blend in with the
+> background. these would naturally block everything behind them. i'm not sure
+> if that is how current compositor works and if it's even possible to block
+> anything. looking at the red circle in "catch me" i can see that it is
+> rendered with opacity in front of everything that is behind it. the same
+> principle can be applied to sparse large circles whose midpoint starts at
+> ground level. they would naturally form islands. could probably be squares as
+> well, but circles large enough would probably suffice to start with and to
+> keep with the circle theme. do some research and see what kind of occlusion
+> you can implement while i'm away.
+
+Built as **boulders**: black spheres centred at ground level, so a dome stands
+above it, placed at random so some land together as islands, and kept off the
+way in a street or on a trail. Three new sliders — `boulders` (share of the
+ground), `boulder size`, `boulder shade` (grey instead of black, to see what is
+doing the hiding) — and three presets: **boulders** (the market),
+**round the bend** (the trail, bends tightened so there is an inside to hide
+across) and **hide and seek** (catch me with boulders instead of stalls).
+
+The compositor answer, since he asked: it paints back to front, so a black
+circle painted in order *would* block what is behind it, the way the red head
+does. That is not quite enough for something this big — a sphere has no single
+depth, so people at its rim came out wrong either way — so each head asks each
+boulder along its own line of sight instead, and the black outline is painted
+for the heads its edge cuts. `AGENTS.md` has the numbers.
+
+Open, for him:
+
+- **How much.** Coverage is steep: on the market 4% hid 8% of the heads in
+  frame and 8% hid 54%. The presets sit at 5%. Where "reveal" turns into
+  "kills infinity" is a slider question.
+- **Squares.** Not built. Stalls are already invisible blocks everybody walks
+  round; drawing them as occluders is the same line-of-sight test against a
+  box, and would make a market's aisles show as corridors of visible crowd.
+- **Trees.** A tall narrow occluder (a column, or a small sphere high up) would
+  hide in slices rather than in domes — the bank of trees beside a trail from
+  #224. The same test, a different shape.
