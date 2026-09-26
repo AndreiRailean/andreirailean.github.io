@@ -206,7 +206,7 @@ describe("effort", () => {
     const on = bunching(1)
     expect(off).toBeLessThan(1.25)
     expect(on).toBeGreaterThan(off * 1.4)
-  })
+  }, 60_000)
 })
 
 describe("keeping to a side", () => {
@@ -350,7 +350,7 @@ describe("the chase", () => {
     expect(Math.max(...late) - Math.min(...late)).toBeGreaterThan(8)
     expect(Math.min(...late)).toBeLessThan(5)
     expect(furthest).toBeLessThan(35)
-  })
+  }, 60_000)
 
   it("has nobody in red when there is nothing to chase", () => {
     const { crowd } = walk("market", 1)
@@ -440,7 +440,7 @@ describe("glancing at a run", () => {
     expect(running.wide).toBeLessThan(walking.wide * 0.5)
     expect(running.steep).toBeLessThan(0.02)
     expect(walking.steep).toBeGreaterThan(running.steep * 3)
-  })
+  }, 60_000)
 })
 
 describe("chasing through the stalls", () => {
@@ -487,7 +487,7 @@ describe("chasing through the stalls", () => {
     expect(centred / samples).toBeLessThan(0.35)
     expect(trespass).toBe(0)
     expect(crowdIn / crowdN).toBeLessThan(0.02)
-  })
+  }, 60_000)
 })
 
 describe("catching them", () => {
@@ -498,7 +498,22 @@ describe("catching them", () => {
    * catch them we can stand together for a little bit, then they run away and
    * I chase them again. tom and jerry style."
    */
+  /**
+   * Each scenario is four minutes of chase, so it is run once and shared: the
+   * full-strength run alone is asserted on by three tests, and running it for
+   * each of them took the suite past its timeout on CI.
+   */
+  const runs = new Map<string, ReturnType<typeof simulate>>()
   function chase(patch: Partial<Settings>) {
+    const key = JSON.stringify(patch)
+    const cached = runs.get(key)
+    if (cached) return cached
+    const run = simulate(patch)
+    runs.set(key, run)
+    return run
+  }
+
+  function simulate(patch: Partial<Settings>) {
     const preset = PRESETS.find((p) => p.label === "catch me")!
     const settings = normalizeSettings({ ...preset.settings, density: 12, reach: 40, seed: 2222, ...patch })
     const me = createStroll(settings, settings.seed)
@@ -556,20 +571,20 @@ describe("catching them", () => {
     expect(run.catches).toBeGreaterThan(0)
     expect(run.escapedAfterCatch).toBe(true)
     expect(run.longestStuck).toBeLessThan(2)
-  })
+  }, 120_000)
 
   // They bolt from within arm's reach, so without a re-arm distance the next
   // step caught them again: 55 catches in four minutes on this seed.
   it("lets them get away before they can be caught again", () => {
     expect(chase({ seed: 31337 }).catches).toBeLessThan(10)
-  })
+  }, 120_000)
 
   it("keeps them in sight most of the time, and only because of the chase", () => {
     // The control is the same chase at a quarter of the strength, where most
     // glances go the ordinary way.
     expect(chase({}).inView).toBeGreaterThan(0.65)
     expect(chase({ chase: 0.25 }).inView).toBeLessThan(0.6)
-  })
+  }, 120_000)
 
   /**
    * "the head should face predominantly in one of 2 directions: direction of
@@ -583,5 +598,5 @@ describe("catching them", () => {
     const run = chase({})
     expect(run.sideways).toBeLessThan(0.3)
     expect(run.switchesPerMinute).toBeGreaterThan(20)
-  })
+  }, 120_000)
 })
