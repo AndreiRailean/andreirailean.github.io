@@ -1,6 +1,6 @@
 ---
 import type { CollectionEntry } from "astro:content"
-import { render } from "astro:content"
+import NoteSheet from "@/experiments/gallery/NoteSheet.astro"
 
 /**
  * A note: the write-up of one piece, served at `/experiments/<slug>/about/`.
@@ -43,10 +43,7 @@ interface Props {
 }
 
 const { entry, theme, backdrop = 0.5 } = Astro.props
-const { Content } = await render(entry)
-const { title, summary, slug, started, updated } = entry.data
-
-const formatDate = (date: Date) => date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
+const { title, summary } = entry.data
 
 const vars = Object.entries({ ...theme, backdrop: String(backdrop) })
   .map(([name, value]) => `--${name}:${value}`)
@@ -86,128 +83,6 @@ const vars = Object.entries({ ...theme, backdrop: String(backdrop) })
         position: relative;
         z-index: 1;
         padding: clamp(2rem, 7vh, 5rem) 1.25rem 6rem;
-        font:
-          400 1rem/1.7 ui-sans-serif,
-          system-ui,
-          -apple-system,
-          "Segoe UI",
-          sans-serif;
-      }
-
-      main {
-        max-width: 40rem;
-        margin: 0 auto;
-      }
-
-      /* Blur *and* opacity, rather than either alone: opacity by itself leaves
-         the piece showing through the text, and blur by itself is not enough
-         contrast where something bright sits under a line of type. */
-      .sheet {
-        padding: clamp(1.5rem, 4vw, 2.75rem);
-        background: var(--sheet);
-        border: 1px solid var(--edge);
-        border-radius: 0.5rem;
-        backdrop-filter: blur(16px) saturate(130%);
-      }
-
-      /*
-       * The way out, at the top, in the same monospace the index's placards and
-       * a piece's own chrome use. It is above the title because leaving should
-       * not require reading to the end of a long note first.
-       */
-      .exits {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1.25rem;
-        margin: 0 0 clamp(1.75rem, 5vh, 2.75rem);
-        font:
-          400 0.75rem/1.5 ui-monospace,
-          "SF Mono",
-          Menlo,
-          monospace;
-        letter-spacing: 0.04em;
-      }
-
-      h1 {
-        margin: 0;
-        color: var(--bright);
-        font-size: clamp(1.6rem, 5vw, 2.1rem);
-        font-weight: 500;
-        letter-spacing: -0.015em;
-        text-wrap: balance;
-      }
-
-      .summary {
-        margin: 0.6rem 0 0;
-        color: var(--muted);
-        font-size: 1.05rem;
-        text-wrap: pretty;
-      }
-
-      .dates {
-        margin: 1.5rem 0 0;
-        padding-bottom: 1.5rem;
-        border-bottom: 1px solid var(--edge);
-        color: var(--muted);
-        font:
-          400 0.75rem/1.5 ui-monospace,
-          "SF Mono",
-          Menlo,
-          monospace;
-        letter-spacing: 0.04em;
-      }
-
-      h2 {
-        margin: 2.5rem 0 0.75rem;
-        color: var(--bright);
-        font-size: 1.05rem;
-        font-weight: 500;
-        letter-spacing: 0.02em;
-      }
-
-      p {
-        margin: 0 0 1.1rem;
-      }
-
-      a {
-        color: var(--accent);
-        text-underline-offset: 0.2em;
-      }
-
-      strong {
-        color: var(--bright);
-        font-weight: 500;
-      }
-
-      code {
-        padding: 0.1em 0.35em;
-        background: rgb(255 255 255 / 7%);
-        border-radius: 0.25rem;
-        color: var(--bright);
-        font:
-          400 0.875em/1 ui-monospace,
-          "SF Mono",
-          Menlo,
-          monospace;
-      }
-
-      ul {
-        margin: 0 0 1.1rem;
-        padding-left: 1.1rem;
-      }
-
-      li {
-        margin-bottom: 0.6rem;
-      }
-
-      li::marker {
-        color: var(--muted);
-      }
-
-      hr {
-        margin: 2.5rem 0;
-        border: 0;
-        border-top: 1px solid var(--edge);
       }
 
       /* Someone who asked for less motion still gets the piece behind the note,
@@ -223,28 +98,7 @@ const vars = Object.entries({ ...theme, backdrop: String(backdrop) })
   <body>
     <canvas id="backdrop"></canvas>
 
-    <main>
-      <div class="sheet">
-        <p class="exits">
-          <a href={`/experiments/${slug}/`}>open the piece</a>
-          <a href="/experiments/">all experiments</a>
-        </p>
-        <h1>{title}</h1>
-        <p class="summary">{summary}</p>
-        <p class="dates">
-          <time datetime={started.toISOString()}>{formatDate(started)}</time>
-          {
-            formatDate(updated) !== formatDate(started) && (
-              <>
-                {" · last changed "}
-                <time datetime={updated.toISOString()}>{formatDate(updated)}</time>
-              </>
-            )
-          }
-        </p>
-        <Content />
-      </div>
-    </main>
+    <NoteSheet entry={entry} />
 
     <slot />
   </body>

@@ -1,0 +1,82 @@
+---
+import type { CollectionEntry } from "astro:content"
+import NoteSheet from "@/experiments/gallery/NoteSheet.astro"
+import type { NoteTheme } from "@/experiments/gallery/Note.astro"
+
+/**
+ * A piece's note as an overlay on the piece — #223. The behaviour is in
+ * `note-overlay.ts`; this is the markup and the dress.
+ *
+ * `open` renders it already showing, for the page served at the note's own
+ * address. Otherwise it is hidden until the kit's `about` opens it.
+ *
+ * `backdrop` means what it means on `Note.astro`: how much of the piece shows
+ * through. There it was the canvas's opacity over the note's ground; here the
+ * piece is the real one and full strength, so the same figure becomes a scrim
+ * of the ground laid over it — `1 - backdrop` of it.
+ */
+
+interface Props {
+  entry: CollectionEntry<"experiments">
+  theme: NoteTheme
+  open?: boolean
+  backdrop?: number
+}
+
+const { entry, theme, open = false, backdrop = 0.5 } = Astro.props
+const { slug, title } = entry.data
+
+const vars = Object.entries({ ...theme, backdrop: String(backdrop) })
+  .map(([name, value]) => `--${name}:${value}`)
+  .join(";")
+---
+
+<div
+  id="note"
+  tabindex="-1"
+  hidden={!open}
+  style={vars}
+  data-piece={`/experiments/${slug}/`}
+  data-note={`/experiments/${slug}/about/`}
+  data-piece-title={title}
+  data-note-title={`${title} — about`}
+>
+  <NoteSheet entry={entry} />
+</div>
+
+<style is:global>
+  #note {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    box-sizing: border-box;
+    padding: clamp(2rem, 7vh, 5rem) 1.25rem 6rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: color-mix(in srgb, var(--bg) calc((1 - var(--backdrop)) * 100%), transparent);
+    outline: none;
+  }
+
+  /* An author `display` would beat the UA's `[hidden]`; state it. */
+  #note[hidden] {
+    display: none;
+  }
+
+  /* The piece's chrome goes while the note is up: the note is what is being
+     read, and a click anywhere outside its column means "back to the piece". */
+  html[data-note="open"] #ui {
+    visibility: hidden;
+  }
+
+  /* The kit hides the cursor when the chrome idles; a reader keeps it. */
+  html[data-note="open"][data-idle="true"] {
+    cursor: auto;
+  }
+</style>
+
+<script>
+  import { mountNoteOverlay } from "@/experiments/gallery/note-overlay"
+
+  const overlay = document.getElementById("note")
+  if (overlay) mountNoteOverlay(overlay)
+</script>
