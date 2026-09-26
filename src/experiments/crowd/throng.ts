@@ -145,7 +145,10 @@ function teamSlots(mates: number): (readonly [number, number])[] {
 const CAUGHT_AT = 1.1
 
 /** Share of their waits in which they do not notice me coming, so the chase ends in a catch. */
-const CAUGHT_SHARE = 0.4
+const CAUGHT_SHARE = 0.6
+
+/** Metres they must get away before they can be caught again. */
+const REARM_AT = 5
 
 /** Seconds we stand together once caught, before they bolt again. */
 const CAUGHT_FOR = [2.5, 5]
@@ -513,6 +516,7 @@ export function createThrong(settings: Settings, observer: Observer) {
     if (current.chase > 0 && walkers > wanted) {
       fleeing = true
       caughtFor = 0
+      armed = true
       farGap = 9 + place() * 12
       const runaway = people[wanted]!
       runaway.quarry = true
@@ -1077,6 +1081,13 @@ export function createThrong(settings: Settings, observer: Observer) {
    * runaway dawdling beside me while I circled them, which read as wrestling.
    */
   let caughtFor = 0
+  /**
+   * Whether a catch can happen. Disarmed when they bolt and re-armed only once
+   * they are properly away: they bolt from within arm's reach, and without this
+   * the next step caught them again — measured at 55 catches in four minutes on
+   * one seed, a runaway who never got away at all.
+   */
+  let armed = true
   /** How far they run before stopping, and how close they let me get before running again. Redrawn each time. */
   let farGap = 14
   let nearGap = 3
@@ -1117,10 +1128,12 @@ export function createThrong(settings: Settings, observer: Observer) {
         person.gx = Math.cos(heading)
         person.gy = Math.sin(heading)
         person.preferred = Math.max(0.6, current.walk) * current.flee * 1.3
+        armed = false
       }
       return
     }
-    if (d < CAUGHT_AT) {
+    if (!armed && d > REARM_AT) armed = true
+    if (armed && d < CAUGHT_AT) {
       caughtFor = CAUGHT_FOR[0] + place() * (CAUGHT_FOR[1] - CAUGHT_FOR[0])
       person.preferred = 0
       return

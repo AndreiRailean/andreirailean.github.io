@@ -505,6 +505,10 @@ describe("catching them", () => {
     let escapedAfterCatch = false
     let samples = 0
     let inView = 0
+    let apart = 0
+    let sideways = 0
+    let switches = 0
+    let mode = ""
     for (let step = 0; step < 240 * 120; step++) {
       me.step(STEP, crowd)
       crowd.step(STEP)
@@ -517,10 +521,29 @@ describe("catching them", () => {
       longestStuck = Math.max(longestStuck, stuck)
       if (step < 10 * 120 || step % 30 !== 0) continue
       samples++
-      const bearing = Math.atan2(runaway.y - me.y, runaway.x - me.x) - me.yaw
-      if (Math.abs(Math.atan2(Math.sin(bearing), Math.cos(bearing))) < 0.54) inView++
+      const wrap = (a: number) => Math.abs(Math.atan2(Math.sin(a), Math.cos(a)))
+      const toThem = Math.atan2(runaway.y - me.y, runaway.x - me.x)
+      if (wrap(toThem - me.yaw) < 0.54) inView++
+      // Only while they are well off my line of travel, where the two ways to
+      // look are different ways.
+      if (wrap(toThem - me.course) > 0.35) {
+        apart++
+        const now = wrap(me.yaw - me.course) < 0.14 ? "ahead" : wrap(me.yaw - toThem) < 0.14 ? "them" : ""
+        if (!now) sideways++
+        else if (now !== mode) {
+          if (mode) switches++
+          mode = now
+        }
+      }
     }
-    return { catches, escapedAfterCatch, longestStuck: longestStuck * STEP, inView: inView / samples }
+    return {
+      catches,
+      escapedAfterCatch,
+      longestStuck: longestStuck * STEP,
+      inView: inView / samples,
+      sideways: sideways / apart,
+      switchesPerMinute: switches / 3.8,
+    }
   }
 
   it("catches them, stands with them, and they get away again — never wrestling", () => {
@@ -530,11 +553,30 @@ describe("catching them", () => {
     expect(run.longestStuck).toBeLessThan(2)
   })
 
+  // They bolt from within arm's reach, so without a re-arm distance the next
+  // step caught them again: 55 catches in four minutes on this seed.
+  it("lets them get away before they can be caught again", () => {
+    expect(chase({ seed: 31337 }).catches).toBeLessThan(10)
+  })
+
   it("keeps them in sight most of the time, and only because of the chase", () => {
-    // The control is the same chase at a quarter of the strength, where the
-    // head barely leans toward them: measured about 0.6 at full strength
-    // before the head rested on them, and 0.85-0.89 with it.
-    expect(chase({}).inView).toBeGreaterThan(0.75)
-    expect(chase({ chase: 0.25 }).inView).toBeLessThan(0.7)
+    // The control is the same chase at a quarter of the strength, where most
+    // glances go the ordinary way.
+    expect(chase({}).inView).toBeGreaterThan(0.65)
+    expect(chase({ chase: 0.25 }).inView).toBeLessThan(0.6)
+  })
+
+  /**
+   * "the head should face predominantly in one of 2 directions: direction of
+   * travel, person being chased. We can't run looking sideways, so that means
+   * the head turns much more often." Measured while they are off to one side:
+   * resting the head part of the way toward them pointed it at neither 44% of
+   * the time and switched six times a minute; the two-way gaze is 17%, the
+   * turn itself, and 38 switches.
+   */
+  it("looks at the way or at them, not in between, and turns often", () => {
+    const run = chase({})
+    expect(run.sideways).toBeLessThan(0.3)
+    expect(run.switchesPerMinute).toBeGreaterThan(20)
   })
 })

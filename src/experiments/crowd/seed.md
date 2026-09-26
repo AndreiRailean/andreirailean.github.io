@@ -377,3 +377,7 @@ a hillside) that end at a clearing, which the trail does not yet have.
 > chased. We can't run looking sideways, so that means the head turns much more
 > often. Birds don't matter anymore. Running into things does and losing the
 > target is. That dynamic would help avoid crosshairs even more
+
+Built as a two-way gaze in a chase: short spells on the way ahead and on them,
+nothing else, on a quicker neck. Found and fixed on the way: a catch that
+re-caught them the next step, 55 times in four minutes on one seed.

@@ -502,15 +502,20 @@ distracted child is about to fall over".
   behind them. `keepToAisle` lays any heading that crosses its own aisle back
   along it, for everybody; the runaway does the same inside `flee`.
 - **Caught is a state** (`caughtFor`): within 1.1 m we both stand for 2.5–5 s,
-  then they bolt away along their aisle with a head start. In 40% of their
+  then they bolt away along their aisle with a head start. In 60% of their
   waits they do not notice me coming (`CAUGHT_SHARE`), which is what makes
   catches happen at all against a runaway faster than me.
-- **Glances alone cannot keep somebody in view at a run**, because the head
-  rests straight ahead between them and at a run that is most of the time:
-  0.56–0.61 in view with three glances in four going to them. Resting the head
-  toward them between glances (`REST_ON_QUARRY`) took it to 0.85–0.89 while the
-  body's heading stayed off them — 16–24% of the time within 5° of my course,
-  so the crosshair did not come back.
+- **A chaser looks two ways: the way ahead, or at them.** Resting the head part
+  of the way toward them (built first, as `REST_ON_QUARRY`) kept them in view
+  0.85–0.89 of the time, and Andrei's reply named what was wrong with it: "We
+  can't run looking sideways". Measured while they were off to one side, it
+  pointed at neither 44% of the time and switched six times a minute. The gaze
+  in a chase is now a toggle of short spells (`chasing` in `stroll.ts`) on a
+  quicker neck (`NECK_CHASE`): 17% between the two, which is the turn itself,
+  38 switches a minute, and 0.75 in view.
+- **A catch has to be re-armed.** They bolt from within arm's reach, so the
+  next step caught them again: 55 catches in four minutes on seed 31337.
+  `REARM_AT` makes them get 5 m away first.
 
 ## What is not here, and would be worth having
 

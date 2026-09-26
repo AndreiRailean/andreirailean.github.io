@@ -300,8 +300,14 @@ const SPOT_AHEAD = [3.2, 8]
  */
 const SPOT_BEARING_MIN = 0.65
 
-/** How far toward the person in red my head rests between glances, at full `chase`. Not all the way: eyes on them, not locked. */
-const REST_ON_QUARRY = 0.85
+/** Seconds a chaser looks at the person in red before looking back at the way, walking. A run shortens both. */
+const SPELL_ON_THEM = [0.7, 1.6]
+
+/** Seconds a chaser looks at the way ahead before looking for the person in red again, walking. */
+const SPELL_AHEAD = [0.6, 1.3]
+
+/** The neck's natural frequency in a chase, against `NECK_OMEGA`'s 8. A 45° turn lands in about 0.2 s rather than 0.36. */
+const NECK_CHASE = 14
 
 /** Radians. Further off my line of sight than this and I have lost sight of the person in red. About half a field of view. */
 const LOST_SIGHT = 0.5
@@ -416,6 +422,31 @@ export function createStroll(settings: Settings, seed: number) {
   let pitchVel = 0
   let untilGlance = 0
   let holdLeft = 0
+  /** In a chase, whether the eyes are on the person in red rather than the way ahead. */
+  let onThem = true
+  /** Seconds left of the current spell of looking at them, or at the way. */
+  let gazeSpell = 0
+  /** Whether the current stretch of the chase is being looked at the chaser's way, redrawn each spell. */
+  let chaseGaze = true
+
+  /**
+   * Advance the chaser's two-way gaze by `dt`, and say whether it is in charge
+   * of the head this step. Spells are short and shorter at a run, where the
+   * world comes at you faster; a spell on the way ahead is a little longer
+   * when they are nearly in line with it, since then one look covers both.
+   */
+  function chasing(dt: number): boolean {
+    gazeSpell -= dt
+    if (gazeSpell <= 0) {
+      onThem = !onThem
+      chaseGaze = rng() < current.chase
+      const pace = 1 - 0.45 * runMix
+      gazeSpell = (onThem ? between(SPELL_ON_THEM, rng()) : between(SPELL_AHEAD, rng())) * pace
+      if (!chaseGaze) gazeSpell = 0.8 + rng() * 1.2
+    }
+    return chaseGaze
+  }
+
   /** Where the body would like to be pointing. Only reachable by pivoting, and only when stopped. */
   let aimTarget = 0
 
@@ -845,7 +876,23 @@ export function createStroll(settings: Settings, seed: number) {
     const stopped = speed < 0.25
     const sweep = (stopped ? SWEEP_STOPPED : SWEEP_WALKING) * Math.min(1.3, Math.max(0, current.looking))
 
-    if (holdLeft > 0) {
+    // **A chaser looks two ways, and nowhere else.** "when running after
+    // someone the head should face predominantly in one of 2 directions:
+    // direction of travel, person being chased. We can't run looking sideways."
+    // Resting the head part of the way toward them was built first and left it
+    // pointing at neither 44% of the time they were off to one side. So the
+    // gaze is a toggle: the way ahead for a moment — running into things
+    // matters — then them — losing them matters — and back, in short spells.
+    // At less than full `chase`, some glances still go the ordinary way.
+    if (runaway && current.chase > 0 && (crowd.caught || chasing(dt))) {
+      const target: Look =
+        crowd.caught || onThem ? { kind: "person", person: runaway, wide: NECK_LIMIT } : { kind: "ahead" }
+      const aim = target.kind === "ahead" ? { yaw: 0, up: 0, worth: true } : aimAt(target)
+      look = target
+      glanceTo = aim.worth ? aim.yaw : 0
+      glanceUp = aim.worth ? aim.up : 0
+      holdLeft = 0
+    } else if (holdLeft > 0) {
       holdLeft -= dt
       // **Re-aimed, not held.** The thing being looked at is a point in the
       // world, so walking past it sweeps the gaze round and down by itself, a
@@ -867,19 +914,6 @@ export function createStroll(settings: Settings, seed: number) {
         glanceUp = 0
       }
     } else {
-      // **Between glances, a chaser's eyes rest on who they are chasing.** The
-      // rest state is otherwise straight ahead, which at a run is most of the
-      // time — so glances alone kept the person in red in view little more than
-      // half of it, however many went to them. Now the head leans toward them
-      // by `chase` of the way, the body keeps to its path, and every other
-      // glance is a short departure from them rather than from the road.
-      const runaway = crowd.quarry
-      if (runaway && current.chase > 0) {
-        const toward = aimAt({ kind: "person", person: runaway, wide: NECK_LIMIT })
-        const share = toward.worth ? REST_ON_QUARRY * current.chase : 0
-        glanceTo = toward.yaw * share
-        glanceUp = toward.up * share
-      }
       untilGlance -= dt
       if (untilGlance <= 0) {
         const pick = pickGlance(crowd, Math.min(sweep, NECK_LIMIT))
@@ -909,12 +943,16 @@ export function createStroll(settings: Settings, seed: number) {
     // decelerates into the target with no overshoot and no hard stop, which is
     // the difference between a head turning and a turret slewing. `NECK` is kept
     // as a ceiling only, for the rare large offset.
-    const pull = -2 * NECK_OMEGA * yawVel - NECK_OMEGA * NECK_OMEGA * (yawOffset - glanceTo)
+    // Quicker in a chase: checking where somebody went and snapping back to the
+    // way is not a stroller looking about, and at the stroller's neck the head
+    // spent most of a short spell on the way between the two.
+    const neck = runaway && current.chase > 0 ? NECK_CHASE : NECK_OMEGA
+    const pull = -2 * neck * yawVel - neck * neck * (yawOffset - glanceTo)
     yawVel = Math.max(-NECK, Math.min(NECK, yawVel + pull * dt))
     yawOffset += yawVel * dt
 
     // The vertical, on the same spring. Nodding is the same neck.
-    const lift = -2 * NECK_OMEGA * pitchVel - NECK_OMEGA * NECK_OMEGA * (pitchOffset - glanceUp)
+    const lift = -2 * neck * pitchVel - neck * neck * (pitchOffset - glanceUp)
     pitchVel = Math.max(-NECK, Math.min(NECK, pitchVel + lift * dt))
     pitchOffset = Math.max(-PITCH_DOWN, Math.min(PITCH_UP, pitchOffset + pitchVel * dt))
 
