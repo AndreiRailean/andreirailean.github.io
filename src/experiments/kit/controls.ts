@@ -396,7 +396,9 @@ export function createControls<S extends object>(options: Options<S>): Controls<
 
   const presetButtons = presets.map((preset, index) => {
     const element = button(`${index + 1} ${preset.label}`, "preset")
-    element.title = `${preset.hint} (key ${index + 1}, or ← →)`
+    // A digit is one keypress, so the tenth preset onward has no key of its own
+    // and its title must not claim one — #223.
+    element.title = index < 9 ? `${preset.hint} (key ${index + 1}, or ← →)` : `${preset.hint} (← →)`
     element.addEventListener("click", () => apply(normalize({ ...preset.settings })))
     return element
   })
