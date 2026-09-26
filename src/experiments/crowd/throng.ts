@@ -38,7 +38,7 @@
  * which is 5.2 m/s. Four seconds of that is 21 m, so at 24 m no interaction that
  * would have happened is being skipped — the two people are not yet in each
  * other's future. Raising the pace band's maximum without raising both is the
- * one way to make it wrong, and `tests/unit/crowd/throng.test.ts` says so.
+ * one way to make it wrong, and `tests/unit/crowd/throng.flow.test.ts` says so.
  */
 
 import {

@@ -16,15 +16,33 @@ Mid-change, run one module: `pnpm exec vitest rope`, `pnpm exec vitest run setti
 browser suite takes seconds and a cold dev server, and answering "did I break the
 solver" should not.
 
-**A full `pnpm run test:unit` no longer answers in milliseconds, and one module
-is why.** `tests/unit/walkers/` simulates hours of crowd to assert things no
-screenshot and no shorter run can — a counterflow sorting into files, a
-population holding without arriving in waves, a pace that wanders as somebody
-walks — and it is around two minutes of the run on its own. Everything else in
-the suite is still instant, and the filter is how you get it:
-`pnpm exec vitest walkers` for that piece, `pnpm exec vitest <yours>` for
-anything else. Reach for the filter mid-change and the full run before you push.
-Nothing is wrong when the full run takes two and a half minutes.
+**A full `pnpm run test:unit` no longer answers in milliseconds, and two pieces
+are why.** `tests/unit/walkers/` and `tests/unit/crowd/` simulate hours of crowd
+to assert things no screenshot and no shorter run can — a counterflow sorting
+into files, a population holding without arriving in waves, a head that glances
+and comes back — and between them they are **722 of the suite's 736 seconds**
+of test time, measured 2026-09-26. Everything else is still instant, and the
+filter is how you get it: `pnpm exec vitest crowd`, `pnpm exec vitest walkers`,
+`pnpm exec vitest <yours>`. Reach for the filter mid-change and the full run
+before you push.
+
+### Why the crowd's checks are split across files
+
+**Vitest runs one file on one worker, start to finish, and these tests are
+synchronous arithmetic** — `describe.concurrent` shares a thread and buys
+nothing. So the full run can never finish sooner than its heaviest single file,
+however many workers there are. `crowd/stroll.test.ts` was 307 seconds of test
+time on its own, plus its `describe`-level runs, which vitest books as _import_
+time and does not show against the file at all. It set the unit job's wall clock
+at about nine minutes, longer than the browser job.
+
+So `stroll` is three files and `throng` is two, cut along `describe` lines
+that already shared nothing but constants, and those constants live in
+`tests/unit/crowd/support.ts`. **When a crowd file grows past a couple of
+minutes, split it the same way rather than adding to it**: the cost of one more
+file is an import line, and the cost of one more minute in the heaviest file is
+paid by every PR. Read file times with `--reporter=json`, since the default
+reporter's per-file figures leave out the `describe`-level work.
 
 ## Neither runner typechecks
 
