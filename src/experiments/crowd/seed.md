@@ -295,3 +295,25 @@ Questions I could not answer:
   red further than physics says; whether the piece should is a taste.
 - **Who is the one in red?** Whoever the seed makes them — often an adult. The
   brief said "like a child, or a friend"; a setting could pick.
+
+## 2026-09-26 — the red person, and glancing while running
+
+> The red person could use some work. They're almost always in front, which
+> makes them appear like a center marker on a camera screen. What would make it
+> more realistic is if, like running through people, we couldn't just follow the
+> straight path to them. We have to follow our path and correct it to point at
+> them, but we're not fully locked on them at all times. They could be running
+> to the left while we're behind and are still running forward. So them turning
+> doesn't make us go diagonal to catch up, but keeps us going forward and we
+> turn near their turning point. Perhaps we bias our glances on the red person,
+> but our direction is more constrained by the invisible topology that is
+> stopping us from making shortcuts (we can't go through market stalls - we have
+> to walk around them).
+>
+> Glancing while running needs an adjustment. It is much harder to run and
+> follow birds right over your head - the world is moving too fast past me and
+> accidents are more likely. So glances need to become shorter and be focused
+> more on the distant objects rather than looking at the rocks on the ground and
+> birds immediately overhead. Current glancing model breaks the loop running
+> illusion because it appears like a distracted child is about to fall over
+> because they're not paying attention.
