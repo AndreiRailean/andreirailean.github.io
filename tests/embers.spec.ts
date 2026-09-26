@@ -42,9 +42,19 @@ test("puts embers over the fire, and draws fewer of them than it is carrying", a
   // Ten seconds, because the scene does not exist at t=0 in either sense: an
   // ember takes a second or two to cross the frame, and the picture is built up
   // over frames wherever the shutter is open.
-  const stats = await experiment.api(({ api }) => {
+  //
+  // Then a further second, one frame at a time, all inside this one call so
+  // nothing can step the piece between a frame and the stats read after it.
+  const { stats, frames } = await experiment.api(({ api }) => {
     api.settle(10)
-    return api.stats()
+    const stats = api.stats()
+    const frames: { alive: number; drawn: number }[] = []
+    for (let frame = 0; frame < 60; frame++) {
+      api.settle(1 / 60)
+      const { alive, drawn } = api.stats()
+      frames.push({ alive, drawn })
+    }
+    return { stats, frames }
   })
 
   expect(stats.alive).toBeGreaterThan(50)
@@ -56,12 +66,24 @@ test("puts embers over the fire, and draws fewer of them than it is carrying", a
    * **Fewer drawn than alive, and that gap is the point of the whole palette.**
    *
    * An ember's visible emission collapses by four orders of magnitude as it
-   * cools, so it stops being worth a mark well before it stops being an ember.
-   * A piece that faded brightness linearly over a lifetime would have these two
-   * numbers equal, and would look like a particle system.
+   * cools, so it stops being worth a mark before it stops being an ember. A
+   * piece that faded brightness linearly over a lifetime would have these two
+   * numbers equal, and would look like a particle system. It is also the only
+   * thing that sees retirement drift above the paint cutoff — `SEEN` in
+   * `palette.ts` has the history.
+   *
+   * **Read over a second, not at an instant — #226.** The unpainted band is
+   * narrow on purpose: `SEEN.keep` is half of `SEEN.paint`, so at any moment it
+   * holds a handful of the ~900 embers and sometimes none. Measured over 600
+   * frames: the gap has a median of 9 and a tenth percentile of 1, and it is
+   * zero in 21 frames — 3.5%, so a single sample failed about one run in 28.
+   * With retirement at or above the cutoff (`keep` set to 0.004 or 0.006) it
+   * is zero in all 600. So the assertion is on the share of frames, which
+   * separates 96% from 0% with room either side.
    */
   expect(stats.drawn).toBeGreaterThan(0)
-  expect(stats.drawn).toBeLessThan(stats.alive)
+  const unpainted = frames.filter(({ alive, drawn }) => drawn < alive).length
+  expect(unpainted / frames.length).toBeGreaterThan(0.5)
 
   await experiment.shot("campfire")
 })
