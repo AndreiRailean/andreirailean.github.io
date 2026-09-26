@@ -381,3 +381,8 @@ a hillside) that end at a clearing, which the trail does not yet have.
 Built as a two-way gaze in a chase: short spells on the way ahead and on them,
 nothing else, on a quicker neck. Found and fixed on the way: a catch that
 re-caught them the next step, 55 times in four minutes on one seed.
+
+## 2026-09-26 — catch me first, and to the wall
+
+> promote "catch me" to first preset. push today's presets to showcase: catch
+> me, teams, runner, street run. open PR and merge when ready

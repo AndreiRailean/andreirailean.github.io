@@ -5,6 +5,13 @@ import { createThrong, DETAIL, detailFor, MAX_PEOPLE } from "@/experiments/crowd
 import { BOUNDS, normalizeSettings, PRESETS, type Settings } from "@/experiments/crowd/settings"
 
 /**
+ * The market, by name. These checks were written against it when it was the
+ * primary, and a primary moves — "catch me" took the place on 2026-09-26 —
+ * so they say which scene they mean rather than which position.
+ */
+const MARKET = PRESETS.find((preset) => preset.label === "market")!
+
+/**
  * The crowd, over long enough for the things it claims to be about to happen.
  *
  * **These are slow and are meant to be.** Every claim here is about a crowd that
@@ -30,7 +37,7 @@ const STEP = 1 / 120
 const PATIENT = 180_000
 
 function walk(patch: Partial<Settings>, seconds: number) {
-  const settings = normalizeSettings({ ...PRESETS[0]!.settings, ...patch })
+  const settings = normalizeSettings({ ...MARKET.settings, ...patch })
   const me = createStroll(settings, settings.seed)
   const crowd = createThrong(settings, me)
   const run = (forSeconds: number) => {

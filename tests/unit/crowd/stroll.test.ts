@@ -4,6 +4,13 @@ import { createThrong } from "@/experiments/crowd/throng"
 import { normalizeSettings, PRESETS, type Settings } from "@/experiments/crowd/settings"
 
 /**
+ * The market, by name. These checks were written against it when it was the
+ * primary, and a primary moves — "catch me" took the place on 2026-09-26 —
+ * so they say which scene they mean rather than which position.
+ */
+const MARKET = PRESETS.find((preset) => preset.label === "market")!
+
+/**
  * The person carrying the camera, and specifically what their head does.
  *
  * **Every number here comes from a complaint.** The first version of the neck
@@ -22,7 +29,7 @@ const DEG = 180 / Math.PI
 const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a))
 
 function watch(patch: Partial<Settings>, seconds: number) {
-  const settings = normalizeSettings({ ...PRESETS[0]!.settings, ...patch })
+  const settings = normalizeSettings({ ...MARKET.settings, ...patch })
   const me = createStroll(settings, settings.seed)
   const crowd = createThrong(settings, me)
 
@@ -214,7 +221,7 @@ describe("the body: sidestepping, and not shaking", () => {
 
 describe("walking with somebody", () => {
   function withMates(count: number, seconds: number) {
-    const settings = normalizeSettings({ ...PRESETS[0]!.settings, companions: count })
+    const settings = normalizeSettings({ ...MARKET.settings, companions: count })
     const me = createStroll(settings, settings.seed)
     const crowd = createThrong(settings, me)
     const gaps: number[] = []
@@ -267,7 +274,7 @@ describe("walking with somebody", () => {
 
 describe("the gaze goes up and down, not only side to side", () => {
   function gaze(patch: Record<string, number>, seconds: number) {
-    const settings = normalizeSettings({ ...PRESETS[0]!.settings, ...patch })
+    const settings = normalizeSettings({ ...MARKET.settings, ...patch })
     const me = createStroll(settings, settings.seed)
     const crowd = createThrong(settings, me)
     const pitches: number[] = []
