@@ -462,15 +462,20 @@ describe("chasing through the stalls", () => {
     let trespass = 0
     let crowdIn = 0
     let crowdN = 0
-    for (let step = 0; step < 80 * 120; step++) {
+    for (let step = 0; step < 200 * 120; step++) {
       me.step(STEP, crowd)
       crowd.step(STEP)
       if (step < 10 * 120 || step % 30 !== 0) continue
-      samples++
+      if (crowd.stalls.blocked(me.x, me.y, 0)) trespass++
+      // Only while they are running. Closing on somebody who has stopped is
+      // head-on by nature — that is how a catch happens — and a window short
+      // enough to be one long approach read 0.50 on this seed where the whole
+      // chase reads 0.29 and the running part 0.25.
       const runaway = crowd.quarry!
+      if (crowd.caught || runaway.preferred < 1) continue
+      samples++
       const bearing = Math.atan2(runaway.y - me.y, runaway.x - me.x) - me.course
       if (Math.abs(Math.atan2(Math.sin(bearing), Math.cos(bearing))) < (5 * Math.PI) / 180) centred++
-      if (crowd.stalls.blocked(me.x, me.y, 0)) trespass++
       if (step % 1200 === 0) {
         for (const person of crowd.people) {
           crowdN++
