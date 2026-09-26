@@ -113,6 +113,8 @@ exports[`crowd > has not edited a slot in place 1`] = `
   "flee num grid=0.05 origin=0.5 bits=5",
   "loop num grid=10 origin=0 bits=9",
   "corners num grid=0.05 origin=0 bits=5",
+  "stalls num grid=0.05 origin=0 bits=5",
+  "aisle num grid=0.1 origin=1.6 bits=7",
 ]
 `;
 

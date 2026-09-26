@@ -442,3 +442,45 @@ describe("glancing at a run", () => {
     expect(walking.steep).toBeGreaterThan(running.steep * 3)
   })
 })
+
+describe("chasing through the stalls", () => {
+  /**
+   * "They're almost always in front, which makes them appear like a center
+   * marker on a camera screen." Measured as the share of the chase with the red
+   * head within 5° of my heading. Aiming at them straight down an aisle was 77%;
+   * following their trail through a runaway who ducks round corners is 12%.
+   * The stalls are asserted too, from both sides: nobody walks through one,
+   * least of all me, which is what makes a straight line to them impossible.
+   */
+  it("follows their trail round the corners rather than locking on", () => {
+    const preset = PRESETS.find((p) => p.label === "catch me")!
+    const settings = normalizeSettings({ ...preset.settings, density: 12, reach: 40 })
+    const me = createStroll(settings, settings.seed)
+    const crowd = createThrong(settings, me)
+    let samples = 0
+    let centred = 0
+    let trespass = 0
+    let crowdIn = 0
+    let crowdN = 0
+    for (let step = 0; step < 80 * 120; step++) {
+      me.step(STEP, crowd)
+      crowd.step(STEP)
+      if (step < 10 * 120 || step % 30 !== 0) continue
+      samples++
+      const runaway = crowd.quarry!
+      const bearing = Math.atan2(runaway.y - me.y, runaway.x - me.x) - me.course
+      if (Math.abs(Math.atan2(Math.sin(bearing), Math.cos(bearing))) < (5 * Math.PI) / 180) centred++
+      if (crowd.stalls.blocked(me.x, me.y, 0)) trespass++
+      if (step % 1200 === 0) {
+        for (const person of crowd.people) {
+          crowdN++
+          if (crowd.stalls.blocked(person.x, person.y, 0)) crowdIn++
+        }
+      }
+    }
+    expect(crowd.stalls.active).toBe(true)
+    expect(centred / samples).toBeLessThan(0.35)
+    expect(trespass).toBe(0)
+    expect(crowdIn / crowdN).toBeLessThan(0.02)
+  })
+})

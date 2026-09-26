@@ -55,6 +55,7 @@ import {
 } from "@/experiments/crowd/body"
 import { corridorPoint, entryAngle, heading } from "@/experiments/crowd/random"
 import { createLoop, createPath, hikingPace, lanePush, type Frame, type Path } from "@/experiments/crowd/path"
+import { createStalls, type Stalls } from "@/experiments/crowd/stalls"
 import { avoid, CUTOFF } from "@/experiments/crowd/steering"
 import { hashSeed, makeRng, type Rng } from "@/experiments/random"
 import { BOUNDS, type Settings } from "@/experiments/crowd/settings"
@@ -227,6 +228,8 @@ export type Person = {
   running: boolean
   /** Their nearest point on a loop last step, so this step's is a comparison away. −1 is unknown. */
   pathAt: number
+  /** The last aisle crossing they decided at, so each crossing is one decision and not one per step. */
+  junction: number
 }
 
 export type Group = {
@@ -347,6 +350,8 @@ export function createThrong(settings: Settings, observer: Observer) {
   let path: Path = createPath(0, 1, 0, 0)
   /** The settings `path` was built from, so it is rebuilt only when they change. */
   let pathShape = ""
+  /** The market's stalls, which nobody can see. None unless `stalls` says so. */
+  let stalls: Stalls = createStalls(0, 1, 0)
   /** Metres of lining each side, or 0. Always 0 on open ground, which has no sides. */
   let lining = 0
   /**
@@ -580,6 +585,7 @@ export function createThrong(settings: Settings, observer: Observer) {
       for (const person of people) person.pathAt = -1
     }
     structured = Number.isFinite(halfWidth) && (lining > 0 || !path.straight)
+    stalls = createStalls(current.stalls, current.aisle, current.seed)
     const asked = Math.max(6, current.reach)
     const affordable = affordableRadius()
     budgeted = affordable < asked
@@ -656,7 +662,7 @@ export function createThrong(settings: Settings, observer: Observer) {
         // A generous guess at the radius before the person exists. Bodies vary
         // by a third and the check that matters is the one after they do, which
         // the first step performs anyway.
-        room = clearOf(x, y, 0.3 * current.spacing)
+        room = clearOf(x, y, 0.3 * current.spacing) && !stalls.blocked(x, y, 0.4)
       }
       const person = spawn(people.length, x, y)
       const k = key(Math.floor(x / CELL), Math.floor(y / CELL))
@@ -762,7 +768,7 @@ export function createThrong(settings: Settings, observer: Observer) {
     const preferred = child ? freeSpeed(stature, adultSpeed / 1.34) : adultSpeed
 
     const standing = rng() < current.standing || watcher
-    const angle = heading(rng, observer.axis, current.stream, current.against)
+    const angle = aisleWise(heading(rng, observer.axis, current.stream, current.against), rng)
 
     const person: Person = {
       x,
@@ -789,6 +795,7 @@ export function createThrong(settings: Settings, observer: Observer) {
       quarry: false,
       running: false,
       pathAt: -1,
+      junction: -1,
     }
     people.push(person)
     return person
@@ -817,7 +824,7 @@ export function createThrong(settings: Settings, observer: Observer) {
       person.x = spot.x
       person.y = spot.y
       person.pathAt = -1
-      const next = heading(place, observer.axis, current.stream, current.against)
+      const next = aisleWise(heading(place, observer.axis, current.stream, current.against), place)
       person.standing = person.watcher || (person.group === -1 && place() < current.standing)
       person.gx = person.standing ? 0 : Math.cos(next)
       person.gy = person.standing ? 0 : Math.sin(next)
@@ -832,7 +839,7 @@ export function createThrong(settings: Settings, observer: Observer) {
     // the angle it wants is already near one of the two open ends.
     let px = observer.x + Math.cos(angle) * r
     let py = observer.y + Math.sin(angle) * r
-    for (let attempt = 0; Math.abs(py) > halfWidth && attempt < 12; attempt++) {
+    for (let attempt = 0; (Math.abs(py) > halfWidth || stalls.blocked(px, py, 0.4)) && attempt < 12; attempt++) {
       const retry = entryAngle(place, ux, uy)
       px = observer.x + Math.cos(retry) * r
       py = observer.y + Math.sin(retry) * r
@@ -842,7 +849,7 @@ export function createThrong(settings: Settings, observer: Observer) {
 
     // A fresh errand, so a long walk does not turn into the same faces on the
     // same headings for ever. Everything about the body is kept.
-    const next = heading(place, observer.axis, current.stream, current.against)
+    const next = aisleWise(heading(place, observer.axis, current.stream, current.against), place)
     person.standing = person.group === -1 && place() < current.standing
     person.gx = person.standing ? 0 : Math.cos(next)
     person.gy = person.standing ? 0 : Math.sin(next)
@@ -982,6 +989,43 @@ export function createThrong(settings: Settings, observer: Observer) {
     }
   }
 
+  /**
+   * A heading laid onto the aisles, when there are stalls: the nearest of the
+   * four, with a few degrees of slop so a file of people is not on a wire.
+   */
+  function aisleWise(angle: number, rng: Rng): number {
+    if (!stalls.active) return angle
+    const quarter = Math.PI / 2
+    return Math.round(angle / quarter) * quarter + (rng() - 0.5) * 0.12
+  }
+
+  /** How often somebody walking into a crossing turns out of it. */
+  const TURN_AT_CROSSING = 0.3
+
+  /**
+   * One decision per crossing: straight on, or a quarter turn either way. A
+   * group decides as one, by its lead, since a family does not split at a
+   * corner.
+   */
+  function turnAtCrossing(person: Person, i: number): void {
+    const crossing = stalls.junction(person.x, person.y)
+    if (crossing < 0 || crossing === person.junction) return
+    person.junction = crossing
+    if (place() >= TURN_AT_CROSSING) return
+    const side = place() < 0.5 ? 1 : -1
+    if (person.group >= 0) {
+      if (indexInGroup(i) !== 0) return
+      const group = groups[person.group]!
+      const hx = group.hx
+      group.hx = -group.hy * side
+      group.hy = hx * side
+      return
+    }
+    const gx = person.gx
+    person.gx = -person.gy * side
+    person.gy = gx * side
+  }
+
   /** Whether the person in red is running off, or dawdling and letting me close. */
   let fleeing = true
   /** How far they run before stopping, and how close they let me get before running again. Redrawn each time. */
@@ -1017,6 +1061,39 @@ export function createThrong(settings: Settings, observer: Observer) {
       farGap = 9 + place() * 12
     }
     let heading = Math.atan2(person.gy, person.gx)
+    if (stalls.active) {
+      // **In the aisles, a runaway picks a way at each crossing, and prefers a
+      // corner.** Scoring by distance from me alone was built first: from
+      // behind in the same aisle straight on always wins, so they ran down it
+      // dead ahead of me and sat in the middle of the frame 77% of the time —
+      // the crosshair the stalls were meant to break. A child trying to lose
+      // you ducks round corners, so a turn is favoured, and a way back toward
+      // me is never taken.
+      const crossing = stalls.junction(person.x, person.y)
+      if (crossing >= 0 && crossing !== person.junction) {
+        person.junction = crossing
+        const quarter = Math.PI / 2
+        const base = Math.round(heading / quarter) * quarter
+        let best = base
+        let bestScore = -Infinity
+        for (const turn of [0, quarter, -quarter]) {
+          const h = base + turn
+          const away = (Math.cos(h) * dx + Math.sin(h) * dy) / Math.max(1, d)
+          if (away < -0.3) continue
+          const score = away * 0.5 + place() + (turn === 0 ? 0 : 0.7)
+          if (score > bestScore) {
+            bestScore = score
+            best = h
+          }
+        }
+        heading = best
+      }
+      person.gx = Math.cos(heading)
+      person.gy = Math.sin(heading)
+      const mine = Math.max(0.6, current.walk)
+      person.preferred = fleeing ? mine * current.flee : mine * 0.2
+      return
+    }
     heading += (place() - 0.5) * (fleeing ? 0.9 : 3) * Math.sqrt(dt) * 2
     if (!Number.isFinite(halfWidth) && d > 1e-3) {
       // Away from me, harder the closer I am, and only while running: a child
@@ -1169,6 +1246,14 @@ export function createThrong(settings: Settings, observer: Observer) {
         avoid(person, observer, strength * 1.15, force)
       }
 
+      // The stalls, and a decision at every aisle crossing: straight on, or
+      // round the corner. Which is what makes a market's crowd a grid of
+      // streams rather than a square with obstacles in it.
+      if (stalls.active) {
+        stalls.push(person.x, person.y, force)
+        if (!person.standing && !person.companion && !person.quarry && !person.watcher) turnAtCrossing(person, i)
+      }
+
       // The corridor, if there is one. One-sided and linear, so it reads as the
       // ground running out rather than as a barrier being hit. Pushed along the
       // path's normal, which on a straight one is `y`.
@@ -1307,6 +1392,11 @@ export function createThrong(settings: Settings, observer: Observer) {
 
     get halfWidth() {
       return halfWidth
+    },
+
+    /** The stalls, so I walk round the same ones everybody else does. */
+    get stalls() {
+      return stalls
     },
 
     /** The one in red, if there is one. */

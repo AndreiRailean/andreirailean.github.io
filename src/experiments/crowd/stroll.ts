@@ -62,6 +62,7 @@ import {
 } from "@/experiments/crowd/body"
 import { avoid } from "@/experiments/crowd/steering"
 import type { Person } from "@/experiments/crowd/throng"
+import type { Stalls } from "@/experiments/crowd/stalls"
 import { hikingPace, LANE_SPRING, lanePush, type Frame, type Path, type PathHint } from "@/experiments/crowd/path"
 import { makeRng, hashSeed, type Rng } from "@/experiments/random"
 import type { Settings } from "@/experiments/crowd/settings"
@@ -299,6 +300,15 @@ const SPOT_AHEAD = [3.2, 8]
  */
 const SPOT_BEARING_MIN = 0.65
 
+/** Seconds between notes of where the person in red is. At a run, about a metre and a half apart. */
+const CRUMB_EVERY = 0.5
+
+/** Metres. Close enough to a note to count it reached. About an aisle's half-width. */
+const CRUMB_REACHED = 1.8
+
+/** The most notes kept. Two minutes of trail, which is further behind than anybody chases. */
+const CRUMB_LIMIT = 240
+
 /** How far ahead a running glance at a spot lands, in metres. Far enough that the world is not rushing past it. */
 const SPOT_FAR = [18, 45]
 
@@ -358,6 +368,8 @@ export type Neighbourhood = {
   path: Path
   /** The one I am chasing, if anybody. */
   quarry: Person | null
+  /** The stalls, which I walk round like anybody. */
+  stalls: Stalls
 }
 
 export type Stroll = ReturnType<typeof createStroll>
@@ -413,6 +425,10 @@ export function createStroll(settings: Settings, seed: number) {
   let stature = current.height
 
   const force = { x: 0, y: 0 }
+  /** Where the person in red has been, as flat x, y pairs, oldest first. The trail I follow. */
+  const crumbs: number[] = []
+  let sinceCrumb = 0
+
   /** My place on the way, and my nearest point on a loop from last step. */
   const frame: Frame = { lateral: 0, cos: 1, sin: 0 }
   const hint: PathHint = { pathAt: -1 }
@@ -688,15 +704,48 @@ export function createStroll(settings: Settings, seed: number) {
     // The hill has its say on my pace too, by the same function as everybody
     // else's — or I would stride up a climb past a crowd that is labouring.
     const grade = crowd.path.flat ? 0 : crowd.path.groundSlope(x) * Math.cos(aim)
-    // **After them.** The line I mean to walk turns toward the person in red,
-    // by as much as `chase` says. It is the aim that turns, not the course, so
-    // the negotiation with the crowd still decides where I actually go.
+    // **After them — by where they went, not where they are.** Aiming at the
+    // person in red made them a crosshair: "they're almost always in front,
+    // which makes them appear like a center marker on a camera screen." So I
+    // follow their trail. Every `CRUMB_EVERY` seconds I note where they are,
+    // and the line I mean to walk turns toward the oldest note I have not yet
+    // reached. When they turn down another aisle I keep going, and turn where
+    // they turned; my glances still go to them, so the head leads and the
+    // body follows. It is the aim that turns, never the course, so the crowd
+    // and the stalls still decide where I actually go.
     const runaway = crowd.quarry
     if (runaway && current.chase > 0) {
-      let off = Math.atan2(runaway.y - y, runaway.x - x) - aim
+      sinceCrumb += dt
+      if (sinceCrumb >= CRUMB_EVERY) {
+        sinceCrumb = 0
+        crumbs.push(runaway.x, runaway.y)
+        if (crumbs.length > CRUMB_LIMIT * 2) crumbs.splice(0, 2)
+      }
+      // Reached, or already behind me: a note I will not go back for.
+      const ahead = { x: Math.cos(aim), y: Math.sin(aim) }
+      while (crumbs.length >= 2) {
+        const cx = crumbs[0]! - x
+        const cy = crumbs[1]! - y
+        const d = Math.sqrt(cx * cx + cy * cy)
+        if (d < CRUMB_REACHED || (d < 6 && cx * ahead.x + cy * ahead.y < 0)) crumbs.splice(0, 2)
+        else break
+      }
+      const tx = crumbs.length >= 2 ? crumbs[0]! : runaway.x
+      const ty = crumbs.length >= 2 ? crumbs[1]! : runaway.y
+      let off = Math.atan2(ty - y, tx - x) - aim
       while (off > Math.PI) off -= Math.PI * 2
       while (off < -Math.PI) off += Math.PI * 2
       aim += off * current.chase * 2.5 * dt
+    } else {
+      crumbs.length = 0
+      // **In the aisles I walk the aisles.** The same pull as a corridor's,
+      // toward the nearest of the four directions the aisles run, so wandering
+      // comes round a corner rather than into a stall.
+      if (crowd.stalls.active) {
+        const quarter = Math.PI / 2
+        const off = aim - Math.round(aim / quarter) * quarter
+        aim -= off * 1.4 * dt
+      }
     }
     const wanted = walking ? current.walk * hikingPace(grade, current.effort) : 0
     const desiredX = Math.cos(aim) * wanted
@@ -716,6 +765,9 @@ export function createStroll(settings: Settings, seed: number) {
     // The same corridor wall the crowd gets. **Without it the observer walks out
     // through the side of the street** and stands in the empty ground beside it
     // watching the crowd file past, which is a different piece.
+    // The stalls push me off them exactly as they push everybody.
+    crowd.stalls.push(x, y, force)
+
     if (crowd.path.straight) {
       const outside = Math.abs(y) - crowd.halfWidth + 0.8
       if (outside > 0) force.y -= Math.sign(y) * outside * 7
