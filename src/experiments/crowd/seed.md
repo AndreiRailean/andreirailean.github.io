@@ -369,3 +369,11 @@ already geometry nobody draws, so occlusion is a line-of-sight test from the eye
 to each head against them — heads behind a stall or a bank of trees are not
 drawn. The reveal he describes needs occluders beside a bending trail (trees,
 a hillside) that end at a clearing, which the trail does not yet have.
+
+## 2026-09-26 — where a chaser looks
+
+> Ok. One last thing on the chaser: when running after someone the head should
+> face predominantly in one of 2 directions: direction of travel, person being
+> chased. We can't run looking sideways, so that means the head turns much more
+> often. Birds don't matter anymore. Running into things does and losing the
+> target is. That dynamic would help avoid crosshairs even more
