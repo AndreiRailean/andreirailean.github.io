@@ -49,7 +49,8 @@
  */
 
 import { BOB_RISE, BOB_SWAY, RUN_RISE, RUN_SWAY, runBounce } from "@/experiments/crowd/body"
-import { CULL_ALPHA, project, type Camera } from "@/experiments/crowd/camera"
+import type { Boulder } from "@/experiments/crowd/boulders"
+import { CULL_ALPHA, horizonFor, project, sightSphere, type Camera, type SphereSight } from "@/experiments/crowd/camera"
 import type { Person } from "@/experiments/crowd/throng"
 import type { Settings } from "@/experiments/crowd/settings"
 
@@ -68,7 +69,7 @@ const bucketOf = (alpha: number): number =>
 const alphaOfBucket = (bucket: number): number => CULL_ALPHA * Math.exp((bucket / (BUCKETS - 1)) * LOG_RANGE)
 
 /** One head, ready to draw. */
-type Sighted = { sx: number; sy: number; r: number; depth: number; alpha: number; red: boolean }
+type Sighted = { sx: number; sy: number; r: number; depth: number; alpha: number; red: boolean; under: boolean }
 
 /**
  * The colour of the one person I am chasing. Red because it is the colour the
@@ -86,9 +87,45 @@ const QUARRY = "hsl(2, 88%, 56%)"
  * four thousand references per frame at sixty frames a second, which is a
  * megabyte a minute of pure garbage for a piece whose whole cost is the frame.
  */
-export type Scratch = { pool: Sighted[]; order: Sighted[] }
+export type Scratch = { pool: Sighted[]; order: Sighted[]; rocks: SphereSight[] }
 
-export const makeScratch = (): Scratch => ({ pool: [], order: [] })
+export const makeScratch = (): Scratch => ({ pool: [], order: [], rocks: [] })
+
+const newSight = (): SphereSight => ({ wx: 0, wy: 0, wz: 1, distance: 1, sin: 0, cos: 1, outline: [] })
+
+/**
+ * What a boulder does to one head: `0` nothing, `1` hides it outright, `2` is
+ * in front of part of it, so the head is painted before the boulder and the
+ * boulder's edge cuts it.
+ *
+ * **Exact, per head, rather than painter's order with the boulders in the
+ * sort.** A sphere has no single depth, and every depth it could be given is
+ * wrong for somebody at its edge — which is exactly where people walking round
+ * a boulder are. Given its centre's, somebody just behind the rim sorts in
+ * front of it and shows through; given its nearest point's, somebody just in
+ * front of the rim sorts behind it and vanishes. So the question is asked along
+ * the head's own line of sight: does it enter the sphere before it reaches the
+ * head?
+ *
+ * `(hx, hy, hz)` is the head in the eye's frame, `span` its radius in metres.
+ */
+function blockedBy(rock: SphereSight, hx: number, hy: number, hz: number, span: number): 0 | 1 | 2 {
+  const length = Math.sqrt(hx * hx + hy * hy + hz * hz)
+  const cosPsi = (hx * rock.wx + hy * rock.wy + hz * rock.wz) / length
+  if (cosPsi >= rock.cos) {
+    // The sight line enters the sphere. Where, is the nearer root.
+    const b = rock.distance * cosPsi
+    const root = Math.sqrt(Math.max(0, b * b - rock.distance * rock.distance * (1 - rock.sin * rock.sin)))
+    return length > b - root ? 1 : 0
+  }
+  // Grazing: the head overlaps the silhouette's edge without its centre being
+  // inside it. Behind the grazing ring, the edge cuts it.
+  const sinRho = Math.min(1, span / length)
+  const cosRho = Math.sqrt(1 - sinRho * sinRho)
+  const edge = rock.cos * cosRho - rock.sin * sinRho
+  if (cosPsi < edge) return 0
+  return length > rock.distance * rock.cos ? 2 : 0
+}
 
 /**
  * The colour of a head.
@@ -111,6 +148,12 @@ export type Frame = {
   fills: number
   /** Screen radius of the largest head drawn, in CSS pixels. */
   largest: number
+  /** Heads a boulder hid outright. */
+  hidden: number
+  /** Heads a boulder's edge cuts, painted before the boulders so it can. */
+  cut: number
+  /** Boulders that threw an outline this frame. */
+  rocks: number
 }
 
 /**
@@ -130,10 +173,26 @@ export function drawFrame(
     width: number
     height: number
     scratch: Scratch
+    /** Boulders near enough to matter. Empty when there are none. */
+    boulders: readonly Boulder[]
   },
 ): Frame {
   const { people, camera, settings, width, height } = options
-  const { pool, order } = options.scratch
+  const { pool, order, rocks } = options.scratch
+
+  // The boulders first, because every head is asked about each of them. Past
+  // the horizon a boulder hides only what the air already has.
+  const horizon = horizonFor(camera.fade)
+  let rockCount = 0
+  for (const boulder of options.boulders) {
+    const slot = rocks[rockCount] ?? newSight()
+    rocks[rockCount] = slot
+    if (!sightSphere(camera, boulder.x, boulder.y, options.ground(boulder.x), boulder.r, slot)) continue
+    if (slot.distance - boulder.r > horizon || slot.outline.length < 6) continue
+    rockCount++
+  }
+  let hidden = 0
+  let cut = 0
 
   context.globalAlpha = 1
   context.fillStyle = "#000"
@@ -168,12 +227,33 @@ export function drawFrame(
     if (sighting.sx < -r - 2 || sighting.sx > width + r + 2) continue
     if (sighting.sy < -r - 2 || sighting.sy > height + r + 2) continue
 
+    let under = false
+    if (rockCount > 0) {
+      // Back from the screen to the eye's frame, which is where the spheres are.
+      const hz = sighting.depth
+      const hx = ((sighting.sx - width / 2) * hz) / camera.focal
+      const hy = (-(sighting.sy - height / 2) * hz) / camera.focal
+      const span = r / sighting.scale
+      let blocked = 0
+      for (let k = 0; k < rockCount && blocked !== 1; k++) {
+        const verdict = blockedBy(rocks[k]!, hx, hy, hz, span)
+        if (verdict > blocked) blocked = verdict
+      }
+      if (blocked === 1) {
+        hidden++
+        continue
+      }
+      under = blocked === 2
+      if (under) cut++
+    }
+
     let slot = pool[seen]
     if (!slot) {
-      slot = { sx: 0, sy: 0, r: 0, depth: 0, alpha: 0, red: false }
+      slot = { sx: 0, sy: 0, r: 0, depth: 0, alpha: 0, red: false, under: false }
       pool[seen] = slot
     }
     slot.red = person.quarry
+    slot.under = under
     slot.sx = sighting.sx
     slot.sy = sighting.sy
     slot.r = r
@@ -186,7 +266,11 @@ export function drawFrame(
   // Truncated rather than rebuilt, so the backing store survives from frame to
   // frame and a quiet frame after a busy one costs nothing.
   order.length = seen
-  order.sort((a, b) => b.depth - a.depth)
+  // Heads a boulder's edge cuts go first, then the boulders, then everyone
+  // else — each run back to front. Boulders are black on black, so their order
+  // among themselves cannot show.
+  order.sort((a, b) => (a.under === b.under ? b.depth - a.depth : a.under ? -1 : 1))
+  let rocksPainted = rockCount === 0
 
   context.fillStyle = headColour(settings)
 
@@ -196,6 +280,18 @@ export function drawFrame(
   context.beginPath()
 
   for (const head of order) {
+    if (!rocksPainted && !head.under) {
+      if (bucket >= 0) {
+        context.globalAlpha = alphaOfBucket(bucket)
+        context.fill()
+        fills++
+      }
+      fills += paintRocks(context, rocks, rockCount, settings.shade)
+      context.fillStyle = headColour(settings)
+      context.beginPath()
+      bucket = -1
+      rocksPainted = true
+    }
     const next = bucketOf(head.alpha)
     if (next !== bucket) {
       if (bucket >= 0) {
@@ -241,7 +337,31 @@ export function drawFrame(
     context.fill()
     fills++
   }
+  if (!rocksPainted) fills += paintRocks(context, rocks, rockCount, settings.shade)
 
   context.globalAlpha = 1
-  return { drawn: seen, fills, largest }
+  return { drawn: seen, fills, largest, hidden, cut, rocks: rockCount }
+}
+
+/**
+ * Every boulder's outline, opaque, in the ground's own colour.
+ *
+ * One fill each rather than one path for all: in a single path two outlines
+ * wound opposite ways would cancel where they overlap and leave a hole in the
+ * middle of an island. There are tens of them, so the fills cost nothing.
+ */
+function paintRocks(context: CanvasRenderingContext2D, rocks: SphereSight[], count: number, shade: number): number {
+  context.globalAlpha = 1
+  // The ground's own black unless `shade` says otherwise, which shows each
+  // boulder as the shape it is.
+  context.fillStyle = `hsl(0 0% ${Math.round(shade * 40)}%)`
+  for (let k = 0; k < count; k++) {
+    const outline = rocks[k]!.outline
+    context.beginPath()
+    context.moveTo(outline[0]!, outline[1]!)
+    for (let p = 2; p < outline.length; p += 2) context.lineTo(outline[p]!, outline[p + 1]!)
+    context.closePath()
+    context.fill()
+  }
+  return count
 }

@@ -56,6 +56,7 @@ import {
 import { corridorPoint, entryAngle, heading } from "@/experiments/crowd/random"
 import { createLoop, createPath, hikingPace, lanePush, type Frame, type Path } from "@/experiments/crowd/path"
 import { createStalls, type Stalls } from "@/experiments/crowd/stalls"
+import { createBoulders, type Boulders } from "@/experiments/crowd/boulders"
 import { avoid, CUTOFF } from "@/experiments/crowd/steering"
 import { hashSeed, makeRng, type Rng } from "@/experiments/random"
 import { BOUNDS, type Settings } from "@/experiments/crowd/settings"
@@ -364,6 +365,10 @@ export function createThrong(settings: Settings, observer: Observer) {
   let pathShape = ""
   /** The market's stalls, which nobody can see. None unless `stalls` says so. */
   let stalls: Stalls = createStalls(0, 1, 0)
+  /** Boulders, which hide whoever is behind them. None unless `boulders` says so. */
+  let boulders: Boulders = createBoulders(0, 0, 0, path, Infinity, 0, 0)
+  /** What the boulders were built from, so a density drag does not rebuild them. */
+  let boulderShape = ""
   /** Metres of lining each side, or 0. Always 0 on open ground, which has no sides. */
   let lining = 0
   /**
@@ -600,6 +605,21 @@ export function createThrong(settings: Settings, observer: Observer) {
     }
     structured = Number.isFinite(halfWidth) && (lining > 0 || !path.straight)
     stalls = createStalls(current.stalls, current.aisle, current.seed)
+    // **Rebuilt only when their own inputs change**, and clear of wherever I am
+    // standing when they are — which on a loop is not the origin.
+    const rocks = [current.boulders, current.boulder, current.seed, halfWidth, pathShape].join()
+    if (rocks !== boulderShape) {
+      boulderShape = rocks
+      boulders = createBoulders(
+        current.boulders,
+        current.boulder,
+        current.seed,
+        path,
+        halfWidth,
+        observer.x,
+        observer.y,
+      )
+    }
     const asked = Math.max(6, current.reach)
     const affordable = affordableRadius()
     budgeted = affordable < asked
@@ -676,7 +696,7 @@ export function createThrong(settings: Settings, observer: Observer) {
         // A generous guess at the radius before the person exists. Bodies vary
         // by a third and the check that matters is the one after they do, which
         // the first step performs anyway.
-        room = clearOf(x, y, 0.3 * current.spacing) && !stalls.blocked(x, y, 0.4)
+        room = clearOf(x, y, 0.3 * current.spacing) && !stalls.blocked(x, y, 0.4) && !boulders.blocked(x, y, 0.4)
       }
       const person = spawn(people.length, x, y)
       const k = key(Math.floor(x / CELL), Math.floor(y / CELL))
@@ -853,7 +873,11 @@ export function createThrong(settings: Settings, observer: Observer) {
     // the angle it wants is already near one of the two open ends.
     let px = observer.x + Math.cos(angle) * r
     let py = observer.y + Math.sin(angle) * r
-    for (let attempt = 0; (Math.abs(py) > halfWidth || stalls.blocked(px, py, 0.4)) && attempt < 12; attempt++) {
+    for (
+      let attempt = 0;
+      (Math.abs(py) > halfWidth || stalls.blocked(px, py, 0.4) || boulders.blocked(px, py, 0.4)) && attempt < 12;
+      attempt++
+    ) {
       const retry = entryAngle(place, ux, uy)
       px = observer.x + Math.cos(retry) * r
       py = observer.y + Math.sin(retry) * r
@@ -1344,6 +1368,13 @@ export function createThrong(settings: Settings, observer: Observer) {
       // The stalls, and a decision at every aisle crossing: straight on, or
       // round the corner. Which is what makes a market's crowd a grid of
       // streams rather than a square with obstacles in it.
+      // Boulders: pushed off them, and steered round them before that — **inside
+      // the detail radius only**, the same trade the avoidance makes. Out there
+      // somebody who walks into a boulder is inside it, and a head inside a
+      // boulder is hidden by it, so walking through one looks exactly like
+      // walking behind it. Pushing all nine thousand cost 38% of the step.
+      if (near && boulders.active) boulders.push(person.x, person.y, person.vx, person.vy, force)
+
       if (stalls.active) {
         stalls.push(person.x, person.y, force)
         if (!person.standing && !person.companion && !person.quarry && !person.watcher) turnAtCrossing(person, i)
@@ -1492,6 +1523,11 @@ export function createThrong(settings: Settings, observer: Observer) {
     /** The stalls, so I walk round the same ones everybody else does. */
     get stalls() {
       return stalls
+    },
+
+    /** The boulders, which I walk round too and which the draw asks what they hide. */
+    get boulders() {
+      return boulders
     },
 
     /** Whether I have just caught the one in red, and we are standing together. */

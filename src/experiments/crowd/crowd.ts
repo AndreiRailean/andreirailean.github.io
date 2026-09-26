@@ -40,7 +40,8 @@
  * and the note's backdrop want and for the same reason.
  */
 
-import { makeCamera, type Camera } from "@/experiments/crowd/camera"
+import type { Boulder } from "@/experiments/crowd/boulders"
+import { horizonFor, makeCamera, type Camera } from "@/experiments/crowd/camera"
 import { drawFrame, makeScratch, type Scratch } from "@/experiments/crowd/draw"
 import { createStroll, type Stroll } from "@/experiments/crowd/stroll"
 import { createThrong, MAX_PEOPLE, type Throng, type ThrongStats } from "@/experiments/crowd/throng"
@@ -71,6 +72,12 @@ export type CrowdStats = ThrongStats & {
   fills: number
   /** Screen radius of the nearest head drawn, in CSS pixels. */
   largest: number
+  /** Heads a boulder hid outright last frame. Filled while drawing. */
+  hidden: number
+  /** Boulders that threw an outline last frame. Filled while drawing. */
+  rocks: number
+  /** How far inside a boulder I am standing, in metres. Should be 0; the walls are soft, so not always. */
+  inBoulder: number
   /**
    * Milliseconds the last frame spent drawing, as a rolling average.
    *
@@ -154,6 +161,10 @@ export function createCrowd(canvas: HTMLCanvasElement, initial: Settings): Crowd
   let crowd: Throng = createThrong(settings, me)
 
   const scratch: Scratch = makeScratch()
+  /** The boulders near enough to draw, asked for once a frame into the same array. */
+  const nearby: Boulder[] = []
+  let hidden = 0
+  let rocks = 0
 
   let frame = 0
   let running = false
@@ -210,19 +221,24 @@ export function createCrowd(canvas: HTMLCanvasElement, initial: Settings): Crowd
   function draw(): void {
     context.setTransform(dpr, 0, 0, dpr, 0, 0)
     const started = performance.now()
+    const camera = eyeCamera()
+    crowd.boulders.within(camera.x, camera.y, horizonFor(settings.fade), nearby)
     const result = drawFrame(context, {
       people: crowd.people,
-      camera: eyeCamera(),
+      camera,
       ground: crowd.path.ground,
       settings,
       width,
       height,
       scratch,
+      boulders: nearby,
     })
     drawMs += (performance.now() - started - drawMs) * 0.1
     drawn = result.drawn
     fills = result.fills
     largest = result.largest
+    hidden = result.hidden
+    rocks = result.rocks
   }
 
   /** One tick of the world. The observer first — see the docblock. */
@@ -360,6 +376,9 @@ export function createCrowd(canvas: HTMLCanvasElement, initial: Settings): Crowd
         drawn,
         fills,
         largest,
+        hidden,
+        rocks,
+        inBoulder: crowd.boulders.inside(me.x, me.y),
         drawMs,
         budget: MAX_PEOPLE,
         fps,

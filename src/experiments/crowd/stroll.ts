@@ -63,6 +63,7 @@ import {
 import { avoid } from "@/experiments/crowd/steering"
 import type { Person } from "@/experiments/crowd/throng"
 import type { Stalls } from "@/experiments/crowd/stalls"
+import type { Boulders } from "@/experiments/crowd/boulders"
 import { hikingPace, LANE_SPRING, lanePush, type Frame, type Path, type PathHint } from "@/experiments/crowd/path"
 import { makeRng, hashSeed, type Rng } from "@/experiments/random"
 import type { Settings } from "@/experiments/crowd/settings"
@@ -382,6 +383,8 @@ export type Neighbourhood = {
   quarry: Person | null
   /** The stalls, which I walk round like anybody. */
   stalls: Stalls
+  /** The boulders, likewise. */
+  boulders: Boulders
   /** Whether I have just caught the one in red, and we are standing together. */
   caught: boolean
 }
@@ -811,6 +814,7 @@ export function createStroll(settings: Settings, seed: number) {
     // watching the crowd file past, which is a different piece.
     // The stalls push me off them exactly as they push everybody.
     crowd.stalls.push(x, y, force)
+    crowd.boulders.push(x, y, vx, vy, force)
 
     if (crowd.path.straight) {
       const outside = Math.abs(y) - crowd.halfWidth + 0.8
