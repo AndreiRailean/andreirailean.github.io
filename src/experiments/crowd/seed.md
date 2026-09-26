@@ -327,3 +327,24 @@ Open: with the trail followed, the red head is inside my field of view about
 half the time — lost round corners and found again by a glance. Whether that is
 too often lost is a matter of `chase`, which scales both how hard I go after
 them and how many glances they get.
+
+## 2026-09-26 — focus on the chasee, the loop, and being caught
+
+> it's looking really good. the "catch me" preset is feeling more natural,
+> though it does feel like the red dot goes out of sight a little too much and
+> for a chasing scene, it feels that the chaser isn't focusing on the chasee as
+> much as they should.
+>
+> i can't tell the loop from the street. maybe i need to let it loop for much
+> longer to notice, but I won't do that.
+>
+> please file a ticket for the steward to think about how to handle cases when
+> preset number grows like we have it here. i don't want to artificially limit
+> it. and i don't want you to focus on it right now.
+>
+> i'm looking at a seemingly abnormal "catch me" case. where the red person has
+> been caught. they're not running away anymore and I appear to be looking
+> around all the time with the red person going out of sight to the left and to
+> the right. i can't quite tell whether we're walking together or we're
+> wrestling. i think if i catch them we can stand together for a little bit,
+> then they run away and I chase them again. tom and jerry style
