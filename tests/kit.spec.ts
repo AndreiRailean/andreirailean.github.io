@@ -54,6 +54,38 @@ for (const slug of PIECES) {
   })
 
   /**
+   * **Every key a preset's title names loads that preset — #223.** The titles
+   * said `key 10` through `key 16` on crowd, and there is no such key: a digit
+   * is one keypress, so the tenth preset onward is reachable by arrows and the
+   * pointer only. Read from the titles rather than from the count, so the check
+   * holds whatever the titles claim and cannot pass by a piece having few
+   * presets — paired with a presence assertion that some title claims a key.
+   */
+  test(`${slug}: every key a preset's title names loads that preset`, async ({ page }) => {
+    const experiment = await openExperiment<BaseApi>(page, slug, { idle: false })
+    // A chrome test, so hold the piece: see "A running piece starves the thread".
+    await experiment.api(({ api }) => api.pause(true))
+    const shown = () => page.evaluate(() => document.documentElement.dataset.preset)
+
+    const titles = await page
+      .locator(".bar button.preset")
+      .evaluateAll((buttons) => buttons.map((b) => b.getAttribute("title") ?? ""))
+    const claims = titles.flatMap((title, index) => {
+      const key = /\(key ([^,)]+)/.exec(title)?.[1]
+      return key === undefined ? [] : [{ index, key }]
+    })
+    expect(claims.length, `${slug}: no preset title names a key at all`).toBeGreaterThan(0)
+
+    for (const { index, key } of claims) {
+      expect(key, `${slug}: preset ${index + 1} names "key ${key}", which is not one keypress`).toHaveLength(1)
+      // Start from a different preset, so the key has to move something.
+      await experiment.api(({ api, arg }) => api.preset(arg), index === 0 ? 2 : 1)
+      await page.keyboard.press(key)
+      expect(await shown(), `${slug}: key ${key} did not load preset ${index + 1}`).toBe(String(index))
+    }
+  })
+
+  /**
    * Left and right step through the presets, the way a swipe does on a phone.
    *
    * Stepping is not the digits with extra steps: it is how a scene gets compared
