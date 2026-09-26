@@ -48,7 +48,16 @@ import { needsRecast, needsRestock, type Settings } from "@/experiments/crowd/se
 
 export type CrowdStats = ThrongStats & {
   /** Where I am and what I am doing. */
-  me: { x: number; y: number; yaw: number; course: number; speed: number; walking: boolean; stature: number }
+  me: {
+    x: number
+    y: number
+    yaw: number
+    course: number
+    speed: number
+    walking: boolean
+    running: boolean
+    stature: number
+  }
   /**
    * Heads that reached the glass last frame.
    *
@@ -188,7 +197,7 @@ export function createCrowd(canvas: HTMLCanvasElement, initial: Settings): Crowd
     return makeCamera(
       me.x + Math.cos(right) * sway,
       me.y + Math.sin(right) * sway,
-      z,
+      z + crowd.path.ground(me.x),
       me.yaw,
       me.pitch,
       settings.fov,
@@ -204,6 +213,7 @@ export function createCrowd(canvas: HTMLCanvasElement, initial: Settings): Crowd
     const result = drawFrame(context, {
       people: crowd.people,
       camera: eyeCamera(),
+      ground: crowd.path.ground,
       settings,
       width,
       height,

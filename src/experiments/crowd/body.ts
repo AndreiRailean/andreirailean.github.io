@@ -172,3 +172,61 @@ export function cadence(stature: number, speed: number, preferred: number): numb
  */
 export const BOB_RISE = 0.023
 export const BOB_SWAY = 0.02
+
+/**
+ * The speed at which a person stops walking and starts running, in m/s.
+ *
+ * **A Froude number of 0.5**, `v²/(g·L)`, which is where humans — and most
+ * legged animals — switch gait, and for the same reason: an inverted pendulum
+ * vaulting over a stiff leg cannot go faster than about `sqrt(g·L)` without
+ * the foot leaving the ground. Here `g` is doing work, unlike in `freeSpeed`:
+ * the threshold is a physical ratio, not a scaled measurement. 1.76 m gives
+ * about 2.1 m/s, which is where treadmill subjects break into a jog.
+ */
+export const runSpeed = (stature: number): number => Math.sqrt(0.5 * 9.81 * legLength(stature))
+
+/**
+ * Running steps per second.
+ *
+ * **Nearly flat in speed**, which is the opposite of walking: a runner goes
+ * faster mostly by lengthening the stride, and cadence sits around 170–180 a
+ * minute from a jog to a fast run, rising only a little. Scaled by leg length
+ * the way the pendulum scales a walk.
+ */
+export const runCadence = (stature: number, speed: number): number =>
+  2.8 * Math.sqrt(1.75 / stature) * (1 + 0.05 * (speed - 3))
+
+/**
+ * How far a running head rises and falls: peak to peak, in metres.
+ *
+ * Recreational runners oscillate 6–10 cm vertically, against a walk's 4–5 cm.
+ * Half of 8 cm, as an amplitude to set beside `BOB_RISE`.
+ */
+export const RUN_RISE = 0.04
+
+/** Sideways swing while running, as an amplitude. A runner's feet land nearly on one line, so it is smaller than a walker's. */
+export const RUN_SWAY = 0.008
+
+/** Fraction of a running step spent with a foot on the ground. The rest is flight. */
+const STANCE = 0.38
+
+/**
+ * Where a running head sits in its bounce, from −1 to 1, at step phase `u` in
+ * [0, 1) — mid-flight at the top.
+ *
+ * **Not a sine, and not a walk's shape turned over.** A walk vaults: the head
+ * is highest in mid-stance. A run is a spring: the head is *lowest* in
+ * mid-stance, compressed onto the leg, and in flight it is ballistic, so the
+ * top of the bounce is a parabola rather than a rounded wave. The difference is
+ * the jolt at footfall, which is a large part of why a camera running reads
+ * as running.
+ */
+export function runBounce(u: number): number {
+  const t = u - Math.floor(u)
+  const flight = 1 - STANCE
+  if (t < flight) {
+    const x = (t - flight / 2) / (flight / 2)
+    return 1 - 1.6 * x * x
+  }
+  return -0.6 - 0.4 * Math.sin((Math.PI * (t - flight)) / STANCE)
+}

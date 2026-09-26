@@ -393,6 +393,130 @@ So this is a rejected approach rather than an unbuilt one. If it is ever
 revisited, the thing to preserve is that no landmark stays in frame long enough
 to be navigated by.
 
+## The structured crowd: a lining, a path, teams
+
+Added 2026-09-25 for the parade, teams and trail scenes. **Everything in it is
+off at the values every older preset states** — `lining: 0`, `bend: 0`,
+`climb: 0`, `team: 0` — and the old placement and re-entry are kept verbatim
+for that case (`structured` in `throng.ts`), because every measurement in this
+file was taken on them. Do not generalise that branch away without re-measuring.
+
+- **Watchers are a role, not a mood.** A watcher is always standing, is only
+  re-entered into the lining, and is held there by walls on both sides. They
+  are sorted to the end of `people`, and two things depend on it: a group is a
+  contiguous run of walkers, and companions are the first few people. Anything
+  that reorders `people` in a lined scene has to keep that partition.
+- **A heading is held in the path's frame.** `desired()` turns it onto the path
+  at the person's `x`. On a straight path that is the identity and is skipped.
+- **On a narrow trail the walls steer everybody round the bends on their own**,
+  so "is the crowd moving along the path" cannot tell the rotation from its
+  absence — that check was watched passing with the rotation deleted. What the
+  walls cannot do is spread people across the way: a crowd shoved round a bend
+  rides its outside edge. `tests/unit/crowd/structure.test.ts` asserts on that,
+  0.47 of the half-width from the centre with the rotation against 0.64 without.
+- **On level ground a winding trail is invisible from inside it.** Every head
+  is within a metre of eye height, so the whole line collapses onto the horizon
+  and its bends are only a spread from left to right. That is why `climb`
+  exists: relief lifts the far bends off the horizon. The ground is added to the
+  eye and to every head, and nowhere else — the simulation is still 2D.
+- **`effort` is Tobler's hiking function and it takes a minute to show.** The
+  concertina — density on climbs over density on descents — was 1.3 at forty
+  seconds and 2.1 at seventy-five, against 0.8 with it off. A shorter test would
+  read the mechanism as weak.
+- **`keep` saturates by 0.4.** The share of walkers on their own side of a
+  4.5 m two-way trail was 0.45 with no rule, 0.88 at 0.2, 0.997 at 0.4 and 1.000
+  at 1. Its first hint claimed an overtake "still steps across the middle" at
+  any strength; measured, at the top nobody does. Say what a setting does at a
+  value only after reading the number at that value.
+- **Past three companions the slots are a team block with me in the back row**
+  (`teamSlots`), which keeps the rule above: nobody behind me. `companions`'
+  address slot was retired and re-appended when its range grew from 3 to 15.
+
+## The runner, the chase and the loop
+
+Added 2026-09-26.
+
+- **Running is a gait, not a speed.** Above a Froude number of 0.5 (`runSpeed`,
+  about 2.1 m/s for 1.76 m) the bob becomes a bounce: lowest at footfall,
+  ballistic in flight, 8 cm peak to peak, at a nearly flat 170–180 steps a
+  minute. With hysteresis, for me and for everybody else. Andrei's report was
+  "not enough to make it feel like a jog", and it had two causes: the pace
+  track stopped at 2.2 m/s, the threshold itself, and the bob was a walk's at
+  any speed.
+- **The detail radius is derived per scene** (`detailFor`) from the fastest
+  closing pair. Raising `DETAIL` to cover a runner would have cost every walking
+  scene 1.8 times the anticipation.
+- **A chase built on a pace that varies smoothly with distance settles.** Any
+  such law has a distance where the quarry's pace equals mine, and two minutes
+  of the market ended on 4 m, 4 m, 4 m. The chase is a two-state oscillator —
+  run until far, dawdle until I am near — with thresholds redrawn at each
+  switch. The test asserts on the range over the _last_ minute, which is the
+  number a settled chase gets wrong.
+- **The red head is painted in depth order**, flushing the batch around it, so
+  a nearer stranger still hides it. Over ten frames it was hidden once.
+- **The path is an interface, and the graph path's arithmetic is unchanged
+  behind it.** `frame()` once per person per step answers across and along;
+  `sample`, `entry` and `lengthWithin` replace the corridor's closed forms only
+  for a loop. `lengthWithin` returning null is what keeps every older scene on
+  the formula it was measured with.
+- **A loop is anchored where I stand when it is built, so it is rebuilt only
+  when its own settings change** (`pathShape`). Rebuilding it on a density drag
+  would pick the circuit up and put it down somewhere else.
+- **A loop inside the world has no re-entries at all** — nobody on it ever
+  leaves the disc — so its cost is the whole lining at once. `loop run` holds
+  5,065 people at 120 watchers/100m², 319 ms per second of run; at 160 it was
+  6,720 and 460.
+- **`density` cannot be 0**; its track stops at 0.5. A preset that wants an
+  empty way says 0.5, or the grid check fails it.
+
+## Stalls, the trail, and a runner's gaze
+
+Added 2026-09-26, answering "they're almost always in front, which makes them
+appear like a center marker on a camera screen" and "it appears like a
+distracted child is about to fall over".
+
+- **Aiming at the person in red is what made them a crosshair**, and the fix
+  had two halves that each failed alone. Following their trail
+  (`crumbs` in `stroll.ts`) without stalls still let the chase cut diagonals;
+  stalls with a runaway who scored ways only by distance from me made it
+  worse — straight down the aisle always wins from behind, and the red head
+  sat within 5° of my heading 77% of the time, against 23% on open ground.
+  What worked was the runaway preferring a corner: 12%.
+- **The stalls are never drawn.** They are `stalls.ts`, a lattice with an
+  aisle crossing at the origin, pushing like a corridor wall. The aisles only
+  show because headings are laid onto them (`aisleWise`) and each crossing is
+  one decision (`junction`) — without those the crowd presses on the stalls'
+  sides and the grid reads as clutter.
+- **A few people still end up inside a stall** — 0.4–0.6% — placed where the
+  rejection ran out of tries. The push has them out within a second; the test
+  bounds it at 2% rather than 0 for that reason.
+- **The running gaze is eased on `runMix`**, the bob's own blend, so it changes
+  with the gait rather than at a speed of its own. Every multiplier is 1 at a
+  walk, which is why no walking scene moved.
+
+## Being caught, and keeping them in sight
+
+- **A turn chosen at a crossing is finished outside it.** At a run the body
+  takes most of an aisle to come round, so a runaway came out of a crossing
+  facing a stall and stayed there — 172 seconds on seed 2222, with me pressed
+  behind them. `keepToAisle` lays any heading that crosses its own aisle back
+  along it, for everybody; the runaway does the same inside `flee`.
+- **Caught is a state** (`caughtFor`): within 1.1 m we both stand for 2.5–5 s,
+  then they bolt away along their aisle with a head start. In 60% of their
+  waits they do not notice me coming (`CAUGHT_SHARE`), which is what makes
+  catches happen at all against a runaway faster than me.
+- **A chaser looks two ways: the way ahead, or at them.** Resting the head part
+  of the way toward them (built first, as `REST_ON_QUARRY`) kept them in view
+  0.85–0.89 of the time, and Andrei's reply named what was wrong with it: "We
+  can't run looking sideways". Measured while they were off to one side, it
+  pointed at neither 44% of the time and switched six times a minute. The gaze
+  in a chase is now a toggle of short spells (`chasing` in `stroll.ts`) on a
+  quicker neck (`NECK_CHASE`): 17% between the two, which is the turn itself,
+  38 switches a minute, and 0.75 in view.
+- **A catch has to be re-armed.** They bolt from within arm's reach, so the
+  next step caught them again: 55 catches in four minutes on seed 31337.
+  `REARM_AT` makes them get 5 m away first.
+
 ## What is not here, and would be worth having
 
 - **Nobody is going anywhere in particular.** People carry a heading, not a

@@ -170,3 +170,219 @@ Written for him to read when he chooses, not to block on.
   not a worry" — which is a more interesting answer than yes or no, because it
   says the companion glance is not legible _as_ a glance at them. It does not
   need to be. Whatever it reads as, it reads as fluid.
+
+---
+
+## 2026-09-25 — a structured crowd: the parade, the teams, the trail
+
+A new brief, given to a fresh session with the question of where it belongs
+left open:
+
+> we have a crowd experiment. it looks great. it's main feel is of a person
+> walking through different kinds of crowd and looking around.
+> i want to try experiment with a structured crowd and cannot decide whether it
+> is a new experiment or if we should keep going with the existing one and pile
+> on more.
+> i would like to see a walker being part of a parade where there are stationary
+> observers on both sides and a stream of walkers going in the same direction
+> past the stationary crowd on both sides.
+> another variation is of similar kind but where the number of walkers is
+> smaller, i.e. they're like sports teams in small groups going in the same
+> direction spaced out
+> next version would see a crowd going through structured space that is not all
+> straight. so we are all walking as a river meandering without sharp turns, but
+> the path we follow is relatively narrow, like a mountain trail or a firetrail
+> through a forest. the trail is seen by the shape of the crowd following it.
+> again, like in crowd experiment, we're only seeing people and here we're
+> seeing the shape of the world by the space people occupy or not.
+
+### What I did with it, and what I could not decide
+
+**Built into `crowd` rather than as a new piece**, as presets — _parade_,
+_teams_, _the trail_, _fire trail_ — behind new settings under **route**
+(`lining`, `watchers`, `bend`, `meander`, `climb`, `hills`, `effort`) and a
+`team` size under **crowd**. The reason is reversibility, not a view on which is
+right: every one of the three is the existing corridor generalised, so this was
+the fastest way to something he could drive, and splitting the presets out into
+a piece of their own later is a copy, whereas merging two pieces is not. **Which
+it should be is his question and is still open.**
+
+Questions I could not answer, and what I assumed:
+
+- **A trail on level ground does not show its shape from eye height.** Every
+  head sits on the horizon, so the bends are only a left-right spread. I added
+  relief (`climb`) so the far bends lift off the horizon, and Tobler's hiking
+  function (`effort`) so the crowd bunches on climbs. Both are sliders and the
+  trail presets use them; set `climb` to 0 to see the level version. Is the
+  ground allowed to rise, given the brief said "we're only seeing people"?
+  Nothing but people is drawn — the hill is only where the heads are.
+- **Is the parade's walking stream too sparse?** At 30/100m² on a 10 m road it
+  is a procession rather than a march. `density` moves it.
+- **Teams are spaced at random, not evenly.** A parade of delegations has
+  regular gaps; these have the gaps random placement gives, and teams at
+  slightly different speeds close up over a long walk. An even spacing would be
+  a new mechanism — say if it matters.
+- **Do the watchers want to face or follow the parade?** A head gives away
+  nothing about which way it is turned (see `AGENTS.md`), so they do not; that
+  is the piece's existing constraint rather than a new one.
+- **The showcase is unaffected.** Published crowd scenes are pinned to frozen
+  runners; nothing here asks them to move.
+
+## 2026-09-25 — a two-way trail that keeps left
+
+> great, thanks. how about a meander along a two way path where I and everyone
+> going in my direction walks on the left, and those moving in the opposite
+> direction (towards me) are on the right.
+
+Built as a `keep to` slider under **route** (left, right, or either side, with a
+strength) and a **keep left** preset: the trail made two-way, everybody keeping
+left of their own direction of travel. Open question: the preset uses the full
+strength, which is a strict procession in both directions — nobody on the wrong
+side at all. Below about 0.3 the rule is loose enough that people step across to
+overtake and come back. Which of those he meant is his to say.
+
+## 2026-09-26 — the showcase, a runner, a loop, and somebody to chase
+
+> great. let's add keep left, parade and teams to the showcase. i like how in
+> "keep left" the crowd goes into far distance. there's just enough people to
+> see the train and give it the right shape into the horison.
+>
+> let's do a few more:
+> runner - i am the only one running. everyone else is walking, like they do in
+> "keep left" in both direction. i'm running in between the two streams. i can
+> increase my pace with a slider on "keep left" but not enough to make it feel
+> like a jog. maybe because my bobbing is still walk-like. either way, running
+> between the two streams would be great.
+>
+> loop run - like teams, i am canvassed on both sides by a standing croud. but
+> i'm not walking into the straight infinity, instead I go in a loop with a few
+> companions running next to me in a similar pace. keen to see if the loop is
+> detectable and whether it is sufficient to just have a curved street - like
+> parade or teams but with smooth and sharp turns. the sides of the path can be
+> smooth or straight, but the run needs to be smooth without abrupt turns - like
+> a car turning would follow a curve.
+>
+> one thing i keep thinking about when looking at the crowd animations is that
+> it would be nice to have a target to follow. like a child, or a friend who is
+> running away and I'm trying to catch up with them. obviously it is impossible
+> to tell a random dot apart from the crowd in the distance, so i'm imagining it
+> being red in colour. i think 2 key actors would change the simulation dynamic:
+> a red dot would at first appear to be the main actor, but the actor is the
+> "me" who's looking at the world.
+
+### What I did with it, and what I could not decide
+
+- **Showcase:** keep left, parade and teams are on the wall, keep left first as
+  the newest. Pinned to a runner built from this branch, so they can be
+  re-pinned freely until it merges.
+- **runner:** the keep-left trail with me running down the middle. The cause of
+  "not enough to feel like a jog" was two things, both fixed: the pace track
+  stopped at 2.2 m/s, and the bob stayed a walk's at any speed. `my line` and
+  `hold` put me anywhere across the way.
+- **loop run** and **street run:** the same run, kerbs and three companions,
+  on a closed 700 m circuit and on a bending street, so the question — is a
+  loop detectable, or is a curved street enough — can be answered by switching
+  between the two. `loop` and `corners` make any scene a circuit.
+- **catch me:** the market with somebody in red. `chase` and `their pace`.
+
+Questions I could not answer:
+
+- **Is the loop detectable?** Unlooked-at in motion. Across the infield the far
+  kerb is 150–200 m away and faint at this `fade`; a longer `distance` shows
+  more of it and costs clarity near by.
+- **Should the red head resist the fog?** It fades exactly as everybody does,
+  so past about 20 m it is a few red pixels. A person looking for a child sees
+  red further than physics says; whether the piece should is a taste.
+- **Who is the one in red?** Whoever the seed makes them — often an adult. The
+  brief said "like a child, or a friend"; a setting could pick.
+
+## 2026-09-26 — the red person, and glancing while running
+
+> The red person could use some work. They're almost always in front, which
+> makes them appear like a center marker on a camera screen. What would make it
+> more realistic is if, like running through people, we couldn't just follow the
+> straight path to them. We have to follow our path and correct it to point at
+> them, but we're not fully locked on them at all times. They could be running
+> to the left while we're behind and are still running forward. So them turning
+> doesn't make us go diagonal to catch up, but keeps us going forward and we
+> turn near their turning point. Perhaps we bias our glances on the red person,
+> but our direction is more constrained by the invisible topology that is
+> stopping us from making shortcuts (we can't go through market stalls - we have
+> to walk around them).
+>
+> Glancing while running needs an adjustment. It is much harder to run and
+> follow birds right over your head - the world is moving too fast past me and
+> accidents are more likely. So glances need to become shorter and be focused
+> more on the distant objects rather than looking at the rocks on the ground and
+> birds immediately overhead. Current glancing model breaks the loop running
+> illusion because it appears like a distracted child is about to fall over
+> because they're not paying attention.
+
+Built as: invisible **stalls** with **aisles** (route), the chase following the
+red person's trail rather than the person, a runaway who ducks round corners,
+and a runner's gaze that is shorter, rarer and further ahead. **catch me** now
+has stalls; a **stalls** preset shows the aisles with nobody to chase.
+
+Open: with the trail followed, the red head is inside my field of view about
+half the time — lost round corners and found again by a glance. Whether that is
+too often lost is a matter of `chase`, which scales both how hard I go after
+them and how many glances they get.
+
+## 2026-09-26 — focus on the chasee, the loop, and being caught
+
+> it's looking really good. the "catch me" preset is feeling more natural,
+> though it does feel like the red dot goes out of sight a little too much and
+> for a chasing scene, it feels that the chaser isn't focusing on the chasee as
+> much as they should.
+>
+> i can't tell the loop from the street. maybe i need to let it loop for much
+> longer to notice, but I won't do that.
+>
+> please file a ticket for the steward to think about how to handle cases when
+> preset number grows like we have it here. i don't want to artificially limit
+> it. and i don't want you to focus on it right now.
+>
+> i'm looking at a seemingly abnormal "catch me" case. where the red person has
+> been caught. they're not running away anymore and I appear to be looking
+> around all the time with the red person going out of sight to the left and to
+> the right. i can't quite tell whether we're walking together or we're
+> wrestling. i think if i catch them we can stand together for a little bit,
+> then they run away and I chase them again. tom and jerry style
+
+## 2026-09-26 — occlusion
+
+> i think what this experiment really needs is some sort of occlusion. dense
+> static people forming a street seem to help build a sense of space, as well as
+> the crowd following in a line. it's the negative space that makes it feel
+> "spacey". market has it's charm, but eventually it looks like structure-less
+> wander among the sea of others, which is what it is. because the scene is
+> deep, no stall-like structure emerges because everything is transparent. too
+> much occlusion kills infinity, but it also brings the "reveal" feeling when
+> something appears that couldn't be seen before. seeing the line of people
+> disappearing around the bend and then coming onto a clearing that shows how
+> far the line goes could help bring more visual variety to a scene. let me know
+> if this is something that needs its own session.
+
+Not built in the session that received it; see the reply there. What it would
+take, for whoever picks it up: the stalls (`stalls.ts`) and a trail's edges are
+already geometry nobody draws, so occlusion is a line-of-sight test from the eye
+to each head against them — heads behind a stall or a bank of trees are not
+drawn. The reveal he describes needs occluders beside a bending trail (trees,
+a hillside) that end at a clearing, which the trail does not yet have.
+
+## 2026-09-26 — where a chaser looks
+
+> Ok. One last thing on the chaser: when running after someone the head should
+> face predominantly in one of 2 directions: direction of travel, person being
+> chased. We can't run looking sideways, so that means the head turns much more
+> often. Birds don't matter anymore. Running into things does and losing the
+> target is. That dynamic would help avoid crosshairs even more
+
+Built as a two-way gaze in a chase: short spells on the way ahead and on them,
+nothing else, on a quicker neck. Found and fixed on the way: a catch that
+re-caught them the next step, 55 times in four minutes on one seed.
+
+## 2026-09-26 — catch me first, and to the wall
+
+> promote "catch me" to first preset. push today's presets to showcase: catch
+> me, teams, runner, street run. open PR and merge when ready

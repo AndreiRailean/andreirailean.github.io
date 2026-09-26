@@ -48,7 +48,7 @@
  * when you look at a crowd.
  */
 
-import { BOB_RISE, BOB_SWAY } from "@/experiments/crowd/body"
+import { BOB_RISE, BOB_SWAY, RUN_RISE, RUN_SWAY, runBounce } from "@/experiments/crowd/body"
 import { CULL_ALPHA, project, type Camera } from "@/experiments/crowd/camera"
 import type { Person } from "@/experiments/crowd/throng"
 import type { Settings } from "@/experiments/crowd/settings"
@@ -68,7 +68,14 @@ const bucketOf = (alpha: number): number =>
 const alphaOfBucket = (bucket: number): number => CULL_ALPHA * Math.exp((bucket / (BUCKETS - 1)) * LOG_RANGE)
 
 /** One head, ready to draw. */
-type Sighted = { sx: number; sy: number; r: number; depth: number; alpha: number }
+type Sighted = { sx: number; sy: number; r: number; depth: number; alpha: number; red: boolean }
+
+/**
+ * The colour of the one person I am chasing. Red because it is the colour the
+ * eye finds first against white and black, and it is the only hue in the
+ * piece that is not the scene's own — so it carries no hint of the settings.
+ */
+const QUARRY = "hsl(2, 88%, 56%)"
 
 /**
  * The per-frame working set, owned by the scene and handed back in every frame.
@@ -117,6 +124,8 @@ export function drawFrame(
   options: {
     people: Person[]
     camera: Camera
+    /** Height of the ground under a point, so a head on a hillside is drawn on it. */
+    ground: (x: number) => number
     settings: Settings
     width: number
     height: number
@@ -142,8 +151,9 @@ export function drawFrame(
     // discs. `moving` fades it out as somebody stops.
     const speed = Math.hypot(person.vx, person.vy)
     const moving = Math.min(1, speed / 0.35)
-    const z = person.head + Math.sin(person.phase) * BOB_RISE * bob * moving
-    const sway = Math.sin(person.phase / 2) * BOB_SWAY * bob * moving
+    const rise = person.running ? runBounce(person.phase / TAU) * RUN_RISE : Math.sin(person.phase) * BOB_RISE
+    const z = options.ground(person.x) + person.head + rise * bob * moving
+    const sway = Math.sin(person.phase / 2) * (person.running ? RUN_SWAY : BOB_SWAY) * bob * moving
     // Perpendicular to the way they are walking, which is where a sway goes.
     const nx = speed > 1e-4 ? -person.vy / speed : 0
     const ny = speed > 1e-4 ? person.vx / speed : 0
@@ -160,9 +170,10 @@ export function drawFrame(
 
     let slot = pool[seen]
     if (!slot) {
-      slot = { sx: 0, sy: 0, r: 0, depth: 0, alpha: 0 }
+      slot = { sx: 0, sy: 0, r: 0, depth: 0, alpha: 0, red: false }
       pool[seen] = slot
     }
+    slot.red = person.quarry
     slot.sx = sighting.sx
     slot.sy = sighting.sy
     slot.r = r
@@ -194,6 +205,29 @@ export function drawFrame(
         context.beginPath()
       }
       bucket = next
+    }
+    // **The one red head is painted in order, not on top.** Flushing the batch
+    // and drawing it on its own keeps painter's order, so somebody nearer who
+    // steps in front still hides them — which is half of what makes a chase
+    // through a crowd a chase.
+    if (head.red) {
+      if (bucket >= 0) {
+        context.globalAlpha = alphaOfBucket(bucket)
+        context.fill()
+        fills++
+      }
+      context.beginPath()
+      context.fillStyle = QUARRY
+      context.globalAlpha = head.alpha
+      context.moveTo(head.sx + head.r, head.sy)
+      context.arc(head.sx, head.sy, head.r, 0, TAU)
+      context.fill()
+      fills++
+      context.fillStyle = headColour(settings)
+      context.beginPath()
+      bucket = -1
+      if (head.r > largest) largest = head.r
+      continue
     }
     // `moveTo` first, or the arc is joined to the previous subpath by a line
     // across the frame — which looks exactly like a rendering bug and is one.

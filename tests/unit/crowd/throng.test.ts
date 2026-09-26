@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest"
 import { CUTOFF } from "@/experiments/crowd/steering"
 import { createStroll } from "@/experiments/crowd/stroll"
-import { createThrong, DETAIL, MAX_PEOPLE } from "@/experiments/crowd/throng"
+import { createThrong, DETAIL, detailFor, MAX_PEOPLE } from "@/experiments/crowd/throng"
 import { BOUNDS, normalizeSettings, PRESETS, type Settings } from "@/experiments/crowd/settings"
+
+/**
+ * The market, by name. These checks were written against it when it was the
+ * primary, and a primary moves — "catch me" took the place on 2026-09-26 —
+ * so they say which scene they mean rather than which position.
+ */
+const MARKET = PRESETS.find((preset) => preset.label === "market")!
 
 /**
  * The crowd, over long enough for the things it claims to be about to happen.
@@ -30,7 +37,7 @@ const STEP = 1 / 120
 const PATIENT = 180_000
 
 function walk(patch: Partial<Settings>, seconds: number) {
-  const settings = normalizeSettings({ ...PRESETS[0]!.settings, ...patch })
+  const settings = normalizeSettings({ ...MARKET.settings, ...patch })
   const me = createStroll(settings, settings.seed)
   const crowd = createThrong(settings, me)
   const run = (forSeconds: number) => {
@@ -281,8 +288,12 @@ describe("nobody walks through anybody where it can be seen", () => {
     // cut off at `CUTOFF` seconds. If the detail radius is shorter than that, the
     // crowd is skipping encounters it has already decided are worth having, and
     // nothing about the picture says so.
+    // Derived per scene now, since only a runner needs more than `DETAIL`: so
+    // the invariant is on the function, at the corner of the tracks where it
+    // is hardest, and at an ordinary walk where it must not have grown.
     const fastest = BOUNDS.paceHigh.max + BOUNDS.walk.max
-    expect(DETAIL).toBeGreaterThanOrEqual(CUTOFF * fastest)
+    expect(detailFor({ paceHigh: BOUNDS.paceHigh.max, walk: BOUNDS.walk.max })).toBeGreaterThanOrEqual(CUTOFF * fastest)
+    expect(detailFor({ paceHigh: 1.8, walk: 1.3 })).toBe(DETAIL)
   })
 })
 

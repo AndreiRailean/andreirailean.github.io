@@ -48,9 +48,22 @@
  * and is why the looking never feels random.
  */
 
-import { BOB_RISE, BOB_SWAY, bodyRadius, cadence, eyeHeight } from "@/experiments/crowd/body"
+import {
+  BOB_RISE,
+  BOB_SWAY,
+  bodyRadius,
+  cadence,
+  eyeHeight,
+  RUN_RISE,
+  RUN_SWAY,
+  runBounce,
+  runCadence,
+  runSpeed,
+} from "@/experiments/crowd/body"
 import { avoid } from "@/experiments/crowd/steering"
 import type { Person } from "@/experiments/crowd/throng"
+import type { Stalls } from "@/experiments/crowd/stalls"
+import { hikingPace, LANE_SPRING, lanePush, type Frame, type Path, type PathHint } from "@/experiments/crowd/path"
 import { makeRng, hashSeed, type Rng } from "@/experiments/random"
 import type { Settings } from "@/experiments/crowd/settings"
 
@@ -287,6 +300,30 @@ const SPOT_AHEAD = [3.2, 8]
  */
 const SPOT_BEARING_MIN = 0.65
 
+/** Seconds a chaser looks at the person in red before looking back at the way, walking. A run shortens both. */
+const SPELL_ON_THEM = [0.7, 1.6]
+
+/** Seconds a chaser looks at the way ahead before looking for the person in red again, walking. */
+const SPELL_AHEAD = [0.6, 1.3]
+
+/** The neck's natural frequency in a chase, against `NECK_OMEGA`'s 8. A 45° turn lands in about 0.2 s rather than 0.36. */
+const NECK_CHASE = 14
+
+/** Radians. Further off my line of sight than this and I have lost sight of the person in red. About half a field of view. */
+const LOST_SIGHT = 0.5
+
+/** Seconds between notes of where the person in red is. At a run, about a metre and a half apart. */
+const CRUMB_EVERY = 0.5
+
+/** Metres. Close enough to a note to count it reached. About an aisle's half-width. */
+const CRUMB_REACHED = 1.8
+
+/** The most notes kept. Two minutes of trail, which is further behind than anybody chases. */
+const CRUMB_LIMIT = 240
+
+/** How far ahead a running glance at a spot lands, in metres. Far enough that the world is not rushing past it. */
+const SPOT_FAR = [18, 45]
+
 /**
  * Seconds an overhead look is held, and how far off the thing being watched is.
  *
@@ -339,6 +376,14 @@ export type Neighbourhood = {
   companions: Person[]
   /** Half the corridor the crowd is confined to, so the observer is held by the same walls. */
   halfWidth: number
+  /** The line the way follows. Walking along a street is walking along this. */
+  path: Path
+  /** The one I am chasing, if anybody. */
+  quarry: Person | null
+  /** The stalls, which I walk round like anybody. */
+  stalls: Stalls
+  /** Whether I have just caught the one in red, and we are standing together. */
+  caught: boolean
 }
 
 export type Stroll = ReturnType<typeof createStroll>
@@ -377,6 +422,31 @@ export function createStroll(settings: Settings, seed: number) {
   let pitchVel = 0
   let untilGlance = 0
   let holdLeft = 0
+  /** In a chase, whether the eyes are on the person in red rather than the way ahead. */
+  let onThem = true
+  /** Seconds left of the current spell of looking at them, or at the way. */
+  let gazeSpell = 0
+  /** Whether the current stretch of the chase is being looked at the chaser's way, redrawn each spell. */
+  let chaseGaze = true
+
+  /**
+   * Advance the chaser's two-way gaze by `dt`, and say whether it is in charge
+   * of the head this step. Spells are short and shorter at a run, where the
+   * world comes at you faster; a spell on the way ahead is a little longer
+   * when they are nearly in line with it, since then one look covers both.
+   */
+  function chasing(dt: number): boolean {
+    gazeSpell -= dt
+    if (gazeSpell <= 0) {
+      onThem = !onThem
+      chaseGaze = rng() < current.chase
+      const pace = 1 - 0.45 * runMix
+      gazeSpell = (onThem ? between(SPELL_ON_THEM, rng()) : between(SPELL_AHEAD, rng())) * pace
+      if (!chaseGaze) gazeSpell = 0.8 + rng() * 1.2
+    }
+    return chaseGaze
+  }
+
   /** Where the body would like to be pointing. Only reachable by pivoting, and only when stopped. */
   let aimTarget = 0
 
@@ -385,11 +455,22 @@ export function createStroll(settings: Settings, seed: number) {
 
   /** Radians. One full cycle of the head's rise per step. */
   let phase = 0
+  /** Whether my gait is a run. See `runSpeed`: it is a threshold on my own legs, not on a setting. */
+  let running = false
+  /** How far the bob has moved from a walk's to a run's, 0 to 1. */
+  let runMix = 0
   let clock = 0
 
   let stature = current.height
 
   const force = { x: 0, y: 0 }
+  /** Where the person in red has been, as flat x, y pairs, oldest first. The trail I follow. */
+  const crumbs: number[] = []
+  let sinceCrumb = 0
+
+  /** My place on the way, and my nearest point on a loop from last step. */
+  const frame: Frame = { lateral: 0, cos: 1, sin: 0 }
+  const hint: PathHint = { pathAt: -1 }
 
   /**
    * Seconds the next stretch of walking, or of standing, should last.
@@ -501,6 +582,16 @@ export function createStroll(settings: Settings, seed: number) {
     const sin = Math.sin(course)
     const roll = rng()
 
+    // **Running narrows the gaze.** "It is much harder to run and follow birds
+    // right over your head - the world is moving too fast past me and
+    // accidents are more likely." A runner looks where they are going and a
+    // long way ahead: glances get shorter, the sky and the ground at your feet
+    // mostly drop out, and what is left is looked at far off. `run` is the
+    // same easing the bob uses, so the gaze changes with the gait and not at
+    // a speed of its own.
+    const run = runMix
+    const brief = 1 - 0.55 * run
+
     // **A conversation is most of where the head goes when there is one.** A
     // companion is reachable with the whole neck rather than the walking sweep,
     // because turning to talk to somebody beside you is exactly the movement the
@@ -514,14 +605,33 @@ export function createStroll(settings: Settings, seed: number) {
     // through to the next one, and looking at the sky went from 9% of glances to
     // 59%. Measured as a gaze above level a quarter of the time, walking alone,
     // with no downward range left at all.
+    // **The one I am chasing takes glances first**, as many as `chase` gives
+    // them — keeping somebody in sight is what a chase is — and the rest of the
+    // gaze is shared out below exactly as it was.
+    // **A chase is mostly looking at who you are chasing.** "the chaser isn't
+    // focusing on the chasee as much as they should." Three in four glances at
+    // full `chase`, and held nearly as long running as walking — the running
+    // gaze shortens glances at scenery, and the person in red is not scenery.
+    const runaway = crowd.quarry
+    if (runaway && current.chase > 0 && (crowd.caught || rng() < 0.75 * current.chase)) {
+      return {
+        look: { kind: "person", person: runaway, wide: NECK_LIMIT },
+        hold: between(HOLD_STOPPED, rng()) * (1 - 0.2 * run),
+      }
+    }
+
     const pCompanion = mates.length > 0 ? SHARE_COMPANION : 0
     if (mates.length > 0 && roll < pCompanion) {
       const mate = mates[Math.floor(rng() * mates.length)]!
-      return { look: { kind: "person", person: mate, wide: NECK_LIMIT }, hold: between(HOLD_STOPPED, rng()) }
+      return { look: { kind: "person", person: mate, wide: NECK_LIMIT }, hold: between(HOLD_STOPPED, rng()) * brief }
     }
 
     // Something overhead, followed rather than stared at. See `HOLD_UP`.
-    if (roll < pCompanion + SHARE_UP) {
+    // The sky's share goes almost entirely when running; its probability falls
+    // through to the spots below rather than to the sky, which is the chained
+    // roll done the safe way — the boundaries are built from the shares.
+    const pUp = SHARE_UP * (1 - 0.9 * run)
+    if (roll < pCompanion + pUp) {
       const range = between(UP_RANGE, rng())
       const bearing = course + (rng() - 0.5) * 1.4
       const heading = rng() * Math.PI * 2
@@ -537,29 +647,33 @@ export function createStroll(settings: Settings, seed: number) {
           vz: (rng() - 0.55) * 1.6,
           wide: NECK_LIMIT,
         },
-        hold: between(HOLD_UP, rng()),
+        hold: between(HOLD_UP, rng()) * brief,
       }
     }
 
     // Something on the ground, or on it: a stall, a dog, a stone, the paving two
     // metres in front of your feet. All the same thing — a point that does not
     // move — and half of them are the ground itself.
-    if (roll < pCompanion + SHARE_UP + SHARE_SPOT) {
-      const range = between(SPOT_AHEAD, rng())
-      const spread = Math.min(NECK_LIMIT, Math.max(SPOT_BEARING_MIN, sweep))
+    if (roll < pCompanion + pUp + SHARE_SPOT) {
+      // Walking, a spot is a stone at your feet or a stall beside you. Running,
+      // it is something far down the way: at head height, tens of metres off,
+      // and near the line you are running on.
+      const near = between(SPOT_AHEAD, rng())
+      const range = near + (between(SPOT_FAR, rng()) - near) * run
+      const spread = Math.min(NECK_LIMIT, Math.max(SPOT_BEARING_MIN, sweep)) * (1 - 0.6 * run)
       const bearing = course + (rng() - 0.5) * 2 * spread
       return {
         look: {
           kind: "spot",
           x: x + Math.cos(bearing) * range,
           y: y + Math.sin(bearing) * range,
-          z: rng() < 0.55 ? 0 : rng() * 1.3,
+          z: rng() < 0.55 * (1 - run) ? 0 : rng() * 1.3 + run * 0.6,
           vx: 0,
           vy: 0,
           vz: 0,
           wide: NECK_LIMIT,
         },
-        hold: between(HOLD_GROUND, rng()),
+        hold: between(HOLD_GROUND, rng()) * brief,
       }
     }
 
@@ -573,7 +687,9 @@ export function createStroll(settings: Settings, seed: number) {
       const dx = person.x - x
       const dy = person.y - y
       const distance = Math.sqrt(dx * dx + dy * dy)
-      if (distance < 0.6 || distance > 14) continue
+      // Somebody about to pass at a run is past before the head has turned, so
+      // a runner looks at who is coming, further off.
+      if (distance < 0.6 + 5 * run || distance > 14) continue
       const ahead = (dx * cos + dy * sin) / distance
       if (ahead < -0.2) continue
       const score = distance * (1.6 - ahead)
@@ -583,7 +699,7 @@ export function createStroll(settings: Settings, seed: number) {
       }
     }
 
-    const hold = between(walking ? HOLD_WALKING : HOLD_STOPPED, rng())
+    const hold = between(walking ? HOLD_WALKING : HOLD_STOPPED, rng()) * brief
     if (!found) return { look: { kind: "ahead" }, hold }
     return { look: { kind: "person", person: found, wide: sweep }, hold }
   }
@@ -616,15 +732,66 @@ export function createStroll(settings: Settings, seed: number) {
     // to the corridor's line grows as the corridor narrows and is nothing at all
     // on open ground, which is the same shape as the wall force and for the same
     // reason — it is the room running out, not a rail.
+    // Where I am on the way, once a step, for the line, the walls and my lane.
+    const here = crowd.path.frame(x, y, frame, hint)
     const confine = Math.max(0, Math.min(1, 1 - crowd.halfWidth / 25))
     if (confine > 0) {
-      let off = aim
+      // Along the way *here*: on a trail the line to hold is the one the path
+      // runs in at my feet, which is what walking a bend is.
+      let off = aim - (crowd.path.straight ? 0 : Math.atan2(here.sin, here.cos))
       while (off > Math.PI / 2) off -= Math.PI
       while (off < -Math.PI / 2) off += Math.PI
       aim -= off * confine * 1.4 * dt
     }
 
-    const wanted = walking ? current.walk : 0
+    // The hill has its say on my pace too, by the same function as everybody
+    // else's — or I would stride up a climb past a crowd that is labouring.
+    const grade = crowd.path.flat ? 0 : crowd.path.groundSlope(x) * Math.cos(aim)
+    // **After them — by where they went, not where they are.** Aiming at the
+    // person in red made them a crosshair: "they're almost always in front,
+    // which makes them appear like a center marker on a camera screen." So I
+    // follow their trail. Every `CRUMB_EVERY` seconds I note where they are,
+    // and the line I mean to walk turns toward the oldest note I have not yet
+    // reached. When they turn down another aisle I keep going, and turn where
+    // they turned; my glances still go to them, so the head leads and the
+    // body follows. It is the aim that turns, never the course, so the crowd
+    // and the stalls still decide where I actually go.
+    const runaway = crowd.quarry
+    if (runaway && current.chase > 0) {
+      sinceCrumb += dt
+      if (sinceCrumb >= CRUMB_EVERY) {
+        sinceCrumb = 0
+        crumbs.push(runaway.x, runaway.y)
+        if (crumbs.length > CRUMB_LIMIT * 2) crumbs.splice(0, 2)
+      }
+      // Reached, or already behind me: a note I will not go back for.
+      const ahead = { x: Math.cos(aim), y: Math.sin(aim) }
+      while (crumbs.length >= 2) {
+        const cx = crumbs[0]! - x
+        const cy = crumbs[1]! - y
+        const d = Math.sqrt(cx * cx + cy * cy)
+        if (d < CRUMB_REACHED || (d < 6 && cx * ahead.x + cy * ahead.y < 0)) crumbs.splice(0, 2)
+        else break
+      }
+      const tx = crumbs.length >= 2 ? crumbs[0]! : runaway.x
+      const ty = crumbs.length >= 2 ? crumbs[1]! : runaway.y
+      let off = Math.atan2(ty - y, tx - x) - aim
+      while (off > Math.PI) off -= Math.PI * 2
+      while (off < -Math.PI) off += Math.PI * 2
+      aim += off * current.chase * 2.5 * dt
+    } else {
+      crumbs.length = 0
+      // **In the aisles I walk the aisles.** The same pull as a corridor's,
+      // toward the nearest of the four directions the aisles run, so wandering
+      // comes round a corner rather than into a stall.
+      if (crowd.stalls.active) {
+        const quarter = Math.PI / 2
+        const off = aim - Math.round(aim / quarter) * quarter
+        aim -= off * 1.4 * dt
+      }
+    }
+    // Caught: we stand together until they bolt.
+    const wanted = walking && !crowd.caught ? current.walk * hikingPace(grade, current.effort) : 0
     const desiredX = Math.cos(aim) * wanted
     const desiredY = Math.sin(aim) * wanted
 
@@ -642,8 +809,32 @@ export function createStroll(settings: Settings, seed: number) {
     // The same corridor wall the crowd gets. **Without it the observer walks out
     // through the side of the street** and stands in the empty ground beside it
     // watching the crowd file past, which is a different piece.
-    const outside = Math.abs(y) - crowd.halfWidth + 0.8
-    if (outside > 0) force.y -= Math.sign(y) * outside * 7
+    // The stalls push me off them exactly as they push everybody.
+    crowd.stalls.push(x, y, force)
+
+    if (crowd.path.straight) {
+      const outside = Math.abs(y) - crowd.halfWidth + 0.8
+      if (outside > 0) force.y -= Math.sign(y) * outside * 7
+    } else {
+      const lat = here.lateral
+      const outside = Math.abs(lat) - crowd.halfWidth + 0.8
+      if (outside > 0) {
+        force.x += here.sin * Math.sign(lat) * outside * 7
+        force.y -= here.cos * Math.sign(lat) * outside * 7
+      }
+    }
+
+    // My side of the way: my own line if I am holding one, otherwise the same
+    // rule as everybody else's.
+    if ((current.keep !== 0 || current.hold > 0) && walking && Number.isFinite(crowd.halfWidth)) {
+      const lateral = here.lateral
+      const push =
+        current.hold > 0
+          ? (current.line * crowd.halfWidth - lateral) * LANE_SPRING * current.hold
+          : lanePush(lateral, crowd.halfWidth, Math.cos(aim - Math.atan2(here.sin, here.cos)), current.keep)
+      force.x += -here.sin * push
+      force.y += here.cos * push
+    }
 
     const magnitude = Math.sqrt(force.x * force.x + force.y * force.y)
     if (magnitude > MAX_ACCEL) {
@@ -667,7 +858,17 @@ export function createStroll(settings: Settings, seed: number) {
 
     // The gait, which drives the bob. The same two lines every other person in
     // the crowd gets, off the same anatomy in `body.ts`.
-    phase += cadence(stature, speed, Math.max(0.4, current.walk)) * dt * Math.PI * 2
+    // **Walking or running is a gait, not a speed**, and it switches with
+    // hysteresis — a person does not flicker between the two at the threshold,
+    // they commit. Up at the Froude threshold, down a little below it.
+    const threshold = runSpeed(stature)
+    if (!running && speed > threshold * 1.04) running = true
+    else if (running && speed < threshold * 0.9) running = false
+    // The switch itself is eased over a couple of steps, or the frame would
+    // jump from one bob to the other in a single frame.
+    runMix += ((running ? 1 : 0) - runMix) * Math.min(1, dt * 3)
+    const stepRate = running ? runCadence(stature, speed) : cadence(stature, speed, Math.max(0.4, current.walk))
+    phase += stepRate * dt * Math.PI * 2
 
     // **The head: a glance is a departure and a return.** Between glances the
     // commanded offset is zero, which is straight ahead, so the rest state of the
@@ -675,7 +876,23 @@ export function createStroll(settings: Settings, seed: number) {
     const stopped = speed < 0.25
     const sweep = (stopped ? SWEEP_STOPPED : SWEEP_WALKING) * Math.min(1.3, Math.max(0, current.looking))
 
-    if (holdLeft > 0) {
+    // **A chaser looks two ways, and nowhere else.** "when running after
+    // someone the head should face predominantly in one of 2 directions:
+    // direction of travel, person being chased. We can't run looking sideways."
+    // Resting the head part of the way toward them was built first and left it
+    // pointing at neither 44% of the time they were off to one side. So the
+    // gaze is a toggle: the way ahead for a moment — running into things
+    // matters — then them — losing them matters — and back, in short spells.
+    // At less than full `chase`, some glances still go the ordinary way.
+    if (runaway && current.chase > 0 && (crowd.caught || chasing(dt))) {
+      const target: Look =
+        crowd.caught || onThem ? { kind: "person", person: runaway, wide: NECK_LIMIT } : { kind: "ahead" }
+      const aim = target.kind === "ahead" ? { yaw: 0, up: 0, worth: true } : aimAt(target)
+      look = target
+      glanceTo = aim.worth ? aim.yaw : 0
+      glanceUp = aim.worth ? aim.up : 0
+      holdLeft = 0
+    } else if (holdLeft > 0) {
       holdLeft -= dt
       // **Re-aimed, not held.** The thing being looked at is a point in the
       // world, so walking past it sweeps the gaze round and down by itself, a
@@ -708,7 +925,17 @@ export function createStroll(settings: Settings, seed: number) {
         // A conversation has a rhythm to it, so the gaps are shorter when there
         // is somebody to have one with.
         const gap = crowd.companions.length > 0 ? GAP_TALKING : stopped ? GAP_STOPPED : GAP_WALKING
-        untilGlance = holdLeft + between(gap, rng())
+        // And longer between glances when running: more of the run is spent
+        // simply looking where it is going.
+        untilGlance = holdLeft + between(gap, rng()) * (1 + 0.8 * runMix)
+        // Lost sight of them: the next look comes sooner, and it is at them.
+        const runaway = crowd.quarry
+        if (runaway && current.chase > 0 && look.kind !== "person") {
+          const bearing = Math.atan2(runaway.y - y, runaway.x - x) - yaw
+          if (Math.abs(Math.atan2(Math.sin(bearing), Math.cos(bearing))) > LOST_SIGHT) {
+            untilGlance = holdLeft + between(gap, rng()) * 0.3
+          }
+        }
       }
     }
 
@@ -716,12 +943,16 @@ export function createStroll(settings: Settings, seed: number) {
     // decelerates into the target with no overshoot and no hard stop, which is
     // the difference between a head turning and a turret slewing. `NECK` is kept
     // as a ceiling only, for the rare large offset.
-    const pull = -2 * NECK_OMEGA * yawVel - NECK_OMEGA * NECK_OMEGA * (yawOffset - glanceTo)
+    // Quicker in a chase: checking where somebody went and snapping back to the
+    // way is not a stroller looking about, and at the stroller's neck the head
+    // spent most of a short spell on the way between the two.
+    const neck = runaway && current.chase > 0 ? NECK_CHASE : NECK_OMEGA
+    const pull = -2 * neck * yawVel - neck * neck * (yawOffset - glanceTo)
     yawVel = Math.max(-NECK, Math.min(NECK, yawVel + pull * dt))
     yawOffset += yawVel * dt
 
     // The vertical, on the same spring. Nodding is the same neck.
-    const lift = -2 * NECK_OMEGA * pitchVel - NECK_OMEGA * NECK_OMEGA * (pitchOffset - glanceUp)
+    const lift = -2 * neck * pitchVel - neck * neck * (pitchOffset - glanceUp)
     pitchVel = Math.max(-NECK, Math.min(NECK, pitchVel + lift * dt))
     pitchOffset = Math.max(-PITCH_DOWN, Math.min(PITCH_UP, pitchOffset + pitchVel * dt))
 
@@ -835,9 +1066,13 @@ export function createStroll(settings: Settings, seed: number) {
     eye(): { z: number; sway: number } {
       const amount = current.bob
       const moving = Math.min(1, Math.hypot(vx, vy) / 0.35)
+      const walkRise = Math.sin(phase) * BOB_RISE
+      const runRise = runBounce(phase / (Math.PI * 2)) * RUN_RISE
+      const rise = walkRise + (runRise - walkRise) * runMix
+      const sway = BOB_SWAY + (RUN_SWAY - BOB_SWAY) * runMix
       return {
-        z: eyeHeight(stature) + Math.sin(phase) * BOB_RISE * amount * moving,
-        sway: Math.sin(phase / 2) * BOB_SWAY * amount * moving,
+        z: eyeHeight(stature) + rise * amount * moving,
+        sway: Math.sin(phase / 2) * sway * amount * moving,
       }
     },
 
@@ -849,7 +1084,7 @@ export function createStroll(settings: Settings, seed: number) {
     },
 
     stats() {
-      return { x, y, yaw, course, speed: Math.hypot(vx, vy), walking, stature, clock }
+      return { x, y, yaw, course, speed: Math.hypot(vx, vy), walking, running, stature, clock }
     },
   }
 }
