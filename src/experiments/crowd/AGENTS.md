@@ -469,6 +469,31 @@ Added 2026-09-26.
 - **`density` cannot be 0**; its track stops at 0.5. A preset that wants an
   empty way says 0.5, or the grid check fails it.
 
+## Stalls, the trail, and a runner's gaze
+
+Added 2026-09-26, answering "they're almost always in front, which makes them
+appear like a center marker on a camera screen" and "it appears like a
+distracted child is about to fall over".
+
+- **Aiming at the person in red is what made them a crosshair**, and the fix
+  had two halves that each failed alone. Following their trail
+  (`crumbs` in `stroll.ts`) without stalls still let the chase cut diagonals;
+  stalls with a runaway who scored ways only by distance from me made it
+  worse — straight down the aisle always wins from behind, and the red head
+  sat within 5° of my heading 77% of the time, against 23% on open ground.
+  What worked was the runaway preferring a corner: 12%.
+- **The stalls are never drawn.** They are `stalls.ts`, a lattice with an
+  aisle crossing at the origin, pushing like a corridor wall. The aisles only
+  show because headings are laid onto them (`aisleWise`) and each crossing is
+  one decision (`junction`) — without those the crowd presses on the stalls'
+  sides and the grid reads as clutter.
+- **A few people still end up inside a stall** — 0.4–0.6% — placed where the
+  rejection ran out of tries. The push has them out within a second; the test
+  bounds it at 2% rather than 0 for that reason.
+- **The running gaze is eased on `runMix`**, the bob's own blend, so it changes
+  with the gait rather than at a speed of its own. Every multiplier is 1 at a
+  walk, which is why no walking scene moved.
+
 ## What is not here, and would be worth having
 
 - **Nobody is going anywhere in particular.** People carry a heading, not a

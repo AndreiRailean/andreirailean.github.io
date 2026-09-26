@@ -317,3 +317,13 @@ Questions I could not answer:
 > birds immediately overhead. Current glancing model breaks the loop running
 > illusion because it appears like a distracted child is about to fall over
 > because they're not paying attention.
+
+Built as: invisible **stalls** with **aisles** (route), the chase following the
+red person's trail rather than the person, a runaway who ducks round corners,
+and a runner's gaze that is shorter, rarer and further ahead. **catch me** now
+has stalls; a **stalls** preset shows the aisles with nobody to chase.
+
+Open: with the trail followed, the red head is inside my field of view about
+half the time — lost round corners and found again by a glance. Whether that is
+too often lost is a matter of `chase`, which scales both how hard I go after
+them and how many glances they get.
