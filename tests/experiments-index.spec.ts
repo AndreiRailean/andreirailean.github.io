@@ -83,7 +83,11 @@ test("about is the one thing on the caption that catches its own click", async (
 
   const slug = await firstPlateSlug(page)
   await page.locator(".plate").first().locator("a.note").click()
-  await expect(page).toHaveURL(new RegExp(`/experiments/${slug}/about/$`))
+  // A query is allowed for the reason it is on the piece above: the note's
+  // address is the piece with its note open now, so the kit rewrites it to name
+  // the scene it landed on. Insisting on a bare address made this a race
+  // against that rewrite, which it lost under load.
+  await expect(page).toHaveURL(new RegExp(`/experiments/${slug}/about/(\\?|$)`))
 })
 
 test("a plate is two tab stops, not two links to the same place", async ({ page }) => {
