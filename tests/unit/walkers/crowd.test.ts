@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest"
-import { createCrowd, type Crowd } from "@/experiments/walkers/crowd"
-import { DEFAULT_SETTINGS, normalizeSettings, PRESETS } from "@/experiments/walkers/settings"
-import { makeView } from "@/experiments/walkers/view"
-import { MARGIN, park, STEP } from "./park"
+import type { Crowd } from "@/experiments/walkers/crowd"
+import { DEFAULT_SETTINGS, normalizeSettings } from "@/experiments/walkers/settings"
+import { park, STEP } from "./park"
 
 /**
  * The crowd, run headless.
@@ -33,69 +32,95 @@ function run(crowd: Crowd, seconds: number): void {
   for (let step = 0; step < Math.round(seconds / STEP); step++) crowd.step(STEP)
 }
 
+/**
+ * **The densest, fastest corner the settings allow, in a small world** — #238.
+ *
+ * These used to be long walks: thirty, forty-three and eighty-five simulated
+ * seconds of an ordinary-sized park, and a per-preset run on top, on the theory
+ * that a longer walk is more likely to meet the bad case. It is not, and one of
+ * them proved it: with avoidance switched off entirely, the forty-three-second
+ * crowded walk still passed. A long run of a general scene measures the general
+ * scene. What finds a fault is a scene built so the fault shows at once.
+ *
+ * So: five metres of world, the most people and the fastest pace the settings
+ * permit, heading straight at each other. About ninety people, so the pairwise
+ * reading below is cheap, and every one of them in somebody's way within a
+ * second.
+ */
+const CORNER = {
+  density: 150,
+  paceLow: 4.5,
+  paceHigh: 4.5,
+  runners: 0.6,
+  flow: "through",
+  settling: 0,
+  span: 5,
+  children: 0.6,
+} as const
+const SMALL = { width: 400, height: 250 }
+
+/** A tenth of a shoulder width. Passing through somebody would read as most of half a metre. */
+const TENTH_OF_A_BODY = 0.045
+
+/**
+ * The deepest anyone is inside anyone, read off the positions — **not** off
+ * `stats().overlap`, which the contact solver computes as it works, so a
+ * crowd with no solver at all reports none.
+ */
+function deepest(crowd: Crowd): number {
+  let worst = 0
+  const walkers = crowd.walkers
+  for (let i = 0; i < walkers.length; i++) {
+    for (let j = i + 1; j < walkers.length; j++) {
+      const a = walkers[i]!
+      const b = walkers[j]!
+      worst = Math.max(worst, a.body.radius + b.body.radius - Math.hypot(b.x - a.x, b.y - a.y))
+    }
+  }
+  return worst
+}
+
 describe("nobody walks through anybody", () => {
   /**
-   * The same promise as below, at the density a real scene reaches rather than
-   * the one that stresses it.
+   * **The contact solver's promise: nobody is ever drawn inside anybody.**
+   * `separate()` runs after each step and clears what the step left, which is
+   * what a frame shows.
    *
-   * This came out of `tests/walkers.spec.ts`, where it settled thirty seconds of
-   * park in Chromium to read a number `crowd.ts` had already computed —
-   * `tests/unit/browser-suite.test.ts` is the gate that says so now. It cost
-   * about 18 seconds of the browser job and costs a fraction of that here, and
-   * nothing was lost: the browser cannot see `overlap` either, since it is
-   * written during integration rather than drawn.
-   *
-   * It is kept as well as the harder case below because the two ask different
-   * questions. That one asks what the resolution does when it is genuinely
-   * pushed, at a density above anything a preset ships. This asks that an
-   * ordinary crowded scene is *quiet* — that people at 60 per hundred square
-   * metres are not permanently pressed into each other while looking fine.
+   * Seen failing: with `separate()` removed, this reads 0.43 m on the fourth
+   * step. As shipped it reads nothing at all over six seconds, with the solver
+   * cut to one pass as well as at four.
    */
-  it("leaves an ordinary crowded scene barely touching", () => {
-    const scene = park({ density: 60, span: 14 }).settle(30)
-    const stats = scene.stats()
+  it("never ends a step with anybody inside anybody, at the settings' hardest corner", () => {
+    const { crowd } = park(CORNER, SMALL)
+    expect(crowd.walkers.length, "the corner is not crowded").toBeGreaterThan(50)
 
-    expect(stats.inFrame, "nobody in shot").toBeGreaterThan(20)
-    expect(stats.overlap, "somebody is inside somebody").toBeLessThan(0.045)
+    let worst = 0
+    for (let step = 0; step < 2 / STEP; step++) {
+      crowd.step(STEP)
+      worst = Math.max(worst, deepest(crowd))
+    }
+    expect(worst).toBeLessThan(TENTH_OF_A_BODY)
   })
 
   /**
-   * The piece's one hard promise, and the reason the separation in `crowd.ts` is
-   * positional rather than a force. A force can always be outrun: two runners
-   * closing at 4 m/s cover 13 cm between frames, which is more than half a
-   * body.
+   * **Steering's job: people see each other coming and do not collide hard.**
+   * `stats().overlap` is how deep a contact got *before* the solver cleared it —
+   * which is what avoidance, not the solver, is responsible for. After a second
+   * for the spawn to shake out.
    *
-   * Measured as the deepest interpenetration reached at any point over several
-   * minutes at a density where people are genuinely in each other's way. It is
-   * not zero and should not be: the correction runs after the step, so a frame
-   * can end on a touch that the same frame then resolves, and at festival
-   * density people really are pressed together. What it must never approach is a
-   * body — 0.045 m is a tenth of a shoulder width, and passing through somebody
-   * would register as most of half a metre.
+   * Seen failing: with `AVOID_STRENGTH` at zero, 0.092 in the first half-second.
+   * As shipped the worst half-second is 0.017.
    */
-  it("never lets anybody get more than a tenth of a body inside anybody", { timeout: 90_000 }, () => {
-    const { crowd } = park({ density: 70, flow: "through", span: 10, settling: 0.05 }).settle(18)
+  it("keeps every collision to a tenth of a body, at the settings' hardest corner", () => {
+    const scene = park(CORNER, SMALL).settle(1)
 
     let worst = 0
-    for (let step = 0; step < 25 / STEP; step++) {
-      crowd.step(STEP)
-      worst = Math.max(worst, crowd.stats().overlap)
+    for (let step = 0; step < 3 / STEP; step++) {
+      scene.crowd.step(STEP)
+      worst = Math.max(worst, scene.crowd.stats().overlap)
     }
-
-    expect(crowd.stats().walkers).toBeGreaterThan(30)
-    expect(worst).toBeLessThan(0.045)
-  })
-
-  it("holds even when everybody is running", { timeout: 60_000 }, () => {
-    const { crowd } = park({ density: 40, runners: 0.6, flow: "through", span: 10, settling: 0 }).settle(25)
-
-    let worst = 0
-    for (let step = 0; step < 60 / STEP; step++) {
-      crowd.step(STEP)
-      worst = Math.max(worst, crowd.stats().overlap)
-    }
-
-    expect(worst).toBeLessThan(0.045)
+    expect(scene.crowd.walkers.length, "the corner emptied").toBeGreaterThan(50)
+    expect(worst).toBeLessThan(TENTH_OF_A_BODY)
   })
 })
 
@@ -231,46 +256,37 @@ describe("who is out there", () => {
   })
 })
 
-describe("the presets", () => {
-  it.each(PRESETS.map((preset, index) => [index, preset.label] as const))(
-    "%i (%s) runs for three quarters of a minute without anyone overlapping or escaping",
-    (index) => {
-      const settings = PRESETS[index]!.settings
-      // A small window at the preset's own density, for the reason given in
-      // "walks slower when it is crowded": the viewport is not part of a preset,
-      // and `bacteria` at a full 1280×800 is a thousand walkers to check
-      // something a few hundred check just as well.
-      const view = makeView(settings.span, settings.camera, 720, 450, MARGIN)
-      const crowd = createCrowd({ view, settings })
-      crowd.fill()
+describe("the world stays bounded", () => {
+  /**
+   * **Nobody walks off into the middle distance: the cull keeps the world
+   * bounded.** This used to be checked after forty-five seconds of every
+   * preset. It is a property of the cull, and the case that tests it is people
+   * leaving as fast as the settings let them, through a small frame.
+   *
+   * The allowance is a group's own length rather than a tight margin, because a
+   * group is culled when *every* member is past the line — and a family
+   * straddling it, with a child at the end of its leash on the inside and an
+   * adult walking out toward a goal fourteen metres further, is a real thing
+   * rather than a leak.
+   *
+   * Three seconds, because at this pace the population thins in waves — it has
+   * to be measured while there is somebody to measure. Seen failing: with the
+   * cull removed, somebody is 23 m past the edge at two seconds and 33 m at
+   * three. As shipped the furthest is 11.
+   */
+  it("culls anybody who gets further out than a group's own length", () => {
+    const { crowd, view } = park({ ...CORNER, density: 20 }, SMALL)
+    const allowance = view.margin + 16
 
-      let worst = 0
-      for (let step = 0; step < 30 / STEP; step++) {
-        crowd.step(STEP)
-        if (step % 30 === 0) worst = Math.max(worst, crowd.stats().overlap)
-      }
-
-      // The same bound as the crowded case: a tenth of a shoulder width. See
-      // "never lets anybody get more than a tenth of a body inside anybody".
-      expect(worst).toBeLessThan(0.045)
-      expect(crowd.stats().walkers).toBeGreaterThan(0)
-      // Nobody is off in the middle distance: the cull keeps the world bounded.
-      //
-      // The allowance is a group's own length rather than a tight margin,
-      // because a group is culled when *every* member is past the line — and a
-      // family straddling it, with a child at the end of its leash on the inside
-      // and an adult walking out toward a goal fourteen metres further, is a
-      // real thing rather than a leak. What matters is that it is a bound: an
-      // excursion made of a leash and a formation, not a walker with nothing
-      // stopping them.
-      const allowance = view.margin + 16
+    for (let second = 0; second < 3; second++) {
+      run(crowd, 1)
+      expect(crowd.walkers.length, `nobody left to measure at ${second + 1}s`).toBeGreaterThan(0)
       for (const walker of crowd.walkers) {
         expect(Math.abs(walker.x)).toBeLessThan(view.halfWidth + allowance)
         expect(Math.abs(walker.y)).toBeLessThan(view.halfHeight + allowance)
       }
-    },
-    240_000,
-  )
+    }
+  })
 })
 
 describe("the seed", () => {

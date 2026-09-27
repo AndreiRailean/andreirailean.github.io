@@ -429,6 +429,22 @@ hides. It cost two sessions and three disproved hypotheses as issue #65:
    `tests/unit/dangler/` corresponds to a bug that actually happened, and each
    one names it. A test that would pass on a broken implementation is worse than
    no test, so break the code and watch it fail before trusting it.
+5. **A preset is a set of parameters, and its test is in the unit runner.**
+   `tests/unit/experiments-presets.test.ts` holds every preset on every piece to
+   naming every setting, already normal, and round-tripping its address. Do not
+   render or simulate each preset: they all go through the same code, so that
+   proves only that the code ran with other numbers, and it grows with every
+   preset added. Render the primary once. A code path that only some presets
+   reach — psyxels' portrait against its glyphs — gets a test of the setting
+   that selects it.
+6. **Build the scene that makes the fault show at once; do not walk longer
+   hoping to meet it.** A long run of an ordinary scene measures the ordinary
+   scene. Walkers' forty-three-second crowded walk still passed with avoidance
+   switched off; five metres of world at the settings' densest, fastest corner
+   fails in half a second. And read the property from the state, not from a
+   number the mechanism under test computes about itself: `stats().overlap` is
+   counted inside the contact solver, so a crowd with no solver reported none.
+   `tests/unit/walkers/crowd.test.ts` has all three shapes, and #238 the reasoning.
 
 Callbacks handed to `experiment.api()` run inside the page: nothing from the
 test's scope travels with them. Values go through the second argument — the

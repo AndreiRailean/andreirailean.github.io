@@ -344,34 +344,32 @@ test("?settle= lands on a park that has already been running", async ({ page }) 
   expect(warmStats.inFrame).toBeGreaterThan(3)
 })
 
-test("every preset runs, populates and draws", async ({ page }) => {
-  // Eight scenes, one of which settles a thousand walkers, so the default
-  // minute is not enough — and a timeout here reads as a broken piece.
-  test.setTimeout(180_000)
-
+test("the primary runs, populates and draws", async ({ page }) => {
+  // **The primary, not every preset — #238.** A preset is a set of parameters,
+  // and that it is a valid one is `tests/unit/experiments-presets.test.ts`'s
+  // job, in milliseconds. Every preset goes through the same renderer, so
+  // settling and drawing each one here proved only that the same code ran with
+  // other numbers, at a browser run per preset.
   const experiment = await openWalkers(page, { idle: true })
   const names = await experiment.api(({ api }) => api.presets())
   expect(names).toEqual(PRESETS.map((preset) => preset.label))
 
-  for (let index = 0; index < names.length; index++) {
-    await experiment.api(({ api, arg }) => api.preset(arg), index + 1)
-    await experiment.api(({ api }) => api.settle(20))
-    await painted(page)
+  await experiment.api(({ api }) => {
+    api.preset(1)
+    api.settle(20)
+  })
+  await painted(page)
 
-    const stats = await experiment.api(({ api }) => api.stats())
-    expect(stats.inFrame, `${names[index]} has nobody in shot`).toBeGreaterThan(1)
-    expect(stats.overlap, `${names[index]} has somebody inside somebody`).toBeLessThan(0.05)
+  const stats = await experiment.api(({ api }) => api.stats())
+  expect(stats.inFrame, `${names[0]} has nobody in shot`).toBeGreaterThan(1)
+  expect(stats.overlap, `${names[0]} has somebody inside somebody`).toBeLessThan(0.05)
 
-    // Dots are pitched away from the ground in whichever direction has room, so
-    // a scene draws them either lighter or darker than it — and one scene draws
-    // no dots at all on purpose, only where they have been. What every preset
-    // owes is *some* ink: a frame that is all ground is a frame where the piece
-    // did not run. The floor is low because a deliberately sparse scene at a
-    // narrow span is a dozen dots a few pixels across, and that is the scene
-    // working.
-    const canvas = await inked(page)
-    expect(canvas.lighter + canvas.darker, `${names[index]} drew nothing at all`).toBeGreaterThan(60)
+  // Dots are pitched away from the ground in whichever direction has room, so
+  // a scene draws them either lighter or darker than it. What it owes is
+  // *some* ink: a frame that is all ground is a frame where the piece did not
+  // run.
+  const canvas = await inked(page)
+  expect(canvas.lighter + canvas.darker, `${names[0]} drew nothing at all`).toBeGreaterThan(60)
 
-    await experiment.shot(`preset-${names[index]!.replace(/\s+/g, "-")}`)
-  }
+  await experiment.shot(`preset-${names[0]!.replace(/\s+/g, "-")}`)
 })
