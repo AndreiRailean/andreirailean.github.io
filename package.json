@@ -25,7 +25,8 @@
     "test:headed": "playwright test --headed",
     "runners": "node scripts/runners.ts",
     "test:affected": "node scripts/affected.ts",
-    "probe": "vitest run --config vitest.probe.config.mts"
+    "probe": "vitest run --config vitest.probe.config.mts",
+    "shot": "node scripts/shot.ts"
   },
   "dependencies": {
     "@astrojs/react": "^6.0.3",

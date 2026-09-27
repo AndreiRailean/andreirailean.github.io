@@ -47,6 +47,16 @@ that. Do not copy a probe into `tests/unit/` to run it: a `git add` of the folde
 has committed one. A probe that turns into a check worth keeping gets rewritten
 as one, in the piece's `tests/`, with a failure it has been seen to produce.
 
+**A picture of a scene is `pnpm run shot`, not a Playwright script.**
+`pnpm run shot crowd "catch me" '{"density":60}' --settle 5 --zoom 0,300,1280,300`
+builds and serves the site the way the suite does. It opens the piece idled,
+loads the preset (by number or name), applies the patch, settles through the
+piece's own `settle` or `run`, waits a frame, and writes the PNG to
+`.scratch/shots/`. It prints the path, then `stats()` for the same moment, so
+the picture and the numbers describe one frame. `--size WxH` changes the
+viewport from the suite's 1280×900. A still is evidence for a person and nothing
+compares it — see "The principle" below.
+
 **A full `pnpm run test:unit` no longer answers in milliseconds, and two pieces
 are why.** `src/experiments/walkers/tests/` and `src/experiments/crowd/tests/` simulate hours of crowd
 to assert things no screenshot and no shorter run can — a counterflow sorting
