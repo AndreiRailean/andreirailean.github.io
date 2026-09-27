@@ -16,6 +16,13 @@ import { expect, openExperiment, test } from "./support/experiment.ts"
 const PIECES = ["bubbles", "crowd", "dangler", "embers", "flotsam", "psyxels", "starry-night", "walkers"]
 
 /**
+ * Pieces whose `GROUPS` declare governed groups — #242. **A piece that adopts
+ * them adds itself here**, and every other piece is asserted to have none, so
+ * the check below can neither sit vacuous on an adopter nor miss one.
+ */
+const GOVERNED = new Set<string>([])
+
+/**
  * **Every test here is about the chrome, so every one holds the piece.** A
  * running piece queues every round trip — a `boundingBox`, a keypress, an
  * `api.get()` — behind its own rendering on the one core a headless page has;
@@ -77,6 +84,47 @@ for (const slug of PIECES) {
       expect(fifth.x, `${slug}: the fifth preset left the first column`).toBeCloseTo(first.x, 0)
       expect(sixth.x, `${slug}: the sixth preset did not start a second column`).toBeGreaterThan(first.x + 1)
       expect(sixth.y, `${slug}: the second column does not start at the top`).toBeCloseTo(first.y, 0)
+    }
+  })
+
+  /**
+   * **A governed group shows only what the scene uses — #242.** While its
+   * governor holds its off value the group's other rows are hidden; turned on,
+   * they come back. The governor itself stays in view either way, since it is
+   * how the group is switched back on.
+   */
+  test(`${slug}: a governed group hides its rows while its governor is off`, async ({ page }) => {
+    const experiment = await openHeld(page, slug, { idle: false })
+    await experiment.api(({ api }) => api.panel(true))
+    const bodies = page.locator("#ui .panel .rows[data-governor]")
+    const count = await bodies.count()
+
+    if (!GOVERNED.has(slug)) {
+      expect(count, `${slug} has governed groups; add it to GOVERNED so they are tested`).toBe(0)
+      return
+    }
+    expect(count, `${slug} is listed in GOVERNED but declares no governed group`).toBeGreaterThan(0)
+
+    const names = await experiment.api(({ api }) => api.presets())
+    for (let index = 0; index < count; index++) {
+      const body = bodies.nth(index)
+      const key = (await body.getAttribute("data-governor"))!
+      const off: unknown = JSON.parse((await body.getAttribute("data-off"))!)
+
+      await experiment.api(({ api, arg }) => api.set({ [arg.key]: arg.off } as never), { key, off })
+      await expect(body, `${slug}: ${key} is off and its rows still show`).toBeHidden()
+      const governor = body.locator("xpath=preceding-sibling::*[1]")
+      await expect(governor, `${slug}: ${key}'s governor is not the row above its group`).toHaveClass(/\bgovernor\b/)
+      await expect(governor, `${slug}: ${key} is off and its governor went with the rows`).toBeVisible()
+
+      // On: the first preset that uses the group, so "on" is a value the piece chose.
+      let on = false
+      for (let preset = 1; preset <= names.length && !on; preset++) {
+        const scene = await experiment.api(({ api, arg }) => api.preset(arg), preset)
+        on = JSON.stringify(scene[key]) !== JSON.stringify(off)
+      }
+      expect(on, `${slug}: no preset turns ${key} on, so its rows can never be seen`).toBe(true)
+      await expect(body, `${slug}: ${key} is on and its rows are still hidden`).toBeVisible()
     }
   })
 

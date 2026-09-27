@@ -1,4 +1,5 @@
 import type { BaseApi, ControlReport } from "@/experiments/kit/api"
+import type { GovernedGroup } from "@/experiments/kit/controls"
 
 /**
  * The contract between a piece and the frame it runs in: a shape, not a base
@@ -70,8 +71,12 @@ export type Chrome<S> = {
   title: string
   /** The id of the piece's `<canvas>` in its `Piece.astro`. */
   canvas: string
-  /** Headings the panel files its rows under, in order. Omitted for a piece whose rows read fine undivided. */
-  groups?: readonly string[]
+  /**
+   * Headings the panel files its rows under, in order. Omitted for a piece whose
+   * rows read fine undivided. An entry may be a governed group, whose rows hide
+   * while one of its controls holds its off value — `GovernedGroup` in the kit.
+   */
+  groups?: readonly (string | GovernedGroup<string & keyof S>)[]
   /**
    * How a scene tints the document: custom properties on `<html>`, and
    * `data-*` attributes beside them. Applied on landing and on every change,
