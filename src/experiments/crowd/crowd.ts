@@ -211,7 +211,7 @@ export function createCrowd(canvas: HTMLCanvasElement, initial: Settings): Crowd
     return makeCamera(
       me.x + Math.cos(right) * sway,
       me.y + Math.sin(right) * sway,
-      z + crowd.path.ground(me.x),
+      z + crowd.path.ground(me.x) + settings.perch,
       me.yaw,
       me.pitch,
       settings.fov,

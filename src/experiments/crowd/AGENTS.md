@@ -617,6 +617,18 @@ but much larger and of black colour so the blend in with the background".
   310 heads over an outline were further than its boulder. `shade` is now
   multiplied by the same `exp(-d / fade)` at the near surface, and boulders are
   painted far to near, which only matters once their shades differ.
+- **Combine the verdicts by meaning, not by size.** `blockedBy` returns 0
+  clear, 1 hidden, 2 cut, and the loop took the maximum, so cut beat hidden —
+  a head grazed by one boulder and behind the next was drawn. The checks that
+  missed it shared the draw's own boulder list; the one that caught it tested
+  every boulder independently. The final check ran inside the page on its own
+  frame: 0 of 1,279 heads over an outline were behind it.
+- **At eye level a grid cannot show, and that is not a bug.** Every head is at
+  the eye's height, so the crowd in front of any boulder is drawn across its
+  middle; only the nearest boulders have nobody in front. `perch` raises the eye
+  and from 10 m a honeycomb is a lattice of holes in a carpet of heads. Anybody
+  told "the far boulders are transparent" should run the in-page check before
+  touching the geometry again.
 - **Rebuilt only when their own inputs change** (`boulderShape` in
   `throng.ts`), and kept clear of wherever I stand when they are built, since
   on a loop that is not the origin.

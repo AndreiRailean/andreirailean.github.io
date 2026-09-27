@@ -514,3 +514,42 @@ near the edge of a footprint had their head outside the sphere, drawn on the
 flank at the boulder's own distance. Measured exactly on his address: 2–9 such
 heads a frame, about 3% of those drawn past 24 m; 0 after. Anybody standing
 inside a footprint is now inside the boulder.
+
+## 2026-09-27 — still not right past the first line
+
+> still not right. only the close bolders are opaque. past the first line of
+> boulders it appears that there are no boulders. no grid can be detected
+> without boulder shading. with boulder shading it is obvious that people are
+> seen through. perhaps it is too much of a task and we've entered into 3d
+> geometry that doesn't quite fit our mostly 2d model.
+
+> i'm stepping away. work independently.
+
+One more real fault, and then the answer is not geometry. The fault: each
+boulder's verdict was combined by taking the larger number, and "cut" is 2
+where "hidden" is 1, so a head grazed by one boulder and wholly behind the next
+stayed cut — 20–32 a frame on a honeycomb. Fixed. Then checked inside the
+running page, on its own frame rather than a copy of the maths: of 1,279 heads
+drawn over a boulder's outline, every one was in front of that boulder's
+surface along its own sight line, the nearest by 0.8 m.
+
+What remains is what can be seen from eye height. Every head is at the eye's
+height, so on a honeycomb a sight line travels about two rows before it meets
+a boulder, and everybody standing in the passages on the way is in front of
+that boulder — across its middle. Only the nearest boulders have nobody in
+front of them. Above the band a boulder is black on black. So at eye level the
+grid cannot show, however right the occlusion is.
+
+Built to test that: **perch**, raising my eye as if walking along the tops of
+the boulders, and two presets, **honeycomb from above** (10 m) and **grid from
+above** (4 m). From 10 m the honeycomb shows at shade 0 as a lattice of holes in
+a carpet of heads; from 4 m the passages are streams between them. The
+geometry fits; the eye height was the missing half.
+
+Open, for him:
+
+- Whether a raised eye belongs in a first-person walk at all, or is its own
+  scene. It is a setting, so either way costs nothing yet.
+- The draw at 1,300–1,800 heads under 150 boulders is 7–8 ms headless, the most
+  this piece has spent painting. Fine at 60 fps on his machine, probably; worth
+  a look if a perched scene stutters.
