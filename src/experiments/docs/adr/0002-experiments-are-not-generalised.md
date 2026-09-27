@@ -1,6 +1,6 @@
 # 0002 — Experiments are not generalised
 
-**Status:** Superseded by `20260828-the-piece-is-independent-the-gallery-is-not` — 2026-08-28
+**Status:** Superseded by `20260828-the-piece-is-independent-the-gallery-is-not` — 2026-08-28, and by `20260928-a-piece-is-a-library-behind-three-files` — 2026-09-28
 
 The half about a piece's own rendering survives; the half about notes, the index
 and the chrome does not. A second experiment showed the notes had converged on

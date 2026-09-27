@@ -1,12 +1,17 @@
 ---
 type: ADR
-status: accepted
+status: superseded
+superseded_by: 20260928-a-piece-is-a-library-behind-three-files
 date: 2026-08-28
 summary: Three layers — the piece owns its rendering, the gallery is imposed and uniform, the kit is offered and declinable.
 supersedes: 0002-experiments-are-not-generalised
 ---
 
 # The piece is independent, the gallery is not
+
+**Superseded by `20260928-a-piece-is-a-library-behind-three-files`.** The
+piece still owns what it draws. The frame — page, chrome, boot, console handle —
+is common now, and the kit is no longer declinable for it.
 
 ## Context
 
