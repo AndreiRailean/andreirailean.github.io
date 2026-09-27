@@ -87,6 +87,11 @@ on:
       # that must stay unignored, so the narrower glob is held there rather than
       # by whoever edits this next.
       - "tests/unit/**"
+      # And each piece's own unit tests, which live beside it since #238 —
+      # `*.test.ts` only, so the piece's `*.spec.ts` in the same folder still
+      # runs the suite. A harness such as `walkers/tests/park.ts` is not named
+      # and runs it too, which costs time and never coverage.
+      - "src/experiments/*/tests/*.test.ts"
 
 # A second push to the same branch supersedes the first, so an iterative session
 # does not leave a queue of runs testing commits nobody will merge. Keyed on the

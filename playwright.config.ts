@@ -20,10 +20,11 @@ import { BASE_URL_ENV } from "./tests/support/preview-server"
  */
 
 export default defineConfig({
-  testDir: "./tests",
-  // `.spec.ts` only: `tests/unit/` is vitest's, and Playwright's default
-  // `testMatch` would otherwise collect those too.
-  testMatch: "**/*.spec.ts",
+  // The repo root, so a piece's own spec in `src/experiments/<slug>/tests/` is
+  // collected beside the shared ones in `tests/`. `.spec.ts` only: `.test.ts`
+  // is vitest's, and Playwright's default `testMatch` would collect those too.
+  testDir: ".",
+  testMatch: ["tests/**/*.spec.ts", "src/experiments/*/tests/*.spec.ts"],
   // Traces and failure stills are scratch, never source. `.scratch/` is already
   // gitignored for exactly this.
   outputDir: ".scratch/playwright",
