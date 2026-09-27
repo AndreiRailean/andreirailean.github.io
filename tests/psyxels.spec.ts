@@ -756,18 +756,23 @@ test("every setting has a control, and a scene survives its own URL", async ({ p
   expect(await experiment.api(({ api }) => api.get())).toEqual(scene)
 })
 
-test("every preset loads, packs something, and keeps its subject", async ({ page }) => {
+/**
+ * **The primary, not every preset — #238.** That a preset is a valid set of
+ * parameters is `tests/unit/experiments-presets.test.ts`'s job, in
+ * milliseconds. The code paths the presets differ by are subjects — a
+ * portrait, a glyph, a word — and each has a test of its own above and below;
+ * running every preset here only repeated them, a scene at a time.
+ */
+test("the primary loads and packs something", async ({ page }) => {
   const experiment = await openPsyxels(page)
 
-  for (const preset of PRESETS) {
-    const stats = await experiment.api(({ api, arg }) => {
-      api.preset(arg)
-      api.run(4)
-      return api.stats()
-    }, preset.label)
-    expect(stats.psyxels, preset.label).toBeGreaterThan(100)
-    expect(stats.live, preset.label).toBeGreaterThan(50)
-  }
+  const stats = await experiment.api(({ api }) => {
+    api.preset(1)
+    api.run(4)
+    return api.stats()
+  })
+  expect(stats.psyxels, PRESETS[0]!.label).toBeGreaterThan(100)
+  expect(stats.live, PRESETS[0]!.label).toBeGreaterThan(50)
 })
 
 test("a shared address is the whole scene and nothing else", async ({ page }) => {

@@ -163,8 +163,14 @@ for (const slug of PIECES) {
     await page.keyboard.press("ArrowLeft")
     expect(await shown(), `${slug}: the primary wrapped to the last preset`).toBe("0")
 
-    for (let step = 0; step < names.length + 1; step++) await page.keyboard.press("ArrowRight")
+    // Jumped to rather than walked to: stepping is a property of the kit, and
+    // walking there cost one scene change per preset, so the test grew with
+    // every preset a piece gained — #238.
+    await experiment.api(({ api, arg }) => api.preset(arg), names.length)
+    await page.keyboard.press("ArrowRight")
     expect(await shown(), `${slug}: the last preset wrapped to the primary`).toBe(String(names.length - 1))
+    await page.keyboard.press("ArrowLeft")
+    expect(await shown(), `${slug}: left did not step back from the last`).toBe(String(names.length - 2))
   })
 
   /**
@@ -308,12 +314,16 @@ for (const slug of PIECES) {
     // A bare landing is the primary, which is position one.
     await expect(html).toHaveAttribute("data-preset", "0")
 
-    // Every preset names itself, so the placard cannot be right by luck at
-    // index 0 and wrong everywhere else. Each scene is kept, because the last
-    // assertion needs a value that belongs to none of them.
+    // A preset names itself wherever it sits, so the placard cannot be right by
+    // luck at index 0 and wrong everywhere else. **First, second and last, not
+    // every one — #238:** which index is on screen is the kit's arithmetic, the
+    // same for the eighth preset as the third, and applying all of them made
+    // this grow with every preset a piece gained. Each scene is kept, because
+    // the last assertion needs a value that belongs to none of them.
     const names = await experiment.api(({ api }) => api.presets())
+    const sample = [...new Set([0, 1, names.length - 1])].filter((index) => index < names.length)
     const scenes: Record<string, unknown>[] = []
-    for (let index = 0; index < names.length; index++) {
+    for (const index of sample) {
       scenes.push(await experiment.api(({ api, arg }) => api.preset(arg), index + 1))
       expect(await shown(), `${slug} preset ${index} (${names[index]})`).toBe(String(index))
     }
@@ -330,8 +340,11 @@ for (const slug of PIECES) {
     // promises.
     const scene = scenes.at(-1)!
     const numeric = Object.keys(scene).filter((key) => typeof scene[key] === "number")
-    const key = numeric.find((candidate) => new Set(scenes.map((each) => each[candidate])).size > 1) ?? numeric[0]
-    if (key === undefined) throw new Error(`${slug}: no numeric setting to move`)
+    // Every key that varies across the sampled presets, tried in turn — not the
+    // first. With a sample of three, the first can be an integer two apart
+    // (bubbles' `jets`: 3 and 4) whose every interior point snaps back.
+    const varying = numeric.filter((candidate) => new Set(scenes.map((each) => each[candidate])).size > 1)
+    if (varying.length === 0) throw new Error(`${slug}: no numeric setting varies across its presets`)
 
     // A value no preset uses for this key, so the attribute has to go absent
     // rather than land on a neighbour by coincidence.
@@ -351,28 +364,34 @@ for (const slug of PIECES) {
     // legal values with room between them, and nothing here can clamp. What is
     // asserted is the value that came *back* — snapping is expected, landing on
     // a preset's value is what has to be ruled out.
-    const taken = new Set(scenes.map((each) => each[key] as number))
-    const distinct = [...taken].sort((a, b) => a - b)
-    const candidates = distinct.flatMap((value, index) =>
-      index === 0
-        ? []
-        : [0.25, 0.5, 0.75].map((along) => distinct[index - 1]! + (value - distinct[index - 1]!) * along),
-    )
-
     let moved: Record<string, unknown> | undefined
-    for (const candidate of candidates) {
-      moved = await experiment.api(({ api, arg }) => api.set({ [arg.key]: arg.value } as never), {
-        key,
-        value: candidate,
-      })
-      if (!taken.has(moved[key] as number)) break
-      moved = undefined
+    let key = varying[0]!
+    const tried: string[] = []
+    for (const candidateKey of varying) {
+      key = candidateKey
+      const taken = new Set(scenes.map((each) => each[key] as number))
+      const distinct = [...taken].sort((a, b) => a - b)
+      const candidates = distinct.flatMap((value, index) =>
+        index === 0
+          ? []
+          : [0.25, 0.5, 0.75].map((along) => distinct[index - 1]! + (value - distinct[index - 1]!) * along),
+      )
+      for (const candidate of candidates) {
+        moved = await experiment.api(({ api, arg }) => api.set({ [arg.key]: arg.value } as never), {
+          key,
+          value: candidate,
+        })
+        if (!taken.has(moved[key] as number)) break
+        moved = undefined
+      }
+      if (moved) break
+      tried.push(`${key}: ${candidates.join(", ")} against ${distinct.join(", ")}`)
     }
 
     expect(
       moved,
-      `${slug}: no value between its presets' ${key} survived normalisation as something no preset ` +
-        `holds, so nothing was tested. Tried ${candidates.join(", ")} against ${distinct.join(", ")}.`,
+      `${slug}: no value between its presets' settings survived normalisation as something no preset ` +
+        `holds, so nothing was tested. Tried ${tried.join("; ")}.`,
     ).toBeDefined()
     expect(await shown(), `${slug} still claims a preset after ${key} moved`).toBeUndefined()
   })
