@@ -1,0 +1,65 @@
+---
+import { getCollection } from "astro:content"
+import "@/experiments/kit/controls.css"
+import Reel from "@/experiments/gallery/Reel.astro"
+import NoteOverlay, { type NoteTheme } from "@/experiments/gallery/NoteOverlay.astro"
+
+/**
+ * The page every piece is served in: the bare document, the chrome's mount,
+ * the interactive view on a touch device, and the piece's note read over it.
+ *
+ * **The gallery's, so a piece does not roll its own.** The kit already means a
+ * piece does not write its own controls; this means it does not write its own
+ * page either — the document, `#ui`, `Reel`, the note and its two addresses all
+ * come from here. What a piece supplies is what is genuinely its own: its
+ * stylesheet, its canvas, its boot, and the paint of its note. See
+ * `../docs/adr/20260927-a-note-is-read-over-its-piece.md`.
+ *
+ * **Both of a piece's addresses render this.** `/experiments/<slug>/` with the
+ * note closed, and `/experiments/<slug>/about/` with it already open, on the
+ * primary. So each piece has one `src/experiments/<slug>/Piece.astro` that
+ * renders this, and its two routes are one line each.
+ *
+ * **The default slot is the piece itself** — its `<canvas>` and its boot
+ * `<script>`, plus a `<style is:global>` which Astro hoists into the head
+ * wherever it is written. It lands first in `<body>`, and DOM order is the
+ * whole stacking arrangement: the canvas, then the interactive view (see the
+ * note in `Reel.astro`), then the chrome, then the note above all of it.
+ *
+ * A deliberately bare document: no Layout, no globals.css, no Tailwind. The
+ * experiment owns the whole viewport and shares no chrome with the rest of the
+ * site.
+ */
+
+interface Props {
+  slug: string
+  /** Render with the note already open, for the note's own address. */
+  note?: boolean
+  /** The note's paint. The furniture is the gallery's; only the colours are the piece's. */
+  theme: NoteTheme
+  /** How much of the piece shows through the note. See `NoteOverlay.astro`. */
+  backdrop?: number
+}
+
+const { slug, note = false, theme, backdrop } = Astro.props
+
+const entry = (await getCollection("experiments")).find(({ data }) => data.slug === slug)
+if (!entry) throw new Error(`${slug}: missing about.md`)
+const { title, summary } = entry.data
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{note ? `${title} — about` : title}</title>
+    <meta name="description" content={summary} />
+  </head>
+  <body>
+    <slot />
+    <Reel slug={slug} />
+    <div id="ui"></div>
+    <NoteOverlay entry={entry} theme={theme} open={note} backdrop={backdrop} />
+  </body>
+</html>

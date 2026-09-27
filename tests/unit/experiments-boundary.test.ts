@@ -117,7 +117,7 @@ describe("the experiments boundary", () => {
     "@/experiments/kit/controls",
     "@/experiments/kit/controls.css",
     "@/experiments/poster",
-    "@/experiments/gallery/Note.astro",
+    "@/experiments/gallery/PiecePage.astro",
     "@/experiments/flotsam/settings",
   ])("allows %s, which is the section reaching inside itself", async (specifier) => {
     const errors = await boundaryErrors(TS, `import x from "${specifier}"\nexport const y = x\n`)

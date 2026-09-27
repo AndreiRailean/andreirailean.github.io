@@ -1,0 +1,119 @@
+---
+import PiecePage from "@/experiments/gallery/PiecePage.astro"
+import type { NoteTheme } from "@/experiments/gallery/NoteOverlay.astro"
+import { PRESETS } from "@/experiments/walkers/settings"
+
+// The note's furniture is the gallery's; only the paint is this piece's. See
+// docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.
+
+// Taken from the primary rather than written down, so promoting another preset
+// to first moves the poster, the landing scene and this page's colour together.
+// See CONTEXT.md on *primary*.
+const primary = PRESETS[0]!.settings
+
+// And it follows the primary into the evening. A light sheet over a night scene
+// is a grey-brown wash with a paragraph on it: the backdrop is at 42 per cent,
+// so the two are not independent choices however much they look like it. Which
+// way round is therefore a property of position one rather than of this file,
+// and it moves on its own if a daylight scene is ever promoted back.
+const theme: NoteTheme = primary.dusk
+  ? {
+      bg: `hsl(${primary.hue}, 12%, 8%)`,
+      sheet: `hsl(${primary.hue}, 14%, 12% / 72%)`,
+      fg: `hsl(${primary.hue}, 8%, 84%)`,
+      bright: `hsl(${primary.hue}, 10%, 97%)`,
+      muted: `hsl(${primary.hue}, 6%, 56%)`,
+      edge: `hsl(${primary.hue}, 8%, 84% / 16%)`,
+      accent: `hsl(${primary.hue - 6}, 42%, 70%)`,
+    }
+  : {
+      bg: `hsl(${primary.hue}, 16%, 92%)`,
+      sheet: `hsl(${primary.hue}, 18%, 96% / 78%)`,
+      fg: `hsl(${primary.hue}, 14%, 22%)`,
+      bright: `hsl(${primary.hue}, 20%, 12%)`,
+      muted: `hsl(${primary.hue}, 10%, 44%)`,
+      edge: `hsl(${primary.hue}, 14%, 22% / 14%)`,
+      accent: `hsl(${primary.hue - 6}, 38%, 34%)`,
+    }
+
+interface Props {
+  /** Render with the note already open, for the note's own address. */
+  note?: boolean
+}
+
+const { note = false } = Astro.props
+---
+
+<PiecePage slug="walkers" note={note} theme={theme} backdrop={0.42}>
+  <style is:global>
+    /* The ground is pale by day and dark at dusk, so the chrome has to be
+         both ways round. Two sets of tokens, swapped by one attribute, exactly
+         as Starry Night does for its inverted sky. */
+    html {
+      /* Overridden from JS; the fallback keeps the page sane without script. */
+      --hue: 104;
+      --accent: hsl(var(--hue), 34%, 34%);
+      --ground: #9db98a;
+      --ui-text: rgb(18 24 16 / 82%);
+      --ui-label: rgb(18 24 16 / 56%);
+      --ui-heading: rgb(18 24 16 / 46%);
+      --ui-panel: rgb(255 255 255 / 84%);
+      --ui-chip: rgb(255 255 255 / 76%);
+      --ui-edge: rgb(18 24 16 / 14%);
+      --ui-edge-hover: rgb(18 24 16 / 34%);
+      --ui-on-bg: hsl(var(--hue), 30%, 74%);
+      --ui-on-text: hsl(var(--hue), 42%, 16%);
+      --ui-on-edge: rgb(18 24 16 / 32%);
+      --track: rgb(18 24 16 / 15%);
+      --ui-fade: 0.35s;
+
+      /* Twenty-three rows, several of them long-named, so the label column is
+           wider than Starry Night's and the panel is taller. */
+      --ui-label-col: 5.5rem;
+      --ui-value-col: 5.25rem;
+      --ui-panel-min: 21rem;
+      --ui-row-gap: 0.36rem;
+    }
+
+    html[data-dusk="true"] {
+      --accent: hsl(var(--hue), 30%, 66%);
+      --ground: #1d2418;
+      --ui-text: rgb(255 255 255 / 74%);
+      --ui-label: rgb(255 255 255 / 52%);
+      --ui-heading: rgb(255 255 255 / 44%);
+      --ui-panel: rgb(14 18 12 / 82%);
+      --ui-chip: rgb(16 20 14 / 74%);
+      --ui-edge: rgb(255 255 255 / 13%);
+      --ui-edge-hover: rgb(255 255 255 / 32%);
+      --ui-on-bg: hsl(var(--hue), 26%, 40%);
+      --ui-on-text: hsl(var(--hue), 45%, 93%);
+      --ui-on-edge: rgb(255 255 255 / 36%);
+      --track: rgb(255 255 255 / 16%);
+    }
+
+    html,
+    body {
+      margin: 0;
+      height: 100%;
+      background: var(--ground);
+    }
+
+    body {
+      overflow: hidden;
+    }
+
+    canvas {
+      position: fixed;
+      inset: 0;
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+  <canvas id="park"></canvas>
+  <script>
+    import { boot } from "@/experiments/walkers/page"
+
+    boot()
+  </script>
+</PiecePage>

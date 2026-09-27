@@ -1,0 +1,106 @@
+---
+import PiecePage from "@/experiments/gallery/PiecePage.astro"
+import type { NoteTheme } from "@/experiments/gallery/NoteOverlay.astro"
+import { PRESETS } from "@/experiments/starry-night/settings"
+
+// The note's furniture is the gallery's; only the paint is Starry Night's. See
+// docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.
+
+// Taken from the primary rather than written down. This read `hsl(225, …)`,
+// which looked like a chosen offset and was not: Starry Night is the first
+// experiment and never caught up. When the notes were put on one layout its
+// hardcoded values were moved across as they stood, so 225 entered alongside
+// everything else without anyone making a colour decision about it — which is
+// why the history shows no drift window and still shows staleness.
+// Saturation and lightness stay Starry Night's own. See CONTEXT.md on *primary*.
+const primary = PRESETS[0]!.settings
+
+const theme: NoteTheme = {
+  bg: "#05070f",
+  sheet: "rgb(6 8 17 / 72%)",
+  fg: "#d6dbe8",
+  bright: "#f2f5fb",
+  muted: "#79839c",
+  edge: "rgb(255 255 255 / 12%)",
+  accent: `hsl(${primary.hue}, 40%, 68%)`,
+}
+
+interface Props {
+  /** Render with the note already open, for the note's own address. */
+  note?: boolean
+}
+
+const { note = false } = Astro.props
+---
+
+<PiecePage slug="starry-night" note={note} theme={theme} backdrop={0.55}>
+  <style is:global>
+    /* One set of tokens per scheme; inverting swaps the whole page, chrome
+         included, so light-mode controls are not dark-on-light. */
+    html {
+      /* Overridden from JS; the fallback keeps the page sane without script. */
+      --hue: 225;
+      --accent: hsl(var(--hue), 40%, 62%);
+      --sky-bg: #05070f;
+      --ui-text: rgb(255 255 255 / 70%);
+      --ui-label: rgb(255 255 255 / 52%);
+      --ui-panel: rgb(10 14 26 / 82%);
+      --ui-chip: rgb(12 16 30 / 72%);
+      --ui-edge: rgb(255 255 255 / 12%);
+      --ui-edge-hover: rgb(255 255 255 / 30%);
+      --ui-on-bg: hsl(var(--hue), 34%, 42%);
+      --ui-on-text: hsl(var(--hue), 55%, 94%);
+      --ui-on-edge: rgb(255 255 255 / 38%);
+      --track: rgb(255 255 255 / 16%);
+      --ui-fade: 0.35s;
+
+      /* The kit's own measures, which the pieces legitimately disagree
+           about: a panel of fifteen rows and one of twenty-seven do not
+           want the same widths. */
+      --ui-label-col: 5rem;
+      --ui-value-col: 4.75rem;
+      --ui-panel-min: 20rem;
+      --ui-row-gap: 0.4rem;
+    }
+
+    html[data-invert="true"] {
+      --accent: hsl(var(--hue), 32%, 46%);
+      --sky-bg: #f4f6fb;
+      --ui-text: rgb(10 14 26 / 80%);
+      --ui-label: rgb(10 14 26 / 55%);
+      --ui-panel: rgb(255 255 255 / 84%);
+      --ui-chip: rgb(255 255 255 / 78%);
+      --ui-edge: rgb(10 14 26 / 14%);
+      --ui-edge-hover: rgb(10 14 26 / 34%);
+      --ui-on-bg: hsl(var(--hue), 42%, 78%);
+      --ui-on-text: hsl(var(--hue), 40%, 18%);
+      --ui-on-edge: rgb(10 14 26 / 32%);
+      --track: rgb(10 14 26 / 15%);
+    }
+
+    html,
+    body {
+      margin: 0;
+      height: 100%;
+      background: var(--sky-bg);
+    }
+
+    body {
+      overflow: hidden;
+    }
+
+    canvas {
+      position: fixed;
+      inset: 0;
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+  <canvas id="sky"></canvas>
+  <script>
+    import { boot } from "@/experiments/starry-night/page"
+
+    boot()
+  </script>
+</PiecePage>

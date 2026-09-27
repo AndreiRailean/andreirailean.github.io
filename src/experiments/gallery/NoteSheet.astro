@@ -5,11 +5,9 @@ import { render } from "astro:content"
 /**
  * The note's text column — title, dates, the write-up, and its two exits.
  *
- * Shared by the two places a note is read: its own page (`Note.astro`), and
- * the overlay a piece opens over itself (`NoteOverlay.astro`, #223). One copy,
- * so the two cannot drift. Every rule is scoped under `.note`, because in the
- * overlay this sits inside a piece's page, whose own elements a bare `p` or `a`
- * rule would reach.
+ * Rendered inside the overlay a piece opens over itself (`NoteOverlay.astro`,
+ * #223). Every rule is scoped under `.note`, because it sits inside a piece's
+ * page, whose own elements a bare `p` or `a` rule would reach.
  *
  * Colours come from the note's theme properties (`--fg`, `--bright`, …), which
  * whoever mounts this sets on an ancestor.
