@@ -572,3 +572,12 @@ Open, for him:
 > there's a core set of settings that control what happens and then there are
 > "plugins" that enhance and complicate the scene and those could be swappable
 > or composable.
+
+> yes, when restructure in 238 is done and merged, you can start on the
+> layering.
+
+> i'm stepping away. when restructure is done, you can open and merge PRs as
+> needed. talk to other sessions if you need assistance with layering.
+
+Filed as #242, reviewed once by the steward (five points on the issue), and
+started when #238 landed.
