@@ -505,7 +505,14 @@ test("softness takes a piece from an object with an edge to a soft blob", async 
 
   const crisp = await pixels(page)
   // Most of a crisp piece sits at one level, which is what an edge means.
-  expect(crisp.nearBody).toBeGreaterThan(0.55)
+  //
+  // **0.52, not 0.55, because 0.55 was the reading rather than a bound.** A
+  // crisp scene measures 0.5501–0.5506 across ten loads (the lit count moves by
+  // a few dozen pixels between them), and CI read 0.54992 once and failed. The
+  // bound belongs between what crisp reads and what a hint of softness reads:
+  // softness 0.1 is 0.476, 0.2 is 0.407, 1 is 0.122. So 0.52 clears the noise
+  // by 0.03 and still fails a piece that has lost even a tenth of its edge.
+  expect(crisp.nearBody).toBeGreaterThan(0.52)
 
   await experiment.api(({ api }) => api.set({ softness: 1 }))
   const soft = await pixels(page)
