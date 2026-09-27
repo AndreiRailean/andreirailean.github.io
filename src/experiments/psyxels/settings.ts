@@ -22,7 +22,14 @@ import {
   type Polarity,
   type SubjectKind,
 } from "@/experiments/psyxels/subject"
-import { GLYPH_NAMES, indexOfGlyph, isGlyphName, paintGlyph, type GlyphName } from "@/experiments/psyxels/glyphs"
+import {
+  GLYPH_COLUMNS,
+  GLYPH_NAMES,
+  indexOfGlyph,
+  isGlyphName,
+  paintGlyph,
+  type GlyphName,
+} from "@/experiments/psyxels/glyphs"
 import type { Chrome } from "@/experiments/piece"
 
 /**
@@ -178,9 +185,8 @@ export const CONTROLS: Control[] = [
     key: "glyphs",
     label: "glyphs",
     least: LEAST_GLYPHS,
-    // Two rows. Fifteen on one line made the panel half again as wide as
-    // everything else in it needed.
-    columns: /* @__PURE__ */ Math.ceil(GLYPH_NAMES.length / 2),
+    // Two rows; see GLYPH_COLUMNS for why it is not worked out here.
+    columns: GLYPH_COLUMNS,
     options: /* @__PURE__ */ GLYPH_NAMES.map((value) => ({
       value,
       label: /* @__PURE__ */ value.replace("-", " "),

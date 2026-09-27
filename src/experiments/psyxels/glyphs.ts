@@ -145,6 +145,19 @@ export const GLYPH_NAMES = [
   "leaf",
 ] as const
 
+/**
+ * Two rows in the panel's glyph picker: fifteen on one line made the panel half
+ * again as wide as everything else in it needed.
+ *
+ * **Computed here, not in `CONTROLS`, and that is the whole reason it exists
+ * (#243).** `Math.ceil(GLYPH_NAMES.length / 2)` inside the control list reads a
+ * property off an imported binding, which esbuild cannot prove free of side
+ * effects, so it kept the entire list — every label and hint — in psyxels'
+ * showcase runner even though nothing there uses it. A name is droppable; a
+ * property read on an import is not.
+ */
+export const GLYPH_COLUMNS = Math.ceil(GLYPH_NAMES.length / 2)
+
 export type GlyphName = (typeof GLYPH_NAMES)[number]
 
 export const isGlyphName = (value: unknown): value is GlyphName =>
