@@ -1,4 +1,4 @@
-import type { ExperimentApi } from "@/experiments/walkers/api"
+import type { ExperimentApi } from "@/experiments/walkers/runner"
 import type { PosterRecipe } from "@/experiments/poster"
 
 /**

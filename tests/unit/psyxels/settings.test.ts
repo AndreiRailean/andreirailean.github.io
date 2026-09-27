@@ -9,14 +9,18 @@ import {
   needsSubject,
   isTrackedControl,
   normalizeSettings,
-  PRESETS,
-  settingsForLanding,
   settingsFromQuery,
   settingsToQuery,
   urlForSettings,
   type NumericKey,
 } from "@/experiments/psyxels/settings"
+import { PRESETS } from "@/experiments/psyxels/presets"
 import type { GlyphName } from "@/experiments/psyxels/glyphs"
+import * as module from "@/experiments/psyxels/settings"
+import { settingsForLanding as landing } from "@/experiments/piece"
+
+/** The landing rule as the gallery's boot applies it to this piece. */
+const settingsForLanding = (params: URLSearchParams) => landing(module, PRESETS, params)
 
 describe("bounds", () => {
   it("has a bound for every numeric setting, so nothing arrives unclamped", () => {

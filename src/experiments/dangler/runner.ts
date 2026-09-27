@@ -10,6 +10,7 @@
 import { decodeScene } from "@/experiments/address"
 import { createDangler } from "@/experiments/dangler/dangler"
 import { normalizeSettings, REGISTRY, type Settings } from "@/experiments/dangler/settings"
+import type { Live, PieceApi, Rerollable } from "@/experiments/piece"
 
 /** The whole contract between a runner and whatever hosts it. */
 export type Mounted = {
@@ -29,9 +30,40 @@ function read(scene: string): Settings {
   return normalizeSettings(decoded as Partial<Settings>)
 }
 
-export function mount(canvas: HTMLCanvasElement, scene: string, _options: MountOptions = {}): Mounted {
-  const strands = createDangler(canvas, read(scene))
+/**
+ * The piece live: what the gallery's page drives, and what `mount` below is
+ * written in terms of, so there is one way a point becomes pixels.
+ *
+ * The verbs are the piece's own, and reach the console and the bar through
+ * `gallery/boot.ts`. See
+ * `../docs/adr/20260928-a-piece-is-a-library-behind-three-files.md`.
+ */
+export function start(canvas: HTMLCanvasElement, settings: Settings) {
+  const strands = createDangler(canvas, settings)
   strands.start()
+
+  return {
+    setSettings: strands.setSettings,
+    setPaused: strands.setPaused,
+    stats: strands.stats,
+    destroy: strands.stop,
+    verbs: {
+      settle: () => strands.settle(),
+      debug: (on: boolean) => strands.setDebug(on),
+    },
+  } satisfies Live<Settings>
+}
+
+/** `window.experiment` on this piece's page, derived rather than written out. */
+export type ExperimentApi = PieceApi<
+  Settings,
+  ReturnType<typeof start>["verbs"],
+  ReturnType<ReturnType<typeof start>["stats"]>
+> &
+  Rerollable
+
+export function mount(canvas: HTMLCanvasElement, scene: string, _options: MountOptions = {}): Mounted {
+  const live = start(canvas, read(scene))
 
   return {
     /**
@@ -42,11 +74,11 @@ export function mount(canvas: HTMLCanvasElement, scene: string, _options: MountO
      * than as the piece being different. `settle()` returns once it is still.
      */
     setScene: (next) => {
-      strands.setSettings(read(next))
-      strands.settle()
+      live.setSettings(read(next))
+      live.verbs.settle()
     },
-    setPaused: strands.setPaused,
-    stats: strands.stats,
+    setPaused: live.setPaused,
+    stats: live.stats,
 
     /**
      * `stop()` is this piece's teardown, not merely its pause — the type says
@@ -57,6 +89,6 @@ export function mount(canvas: HTMLCanvasElement, scene: string, _options: MountO
      * reduced-motion handler was an inline arrow, so no reference existed and
      * the `removeEventListener` was *unwritable* rather than forgotten. #168.
      */
-    destroy: strands.stop,
+    destroy: live.destroy,
   }
 }

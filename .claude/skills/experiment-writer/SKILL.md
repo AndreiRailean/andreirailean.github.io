@@ -166,8 +166,10 @@ nothing below it starts until he has driven the result:
    first**. A whole simulation in one file and then a route is fine; two
    modules and no page is the failure `crowd` demonstrated. Do not write a
    throwaway stub that draws a circle in order to obey a word count.
-3. `src/pages/experiments/<slug>/index.astro` — markup, a `<style>` block and
-   `import { boot } from "@/experiments/<slug>/page"`. No logic in the `.astro`.
+3. `src/experiments/<slug>/Piece.astro` and its two one-line routes — markup,
+   a `<style>` block, and a script handing `settings.ts`, `presets.ts` and
+   `runner.ts`'s `start` to `gallery/boot`. No logic in the `.astro`. Copy an
+   existing piece's; `src/experiments/AGENTS.md` opens with the shape.
 4. The kit's panel, from `CONTROLS`.
 5. **Numbers before the first screenshot** — see below. Then go to step 4 and
    hand over the URL.

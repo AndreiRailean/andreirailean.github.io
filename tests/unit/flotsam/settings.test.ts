@@ -6,16 +6,20 @@ import {
   needsScatter,
   needsSea,
   normalizeSettings,
-  PRESETS,
   reconcile,
-  settingsForLanding,
   settingsFromQuery,
   settingsToQuery,
   urlForSettings,
   type NumericKey,
   type Settings,
 } from "@/experiments/flotsam/settings"
+import { PRESETS } from "@/experiments/flotsam/presets"
 import { keysOf, positionOf, valueAtPosition } from "@/experiments/kit/controls"
+import * as module from "@/experiments/flotsam/settings"
+import { settingsForLanding as landing } from "@/experiments/piece"
+
+/** The landing rule as the gallery's boot applies it to this piece. */
+const settingsForLanding = (params: URLSearchParams) => landing(module, PRESETS, params)
 
 describe("bounds", () => {
   it("has a bound for every setting, so nothing arrives unclamped", () => {

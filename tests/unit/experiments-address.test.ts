@@ -58,10 +58,12 @@ async function registryOf(slug: string) {
   const module = (await import(`../../src/experiments/${slug}/settings.ts`)) as {
     REGISTRY: readonly Slot[]
     DEFAULT_SETTINGS: Record<string, unknown>
-    PRESETS: { label: string; settings: Record<string, unknown> }[]
     normalizeSettings: (patch: Record<string, unknown>) => Record<string, unknown>
   }
-  return module
+  const { PRESETS } = (await import(`../../src/experiments/${slug}/presets.ts`)) as {
+    PRESETS: { label: string; settings: Record<string, unknown> }[]
+  }
+  return { ...module, PRESETS }
 }
 
 /**

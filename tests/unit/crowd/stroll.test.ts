@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest"
 import { createStroll } from "@/experiments/crowd/stroll"
 import { createThrong } from "@/experiments/crowd/throng"
-import { normalizeSettings, PRESETS } from "@/experiments/crowd/settings"
+import { normalizeSettings } from "@/experiments/crowd/settings"
+import { PRESETS } from "@/experiments/crowd/presets"
 import { DEG, STEP, watch, wrap } from "./support"
 
 describe("the head, while walking", () => {

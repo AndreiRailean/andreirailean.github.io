@@ -156,7 +156,7 @@ screen — a wrong strand and a right one both look like a scatter of dots.
   needs a `Control` (or explicit handling) or the panel and shared URLs quietly
   disagree.
 - **`DEFAULT_SETTINGS` is not the scene anyone lands on.** A bare URL gets
-  `PRESETS[0]` and the address is rewritten to match; see `settingsForLanding`.
+  `PRESETS[0]` and the address is rewritten to match; see `settingsForLanding` in `../piece.ts`.
   The poster names no preset for the same reason: it photographs whatever a bare
   URL lands on, so the two cannot drift apart.
 - **The defaults are still a scene worth looking at, because something renders
@@ -200,7 +200,7 @@ screen — a wrong strand and a right one both look like a scatter of dots.
 
 | File             | Holds                                                                       |
 | ---------------- | --------------------------------------------------------------------------- |
-| `settings.ts`    | `Settings`, the `CONTROLS` spec, presets, query parsing, `needsRebuild`     |
+| `settings.ts`    | `Settings`, the `CONTROLS` spec, `CHROME`, query parsing, `needsRebuild`    |
 | `random.ts`      | the R2 sequence and the disc mapping. The generators are the kit's          |
 | `canopy.ts`      | the invisible object overhead; `anchorFor(i)`                               |
 | `arrangement.ts` | seed → strand specs and the bulb table, including per-strand colour batches |
@@ -210,8 +210,8 @@ screen — a wrong strand and a right one both look like a scatter of dots.
 | `beads.ts`       | sprite cache and additive drawing                                           |
 | `palette.ts`     | the ground, and what a bulb is made of                                      |
 | `dangler.ts`     | the engine: canvas, the clock, wind, drawing, stats                         |
-| `controls.ts`    | the panel, idle hiding, URL sync                                            |
-| `api.ts`         | `window.experiment`                                                         |
+| `presets.ts`     | the named scenes; the first is the primary                                  |
+| `runner.ts`      | `start` for the page, `mount` for a frozen runner, and the verbs            |
 
 The chrome, its stylesheet, the fullscreen toggle, the clipboard, the wake lock
 and the seeded generators all come from `../kit/` now. They were copied verbatim from Starry Night while this was

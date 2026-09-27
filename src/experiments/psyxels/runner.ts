@@ -44,6 +44,7 @@
 import { decodeScene } from "@/experiments/address"
 import { createPsyxels } from "@/experiments/psyxels/psyxels"
 import { normalizeSettings, REGISTRY, type Settings } from "@/experiments/psyxels/settings"
+import type { Live, PieceApi, Rerollable } from "@/experiments/piece"
 
 /** The whole contract between a runner and whatever hosts it. */
 export type Mounted = {
@@ -69,14 +70,61 @@ function read(scene: string): Settings {
   return normalizeSettings(decoded as Partial<Settings>)
 }
 
-export function mount(canvas: HTMLCanvasElement, scene: string, _options: MountOptions = {}): Mounted {
-  const field = createPsyxels(canvas, read(scene))
+/**
+ * The portrait, when the page supplies one on the canvas as `data-avatar`.
+ *
+ * Started now and handed over undecoded: the engine rebuilds when it arrives,
+ * so the letter scenes never wait for a face they do not show. A showcase host
+ * puts no `data-avatar` on its canvas, so a frozen runner is handed no portrait,
+ * exactly as before — see the note at the top.
+ */
+function avatarFor(canvas: HTMLCanvasElement): { avatar?: HTMLImageElement } {
+  const source = canvas.dataset.avatar
+  if (!source) return {}
+  const avatar = new Image()
+  avatar.src = source
+  return { avatar }
+}
+
+/**
+ * The piece live: what the gallery's page drives, and what `mount` below is
+ * written in terms of, so there is one way a point becomes pixels.
+ *
+ * The verbs are the piece's own, and reach the console and the bar through
+ * `gallery/boot.ts`. See
+ * `../docs/adr/20260928-a-piece-is-a-library-behind-three-files.md`.
+ */
+export function start(canvas: HTMLCanvasElement, settings: Settings) {
+  const field = createPsyxels(canvas, settings, avatarFor(canvas))
   field.start()
 
   return {
-    setScene: (next) => field.setSettings(read(next)),
+    setSettings: field.setSettings,
     setPaused: field.setPaused,
     stats: field.stats,
+    destroy: field.stop,
+    verbs: {
+      run: (seconds: number) => field.run(seconds),
+      debug: (on: boolean) => field.setDebug(on),
+    },
+  } satisfies Live<Settings>
+}
+
+/** `window.experiment` on this piece's page, derived rather than written out. */
+export type ExperimentApi = PieceApi<
+  Settings,
+  ReturnType<typeof start>["verbs"],
+  ReturnType<ReturnType<typeof start>["stats"]>
+> &
+  Rerollable
+
+export function mount(canvas: HTMLCanvasElement, scene: string, _options: MountOptions = {}): Mounted {
+  const live = start(canvas, read(scene))
+
+  return {
+    setScene: (next) => live.setSettings(read(next)),
+    setPaused: live.setPaused,
+    stats: live.stats,
 
     /**
      * `stop()` is a complete teardown here — the most thorough of any piece.
@@ -85,6 +133,6 @@ export function mount(canvas: HTMLCanvasElement, scene: string, _options: MountO
      * avatar-load listeners, so unlike flotsam and dangler this leaves nothing
      * behind when a host mounts and unmounts repeatedly.
      */
-    destroy: field.stop,
+    destroy: live.destroy,
   }
 }

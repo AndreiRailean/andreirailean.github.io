@@ -222,7 +222,7 @@ in order to work at all, and every one of them was learned by breaking it.
   are also the base `normalizeSettings` falls back to, the thing
   `settingsToQuery` diffs against, and what the note's backdrop renders.
   Replacing them changes the length of every URL already shared. The
-  `settingsForLanding` indirection stays even though the two currently agree,
+  `settingsForLanding` in `../piece.ts` indirection stays even though the two currently agree,
   because it is what lets the featured scene change later without invalidating a
   link.
 - **A piece is drawn at its real size, so every sprite has to work at a pixel
@@ -387,18 +387,19 @@ in order to work at all, and every one of them was learned by breaking it.
 
 ## Shape of the code
 
-| File          | Holds                                                                        |
-| ------------- | ---------------------------------------------------------------------------- |
-| `settings.ts` | `Settings`, the `CONTROLS` spec, presets, query parsing, what a change costs |
-| `random.ts`   | `homeFor`: where speck `i` starts. The generators are the kit's              |
-| `waves.ts`    | the Gerstner spectrum: displacement, height, slope, folding, wave drift      |
-| `current.ts`  | the set and drift, and the patch-periodic incompressible eddy field          |
-| `scatter.ts`  | seed → the flotsam: homes, sizes, colours, per-train response, wave drift    |
-| `view.ts`     | metres to pixels, and the wrapped patch                                      |
-| `specks.ts`   | sprite cache and additive drawing                                            |
-| `palette.ts`  | the water, and what a speck is made of                                       |
-| `flotsam.ts`  | the engine: canvas, the clock, integration, drawing, stats                   |
-| `api.ts`      | `window.experiment`                                                          |
+| File          | Holds                                                                         |
+| ------------- | ----------------------------------------------------------------------------- |
+| `settings.ts` | `Settings`, the `CONTROLS` spec, `CHROME`, query parsing, what a change costs |
+| `random.ts`   | `homeFor`: where speck `i` starts. The generators are the kit's               |
+| `waves.ts`    | the Gerstner spectrum: displacement, height, slope, folding, wave drift       |
+| `current.ts`  | the set and drift, and the patch-periodic incompressible eddy field           |
+| `scatter.ts`  | seed → the flotsam: homes, sizes, colours, per-train response, wave drift     |
+| `view.ts`     | metres to pixels, and the wrapped patch                                       |
+| `specks.ts`   | sprite cache and additive drawing                                             |
+| `palette.ts`  | the water, and what a speck is made of                                        |
+| `flotsam.ts`  | the engine: canvas, the clock, integration, drawing, stats                    |
+| `presets.ts`  | the named scenes; the first is the primary                                    |
+| `runner.ts`   | `start` for the page, `mount` for a frozen runner, and the verbs              |
 
 `random.ts` holds only `homeFor` now. The generators it is built on —
 `hashSeed`, `makeRng`, `gaussian` — moved to `../random.ts` when Psyxels

@@ -1,7 +1,7 @@
 ---
 import PiecePage from "@/experiments/gallery/PiecePage.astro"
 import type { NoteTheme } from "@/experiments/gallery/NoteOverlay.astro"
-import { PRESETS } from "@/experiments/embers/settings"
+import { PRESETS } from "@/experiments/embers/presets"
 import { groundColour } from "@/experiments/embers/draw"
 
 // The note's furniture is the gallery's; only the paint is this piece's. See
@@ -91,8 +91,11 @@ const { note = false } = Astro.props
   </style>
   <canvas id="fire"></canvas>
   <script>
-    import { boot } from "@/experiments/embers/page"
+    import { boot } from "@/experiments/gallery/boot"
+    import * as settings from "@/experiments/embers/settings"
+    import { PRESETS } from "@/experiments/embers/presets"
+    import { start } from "@/experiments/embers/runner"
 
-    boot()
+    boot({ settings, presets: PRESETS, start })
   </script>
 </PiecePage>

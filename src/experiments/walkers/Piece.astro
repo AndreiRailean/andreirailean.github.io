@@ -1,7 +1,7 @@
 ---
 import PiecePage from "@/experiments/gallery/PiecePage.astro"
 import type { NoteTheme } from "@/experiments/gallery/NoteOverlay.astro"
-import { PRESETS } from "@/experiments/walkers/settings"
+import { PRESETS } from "@/experiments/walkers/presets"
 
 // The note's furniture is the gallery's; only the paint is this piece's. See
 // docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.
@@ -112,8 +112,11 @@ const { note = false } = Astro.props
   </style>
   <canvas id="park"></canvas>
   <script>
-    import { boot } from "@/experiments/walkers/page"
+    import { boot } from "@/experiments/gallery/boot"
+    import * as settings from "@/experiments/walkers/settings"
+    import { PRESETS } from "@/experiments/walkers/presets"
+    import { start } from "@/experiments/walkers/runner"
 
-    boot()
+    boot({ settings, presets: PRESETS, start })
   </script>
 </PiecePage>

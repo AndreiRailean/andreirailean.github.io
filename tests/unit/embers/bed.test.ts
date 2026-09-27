@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest"
 import { createAir } from "@/experiments/embers/air"
 import { createBed, type Spawn } from "@/experiments/embers/bed"
-import { PRESETS, type Settings } from "@/experiments/embers/settings"
+import { type Settings } from "@/experiments/embers/settings"
+import { PRESETS } from "@/experiments/embers/presets"
 
 /**
  * Who gets a slot when the population ceiling binds.

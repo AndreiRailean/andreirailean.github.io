@@ -26,7 +26,6 @@ import { optsOutOf, optsOutOfFile } from "./opt-out.ts"
  */
 
 const EXPERIMENTS = "src/experiments"
-const PAGES = "src/pages/experiments"
 
 /** Not pieces: shared code, and the section's own docs. */
 const NOT_A_PIECE = new Set(["docs", "gallery", "kit"])
@@ -110,7 +109,7 @@ const KIT_SELECTORS = [
  *
  * Two spellings, because two of these checks read the same file for unrelated
  * reasons. The bare form says *this file is not the kit's* and answers the
- * checks about the file as a copy; the preset check shares `settings.ts` with
+ * checks about the file as a copy; the preset check shares `presets.ts` with
  * the symbol clash above it and so names itself. See #137 for what one
  * unqualified line silenced in starry-night.
  */
@@ -180,10 +179,17 @@ it("finds the experiments, so an empty run cannot pass for a clean one", () => {
 })
 
 describe.each(slugs)("%s", (slug) => {
-  const page = read(`${PAGES}/${slug}/index.astro`)
+  /**
+   * **The piece's stylesheet is in its `Piece.astro`**, which both routes
+   * render. Until #238 this read `src/pages/experiments/<slug>/index.astro`,
+   * which since #231 is one line rendering `Piece.astro` — so the selector
+   * checks below read an empty style block and could not fail.
+   */
+  const page = read(`${EXPERIMENTS}/${slug}/Piece.astro`)
 
-  it("has a page", () => {
-    expect(page, `${PAGES}/${slug}/index.astro`).not.toBeNull()
+  it("has a page, with a stylesheet for the checks below to read", () => {
+    expect(page, `${EXPERIMENTS}/${slug}/Piece.astro`).not.toBeNull()
+    expect(styleBlock(page ?? ""), `${slug}/Piece.astro has no <style> for the selector checks to read`).not.toBe("")
   })
 
   it("defines nothing the kit already defines", () => {
@@ -212,66 +218,17 @@ describe.each(slugs)("%s", (slug) => {
   })
 
   /**
-   * The console API's chrome half, which the kit now supplies.
+   * **There is no `api.ts` to check any more.** This file used to hold every
+   * piece's `api.ts` to spreading `createBaseApi` rather than driving the chrome
+   * by hand — ten methods had been written out identically in four pieces, and
+   * #85 was a divergence among them. Since #238 the console handle is built
+   * once, in `gallery/boot.ts`, and `experiments-contract.test.ts` fails a piece
+   * that carries an `api.ts` of its own.
    *
-   * This is the check that was missing when four pieces each wrote `get`, `set`,
-   * `preset`, `presets`, `panel`, `pause`, `idle`, `url`, `fullscreen` and
-   * `awake` out by hand, byte-identically. The symbol-clash check above could
-   * not see any of it: those are methods on an object literal, not `export`ed
-   * definitions, so there was nothing for it to clash with — and #85 was a
-   * divergence inside that invisible region, which cost a real assertion.
-   *
-   * Written as **a piece must not reach into the chrome from its `api.ts`**
-   * rather than as a search for the ten method names, because the names are
-   * ordinary words and the calls are not. `controls.apply`, `controls.setIdle`,
-   * `controls.setPanelOpen` and `wakeLock.held` appear nowhere else in a piece
-   * once `createBaseApi` is composed, and each one is the kit's own handle being
-   * driven by hand.
-   *
-   * Scoped to `api.ts` deliberately. A piece's `reroll.ts` legitimately calls
-   * `controls.apply` — it is applying a patch through the piece's own validator,
-   * which is a different act from re-implementing the handle.
-   *
-   * Offered, not imposed, like everything else here: a piece needing a different
-   * console handle writes one and says so in a line.
+   * The stylesheet check went with it: `gallery/PiecePage.astro` imports
+   * `kit/controls.css` for every piece, so there is no page left that could
+   * forget it.
    */
-  const CHROME_REACHES = ["controls.apply(", "controls.setPanelOpen(", "controls.setIdle(", "wakeLock.held("]
-
-  it("takes the console API's chrome half from the kit", () => {
-    const api = read(`${EXPERIMENTS}/${slug}/api.ts`)
-    if (api === null || optsOutOfFile(api)) return
-
-    const reaches = CHROME_REACHES.filter((call) => api.includes(call))
-    expect(
-      reaches,
-      `${slug}/api.ts drives the chrome by hand (${reaches.join(", ")}), which kit/api.ts's ` +
-        `createBaseApi already does. Four pieces wrote this out identically before it was ` +
-        `hoisted, and #85 was a divergence inside it. Spread createBaseApi instead, or say why ` +
-        `not with a "${OPT_OUT} <reason>" comment in that file.`,
-    ).toEqual([])
-
-    // The **call**, not the identifier. Checking for the bare name passed on a
-    // piece that had been gutted back to hand-written methods and still carried
-    // the import — caught by breaking this check deliberately, which is the
-    // only reason it is written this way.
-    expect(
-      api.includes("createBaseApi("),
-      `${slug}/api.ts exposes a console API without calling the kit's base handle. Spread ` +
-        `createBaseApi from @/experiments/kit/api, or say why not with a ` +
-        `"${OPT_OUT} <reason>" comment in that file.`,
-    ).toBe(true)
-  })
-
-  it("imports the kit stylesheet if it renders the kit's chrome", () => {
-    if (page === null) return
-    const rendersChrome = page.includes("createControls") || page.includes('id="ui"')
-    if (!rendersChrome) return
-    expect(
-      page.includes("kit/controls.css") || optsOutOfFile(page),
-      `${slug} builds the kit's chrome but never imports kit/controls.css, so it will render ` +
-        `unstyled. Add it to the frontmatter, or say why not with a "${OPT_OUT} <reason>" comment.`,
-    ).toBe(true)
-  })
 
   it.each(KIT_SELECTORS)("does not redeclare the kit's %s", (selector) => {
     if (page === null) return
@@ -306,13 +263,15 @@ describe.each(slugs)("%s", (slug) => {
  * opt-out, as everywhere else in this file. Silence is what is ruled out.
  */
 describe.each(slugs)("%s presets", (slug) => {
-  const source = read(`${EXPERIMENTS}/${slug}/settings.ts`)
+  const source = read(`${EXPERIMENTS}/${slug}/presets.ts`)
 
   it("states every setting in every preset, rather than inheriting them", () => {
     if (source === null || optsOutOf(source, "presets")) return
 
     const presets = presetBlocks(source)
-    if (presets.length === 0) return
+    // Presence, paired with the absence below: a presets file this reads no
+    // block from would otherwise pass every assertion by having nothing to check.
+    expect(presets.length, `read no preset blocks from ${slug}/presets.ts`).toBeGreaterThan(0)
 
     // Every block written must be a block read. A preset the parser cannot make
     // sense of used to vanish from the list rather than fail, so the assertions
@@ -320,7 +279,7 @@ describe.each(slugs)("%s presets", (slug) => {
     // and a one-line block, the exact shape of a spread, was the illegible one.
     expect(
       presets.length,
-      `${slug}/settings.ts writes ${blockCount(source)} settings blocks and this check could ` +
+      `${slug}/presets.ts writes ${blockCount(source)} settings blocks and this check could ` +
         `read ${presets.length} of them. The unread ones are exempt from every assertion below, ` +
         `which is how a preset hides. Widen presetBlocks rather than ignoring this.`,
     ).toBe(blockCount(source))
@@ -342,7 +301,7 @@ describe.each(slugs)("%s presets", (slug) => {
         missing,
         `${slug}'s "${preset.label}" preset does not state ${missing.join(", ")}, so it takes ` +
           `whatever another scene decides. Write every setting out, or say why not with a ` +
-          `"${OPT_OUT_PRESETS} <reason>" comment in settings.ts.`,
+          `"${OPT_OUT_PRESETS} <reason>" comment in presets.ts.`,
       ).toEqual([])
       expect(
         preset.body.includes("...") ? preset.label : "",

@@ -35,13 +35,16 @@ const slugs = readdirSync(EXPERIMENTS)
 type Settings = Record<string, unknown>
 
 async function settingsModule(slug: string) {
-  return (await import(`../../src/experiments/${slug}/settings.ts`)) as {
+  const settings = (await import(`../../src/experiments/${slug}/settings.ts`)) as {
     DEFAULT_SETTINGS: Settings
-    PRESETS: { label: string; settings: Settings }[]
     TRACKS: Partial<Record<string, Track>>
     gridFor: (key: string, value: number) => number
     normalizeSettings: (patch: Partial<Settings>) => Settings
   }
+  const { PRESETS } = (await import(`../../src/experiments/${slug}/presets.ts`)) as {
+    PRESETS: { label: string; settings: Settings }[]
+  }
+  return { ...settings, PRESETS }
 }
 
 /**

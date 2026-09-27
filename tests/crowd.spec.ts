@@ -1,5 +1,5 @@
-import type { ExperimentApi } from "@/experiments/crowd/api"
-import { PRESETS } from "@/experiments/crowd/settings"
+import type { ExperimentApi } from "@/experiments/crowd/runner"
+import { PRESETS } from "@/experiments/crowd/presets"
 import { expect, openExperiment, test } from "./support/experiment"
 
 /**

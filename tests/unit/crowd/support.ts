@@ -1,6 +1,7 @@
 import { createStroll } from "@/experiments/crowd/stroll"
 import { createThrong } from "@/experiments/crowd/throng"
-import { normalizeSettings, PRESETS, type Settings } from "@/experiments/crowd/settings"
+import { normalizeSettings, type Settings } from "@/experiments/crowd/settings"
+import { PRESETS } from "@/experiments/crowd/presets"
 
 /**
  * What the crowd's long unit checks share, so they can live in several files.

@@ -1,7 +1,7 @@
 ---
 import PiecePage from "@/experiments/gallery/PiecePage.astro"
 import type { NoteTheme } from "@/experiments/gallery/NoteOverlay.astro"
-import { PRESETS } from "@/experiments/flotsam/settings"
+import { PRESETS } from "@/experiments/flotsam/presets"
 
 // The note's furniture is the gallery's; only the paint is Flotsam's. See
 // docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.
@@ -81,8 +81,11 @@ const { note = false } = Astro.props
   </style>
   <canvas id="water"></canvas>
   <script>
-    import { boot } from "@/experiments/flotsam/page"
+    import { boot } from "@/experiments/gallery/boot"
+    import * as settings from "@/experiments/flotsam/settings"
+    import { PRESETS } from "@/experiments/flotsam/presets"
+    import { start } from "@/experiments/flotsam/runner"
 
-    boot()
+    boot({ settings, presets: PRESETS, start })
   </script>
 </PiecePage>

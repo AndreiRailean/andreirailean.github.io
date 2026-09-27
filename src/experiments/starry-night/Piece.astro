@@ -1,7 +1,7 @@
 ---
 import PiecePage from "@/experiments/gallery/PiecePage.astro"
 import type { NoteTheme } from "@/experiments/gallery/NoteOverlay.astro"
-import { PRESETS } from "@/experiments/starry-night/settings"
+import { PRESETS } from "@/experiments/starry-night/presets"
 
 // The note's furniture is the gallery's; only the paint is Starry Night's. See
 // docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.
@@ -99,8 +99,11 @@ const { note = false } = Astro.props
   </style>
   <canvas id="sky"></canvas>
   <script>
-    import { boot } from "@/experiments/starry-night/page"
+    import { boot } from "@/experiments/gallery/boot"
+    import * as settings from "@/experiments/starry-night/settings"
+    import { PRESETS } from "@/experiments/starry-night/presets"
+    import { start } from "@/experiments/starry-night/runner"
 
-    boot()
+    boot({ settings, presets: PRESETS, start })
   </script>
 </PiecePage>

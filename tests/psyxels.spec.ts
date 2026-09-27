@@ -1,5 +1,6 @@
-import type { ExperimentApi } from "@/experiments/psyxels/api"
-import { DEFAULT_SETTINGS, PRESETS, settingsToQuery, type Settings } from "@/experiments/psyxels/settings"
+import type { ExperimentApi } from "@/experiments/psyxels/runner"
+import { DEFAULT_SETTINGS, settingsToQuery, type Settings } from "@/experiments/psyxels/settings"
+import { PRESETS } from "@/experiments/psyxels/presets"
 import { GLYPH_NAMES } from "@/experiments/psyxels/glyphs"
 import { expect, openExperiment, test } from "./support/experiment"
 
