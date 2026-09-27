@@ -87,9 +87,9 @@ const QUARRY = "hsl(2, 88%, 56%)"
  * four thousand references per frame at sixty frames a second, which is a
  * megabyte a minute of pure garbage for a piece whose whole cost is the frame.
  */
-export type Scratch = { pool: Sighted[]; order: Sighted[]; rocks: SphereSight[] }
+export type Scratch = { pool: Sighted[]; order: Sighted[]; rocks: SphereSight[]; rockOrder: SphereSight[] }
 
-export const makeScratch = (): Scratch => ({ pool: [], order: [], rocks: [] })
+export const makeScratch = (): Scratch => ({ pool: [], order: [], rocks: [], rockOrder: [] })
 
 const newSight = (): SphereSight => ({ wx: 0, wy: 0, wz: 1, distance: 1, sin: 0, cos: 1, outline: [] })
 
@@ -290,7 +290,7 @@ export function drawFrame(
         context.fill()
         fills++
       }
-      fills += paintRocks(context, rocks, rockCount, settings.shade)
+      fills += paintRocks(context, options.scratch, rockCount, settings.shade, camera.fade)
       context.fillStyle = headColour(settings)
       context.beginPath()
       bucket = -1
@@ -341,7 +341,7 @@ export function drawFrame(
     context.fill()
     fills++
   }
-  if (!rocksPainted) fills += paintRocks(context, rocks, rockCount, settings.shade)
+  if (!rocksPainted) fills += paintRocks(context, options.scratch, rockCount, settings.shade, camera.fade)
 
   context.globalAlpha = 1
   return { drawn: seen, fills, largest, hidden, cut, quarryHidden, rocks: rockCount }
@@ -354,13 +354,41 @@ export function drawFrame(
  * wound opposite ways would cancel where they overlap and leave a hole in the
  * middle of an island. There are tens of them, so the fills cost nothing.
  */
-function paintRocks(context: CanvasRenderingContext2D, rocks: SphereSight[], count: number, shade: number): number {
+function paintRocks(
+  context: CanvasRenderingContext2D,
+  scratch: Scratch,
+  count: number,
+  shade: number,
+  fade: number,
+): number {
   context.globalAlpha = 1
-  // The ground's own black unless `shade` says otherwise, which shows each
-  // boulder as the shape it is.
-  context.fillStyle = `hsl(0 0% ${Math.round(shade * 40)}%)`
+  if (shade <= 0) {
+    // The ground's own black: nothing shows, so neither the order nor the air matters.
+    context.fillStyle = "#000"
+  } else {
+    // **Far to near, and through the same air as the heads.** An unfogged grey
+    // is the one thing in the frame the distance does not touch, so it reads as
+    // the nearest thing there is, and every faded head in front of a far
+    // boulder looked like it was shining through it: "boulders only appear to
+    // lose transparency when i'm right in front of them". Measured on his
+    // scene, none of those heads was behind a boulder — they were at 25–61% of
+    // its distance, more than half of them below half brightness. Fogged, the
+    // far boulder is dim and they read as what they are. Once the shades differ
+    // the nearer boulder has to be painted over the farther.
+    const order = scratch.rockOrder
+    order.length = 0
+    for (let k = 0; k < count; k++) order.push(scratch.rocks[k]!)
+    order.sort((a, b) => b.distance - a.distance)
+  }
+  const order = shade <= 0 ? scratch.rocks : scratch.rockOrder
   for (let k = 0; k < count; k++) {
-    const outline = rocks[k]!.outline
+    const rock = order[k]!
+    if (shade > 0) {
+      const near = rock.distance * (1 - rock.sin)
+      const air = Math.exp(-near / Math.max(0.5, fade))
+      context.fillStyle = `hsl(0 0% ${(shade * 40 * air).toFixed(1)}%)`
+    }
+    const outline = rock.outline
     context.beginPath()
     context.moveTo(outline[0]!, outline[1]!)
     for (let p = 2; p < outline.length; p += 2) context.lineTo(outline[p]!, outline[p + 1]!)

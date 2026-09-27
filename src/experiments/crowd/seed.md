@@ -482,3 +482,19 @@ old aisle setting back as `passages`, and three presets: **boulder grid**,
 3 m boulders hides 80–89% of the heads in view — you see down the passage you
 are in — so passage width is the lever. The one-piece-or-layers question is
 answered in the session and left open here: his call.
+
+## 2026-09-27 — shading shows them transparent
+
+> boulders only appear to lose transparency when i'm right in front of them.
+> this becomes obvious when boulder shading is adjusted up and down and
+> whatever is supposed to be occluded by them is shining right through them.
+> here's an example
+> http://100.117.55.104:4718/experiments/crowd/?s=_-__7___fF8syctZLJ4JCqihtGAAAo-hVSe4AABoAAkABQ6oCkAAACxQQs
+
+Measured on that address, offline and by tracing the paint calls in the
+browser: no head behind a boulder was drawn. About 70% of the heads on screen
+sat over some boulder's outline, at 25–61% of its distance and more than half
+of them below half brightness — the band of nearer, fogged heads crossing every
+boulder. The grey was the one thing the fog did not touch, so it read as
+nearest. Fixed by fogging the shade and painting boulders far to near; at shade
+0 nothing changes.

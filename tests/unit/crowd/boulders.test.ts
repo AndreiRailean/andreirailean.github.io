@@ -123,3 +123,41 @@ describe("a grid of boulders", () => {
     }
   })
 })
+
+describe("a shaded boulder", () => {
+  /**
+   * "boulders only appear to lose transparency when i'm right in front of
+   * them." Nothing behind a boulder was drawn; the heads over a far one were
+   * in front of it and faded, and the grey was not, so it read as nearest. So
+   * the grey goes through the same air as the heads, and the nearer boulder
+   * is painted last.
+   */
+  it("is painted far to near, darker the further it is", () => {
+    const fills: string[] = []
+    let style = ""
+    const recording = new Proxy(
+      {},
+      {
+        get: (_t, key) => (key === "fill" ? () => fills.push(style) : key === "fillStyle" ? style : noop),
+        set: (_t, key, value) => {
+          if (key === "fillStyle") style = String(value)
+          return true
+        },
+      },
+    ) as unknown as CanvasRenderingContext2D
+    drawFrame(recording, {
+      people: [],
+      camera,
+      ground: () => 0,
+      settings: { ...DEFAULT_SETTINGS, shade: 1 },
+      width: 1600,
+      height: 1000,
+      scratch: makeScratch(),
+      // Near first in the list, so the order has to come from the draw.
+      boulders: [rock(12, -3, 3), rock(50, 4, 3)],
+    })
+    const lightness = fills.filter((f) => f.startsWith("hsl(0 0%")).map((f) => Number(/([\d.]+)%\)$/.exec(f)![1]))
+    expect(lightness).toHaveLength(2)
+    expect(lightness[0]).toBeLessThan(lightness[1]! * 0.7)
+  })
+})

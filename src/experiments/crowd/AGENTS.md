@@ -605,6 +605,13 @@ but much larger and of black colour so the blend in with the background".
   take as many points as they are big (8 to 64) and a boulder off the frame is
   dropped — it cannot cover anything on screen — which took the square grid to
   4.1 ms with the hidden share unchanged to three places.
+- **A shaded boulder has to go through the air too.** Unfogged grey read as
+  the nearest thing in the frame, so the faded heads in front of a far boulder
+  looked like they shone through it — reported as boulders being transparent
+  except up close. Nothing behind one was drawn: traced in the browser, 0 of
+  310 heads over an outline were further than its boulder. `shade` is now
+  multiplied by the same `exp(-d / fade)` at the near surface, and boulders are
+  painted far to near, which only matters once their shades differ.
 - **Rebuilt only when their own inputs change** (`boulderShape` in
   `throng.ts`), and kept clear of wherever I stand when they are built, since
   on a loop that is not the origin.
