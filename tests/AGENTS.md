@@ -273,7 +273,13 @@ timeout over.
 **So a test about the chrome should hold the piece.** `api.pause(true)` is in the
 minimum surface of every piece and parks the frame loop without tearing anything
 down — `stats().running` goes false. Do it before touching the panel, not after.
-`kit.spec.ts` does, and says so.
+`kit.spec.ts` does it for every test through `openHeld`, and that one change took
+the CI browser job from about 8.2 minutes to 6.0 (#234).
+
+**More workers are not the lever; less work per test is.** Four CI workers
+with `fullyParallel` were measured against the default two and bought nothing,
+while a CPU-heavy test timed out under the contention —
+`docs/adr/20260927-more-browser-workers-buy-nothing-on-ci.md`.
 
 **And a drag is one settings change per step.** `page.mouse.move(x, y, { steps:
 8 })` is eight of them, and a settings change can be expensive: flotsam's size

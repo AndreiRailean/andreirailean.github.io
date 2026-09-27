@@ -108,9 +108,12 @@ concurrency:
 # reports in about two minutes, and it fails its own check independently, so
 # nothing waits on the browser suite to learn about it.
 #
-# See #133 for what this does not touch: `fullyParallel`, which would spread a
-# spec's tests across workers and could trade slow for flaky on a shared dev
-# server, and the audit of which tests need a browser at all.
+# Two workers, Playwright's default for this four-core runner, and file-level
+# scheduling. Four workers with `fullyParallel` was measured against this and
+# bought nothing — 5.9 against 6.0 minutes over three runs each — while one
+# CPU-heavy test timed out twice in four: the tests are CPU-bound, so extra
+# workers take cores from each other. See
+# docs/adr/20260927-more-browser-workers-buy-nothing-on-ci.md.
 jobs:
   browser:
     name: Browser tests
