@@ -82,6 +82,15 @@ describe("a boulder", () => {
     expect(frame([standing(40, 0)], [rock(20, 0, 2)]).hidden).toBe(1)
   })
 
+  it("hides somebody standing inside its footprint whose head is outside the dome", () => {
+    // A 3 m dome is 2.5 m across at head height, so somebody standing 2.8 m
+    // from its centre has their feet inside it and their head in the open,
+    // beside its flank. Nobody near me gets there — the detail radius is pushed
+    // off — but past it everybody walks through, and this is how they showed.
+    expect(frame([standing(20, 2.8)], [rock(20, 0, 3)]).hidden).toBe(1)
+    expect(frame([standing(20, 3.4)], [rock(20, 0, 3)]).hidden).toBe(0)
+  })
+
   it("throws no outline when I am inside it, rather than blacking out the frame", () => {
     const inside = frame([standing(40, 0)], [rock(1, 0, 3)])
     expect(inside.rocks).toBe(0)

@@ -87,11 +87,23 @@ const QUARRY = "hsl(2, 88%, 56%)"
  * four thousand references per frame at sixty frames a second, which is a
  * megabyte a minute of pure garbage for a piece whose whole cost is the frame.
  */
-export type Scratch = { pool: Sighted[]; order: Sighted[]; rocks: SphereSight[]; rockOrder: SphereSight[] }
+/** A boulder as the eye sees it, and which boulder it is. */
+type Rock = SphereSight & { at: Boulder }
+
+export type Scratch = { pool: Sighted[]; order: Sighted[]; rocks: Rock[]; rockOrder: Rock[] }
 
 export const makeScratch = (): Scratch => ({ pool: [], order: [], rocks: [], rockOrder: [] })
 
-const newSight = (): SphereSight => ({ wx: 0, wy: 0, wz: 1, distance: 1, sin: 0, cos: 1, outline: [] })
+const newSight = (): Rock => ({
+  wx: 0,
+  wy: 0,
+  wz: 1,
+  distance: 1,
+  sin: 0,
+  cos: 1,
+  outline: [],
+  at: { x: 0, y: 0, r: 0, side: 1 },
+})
 
 /**
  * What a boulder does to one head: `0` nothing, `1` hides it outright, `2` is
@@ -191,6 +203,7 @@ export function drawFrame(
     rocks[rockCount] = slot
     if (!sightSphere(camera, boulder.x, boulder.y, options.ground(boulder.x), boulder.r, slot)) continue
     if (slot.distance - boulder.r > horizon || slot.outline.length < 6) continue
+    slot.at = boulder
     rockCount++
   }
   let hidden = 0
@@ -239,7 +252,21 @@ export function drawFrame(
       const span = r / sighting.scale
       let blocked = 0
       for (let k = 0; k < rockCount && blocked !== 1; k++) {
-        const verdict = blockedBy(rocks[k]!, hx, hy, hz, span)
+        const rock = rocks[k]!
+        // **Standing inside its footprint is inside the boulder**, whatever the
+        // sight line says. Only the detail radius is pushed off boulders, so
+        // out past it people walk through them — and a dome is narrower at head
+        // height than at the ground, so a head near the edge of the footprint is
+        // outside the sphere and was drawn on the boulder's flank, at the
+        // boulder's own distance. About one drawn head in ten past 24 m on a
+        // honeycomb: "only the first two rows of boulders … are opaque".
+        const fx = person.x - rock.at.x
+        const fy = person.y - rock.at.y
+        if (fx * fx + fy * fy < rock.at.r * rock.at.r) {
+          blocked = 1
+          break
+        }
+        const verdict = blockedBy(rock, hx, hy, hz, span)
         if (verdict > blocked) blocked = verdict
       }
       if (blocked === 1) {
