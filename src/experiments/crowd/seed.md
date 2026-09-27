@@ -498,3 +498,19 @@ of them below half brightness — the band of nearer, fogged heads crossing ever
 boulder. The grey was the one thing the fog did not touch, so it read as
 nearest. Fixed by fogging the shade and painting boulders far to near; at shade
 0 nothing changes.
+
+## 2026-09-27 — far boulders let heads through
+
+> what i'm seeing far away boulders become transparent and heads are coming
+> through. i'm judging it by the size of head relative to size of boulder. only
+> the first two rows of boulders in this scene (honeycomb with grey boulders)
+> are opaque.
+> http://100.117.55.104:4718/experiments/crowd/?s=_-__7___fF8syctZLJ4JCqihtGAAAo-hVSe4AABoAAkABQ6oCkAAACxQR8
+
+He was right and the last round's answer was incomplete. Only the detail
+radius (24 m, his "first two rows") is pushed off boulders; past it people walk
+through them, and a 3 m dome is only 2.5 m across at head height, so somebody
+near the edge of a footprint had their head outside the sphere, drawn on the
+flank at the boulder's own distance. Measured exactly on his address: 2–9 such
+heads a frame, about 3% of those drawn past 24 m; 0 after. Anybody standing
+inside a footprint is now inside the boulder.

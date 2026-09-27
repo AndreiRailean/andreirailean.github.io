@@ -555,9 +555,14 @@ but much larger and of black colour so the blend in with the background".
   beside the way, never on it, so they only hide across the inside of a bend.
   At `the trail`'s bend 30 / meander 300 nothing was hidden in fifty frames;
   at 45 / 220, `round the bend`, 11%.
-- **Only the detail radius is pushed off them.** Past it somebody walking into
-  a boulder is inside it and hidden by it, which looks exactly like walking
-  behind it. Pushing everybody cost 38% of the step; as built, boulders cost
+- **Only the detail radius is pushed off them, so standing in a footprint is
+  hidden by rule.** Past it people walk through boulders. That was first
+  written up here as "a head inside a boulder is hidden by it", which was only
+  half true: a dome is narrower at head height than at the ground, so a head
+  near the edge of the footprint is outside the sphere, and was drawn on the
+  boulder's flank at the boulder's own distance — 2–9 heads a frame on a
+  honeycomb, read by Andrei as far boulders gone transparent. `draw.ts` hides
+  anybody whose feet are inside a footprint, before the sight-line test. Pushing everybody cost 38% of the step; as built, boulders cost
   about 10–14% in a like-for-like run at 9,000 people.
 - **Round obstacles need a steer as well as a wall.** A walker heading at the
   centre is pushed straight back along their own line and stands there. The
