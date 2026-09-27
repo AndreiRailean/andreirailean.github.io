@@ -4,6 +4,16 @@ A first-person walk through a crowd. White circles on black, nothing else in the
 world: no ground, no bodies, no sky. Read `../AGENTS.md` and `../CONTEXT.md`
 first; this file is only what is particular to this piece.
 
+## What the piece is, in his words
+
+"the most significant development here is the active gaze. people dynamics,
+obstacles, chase - all are variations of what we have done before in other
+experiments. it's the first person view with active, natural gazing around is
+what makes it feel different." (2026-09-28, `seed.md`.) So the gaze in
+`stroll.ts` is the part to protect: a change anywhere that makes the head
+steadier, more predictable or more tied to the course is a change to what the
+piece is, however much it tidies something else.
+
 ## The one thing to understand before changing anything
 
 **There are two people in this piece and one of them is the camera.** `throng.ts`

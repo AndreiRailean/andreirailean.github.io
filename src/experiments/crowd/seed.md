@@ -553,3 +553,12 @@ Open, for him:
 - The draw at 1,300–1,800 heads under 150 boulders is 7–8 ms headless, the most
   this piece has spent painting. Fine at 60 fps on his machine, probably; worth
   a look if a perched scene stutters.
+
+## 2026-09-28 — what the piece actually is
+
+> great. boulders now correctly block people at all distances.
+> looking at the piece with fresh eyes i realise that the most significant
+> development here is the active gaze. people dynamics, obstacles, chase - all
+> are variations of what we have done before in other experiments. it's the
+> first person view with active, natural gazing around is what makes it feel
+> different.
