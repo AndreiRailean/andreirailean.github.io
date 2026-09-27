@@ -106,6 +106,12 @@ reports as missing. The full suite runs on every push to `main`, so a mis-map
 fails one merge later and can be traced to that merge, rather than never
 failing at all.
 
+**The browser slice is `(^| )<slug>: `, not `^<slug>: `.** Playwright matches
+`--grep` against `project file title` — `chromium tests/kit.spec.ts walkers: …`
+— so the anchored form the ticket proposed selects nothing, and a selection
+that selects nothing passes. `scripts/affected.ts` lists a selection before it
+runs one and fails a piece whose kit slice is empty.
+
 ## Considered Options
 
 - **A pnpm workspace package per piece.** Rejected: a `package.json` and build
