@@ -25,7 +25,7 @@ things about _this_ piece that will get broken by accident.
 
 That separation is the piece. A scene can be wound from sober to hallucinating
 with the letter underneath standing exactly still, and
-`tests/psyxels.spec.ts` asserts it by driving every life control to an extreme
+`src/experiments/psyxels/tests/psyxels.spec.ts` asserts it by driving every life control to an extreme
 and comparing the psyx count and the depth histogram before and after.
 
 If you find yourself repacking on a colour change, stop: you have just made a
@@ -130,7 +130,7 @@ flatten` at first, which looks right on a letter — ink is 1 almost everywhere 
   them does not scatter the field, it silently swaps in a mark the scene may
   never have chosen, and the swap is invisible because both marks are legal.
   `paintGlyph` applies `turn` only where `shape.paint` exists, and
-  `tests/psyxels.spec.ts` pins it by asking the canvas rather than the painter:
+  `src/experiments/psyxels/tests/psyxels.spec.ts` pins it by asking the canvas rather than the painter:
   a field of built marks must be pixel-identical at `spin: 0` and `spin: 1`.
   A psyx's bearing is its own and is held for its life — both halves of a
   cross-fade read it, or a mark jumps as it morphs.
@@ -287,7 +287,7 @@ flatten` at first, which looks right on a letter — ink is 1 almost everywhere 
   `afterglow: 0.95`, collapse it to 0, step exactly one field step, and count
   the pixels lit in the first and not the second. That is 1.6–2.5% of the lit
   area against a field-motion control of under 0.05%. The test is "the
-  afterglow leaves light where the psyx no longer is" in `tests/psyxels.spec.ts`
+  afterglow leaves light where the psyx no longer is" in `src/experiments/psyxels/tests/psyxels.spec.ts`
   and it carries both bounds and the deliberate break they were checked against.
 - **The canvas is cleared to nothing and the page supplies the ground.** A
   `#05050a` ground gathered into the buffer frame after frame settles into a grey
@@ -437,10 +437,10 @@ reconsiders its size a handful of times a minute.
   `byDepth`, `smallest` and `largest` say whether the sizes are actually mixed;
   `changes` and `flicks` say whether anything is alive; `drawMs` and `fill` say
   what it costs.
-- **`tests/psyxels.spec.ts` drives the API under `pnpm test`**, and every test in
+- **`src/experiments/psyxels/tests/psyxels.spec.ts` drives the API under `pnpm test`**, and every test in
   it is one of the traps above.
 
-**`tests/unit/psyxels/` covers everything that is a function and a number** —
+**`src/experiments/psyxels/tests/` covers everything that is a function and a number** —
 `pnpm exec vitest run psyxels`. The field is unit-testable because `packField` takes a
 `Mask` interface rather than a canvas: the tests hand it a synthetic subject with
 an exactly known area, which is how the cover, the pruning and the churn rate are

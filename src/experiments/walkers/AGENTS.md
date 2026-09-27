@@ -62,7 +62,7 @@ children from above is that theirs comes out higher without anything saying so.
 A cadence control would let a crowd walk at a stride frequency their legs cannot
 produce, and it would be dragged there within a day.
 
-`tests/unit/walkers/body.test.ts` checks the measurements against the figures
+`src/experiments/walkers/tests/body.test.ts` checks the measurements against the figures
 they claim to come from, not against themselves. If a constant there is retuned
 by eye, that is what says so.
 
@@ -83,7 +83,7 @@ settings.ts   Settings, CONTROLS, PRESETS, the one validator.
 `crowd.ts` needs no browser at all — it is arithmetic on numbers — which is why
 almost everything worth asserting about this piece is in the **unit** suite and
 runs a whole afternoon of park in a second. Reach for
-`pnpm exec vitest run tests/unit/walkers` while working; the browser spec is for
+`pnpm exec vitest run src/experiments/walkers` while working; the browser spec is for
 the things a real page adds, and it says which at the top.
 
 **Those unit tests are not cheap**, and they are most of the section's unit run
@@ -133,7 +133,7 @@ the whole reason the numbers in `stats()` exist.
   against it — so the whole opening crowd landed inside a few square metres at
   the middle of the frame and spent the next minute dispersing. It looked exactly
   like a bug in the spawner. `start()` measures first and fills after, and
-  `tests/unit/walkers/crowd.test.ts` counts quadrants because of it.
+  `src/experiments/walkers/tests/crowd.test.ts` counts quadrants because of it.
 - **Population control is a loop with a transport delay in it**, and every
   obvious controller oscillates. People spawn off screen and take ten or twenty
   seconds to walk into shot. Proportional on the in-frame count swung between 0

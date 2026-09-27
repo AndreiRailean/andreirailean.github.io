@@ -88,7 +88,7 @@ export function corridorPoint(rng: Rng, radius: number, observerY: number, half:
  *
  * What it costs is the re-entering: 142 a second against 335 for a uniform
  * angle, over a steady-state window. That is the first thing it buys, and it is
- * what `tests/unit/crowd/throng.test.ts` guards it on.
+ * what `src/experiments/crowd/tests/throng.test.ts` guards it on.
  *
  * **It buys uniformity too, but only once the world is big.** In a small world
  * the uniform version keeps up and the crowd comes out evenly spread either way,

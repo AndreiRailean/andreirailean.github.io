@@ -172,7 +172,7 @@ stays inside a few degrees, which is what walls are.
   version is self-correcting, because anybody put back on the wrong side is
   already leaving and is simply re-entered again. The density is identical. What
   the derivation buys is **2.35x fewer re-entries** — 99 a second against 232 —
-  and that is what `tests/unit/crowd/throng.test.ts` guards it on.
+  and that is what `src/experiments/crowd/tests/throng.test.ts` guards it on.
 
   **The cost of getting this wrong was a check that could not see its subject.**
   "Does not thin out on the side it is walking into" was written to guard
@@ -422,7 +422,7 @@ file was taken on them. Do not generalise that branch away without re-measuring.
   so "is the crowd moving along the path" cannot tell the rotation from its
   absence — that check was watched passing with the rotation deleted. What the
   walls cannot do is spread people across the way: a crowd shoved round a bend
-  rides its outside edge. `tests/unit/crowd/structure.test.ts` asserts on that,
+  rides its outside edge. `src/experiments/crowd/tests/structure.test.ts` asserts on that,
   0.47 of the half-width from the centre with the rotation against 0.64 without.
 - **On level ground a winding trail is invisible from inside it.** Every head
   is within a metre of eye height, so the whole line collapses onto the horizon
@@ -551,7 +551,7 @@ but much larger and of black colour so the blend in with the background".
   (hidden, not drawn), grazes its rim from behind (painted before the
   boulders, so the edge cuts it), or neither (painted after). Boulders are
   black on black, so their order among themselves cannot show.
-  `tests/unit/crowd/boulders.test.ts` pairs each hidden case with a visible one,
+  `src/experiments/crowd/tests/boulders.test.ts` pairs each hidden case with a visible one,
   and each branch has been broken and seen to fail it.
 - **The first grazing test was wrong because the eye is not at the centre's
   height.** The centre is on the ground and the eye 1.6 m up, so a level sight

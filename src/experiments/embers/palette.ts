@@ -30,7 +30,7 @@
  *
  * Planck's law at 5 nm steps, against analytic fits to the CIE 1931 colour
  * matching functions, gives XYZ; XYZ gives sRGB; and Y on its own is the
- * relative luminance. `tests/unit/embers/palette.test.ts` checks the chromaticity
+ * relative luminance. `src/experiments/embers/tests/palette.test.ts` checks the chromaticity
  * against two published Planckian-locus points, which is what catches a wrong
  * coefficient in the fits — an error that otherwise shows up as "the fire looks
  * a bit off" and is untraceable.
@@ -188,7 +188,7 @@ export const response = (luminance: number): number => luminance ** RESPONSE
  * 0.004 to `exposure × 0.0132`, so at any exposure over about 0.3 it was being
  * killed while plainly visible: at 20x it was being killed at an alpha of 0.21.
  *
- * Nothing in a still shows that. What showed it was `tests/embers.spec.ts`
+ * Nothing in a still shows that. What showed it was `src/experiments/embers/tests/embers.spec.ts`
  * asserting that fewer embers are drawn than are alive — which had quietly
  * become impossible, because retiring above the paint cutoff means every live
  * ember is painted.

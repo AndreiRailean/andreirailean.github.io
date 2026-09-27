@@ -169,7 +169,7 @@ screen — a wrong strand and a right one both look like a scatter of dots.
   editorial and it has moved once. Two solver checks inherited it and both failed
   quietly rather than loudly when it did — the current defaults are fully limp,
   so `set: 0` left `stiffness` nothing to scale and "a stiff strand holds its
-  bend" became vacuous. `tests/unit/dangler/rope.test.ts` states its own `PLAIN`
+  bend" became vacuous. `src/experiments/dangler/tests/rope.test.ts` states its own `PLAIN`
   scene; anything measuring physics should do the same.
 - **Core radii stay at or above `MIN_CORE_DEVICE_PX`**, trading size for alpha
   below it. Starry Night's sub-pixel lesson applies here unchanged.
@@ -253,12 +253,12 @@ anything above about 1e-2 means the strands are stretching or crumpling.
   visible, a broken frame, a broken constraint and a broken projection all look
   identical; this is the difference between debugging and guessing.
 - `?panel=1` and `?idle=0` as elsewhere in the section.
-- **`tests/dangler.spec.ts` drives the API under `pnpm test`**, and every test in
+- **`src/experiments/dangler/tests/dangler.spec.ts` drives the API under `pnpm test`**, and every test in
   it is one of the traps above. Add to it rather than reaching for `webcheck`,
   which cannot evaluate JS. It asserts the settled constraint error rather than
   trusting a still, so the rule above is enforced there rather than remembered.
 
-**`tests/unit/dangler/` covers the physics, and you should run it after touching
+**`src/experiments/dangler/tests/` covers the physics, and you should run it after touching
 any of it** — `pnpm exec vitest run` for all of it, `pnpm exec vitest rope` while editing the
 solver. One file per module, and every assertion in them is a bug that actually
 happened: anchor `i` moving when the strand count changed, strands stretching, a

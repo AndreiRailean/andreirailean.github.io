@@ -578,8 +578,9 @@ block that eslint was perfectly happy with. Run `pnpm run prettier` too, or
 `pnpm exec prettier <file> --write` on what you touched.
 
 - **`pnpm test` is two runners, and `tests/AGENTS.md` is the contract.** Vitest
-  over `tests/unit/**/*.test.ts` for anything that is a function and a number;
-  Playwright over `tests/*.spec.ts` for anything needing a real page. Both assert
+  over `*.test.ts` for anything that is a function and a number; Playwright
+  over `*.spec.ts` for anything needing a real page. A piece's own are in
+  `src/experiments/<slug>/tests/`. Both assert
   on _numbers_ rather than comparing pixels — almost every bug in this section was
   invisible in a screenshot. Stills land in `.scratch/shots/` for a human to look
   at and nothing diffs them.
