@@ -4,6 +4,16 @@ A first-person walk through a crowd. White circles on black, nothing else in the
 world: no ground, no bodies, no sky. Read `../AGENTS.md` and `../CONTEXT.md`
 first; this file is only what is particular to this piece.
 
+## What the piece is, in his words
+
+"the most significant development here is the active gaze. people dynamics,
+obstacles, chase - all are variations of what we have done before in other
+experiments. it's the first person view with active, natural gazing around is
+what makes it feel different." (2026-09-28, `seed.md`.) So the gaze in
+`stroll.ts` is the part to protect: a change anywhere that makes the head
+steadier, more predictable or more tied to the course is a change to what the
+piece is, however much it tidies something else.
+
 ## The one thing to understand before changing anything
 
 **There are two people in this piece and one of them is the camera.** `throng.ts`
@@ -517,13 +527,127 @@ distracted child is about to fall over".
   next step caught them again: 55 catches in four minutes on seed 31337.
   `REARM_AT` makes them get 5 m away first.
 
+## Boulders: occlusion by black spheres
+
+Added 2026-09-26, from Andrei's idea on #224: "just another type of circles,
+but much larger and of black colour so the blend in with the background".
+`boulders.ts` places them, `camera.ts` (`sightSphere`) throws their outline and
+`draw.ts` decides what each one hides.
+
+- **A boulder is never seen, only missed**, which is why it does not break the
+  landmark rule below. Painted the ground's black, it has no edge except where
+  the crowd behind it stops. `shade` paints them grey, for finding out what is
+  doing the hiding; at 0 it is the piece.
+- **The outline is the projected grazing ring, not `focal · r / depth`.** The
+  head's shortcut is a third too small for a boulder five metres across at six,
+  and a head hidden by the exact test then vanished in plain view, in the gap
+  between the drawn disc and the true edge. The ring is clipped to the near
+  plane before projecting, so a boulder beside me is a wall at the side of the
+  frame and not a mirrored blob.
+- **Occlusion is per sight line, not painter's order.** A sphere has no single
+  depth: sorted at its centre, somebody just behind its rim shows through;
+  sorted at its nearest point, somebody just in front of it vanishes. So every
+  head asks each boulder whether its line of sight enters the sphere first
+  (hidden, not drawn), grazes its rim from behind (painted before the
+  boulders, so the edge cuts it), or neither (painted after). Boulders are
+  black on black, so their order among themselves cannot show.
+  `tests/unit/crowd/boulders.test.ts` pairs each hidden case with a visible one,
+  and each branch has been broken and seen to fail it.
+- **The first grazing test was wrong because the eye is not at the centre's
+  height.** The centre is on the ground and the eye 1.6 m up, so a level sight
+  line grazes a smaller circle than `r`. A test written with `asin(r / d)`
+  passed against a broken grazing branch.
+- **How much is hidden is steep in `boulders` and depends on where you stand.**
+  On the market at 6 m: 4% coverage hid 8% of the heads in frame, 8% hid 54%.
+  The mean free path is what matters, and at a 160 m horizon a few boulders is
+  already most of it — "too much occlusion kills infinity", measured.
+- **A trail's bends decide whether anything is hidden at all.** Boulders stand
+  beside the way, never on it, so they only hide across the inside of a bend.
+  At `the trail`'s bend 30 / meander 300 nothing was hidden in fifty frames;
+  at 45 / 220, `round the bend`, 11%.
+- **Only the detail radius is pushed off them, so standing in a footprint is
+  hidden by rule.** Past it people walk through boulders. That was first
+  written up here as "a head inside a boulder is hidden by it", which was only
+  half true: a dome is narrower at head height than at the ground, so a head
+  near the edge of the footprint is outside the sphere, and was drawn on the
+  boulder's flank at the boulder's own distance — 2–9 heads a frame on a
+  honeycomb, read by Andrei as far boulders gone transparent. `draw.ts` hides
+  anybody whose feet are inside a footprint, before the sight-line test. Pushing everybody cost 38% of the step; as built, boulders cost
+  about 10–14% in a like-for-like run at 9,000 people.
+- **Round obstacles need a steer as well as a wall.** A walker heading at the
+  centre is pushed straight back along their own line and stands there. The
+  steer bends them round on whichever side they already lean, or the boulder's
+  own `side` when dead on. Measured on the market: the longest anybody stays
+  slow against a boulder is 7 s, and nobody is stuck at the end of a run.
+- **On a way, boulders line the verges; scattered, the path never came near
+  them.** "i end up with boulders spread around in a way that the path doesn't
+  come near it." The lattice with the way cut out of it put almost every
+  boulder out in the fields. Wherever the way is a graph along `x` they are now
+  laid along both verges, 0.4–2 m off the edge, picking the inside of a bend
+  more often the tighter it is — the only place a boulder beside a path can hide
+  it — and in 140 m groves and clearings (`STRETCH`, `GROVES`). Lined evenly,
+  12% hid 71% of a trail's heads and something in every frame, which is no
+  clearing to come onto. Loops and open ground are still the lattice.
+- **Which stretch you are on decides more than the slider.** At 20% on the
+  trail: seed 17350 hid 8% of heads, 4242 hid 29%, 90210 hid 75%. The trail
+  presets are on 4242 for that reason, not for the crowd it draws.
+- **Hiding is keeping the boulder between us, recomputed every step.** A spot
+  fixed behind the boulder when it was picked hid the runaway 0% of the time: I
+  follow their trail, so I came round the same side. Then they only ever picked
+  a boulder with me three metres behind, and broke cover at once. What works is
+  the order a child uses — run until clear, duck behind the nearest boulder,
+  bolt when found — with 30% of hidings `UNAWARE` so they can still be caught.
+  Measured on `catch me`: lost behind a boulder 19–43% of frames, a crosshair
+  (within 5° of my heading) 14–27% of the time, against 25–27% on open ground.
+- **The steer is on the velocity somebody wants, not the one they have.**
+  Pressed square against a boulder they have almost none, so they got no steer
+  and stayed pressed — the chaser spent 46% of a chase stuck on seed 2222.
+- **The stalls lost their controls and presets, not their code.** Boulders
+  replaced them in the market; the stalls stay because addresses already out
+  there name them, the showcase's `catch me` among them. Their bounds are
+  declared in `BOUNDS` directly, since a setting with no slider has no track.
+  `structure.test.ts` pins the stalls scene for the gaze and catch tests that
+  were measured on it.
+- **A grid of boulders is a forest: it hides most of the crowd.** `layout` 1
+  and 2 put nearly equal boulders exactly on a square or hexagonal lattice,
+  `aisle` (as "passages") apart, origin at a crossing; `coverage` fills that
+  share of sites. At 3 m boulders and 4–7 m passages, 80–89% of the heads in
+  view were hidden — you see down the passage you are in, and the grid is in
+  which way you turn. Boulders below eye height (1.2 m) hid 0.5%. Grids apply
+  on open ground and loops only; streets and trails keep their verges.
+- **Hundreds of boulders in view is the draw's cost, not the simulation's.**
+  A grid put 420–500 outlines in a frame at 5.6–7.8 ms headless. Outlines now
+  take as many points as they are big (8 to 64) and a boulder off the frame is
+  dropped — it cannot cover anything on screen — which took the square grid to
+  4.1 ms with the hidden share unchanged to three places.
+- **A shaded boulder has to go through the air too.** Unfogged grey read as
+  the nearest thing in the frame, so the faded heads in front of a far boulder
+  looked like they shone through it — reported as boulders being transparent
+  except up close. Nothing behind one was drawn: traced in the browser, 0 of
+  310 heads over an outline were further than its boulder. `shade` is now
+  multiplied by the same `exp(-d / fade)` at the near surface, and boulders are
+  painted far to near, which only matters once their shades differ.
+- **Combine the verdicts by meaning, not by size.** `blockedBy` returns 0
+  clear, 1 hidden, 2 cut, and the loop took the maximum, so cut beat hidden —
+  a head grazed by one boulder and behind the next was drawn. The checks that
+  missed it shared the draw's own boulder list; the one that caught it tested
+  every boulder independently. The final check ran inside the page on its own
+  frame: 0 of 1,279 heads over an outline were behind it.
+- **At eye level a grid cannot show, and that is not a bug.** Every head is at
+  the eye's height, so the crowd in front of any boulder is drawn across its
+  middle; only the nearest boulders have nobody in front. `perch` raises the eye
+  and from 10 m a honeycomb is a lattice of holes in a carpet of heads. Anybody
+  told "the far boulders are transparent" should run the in-page check before
+  touching the geometry again.
+- **Rebuilt only when their own inputs change** (`boulderShape` in
+  `throng.ts`), and kept clear of wherever I stand when they are built, since
+  on a loop that is not the origin.
+
 ## What is not here, and would be worth having
 
 - **Nobody is going anywhere in particular.** People carry a heading, not a
   destination, so nothing walks up to something, waits, and leaves. The standing
   people are standing where they happened to be.
-- **Nothing to walk around.** The avoidance already handles it — an obstacle is a
-  disc that is not moving — but nothing is placed.
 - **A head gives away nothing about which way it is turned**, so the most legible
   thing in a real crowd, the moment somebody looks at you, is missing from a
   piece that is otherwise entirely about being looked past. Whatever answers that

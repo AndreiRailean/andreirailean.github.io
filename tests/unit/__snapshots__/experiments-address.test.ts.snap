@@ -115,6 +115,11 @@ exports[`crowd > has not edited a slot in place 1`] = `
   "corners num grid=0.05 origin=0 bits=5",
   "stalls num grid=0.05 origin=0 bits=5",
   "aisle num grid=0.1 origin=1.6 bits=7",
+  "boulders num grid=0.01 origin=0 bits=6",
+  "boulder num grid=0.5 origin=1 bits=6",
+  "shade num grid=0.05 origin=0 bits=5",
+  "layout num grid=1 origin=0 bits=2",
+  "perch num grid=0.5 origin=0 bits=6",
 ]
 `;
 

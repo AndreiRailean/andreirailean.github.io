@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import { createLoop, createPath } from "@/experiments/crowd/path"
 import { createStroll } from "@/experiments/crowd/stroll"
 import { createThrong } from "@/experiments/crowd/throng"
+import type { Boulder } from "@/experiments/crowd/boulders"
 import { bodyRadius } from "@/experiments/crowd/body"
 import { normalizeSettings, PRESETS, type Settings } from "@/experiments/crowd/settings"
 
@@ -443,6 +444,14 @@ describe("glancing at a run", () => {
   }, 60_000)
 })
 
+/**
+ * **The stalls scene, pinned.** `catch me` walks among boulders now, but the
+ * stalls are still reachable through addresses that name them — the showcase's
+ * `catch me` among them — and the gaze and catch numbers below were taken on
+ * them. So the scene these tests measure is stated rather than inherited.
+ */
+const STALLS = { stalls: 0.5, aisle: 3, boulders: 0 } as const
+
 describe("chasing through the stalls", () => {
   /**
    * "They're almost always in front, which makes them appear like a center
@@ -454,7 +463,7 @@ describe("chasing through the stalls", () => {
    */
   it("follows their trail round the corners rather than locking on", () => {
     const preset = PRESETS.find((p) => p.label === "catch me")!
-    const settings = normalizeSettings({ ...preset.settings, density: 12, reach: 40 })
+    const settings = normalizeSettings({ ...preset.settings, ...STALLS, density: 12, reach: 40 })
     const me = createStroll(settings, settings.seed)
     const crowd = createThrong(settings, me)
     let samples = 0
@@ -515,7 +524,7 @@ describe("catching them", () => {
 
   function simulate(patch: Partial<Settings>) {
     const preset = PRESETS.find((p) => p.label === "catch me")!
-    const settings = normalizeSettings({ ...preset.settings, density: 12, reach: 40, seed: 2222, ...patch })
+    const settings = normalizeSettings({ ...preset.settings, ...STALLS, density: 12, reach: 40, seed: 2222, ...patch })
     const me = createStroll(settings, settings.seed)
     const crowd = createThrong(settings, me)
     let catches = 0
@@ -598,5 +607,66 @@ describe("catching them", () => {
     const run = chase({})
     expect(run.sideways).toBeLessThan(0.3)
     expect(run.switchesPerMinute).toBeGreaterThan(20)
+  }, 120_000)
+})
+
+describe("chasing among boulders", () => {
+  /**
+   * "Running into things does and losing the target is." On open ground a
+   * runaway runs straight away from me and sits dead ahead; with boulders they
+   * keep one between us, so they are lost behind it some of the time and are
+   * not a crosshair. A spot fixed behind the boulder when they picked it was
+   * built first and hid them 0% of the time, because I follow their trail round
+   * the same side — so both halves are asserted: that they hide, and that the
+   * hiding actually puts a boulder in the way.
+   */
+  it("keeps a boulder between us, is lost behind it, and is still caught", () => {
+    const preset = PRESETS.find((p) => p.label === "catch me")!
+    const settings = normalizeSettings({ ...preset.settings, density: 12, reach: 40 })
+    const me = createStroll(settings, settings.seed)
+    const crowd = createThrong(settings, me)
+    let samples = 0
+    let hiding = 0
+    let blocked = 0
+    let centred = 0
+    let running = 0
+    let catches = 0
+    let was = false
+    let inside = 0
+    const around: Boulder[] = []
+    for (let step = 0; step < 200 * 120; step++) {
+      me.step(STEP, crowd)
+      crowd.step(STEP)
+      if (crowd.caught && !was) catches++
+      was = crowd.caught
+      if (step < 10 * 120 || step % 30 !== 0) continue
+      samples++
+      const runaway = crowd.quarry!
+      if (crowd.stats().hiding) hiding++
+      if (crowd.boulders.inside(me.x, me.y) > 0.3) inside++
+      // A boulder across the line between us, on the ground.
+      const ux = runaway.x - me.x
+      const uy = runaway.y - me.y
+      const length = Math.hypot(ux, uy)
+      for (const b of crowd.boulders.within(me.x, me.y, length, around)) {
+        const t = ((b.x - me.x) * ux + (b.y - me.y) * uy) / (length * length)
+        if (t <= 0 || t >= 1) continue
+        if (Math.hypot(me.x + ux * t - b.x, me.y + uy * t - b.y) < b.r * 0.8) {
+          blocked++
+          break
+        }
+      }
+      if (!crowd.caught && runaway.preferred >= 1) {
+        running++
+        const bearing = Math.atan2(uy, ux) - me.course
+        if (Math.abs(Math.atan2(Math.sin(bearing), Math.cos(bearing))) < (5 * Math.PI) / 180) centred++
+      }
+    }
+    expect(crowd.boulders.active).toBe(true)
+    expect(hiding / samples).toBeGreaterThan(0.2)
+    expect(blocked / samples).toBeGreaterThan(0.1)
+    expect(centred / running).toBeLessThan(0.35)
+    expect(catches).toBeGreaterThan(0)
+    expect(inside).toBe(0)
   }, 120_000)
 })

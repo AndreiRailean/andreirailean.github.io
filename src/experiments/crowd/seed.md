@@ -386,3 +386,179 @@ re-caught them the next step, 55 times in four minutes on one seed.
 
 > promote "catch me" to first preset. push today's presets to showcase: catch
 > me, teams, runner, street run. open PR and merge when ready
+
+## 2026-09-26 — occlusion as black circles
+
+> there's an occlusion ticket and I think I may have a simple solution that
+> could work for now. i was interested in occlusion for crowd and we blocked on
+> the complexity of it and needing more research. i was thinking about it and
+> thought that perhaps first type of occlusion could be just another type of
+> circles, but much larger and of black colour so the blend in with the
+> background. these would naturally block everything behind them. i'm not sure
+> if that is how current compositor works and if it's even possible to block
+> anything. looking at the red circle in "catch me" i can see that it is
+> rendered with opacity in front of everything that is behind it. the same
+> principle can be applied to sparse large circles whose midpoint starts at
+> ground level. they would naturally form islands. could probably be squares as
+> well, but circles large enough would probably suffice to start with and to
+> keep with the circle theme. do some research and see what kind of occlusion
+> you can implement while i'm away.
+
+Built as **boulders**: black spheres centred at ground level, so a dome stands
+above it, placed at random so some land together as islands, and kept off the
+way in a street or on a trail. Three new sliders — `boulders` (share of the
+ground), `boulder size`, `boulder shade` (grey instead of black, to see what is
+doing the hiding) — and three presets: **boulders** (the market),
+**round the bend** (the trail, bends tightened so there is an inside to hide
+across) and **hide and seek** (catch me with boulders instead of stalls).
+
+The compositor answer, since he asked: it paints back to front, so a black
+circle painted in order _would_ block what is behind it, the way the red head
+does. That is not quite enough for something this big — a sphere has no single
+depth, so people at its rim came out wrong either way — so each head asks each
+boulder along its own line of sight instead, and the black outline is painted
+for the heads its edge cuts. `AGENTS.md` has the numbers.
+
+Open, for him:
+
+- **How much.** Coverage is steep: on the market 4% hid 8% of the heads in
+  frame and 8% hid 54%. The presets sit at 5%. Where "reveal" turns into
+  "kills infinity" is a slider question.
+- **Squares.** Not built. Stalls are already invisible blocks everybody walks
+  round; drawing them as occluders is the same line-of-sight test against a
+  box, and would make a market's aisles show as corridors of visible crowd.
+- **Trees.** A tall narrow occluder (a column, or a small sphere high up) would
+  hide in slices rather than in domes — the bank of trees beside a trail from
+  #224. The same test, a different shape.
+
+## 2026-09-27 — a line between rocks, and the market without stalls
+
+> i'm seeing the blackouts, but am struggling to construct a scene where a line
+> meanders between rocks. i think we end up with boulders spread around in a way
+> that the path doesn't come near it. also would be good to rework the market to
+> have boulders instead of stalls. i'm not sure if we need all the stalls-related
+> controls with this
+
+Built as: on a street or trail the boulders now line the verges, a metre or
+two off the edge, in groves with clearings between, and favour the inside of
+each bend. **between the rocks** is the trail threading a close field of small
+ones; **round the bend** has bigger ones and fewer. The market's chase —
+**catch me** — has boulders instead of stalls, and the person in red hides
+behind them: runs until clear, keeps a boulder between us, bolts when I come
+round. **hide and seek** and **stalls** are gone as presets, and the stalls and
+aisle sliders are gone from the panel; the stalls themselves still work behind
+the address, because the showcase's `catch me` links into the piece with them.
+
+Open, for him:
+
+- **Delete the stalls outright?** One step: `stalls.ts`, the aisle logic in
+  `throng.ts` and `stroll.ts`, and the showcase's scene would open onto an
+  open square instead.
+- **The trail's reveal depends on the stretch.** A seed decides whether the
+  first minute is a grove or a clearing. A setting for grove length is the
+  obvious lever if he wants it.
+
+## 2026-09-27 — boulders on a grid, and whether this stays one piece
+
+> ah, let's leave market as is. it is the original and it's the only piece that
+> has the organic unstructured wandering feel. others have landscape structure.
+>
+> i'm wondering if it is possible to have boulders arranged in a grid like
+> market stalls. if we leave passages between them relatively wide, the grid may
+> reveal itself, especially when turning the head and changing walking
+> direction. or if they're laid out not in straight lines, but more like a
+> hexagonal grid, turns would always be required and would always carry
+> geometric structure sprinkled with randomness of heads.
+>
+> "crowds" as a piece turns out to be very stimulating and gives rise to many
+> ideas. makes me wonder if it all stays one big experiment that keeps on
+> getting new presets or if there's need to talk about layering of concepts or
+> simplification (reduction of certain controls) so we can more efficiently
+> drive particular scenarios while keeping the main theme.
+
+Built as a `layout` slider — scattered, square grid, hexagonal grid — with the
+old aisle setting back as `passages`, and three presets: **boulder grid**,
+**honeycomb**, **honeycomb chase**. Market left as it is. Measured: a grid of
+3 m boulders hides 80–89% of the heads in view — you see down the passage you
+are in — so passage width is the lever. The one-piece-or-layers question is
+answered in the session and left open here: his call.
+
+## 2026-09-27 — shading shows them transparent
+
+> boulders only appear to lose transparency when i'm right in front of them.
+> this becomes obvious when boulder shading is adjusted up and down and
+> whatever is supposed to be occluded by them is shining right through them.
+> here's an example
+> http://100.117.55.104:4718/experiments/crowd/?s=_-__7___fF8syctZLJ4JCqihtGAAAo-hVSe4AABoAAkABQ6oCkAAACxQQs
+
+Measured on that address, offline and by tracing the paint calls in the
+browser: no head behind a boulder was drawn. About 70% of the heads on screen
+sat over some boulder's outline, at 25–61% of its distance and more than half
+of them below half brightness — the band of nearer, fogged heads crossing every
+boulder. The grey was the one thing the fog did not touch, so it read as
+nearest. Fixed by fogging the shade and painting boulders far to near; at shade
+0 nothing changes.
+
+## 2026-09-27 — far boulders let heads through
+
+> what i'm seeing far away boulders become transparent and heads are coming
+> through. i'm judging it by the size of head relative to size of boulder. only
+> the first two rows of boulders in this scene (honeycomb with grey boulders)
+> are opaque.
+> http://100.117.55.104:4718/experiments/crowd/?s=_-__7___fF8syctZLJ4JCqihtGAAAo-hVSe4AABoAAkABQ6oCkAAACxQR8
+
+He was right and the last round's answer was incomplete. Only the detail
+radius (24 m, his "first two rows") is pushed off boulders; past it people walk
+through them, and a 3 m dome is only 2.5 m across at head height, so somebody
+near the edge of a footprint had their head outside the sphere, drawn on the
+flank at the boulder's own distance. Measured exactly on his address: 2–9 such
+heads a frame, about 3% of those drawn past 24 m; 0 after. Anybody standing
+inside a footprint is now inside the boulder.
+
+## 2026-09-27 — still not right past the first line
+
+> still not right. only the close bolders are opaque. past the first line of
+> boulders it appears that there are no boulders. no grid can be detected
+> without boulder shading. with boulder shading it is obvious that people are
+> seen through. perhaps it is too much of a task and we've entered into 3d
+> geometry that doesn't quite fit our mostly 2d model.
+
+> i'm stepping away. work independently.
+
+One more real fault, and then the answer is not geometry. The fault: each
+boulder's verdict was combined by taking the larger number, and "cut" is 2
+where "hidden" is 1, so a head grazed by one boulder and wholly behind the next
+stayed cut — 20–32 a frame on a honeycomb. Fixed. Then checked inside the
+running page, on its own frame rather than a copy of the maths: of 1,279 heads
+drawn over a boulder's outline, every one was in front of that boulder's
+surface along its own sight line, the nearest by 0.8 m.
+
+What remains is what can be seen from eye height. Every head is at the eye's
+height, so on a honeycomb a sight line travels about two rows before it meets
+a boulder, and everybody standing in the passages on the way is in front of
+that boulder — across its middle. Only the nearest boulders have nobody in
+front of them. Above the band a boulder is black on black. So at eye level the
+grid cannot show, however right the occlusion is.
+
+Built to test that: **perch**, raising my eye as if walking along the tops of
+the boulders, and two presets, **honeycomb from above** (10 m) and **grid from
+above** (4 m). From 10 m the honeycomb shows at shade 0 as a lattice of holes in
+a carpet of heads; from 4 m the passages are streams between them. The
+geometry fits; the eye height was the missing half.
+
+Open, for him:
+
+- Whether a raised eye belongs in a first-person walk at all, or is its own
+  scene. It is a setting, so either way costs nothing yet.
+- The draw at 1,300–1,800 heads under 150 boulders is 7–8 ms headless, the most
+  this piece has spent painting. Fine at 60 fps on his machine, probably; worth
+  a look if a perched scene stutters.
+
+## 2026-09-28 — what the piece actually is
+
+> great. boulders now correctly block people at all distances.
+> looking at the piece with fresh eyes i realise that the most significant
+> development here is the active gaze. people dynamics, obstacles, chase - all
+> are variations of what we have done before in other experiments. it's the
+> first person view with active, natural gazing around is what makes it feel
+> different.
