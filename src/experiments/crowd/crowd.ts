@@ -74,6 +74,8 @@ export type CrowdStats = ThrongStats & {
   largest: number
   /** Heads a boulder hid outright last frame. Filled while drawing. */
   hidden: number
+  /** Whether the person in red was behind a boulder last frame. Filled while drawing. */
+  quarryHidden: boolean
   /** Boulders that threw an outline last frame. Filled while drawing. */
   rocks: number
   /** How far inside a boulder I am standing, in metres. Should be 0; the walls are soft, so not always. */
@@ -164,6 +166,7 @@ export function createCrowd(canvas: HTMLCanvasElement, initial: Settings): Crowd
   /** The boulders near enough to draw, asked for once a frame into the same array. */
   const nearby: Boulder[] = []
   let hidden = 0
+  let quarryHidden = false
   let rocks = 0
 
   let frame = 0
@@ -238,6 +241,7 @@ export function createCrowd(canvas: HTMLCanvasElement, initial: Settings): Crowd
     fills = result.fills
     largest = result.largest
     hidden = result.hidden
+    quarryHidden = result.quarryHidden
     rocks = result.rocks
   }
 
@@ -377,6 +381,7 @@ export function createCrowd(canvas: HTMLCanvasElement, initial: Settings): Crowd
         fills,
         largest,
         hidden,
+        quarryHidden,
         rocks,
         inBoulder: crowd.boulders.inside(me.x, me.y),
         drawMs,

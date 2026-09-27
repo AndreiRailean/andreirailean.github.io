@@ -564,6 +564,35 @@ but much larger and of black colour so the blend in with the background".
   steer bends them round on whichever side they already lean, or the boulder's
   own `side` when dead on. Measured on the market: the longest anybody stays
   slow against a boulder is 7 s, and nobody is stuck at the end of a run.
+- **On a way, boulders line the verges; scattered, the path never came near
+  them.** "i end up with boulders spread around in a way that the path doesn't
+  come near it." The lattice with the way cut out of it put almost every
+  boulder out in the fields. Wherever the way is a graph along `x` they are now
+  laid along both verges, 0.4–2 m off the edge, picking the inside of a bend
+  more often the tighter it is — the only place a boulder beside a path can hide
+  it — and in 140 m groves and clearings (`STRETCH`, `GROVES`). Lined evenly,
+  12% hid 71% of a trail's heads and something in every frame, which is no
+  clearing to come onto. Loops and open ground are still the lattice.
+- **Which stretch you are on decides more than the slider.** At 20% on the
+  trail: seed 17350 hid 8% of heads, 4242 hid 29%, 90210 hid 75%. The trail
+  presets are on 4242 for that reason, not for the crowd it draws.
+- **Hiding is keeping the boulder between us, recomputed every step.** A spot
+  fixed behind the boulder when it was picked hid the runaway 0% of the time: I
+  follow their trail, so I came round the same side. Then they only ever picked
+  a boulder with me three metres behind, and broke cover at once. What works is
+  the order a child uses — run until clear, duck behind the nearest boulder,
+  bolt when found — with 30% of hidings `UNAWARE` so they can still be caught.
+  Measured on `catch me`: lost behind a boulder 19–43% of frames, a crosshair
+  (within 5° of my heading) 14–27% of the time, against 25–27% on open ground.
+- **The steer is on the velocity somebody wants, not the one they have.**
+  Pressed square against a boulder they have almost none, so they got no steer
+  and stayed pressed — the chaser spent 46% of a chase stuck on seed 2222.
+- **The stalls lost their controls and presets, not their code.** Boulders
+  replaced them in the market; the stalls stay because addresses already out
+  there name them, the showcase's `catch me` among them. Their bounds are
+  declared in `BOUNDS` directly, since a setting with no slider has no track.
+  `structure.test.ts` pins the stalls scene for the gaze and catch tests that
+  were measured on it.
 - **Rebuilt only when their own inputs change** (`boulderShape` in
   `throng.ts`), and kept clear of wherever I stand when they are built, since
   on a loop that is not the origin.

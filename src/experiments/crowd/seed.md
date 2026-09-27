@@ -413,7 +413,7 @@ doing the hiding) — and three presets: **boulders** (the market),
 across) and **hide and seek** (catch me with boulders instead of stalls).
 
 The compositor answer, since he asked: it paints back to front, so a black
-circle painted in order *would* block what is behind it, the way the red head
+circle painted in order _would_ block what is behind it, the way the red head
 does. That is not quite enough for something this big — a sphere has no single
 depth, so people at its rim came out wrong either way — so each head asks each
 boulder along its own line of sight instead, and the black outline is painted
@@ -430,3 +430,30 @@ Open, for him:
 - **Trees.** A tall narrow occluder (a column, or a small sphere high up) would
   hide in slices rather than in domes — the bank of trees beside a trail from
   #224. The same test, a different shape.
+
+## 2026-09-27 — a line between rocks, and the market without stalls
+
+> i'm seeing the blackouts, but am struggling to construct a scene where a line
+> meanders between rocks. i think we end up with boulders spread around in a way
+> that the path doesn't come near it. also would be good to rework the market to
+> have boulders instead of stalls. i'm not sure if we need all the stalls-related
+> controls with this
+
+Built as: on a street or trail the boulders now line the verges, a metre or
+two off the edge, in groves with clearings between, and favour the inside of
+each bend. **between the rocks** is the trail threading a close field of small
+ones; **round the bend** has bigger ones and fewer. The market's chase —
+**catch me** — has boulders instead of stalls, and the person in red hides
+behind them: runs until clear, keeps a boulder between us, bolts when I come
+round. **hide and seek** and **stalls** are gone as presets, and the stalls and
+aisle sliders are gone from the panel; the stalls themselves still work behind
+the address, because the showcase's `catch me` links into the piece with them.
+
+Open, for him:
+
+- **Delete the stalls outright?** One step: `stalls.ts`, the aisle logic in
+  `throng.ts` and `stroll.ts`, and the showcase's scene would open onto an
+  open square instead.
+- **The trail's reveal depends on the stretch.** A seed decides whether the
+  first minute is a grove or a clearing. A setting for grove length is the
+  obvious lever if he wants it.

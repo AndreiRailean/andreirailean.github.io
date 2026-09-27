@@ -19,10 +19,17 @@
  * follows from the two. Radii vary by a factor of about three, so a field of
  * them is not a field of one shape at a few distances.
  *
- * **Nothing is placed on the way.** In a street or on a trail a boulder keeps
- * clear of the corridor, so it stands beside the path — which is what hides a
- * line of people round a bend — and never across it. On open ground there is no
- * way, and boulders are anywhere except where I start.
+ * **On a way they line it, and the inside of a bend gets more of them.** The
+ * first version scattered them on the same lattice as open ground and only
+ * refused the ones on the path, so nearly all of them stood far out in the
+ * fields where the line never went: "i end up with boulders spread around in a
+ * way that the path doesn't come near it". Now, wherever the way is a line
+ * along `x` — a street, a trail — they are laid along both verges a metre or
+ * two off the edge, and each one picks the inside of the bend it stands at
+ * more often the tighter the bend is, in groves with clearings between. The inside is the only place a boulder
+ * beside a path can hide the path, so that is where the line goes behind a rock
+ * and comes out past it. On open ground and on a loop they are scattered as
+ * before, and never on the way or where I start.
  *
  * ## The force
  *
@@ -32,7 +39,7 @@
  * ever, which a round obstacle does to a straight-line walker every time.
  */
 
-import type { Path } from "@/experiments/crowd/path"
+import type { GraphPath, Path } from "@/experiments/crowd/path"
 
 /** How far out from a footprint the push reaches, in metres. The corridor wall's value. */
 const SOFTEN = 0.8
@@ -57,6 +64,16 @@ const LARGEST = 1.55
 /** How far clear of where I start the nearest boulder's surface is, in metres. */
 const START_CLEAR = 2.5
 
+/**
+ * Metres of way a grove or a clearing runs for, along a verge. Long enough that
+ * a clearing shows the line going on for a while; short enough that one comes
+ * round every minute or two of walking.
+ */
+const STRETCH = 140
+
+/** Share of stretches that are groves. The rest are clearings, with no boulder in them. */
+const GROVES = 0.55
+
 /** Cells cached before the cache is dropped and rebuilt as needed. A long walk visits a lot of ground. */
 const CACHE_LIMIT = 20_000
 
@@ -65,8 +82,11 @@ export type Boulder = { x: number; y: number; r: number; side: number }
 
 export type Boulders = {
   active: boolean
-  /** Adds the push off, and the steer round, any boulder near a walker. */
-  push: (x: number, y: number, vx: number, vy: number, force: { x: number; y: number }) => void
+  /**
+   * Adds the push off, and the steer round, any boulder near a walker. `(wx,
+   * wy)` is the velocity they *want*, not the one they have — see the steer.
+   */
+  push: (x: number, y: number, wx: number, wy: number, force: { x: number; y: number }) => void
   /** Whether a point is inside a boulder's footprint, or within `margin` of one. */
   blocked: (x: number, y: number, margin: number) => boolean
   /**
@@ -126,6 +146,57 @@ export function createBoulders(
   const cache = new Map<number, Boulder | null>()
   const cellKey = (i: number, j: number) => (i + 32768) * 65536 + (j + 32768)
 
+  // Along the verges when the way is a graph `y = c(x)` with sides to it. The
+  // share of ground is then measured over a band two boulders wide on each side,
+  // so `coverage` means the same thing it does in the open: 0.4 is a wall of
+  // them nearly touching, 0.1 one every nine radii or so.
+  const graph = !open && "centre" in path ? (path as GraphPath) : null
+  const band = 2 * 4 * size
+  // Closer together inside a grove, so that over groves and clearings together
+  // the share of ground is still what `coverage` says.
+  const step = ((Math.PI * meanSq) / (band * Math.min(0.6, coverage))) * GROVES
+  const verge = (k: number): Boulder | null => {
+    const key = cellKey(k, 40000)
+    const cached = cache.get(key)
+    if (cached !== undefined) return cached
+    if (cache.size > CACHE_LIMIT) cache.clear()
+    const g = graph!
+    const x0 = (k + 0.5 + (cellHash(k, 0, 1, seed) - 0.5) * 0.8) * step
+    // **Groves and clearings**, because #224's reveal is two halves: the line
+    // going behind something, and then "coming onto a clearing that shows how
+    // far the line goes". Lined evenly all the way, a trail at 12% hid 71% of
+    // its heads and hid something in every frame, so there was never a
+    // clearing to come onto.
+    const stretch = Math.floor(x0 / STRETCH)
+    if (cellHash(stretch, 1, 6, seed) >= GROVES) {
+      cache.set(key, null)
+      return null
+    }
+    const slope = g.slope(x0)
+    const norm = Math.sqrt(1 + slope * slope)
+    const bendRate = (g.slope(x0 + 1) - g.slope(x0 - 1)) / 2 / (norm * norm * norm)
+    const inside = bendRate >= 0 ? 1 : -1
+    const pInside = 0.5 + 0.45 * Math.min(1, Math.abs(bendRate) * 80)
+    const side = cellHash(k, 0, 2, seed) < pInside ? inside : -inside
+    const gap = 0.4 + cellHash(k, 0, 3, seed) * 1.6
+    let r = size * (SMALLEST + (LARGEST - SMALLEST) * cellHash(k, 0, 4, seed))
+    let made: Boulder | null = null
+    // On the inside of a tight bend a big one reaches back over the way further
+    // along; it is made smaller until it fits rather than dropped, because the
+    // inside of a bend is exactly where it is wanted.
+    for (let tries = 0; tries < 4 && !made; tries++, r *= 0.7) {
+      const off = halfWidth + gap + r
+      const x = x0 - (slope * side * off) / norm
+      const y = g.centre(x0) + (side * off) / norm
+      const clearOfWay = Math.abs(path.lateral(x, y)) - r > halfWidth + 0.2
+      const clearOfStart = Math.hypot(x - startX, y - startY) - r > START_CLEAR
+      if (clearOfWay && clearOfStart) made = { x, y, r, side: cellHash(k, 0, 5, seed) < 0.5 ? 1 : -1 }
+      if (!clearOfStart) break
+    }
+    cache.set(key, made)
+    return made
+  }
+
   function cell(i: number, j: number): Boulder | null {
     const k = cellKey(i, j)
     const cached = cache.get(k)
@@ -147,6 +218,16 @@ export function createBoulders(
 
   /** Visits every boulder whose footprint could come within `radius` of a point. */
   function each(x: number, y: number, radius: number, visit: (b: Boulder) => void): void {
+    if (graph) {
+      // A verge boulder sits off its own `x` by at most its offset across the way.
+      const reach = radius + 2 * largest + halfWidth + 2
+      const k1 = Math.floor((x + reach) / step)
+      for (let k = Math.floor((x - reach) / step) - 1; k <= k1; k++) {
+        const b = verge(k)
+        if (b) visit(b)
+      }
+      return
+    }
     const reach = radius + largest
     const i0 = Math.floor((x - reach) / period)
     const i1 = Math.floor((x + reach) / period)
@@ -179,8 +260,11 @@ export function createBoulders(
       pforce.x += nx * magnitude
       pforce.y += ny * magnitude
     }
-    // Walking into it: bend round it, on whichever side the walk already
-    // leans. Dead on the centre, the side is the boulder's own, so everybody
+    // Wanting to walk into it: bend round it, on whichever side the walk
+    // already leans. **The wanted velocity, not the actual one** — steering on
+    // the actual one was built first, and somebody pressed square against a
+    // boulder has almost none, so they got no steer and stayed pressed: the
+    // chaser spent 46% of a chase stuck behind one on seed 2222. Dead on the centre, the side is the boulder's own, so everybody
     // meeting one boulder square on goes the same way round it.
     const into = -(pvx * nx + pvy * ny)
     if (into <= 0) return

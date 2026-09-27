@@ -150,6 +150,8 @@ export type Frame = {
   largest: number
   /** Heads a boulder hid outright. */
   hidden: number
+  /** Whether one of them was the person in red. */
+  quarryHidden: boolean
   /** Heads a boulder's edge cuts, painted before the boulders so it can. */
   cut: number
   /** Boulders that threw an outline this frame. */
@@ -193,6 +195,7 @@ export function drawFrame(
   }
   let hidden = 0
   let cut = 0
+  let quarryHidden = false
 
   context.globalAlpha = 1
   context.fillStyle = "#000"
@@ -241,6 +244,7 @@ export function drawFrame(
       }
       if (blocked === 1) {
         hidden++
+        if (person.quarry) quarryHidden = true
         continue
       }
       under = blocked === 2
@@ -340,7 +344,7 @@ export function drawFrame(
   if (!rocksPainted) fills += paintRocks(context, rocks, rockCount, settings.shade)
 
   context.globalAlpha = 1
-  return { drawn: seen, fills, largest, hidden, cut, rocks: rockCount }
+  return { drawn: seen, fills, largest, hidden, cut, quarryHidden, rocks: rockCount }
 }
 
 /**

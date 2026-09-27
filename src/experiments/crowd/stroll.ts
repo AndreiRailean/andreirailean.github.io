@@ -814,7 +814,7 @@ export function createStroll(settings: Settings, seed: number) {
     // watching the crowd file past, which is a different piece.
     // The stalls push me off them exactly as they push everybody.
     crowd.stalls.push(x, y, force)
-    crowd.boulders.push(x, y, vx, vy, force)
+    crowd.boulders.push(x, y, desiredX, desiredY, force)
 
     if (crowd.path.straight) {
       const outside = Math.abs(y) - crowd.halfWidth + 0.8
