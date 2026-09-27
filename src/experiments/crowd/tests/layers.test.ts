@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 import { makeCamera, horizonFor } from "@/experiments/crowd/camera"
 import { drawFrame, makeScratch } from "@/experiments/crowd/draw"
 import { PRESETS } from "@/experiments/crowd/presets"
-import { normalizeSettings, OFF, type Settings } from "@/experiments/crowd/settings"
+import { normalizeSettings, OFF, reconcile, type Settings } from "@/experiments/crowd/settings"
 import { createStroll } from "@/experiments/crowd/stroll"
 import { createThrong } from "@/experiments/crowd/throng"
 import type { Boulder } from "@/experiments/crowd/boulders"
@@ -122,5 +122,36 @@ describe("normalizing", () => {
 
   it("leaves every preset exactly as written", () => {
     for (const preset of PRESETS) expect(normalizeSettings(preset.settings), preset.label).toEqual(preset.settings)
+  })
+})
+
+describe("moving a ground's own setting", () => {
+  /**
+   * The kit hides the ground group only on open ground, so a street's panel
+   * shows the bend and loop rows as well. Normalize resets those on a street —
+   * so without the choice being made for it, dragging one would snap straight
+   * back. Paired with the open case, where the rows are hidden and nothing is
+   * chosen.
+   */
+  const street = scene("the street")
+  const drag = (key: keyof Settings, value: number, from = street) =>
+    normalizeSettings(reconcile({ ...from, [key]: value }, key))
+
+  it("makes a street that bends a trail, and keeps the bend", () => {
+    const bent = drag("bend", 25)
+    expect(bent.ground).toBe(2)
+    expect(bent.bend).toBe(25)
+  })
+
+  it("makes a way with a length a loop", () => {
+    const looped = drag("corners", 0.5)
+    expect(looped.ground).toBe(3)
+    expect(looped.loop).toBeGreaterThan(0)
+  })
+
+  it("gives a way chosen from open ground a street's width, not open ground's", () => {
+    const chosen = drag("ground", 1, scene("market"))
+    expect(chosen.width).toBeLessThan(20)
+    expect(drag("width", 250).width).toBeGreaterThan(200)
   })
 })

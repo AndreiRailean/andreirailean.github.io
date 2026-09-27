@@ -973,6 +973,16 @@ export function reconcile(next: Settings, changed: keyof Settings): Settings {
   if (changed === "ground" && Math.round(next.ground) > 0 && next.width >= BOUNDS.width.max) {
     return { ...next, width: STREET_WIDTH }
   }
+  // **Moving a ground's own setting chooses that ground.** The kit hides the
+  // ground group only while it is open, so a street shows the bend and loop
+  // rows too; without this, dragging one would be reset to off on the spot and
+  // the slider would snap back. A street that bends is a trail; a way with a
+  // length is a loop.
+  const ground = Math.round(next.ground)
+  if ((changed === "bend" || changed === "meander") && ground !== 2 && ground !== 0) return { ...next, ground: 2 }
+  if ((changed === "loop" || changed === "corners") && ground !== 3 && ground !== 0) {
+    return { ...next, ground: 3, loop: next.loop > 0 ? next.loop : LOOP_LENGTH }
+  }
   if (changed === "paceLow" && next.paceLow > next.paceHigh) return { ...next, paceHigh: next.paceLow }
   if (changed === "paceHigh" && next.paceHigh < next.paceLow) return { ...next, paceLow: next.paceHigh }
   return next
@@ -1180,7 +1190,18 @@ export const CHROME: Chrome<Settings> = {
   slug: "crowd",
   title: "Crowd",
   canvas: "square",
-  groups: GROUPS,
+  // **Layers**, #242: a layer's heading holds the control that switches it,
+  // and its rows hide while that control is off. The core — me, look — and the
+  // crowd have no off.
+  groups: [
+    "me",
+    "look",
+    "crowd",
+    { name: "ground", governor: "ground", off: 0 },
+    { name: "boulders", governor: "boulders", off: 0 },
+    { name: "chase", governor: "chase", off: 0 },
+    "paint",
+  ],
   theme: (settings) => ({ style: { "--hue": String(settings.hue) } }),
   actions: [
     {
