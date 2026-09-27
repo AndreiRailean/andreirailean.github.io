@@ -23,7 +23,8 @@
     "test:watch": "vitest",
     "test:browser": "playwright test",
     "test:headed": "playwright test --headed",
-    "runners": "node scripts/runners.ts"
+    "runners": "node scripts/runners.ts",
+    "test:affected": "node scripts/affected.ts"
   },
   "dependencies": {
     "@astrojs/react": "^6.0.3",
