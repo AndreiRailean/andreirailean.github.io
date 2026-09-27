@@ -1,7 +1,40 @@
 # Experiments — shared notes
 
-Each experiment is a full-page programmed graphic. They are deliberately not a
-framework yet; see the last section.
+Each experiment is a full-page programmed graphic.
+
+## A piece is a library behind three files
+
+**The frame is common; what a piece draws is its own.** Every piece is wired
+into one page, one chrome, one boot and one console handle, and supplies:
+
+| File          | Answers                                                                                                            |
+| ------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `settings.ts` | what parameters are allowed — schema, ranges, `normalizeSettings`, `CONTROLS`, the URL codec, `REGISTRY`, `CHROME` |
+| `presets.ts`  | which points in that space are named — `PRESETS`, the first of them the primary                                    |
+| `runner.ts`   | how a point becomes pixels — `start` for the live page, `mount` for a frozen showcase runner                       |
+
+`gallery/boot.ts` is handed those three by the piece's `Piece.astro` and wires
+the landing, the chrome, the theme, `window.experiment` and the escape hatches
+from them. There is no `page.ts`, `api.ts` or `reroll.ts` in a piece.
+**`CHROME`**, in `settings.ts`, is the piece's side of that as data — its name
+and canvas, how a scene tints the document, which bar buttons call which verb,
+the console banner, and which query parameters reach a verb. Its type is
+`Chrome` in `piece.ts`. **A piece's verbs** — `settle`, `run`, `clear`,
+`burst`, `debug` — are on what `start` returns, and a rerollable piece exports
+a pure `reroll(settings, seed?)` from `settings.ts`.
+
+- **Nothing outside a piece imports past its three files** (plus `Piece.astro`
+  for its routes and `poster.ts` for the capture script), and **`runner.ts`
+  never reaches `presets.ts`**, however indirectly: a runner is frozen and draws
+  no preset. `tests/unit/experiments-contract.test.ts` holds both, and the
+  three files' presence.
+- **`CHROME` is in `settings.ts` rather than `runner.ts`** because every export
+  of `runner.ts` ships in a frozen runner. From `settings.ts` it is shaken off
+  a runner the way `CONTROLS` is, so the same rule applies: no un-annotated call
+  at module scope.
+
+See `docs/adr/20260928-a-piece-is-a-library-behind-three-files.md`, which
+supersedes ADR-0002 and `20260828-the-piece-is-independent-the-gallery-is-not`.
 
 `CONTEXT.md` beside this file is the section's glossary. `docs/adr/` holds the
 decisions that shaped it — read the one covering an area before changing it, and
@@ -72,17 +105,18 @@ Six of those records are rules you will otherwise rediscover the hard way:
 ## Layout
 
 ```
-src/experiments/<slug>/        code, about.md, poster.ts, AGENTS.md
-src/experiments/gallery/       imposed: the index, the notes, the interactive view, the way out
-src/experiments/kit/           offered: the control surface a piece builds its chrome from
-src/experiments/*.ts           shared and owned by no piece: poster, window.d.ts, random
+src/experiments/<slug>/        settings.ts presets.ts runner.ts, the drawing, Piece.astro, about.md, poster.ts, AGENTS.md
+src/experiments/gallery/       the frame: the page, the boot, the index, the notes, the interactive view
+src/experiments/kit/           the control surface the frame builds the chrome from
+src/experiments/*.ts           shared and owned by no piece: piece.ts (the contract), poster, window.d.ts, random
 src/pages/experiments/<slug>/  index.astro (the piece), about.astro (the note)
 ```
 
 - **Never put `.ts` under `src/pages/`.** Astro turns it into an API endpoint.
   Experiment code lives in `src/experiments/<slug>/`; only routes go in `pages`.
 - **And never put logic in the `.astro` either.** A piece's page is markup, a
-  `<style>` block, and `import { boot } from "@/experiments/<slug>/page"`. That
+  `<style>` block, and a script that imports `gallery/boot` and the piece's
+  three files and calls `boot({ settings, presets: PRESETS, start })`. That
   is the other half of the rule above and the one that actually bit: about 115
   lines per page — more than half of each file — used to sit in a `<script>`
   outside `src/experiments/`, where **a grep of the section never reaches it and
@@ -90,8 +124,8 @@ src/pages/experiments/<slug>/  index.astro (the piece), about.astro (the note)
   does anything reading `.ts`. `copyLabel` was renamed with three live callers in
   those files; five byte-identical copies of `requireElement` sat there past the
   third-copy rule with `tests/unit/kit-adoption.test.ts` structurally unable to
-  see them. `tests/unit/experiments-pages.test.ts` keeps a page to an import and
-  a call; the reasoning is in
+  see them. `tests/unit/experiments-pages.test.ts` keeps a page to those
+  imports and one call; the reasoning is in
   `docs/adr/20260906-a-page-holds-no-logic.md`.
 - **A piece is served by the gallery's page.** `gallery/PiecePage.astro` owns
   the document, `#ui`, the interactive view and the note, which is read over
@@ -272,8 +306,12 @@ collection resolves it through `image()` and a missing file 500s the index.
 
 ### Inside the piece's own folder
 
-Two files a builder working from the list above will not otherwise reach. Both
-were shipped only by inference by the sessions that hit this (#201).
+**`settings.ts`, `presets.ts` and `runner.ts`**, whose shape is the first section
+of this file, and a `Piece.astro` that hands them to the gallery's boot. Copy an
+existing piece's `CHROME` and `start` rather than working them out.
+
+Two more files a builder working from the list above will not otherwise reach.
+Both were shipped only by inference by the sessions that hit this (#201).
 
 - **`AGENTS.md`, the piece's own.** The layout block above lists it and this
   checklist never mentioned it, so a piece can ship without one. That is worse
@@ -281,19 +319,13 @@ were shipped only by inference by the sessions that hit this (#201).
   land**, and a piece without one loses them silently, so the next session pays
   again. Write it as you go rather than at the end — the traps are the things
   that cost you an hour, and they are not memorable afterwards.
-- **`runner.ts`, if the piece is ever to be published.** The showcase wall at
-  `/showcase/` serves a **frozen runner pinned by content hash**, and a piece
-  opts in purely by having this file — nothing holds a list of slugs, so
-  `pnpm run runners` simply prints no line for a piece without one, among
-  several lines that all look correct. **Nothing fails.** The piece is just
-  permanently unpublishable, and whoever finds out is whoever tries, months
-  later. A runner **must tear itself down**: a wall mounts and unmounts
-  repeatedly and is the only host that surfaces a leaked listener (#168);
-  `embers/runner.ts` says so in its header.
-
-  No check demands one, deliberately — a piece may legitimately not be ready
-  for a wall, which is the same "a check would have to fail on the right
-  answer" shape as the repin judgement in `src/showcase/AGENTS.md`. See
+- **`mount` in `runner.ts`, which makes the piece publishable.** The showcase
+  wall at `/showcase/` serves a **frozen runner pinned by content hash**, built
+  from this file. Every piece has a `runner.ts` now, because `start` is how its
+  own page runs it, so every piece can be frozen; whether one is ready for a
+  wall is still a judgement, not a check. A runner **must tear itself down**: a
+  wall mounts and unmounts repeatedly and is the only host that surfaces a
+  leaked listener (#168); `embers/runner.ts` says so in its header. See
   `CONTEXT-MAP.md` for what else the showcase obliges you to.
 
 ### Two rules your preset literals must satisfy
@@ -410,16 +442,17 @@ max-age=31536000` — a year — on a URL keyed by **file path with no content
 
 Every experiment exposes `window.experiment` so its controls can be driven
 without a pointer. Minimum surface: `get()`, `set(patch)`, `preset(n)`,
-`presets()`, `pause(held)`, `panel(open)`, `idle(force)`. See an existing
-experiment for the shape.
+`presets()`, `pause(held)`, `panel(open)`, `idle(force)`. **`gallery/boot.ts`
+builds it, once, for every piece**; a spec names a piece's handle as
+`ExperimentApi` from its `runner.ts`, which derives it from `start`.
 
 `presets()` and `pause()` joined that list with the interactive view, which is
 the first thing other than a test to drive a piece through this handle: a swipe
 through the scenes has to say what it landed on, and a tap has to hold the piece.
 `tests/support/experiment.ts` carries the same list as `BaseApi`.
 
-**The chrome half of it comes from the kit — spread `createBaseApi`.**
-`kit/api.ts` supplies `get`, `set`, `preset`, `presets`, `panel`, `pause`,
+**The chrome half of it comes from the kit's `createBaseApi`, which the boot
+spreads.** `kit/api.ts` supplies `get`, `set`, `preset`, `presets`, `panel`, `pause`,
 `idle`, `url`, `fullscreen` and `awake`, given the piece's `PRESETS`, its
 `normalizeSettings` and a scene with a `setPaused`. It was hoisted on the
 third-copy rule at the fourth copy: all four pieces had written those ten
@@ -429,9 +462,10 @@ by one identifier. **`set()` in particular is a trap worth not re-deriving** —
 `set` that forgets is how the API reaches a state a URL could not.
 
 What stays the piece's, because these differ for reasons: `stats()`, `debug()`,
-the console banner, and the piece's own verbs like `settle()` and `run()`.
-`tests/unit/kit-adoption.test.ts` fails a piece that drives the chrome by hand
-from its `api.ts` instead — unless it says why.
+the console banner, and the piece's own verbs like `settle()` and `run()` — the
+verbs on what `start` returns, the banner in `CHROME`. A piece has no `api.ts`
+in which to drive the chrome by hand; `tests/unit/experiments-contract.test.ts`
+fails one that grows one.
 
 **`controls()` used to be on that list and no longer is.** It is still not a
 method on `BaseApi` — building the report needs the piece's `CONTROLS` array,
@@ -573,9 +607,13 @@ block that eslint was perfectly happy with. Run `pnpm run prettier` too, or
 
 ## Three layers: the piece, the gallery, the kit
 
-Recorded in `docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.md`,
-which supersedes ADR-0002's blanket "no shared anything". What separates the two
-shared layers is **who is spared the relearning**.
+First recorded in `docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.md`,
+which superseded ADR-0002's blanket "no shared anything", and now in
+`docs/adr/20260928-a-piece-is-a-library-behind-three-files.md`, which superseded
+both. **The frame is common**: the kit was offered and declinable, and since
+#238 the gallery's boot composes it for every piece. What follows is the older
+record's reasoning where it still holds — the piece owning its rendering, and
+what does and does not belong in `kit/`.
 
 - **The piece owns its rendering, completely.** Palette, motion, geometry, what
   it draws, its settings and presets. Nothing shared reaches inside that, and it
@@ -585,14 +623,12 @@ shared layers is **who is spared the relearning**.
   experiment passes a `NoteTheme` and a script booting its own piece behind the
   sheet, and chooses nothing else. It does not get to move the exit, because a
   visitor should not have to find it twice.
-- **`kit/` is offered, and it is the control surface only.** The panel, the bar,
-  their stylesheet, the chrome half of the console handle (`api.ts`), and what
-  those need to work — `copy.ts`, `fullscreen.ts`,
-  `wakelock.ts`. Compose them because they are already learned; ignore them if
-  the piece needs a different control structure. The art ends at the console API,
-  so controls sit outside that boundary. Using the kit is never a reason to
-  refuse a piece something; quietly re-implementing what it already does well is
-  the thing to avoid.
+- **`kit/` is the control surface only.** The panel, the bar, their stylesheet,
+  the chrome half of the console handle (`api.ts`), and what those need to work
+  — `copy.ts`, `fullscreen.ts`, `wakelock.ts`. `gallery/boot.ts` composes them
+  for every piece. The art ends at the console API, so controls sit outside that
+  boundary. Using the kit is never a reason to refuse a piece something: a
+  control the kit lacks is a gap to file, below.
 - **Shared code that is not the control surface sits at the section level**,
   beside `poster.ts` and `window.d.ts`, which already mean exactly that. `kit/`
   is not a cupboard for anything two pieces happen to share: the test is whether
@@ -602,8 +638,8 @@ shared layers is **who is spared the relearning**.
   `docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.md`, which also
   records why not `src/lib/` (that is the _site's_, and importing it would invert
   the boundary) and why not `packages/`.
-- **Neither imports from a piece.** Lift `kit/` out with an experiment and the
-  experiment still runs.
+- **Neither imports from a piece.** The boot is _handed_ a piece's three files
+  by that piece's `Piece.astro`.
 
 ### What joins the kit, and when
 
@@ -751,9 +787,9 @@ were mistakes about how the chrome _works_, made in a file with no reason to kno
   is the obvious guard and is wrong — clicking a preset leaves the focus on that
   button, so the very next arrow press, the likeliest one there is, would do
   nothing. A field that uses arrows keeps them; a button has no use for one.
-- **Still offered.** A piece that wants different chrome declines the import,
-  exactly as it can decline `controls.ts`. The three tokens' worth of theming is
-  the cheap path, not the only one.
+- **Not declinable per piece any more.** `gallery/PiecePage.astro` imports the
+  stylesheet for every piece, and the boot builds the chrome for every piece.
+  A piece themes it through the tokens above.
 
 ### When the kit cannot do what your piece needs
 
@@ -800,19 +836,18 @@ code outranks getting the piece made — the section exists for the pieces.
 
 `tests/unit/kit-adoption.test.ts` enforces the first of those and runs in the
 unit suite, so it answers in milliseconds: no piece may carry its own copy of a
-kit module, redeclare a selector `controls.css` owns, build the kit's chrome
-without importing its stylesheet, or drive that chrome by hand from its `api.ts`
-instead of spreading `createBaseApi` — unless it has said why. It cannot require
-adoption, because the kit is offered; it requires that not adopting be legible.
+kit module or redeclare a selector `controls.css` owns in its `Piece.astro` —
+unless it has said why. It requires that not adopting be legible. Until #238 it
+read a route's one-line `index.astro` for those selectors and so could not fail;
+it reads `Piece.astro` now.
 
 **Its blind spot is worth knowing, because it is where the last two faults
 lived.** The symbol check compares what a piece `export`s against what the
 shared layers export, so anything that is not a top-level `export` is invisible
 to it — a method on an object literal most of all. That is exactly how ten
 duplicated console-API methods sat in four pieces unremarked, and #85 was a
-divergence among them. The `api.ts` rule above is written as "do not reach into
-`controls` from here" rather than as a search for those method names, because
-the names are ordinary words and the calls into the handle are not.
+divergence among them. That class of fault is closed by construction now: the
+handle is built once, in `gallery/boot.ts`.
 
 The class names are the kit's namespace — `.bar`, `.panel`, `.group`, `.row`,
 `.label`, `.value`, `.span`, `.modes`, `.mode`, `.preset`, `.toggle`, `.copy`,

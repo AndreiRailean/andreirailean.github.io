@@ -383,18 +383,19 @@ its name and range alone.
 
 ## Shape of the code
 
-| File          | Holds                                                                        |
-| ------------- | ---------------------------------------------------------------------------- |
-| `settings.ts` | `Settings`, the `CONTROLS` spec, presets, query parsing, what a change costs |
-| `subject.ts`  | the only place that knows what the picture is, and which way round           |
-| `mask.ts`     | the subject as coverage: summed-area tables, variance, the white point       |
-| `glyphs.ts`   | the vocabulary, the walk between frames, the blend between them, the drawing |
-| `field.ts`    | the quadtree: splitting, merging, churn, and a psyx's own life               |
-| `pulse.ts`    | how bright a psyx is, whether it is there at all, and its transition         |
-| `palette.ts`  | the argument between the subject's colour, the psyx's, and the edge's        |
-| `psyxels.ts`  | the engine: canvas, the clock, drawing, stats                                |
-| `api.ts`      | `window.experiment`                                                          |
-| `avatar.jpg`  | the second subject, copied rather than imported — see below                  |
+| File          | Holds                                                                         |
+| ------------- | ----------------------------------------------------------------------------- |
+| `settings.ts` | `Settings`, the `CONTROLS` spec, `CHROME`, query parsing, what a change costs |
+| `subject.ts`  | the only place that knows what the picture is, and which way round            |
+| `mask.ts`     | the subject as coverage: summed-area tables, variance, the white point        |
+| `glyphs.ts`   | the vocabulary, the walk between frames, the blend between them, the drawing  |
+| `field.ts`    | the quadtree: splitting, merging, churn, and a psyx's own life                |
+| `pulse.ts`    | how bright a psyx is, whether it is there at all, and its transition          |
+| `palette.ts`  | the argument between the subject's colour, the psyx's, and the edge's         |
+| `psyxels.ts`  | the engine: canvas, the clock, drawing, stats                                 |
+| `presets.ts`  | the named scenes; the first is the primary                                    |
+| `runner.ts`   | `start` for the page, `mount` for a frozen runner, and the verbs              |
+| `avatar.jpg`  | the second subject, copied rather than imported — see below                   |
 
 The chrome, its stylesheet, fullscreen, the clipboard, the wake lock and the
 seeded generators all come from `../kit/`. Nothing here is duplicated with

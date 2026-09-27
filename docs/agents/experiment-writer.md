@@ -247,10 +247,11 @@ survive this session, and everything below is easier to judge against it.
 2. **Position one is the primary.** A bare address lands on it, the poster is
    captured from it, and a note reads both its backdrop and the hue its furniture
    is tinted from off it. Promoting a preset to first moves all of them together,
-   which is the point of the arrangement — `src/experiments/AGENTS.md:205`.
-3. **`src/pages/experiments/<slug>/index.astro`, immediately.** Markup, a
-   `<style>` block and `import { boot } from "@/experiments/<slug>/page"` — no
-   logic in the `.astro`. Without a route there is nothing to look at, which is
+   which is the point of the arrangement — `src/experiments/AGENTS.md`, under "Position one is the primary".
+3. **`src/experiments/<slug>/Piece.astro` and its routes, immediately.**
+   Markup, a `<style>` block, and a script handing the piece's `settings.ts`,
+   `presets.ts` and `runner.ts`'s `start` to `gallery/boot` — no logic in the
+   `.astro`. Without a route there is nothing to look at, which is
    why this comes before the piece is any good rather than after.
 
    **The rule is the route, not the file count.** "No second module before the
