@@ -88,7 +88,7 @@ async function litPixels(page: Page): Promise<number> {
 }
 
 /**
- * **A note read over its piece — #223.** Crowd's `about` used to leave the
+ * **A note read over its piece — #223.** A piece's `about` used to leave the
  * piece for a page of its own, and coming back meant finding "open the piece"
  * at the top of the note and landing on the primary rather than on the scene
  * that had been on screen. Now the note is an overlay on the running piece, and
@@ -101,59 +101,61 @@ async function litPixels(page: Page): Promise<number> {
 const shown = (page: Page) => page.evaluate(() => document.documentElement.dataset.preset)
 const overlay = (page: Page) => page.locator("#note")
 
-test("crowd: about opens over the scene on screen, and a click outside the note leaves that scene", async ({
-  page,
-}) => {
-  const experiment = await openExperiment(page, "crowd", { idle: false })
-  await experiment.api(({ api }) => api.preset(3))
-  expect(await shown(page)).toBe("2")
+for (const { slug } of NOTES) {
+  test(`${slug}: about opens over the scene on screen, and a click outside the note leaves that scene`, async ({
+    page,
+  }) => {
+    const experiment = await openExperiment(page, slug, { idle: false })
+    await experiment.api(({ api }) => api.preset(3))
+    expect(await shown(page)).toBe("2")
 
-  await page.locator("#ui a.about").click()
-  await expect(overlay(page)).toBeVisible()
-  await expect(page).toHaveURL(/\/experiments\/crowd\/about\/\?/)
+    await page.locator("#ui a.about").click()
+    await expect(overlay(page)).toBeVisible()
+    await expect(page).toHaveURL(new RegExp(`/experiments/${slug}/about/\\?`))
 
-  // The piece hears no keys while the note is up: a digit would change the
-  // scene under the text.
-  await page.keyboard.press("5")
-  expect(await shown(page), "a digit changed the scene under the note").toBe("2")
+    // The piece hears no keys while the note is up: a digit would change the
+    // scene under the text.
+    await page.keyboard.press("5")
+    expect(await shown(page), "a digit changed the scene under the note").toBe("2")
 
-  // Outside the text column, on the right of the window.
-  const width = page.viewportSize()!.width
-  await page.mouse.click(width - 20, 300)
-  await expect(overlay(page)).toBeHidden()
-  await expect(page).toHaveURL(/\/experiments\/crowd\/\?/)
-  expect(await shown(page), "closing the note moved the scene").toBe("2")
-})
+    // Outside the text column, on the right of the window.
+    const width = page.viewportSize()!.width
+    await page.mouse.click(width - 20, 300)
+    await expect(overlay(page)).toBeHidden()
+    await expect(page).toHaveURL(new RegExp(`/experiments/${slug}/\\?`))
+    expect(await shown(page), "closing the note moved the scene").toBe("2")
+  })
 
-test("crowd: Back and Escape close the note, and 'view the piece' does too", async ({ page }) => {
-  const experiment = await openExperiment(page, "crowd", { idle: false })
-  await experiment.api(({ api }) => api.preset(2))
+  test(`${slug}: Back and Escape close the note, and 'view the piece' does too`, async ({ page }) => {
+    const experiment = await openExperiment(page, slug, { idle: false })
+    await experiment.api(({ api }) => api.preset(2))
 
-  await page.locator("#ui a.about").click()
-  await page.goBack()
-  await expect(overlay(page)).toBeHidden()
-  await expect(page).toHaveURL(/\/experiments\/crowd\/\?/)
+    await page.locator("#ui a.about").click()
+    await page.goBack()
+    await expect(overlay(page)).toBeHidden()
+    await expect(page).toHaveURL(new RegExp(`/experiments/${slug}/\\?`))
 
-  await page.locator("#ui a.about").click()
-  await page.keyboard.press("Escape")
-  await expect(overlay(page)).toBeHidden()
+    await page.locator("#ui a.about").click()
+    await page.keyboard.press("Escape")
+    await expect(overlay(page)).toBeHidden()
 
-  await page.locator("#ui a.about").click()
-  await overlay(page).locator(".exits a", { hasText: "view the piece" }).click()
-  await expect(overlay(page)).toBeHidden()
-  await expect(page).toHaveURL(/\/experiments\/crowd\/\?/)
-  expect(await shown(page)).toBe("1")
-})
+    await page.locator("#ui a.about").click()
+    await overlay(page).locator(".exits a", { hasText: "view the piece" }).click()
+    await expect(overlay(page)).toBeHidden()
+    await expect(page).toHaveURL(new RegExp(`/experiments/${slug}/\\?`))
+    expect(await shown(page)).toBe("1")
+  })
 
-test("crowd: the note's own address is the piece with the note open, on the primary", async ({ page }) => {
-  await page.goto("/experiments/crowd/about/")
-  await page.waitForFunction(() => (window as { experiment?: unknown }).experiment)
+  test(`${slug}: the note's own address is the piece with the note open, on the primary`, async ({ page }) => {
+    await page.goto(`/experiments/${slug}/about/`)
+    await page.waitForFunction(() => (window as { experiment?: unknown }).experiment)
 
-  await expect(overlay(page)).toBeVisible()
-  expect(await shown(page)).toBe("0")
+    await expect(overlay(page)).toBeVisible()
+    expect(await shown(page)).toBe("0")
 
-  await page.mouse.click(20, 300)
-  await expect(overlay(page)).toBeHidden()
-  await expect(page).toHaveURL(/\/experiments\/crowd\/(\?|$)/)
-  expect(await shown(page)).toBe("0")
-})
+    await page.mouse.click(20, 300)
+    await expect(overlay(page)).toBeHidden()
+    await expect(page).toHaveURL(new RegExp(`/experiments/${slug}/(\\?|$)`))
+    expect(await shown(page)).toBe("0")
+  })
+}

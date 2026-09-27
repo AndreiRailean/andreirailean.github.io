@@ -67,11 +67,18 @@ test("the wall stays where it was put when nothing asked it to move", async ({ p
 test("`?play` steps on by itself", async ({ page }) => {
   await openWall(page, FIRST, "?play=1&idle=0")
 
-  // Read before the wall moves rather than written down. This named the first
-  // entry's title — "winter blues" — and went red the day a newer piece was
-  // published to the front of the wall, which is a check failing for the one
-  // reason it was never about. What it is for is that the wall moved.
-  const opened = await page.evaluate(() => document.querySelector(".placard .scene")?.textContent)
+  // The entry the address opened, read off the wall's own list rather than
+  // written down. A literal — "winter blues" — went red the day a newer piece
+  // was published to the front, which is a check failing for the one reason it
+  // was never about.
+  //
+  // **And not off the screen either.** Read from the placard, it raced the very
+  // step under test: `?play` moves on in about a second, and under load
+  // `openWall` returned after the first step, so this read "keep left", the
+  // wait below passed at once, and the test compared the second entry with
+  // itself. Two runs in three straight after a full suite, at a load of about
+  // eight; eight in eight once the box had quietened.
+  const opened = WALL[0]!.title
   expect(opened, "no scene on the placard to move away from").toBeTruthy()
 
   await page.waitForFunction(() => (window as unknown as WallWindow).showcaseWall!.at() !== 0)

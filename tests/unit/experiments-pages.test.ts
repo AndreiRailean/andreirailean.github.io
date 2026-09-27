@@ -68,6 +68,29 @@ function bootingSource(slug: string): string {
 describe.each(slugs)("%s", (slug) => {
   const page = bootingSource(slug)
 
+  /**
+   * **Served by the gallery's page, at both addresses — #223.** The document,
+   * `#ui`, the interactive view and the note are `gallery/PiecePage.astro`'s,
+   * so a piece does not roll its own page any more than its own controls. A
+   * route that writes its own document, or a note page of its own, fails here.
+   */
+  it("is served by the gallery's page, at both of its addresses", () => {
+    for (const route of ["index", "about"]) {
+      const source = readFileSync(`${PAGES}/${slug}/${route}.astro`, "utf8")
+      expect(
+        source.includes(`@/experiments/${slug}/Piece.astro`) && /<Piece\b/.test(source),
+        `${slug}/${route}.astro does not render src/experiments/${slug}/Piece.astro`,
+      ).toBe(true)
+    }
+    const piece = readFileSync(`src/experiments/${slug}/Piece.astro`, "utf8")
+    expect(
+      piece.includes("@/experiments/gallery/PiecePage.astro") && /<PiecePage\b/.test(piece),
+      `src/experiments/${slug}/Piece.astro does not render gallery/PiecePage.astro — ` +
+        `the document, the chrome's mount and the note are the gallery's`,
+    ).toBe(true)
+    expect(piece, `${slug}'s Piece.astro writes its own document`).not.toMatch(/<html\b|<!doctype/i)
+  })
+
   it("boots from a module rather than carrying the script itself", () => {
     const lines = statements(scriptBody(page))
 

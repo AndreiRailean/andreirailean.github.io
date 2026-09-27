@@ -1,6 +1,7 @@
 ---
 type: ADR
-status: accepted
+status: superseded
+superseded_by: 20260927-a-piece-is-served-by-the-gallerys-page
 date: 2026-09-27
 summary: A piece's note opens as an overlay on the running piece rather than as a page of its own, and the kit's split layout separates the presets from the rest of the chrome; both land on crowd first.
 ---

@@ -47,18 +47,19 @@
  * | `--ui-label-col` | `--ui-value-col` | `--ui-panel-min` | `--ui-row-gap` |
  */
 
+/*
+ * `#ui` spans the window so the chrome can sit in its corners — presets down
+ * the left edge, the bar top right with the panel beneath it, `about` bottom
+ * right (#223) — and **takes no pointer itself**, since it would otherwise
+ * cover the piece. Each corner takes the pointer back below, and has to give
+ * it up again while idle: a child's own `pointer-events: auto` beats an
+ * inherited `none`, so without that rule the hidden chrome would still
+ * swallow clicks.
+ */
 #ui {
   position: fixed;
-  right: 1.25rem;
-  bottom: 1.25rem;
-  display: flex;
-  /* Reversed so the panel grows *upward* out of the bar. In DOM order the bar
-     comes first; laid out downward, a tall panel runs off the bottom of the
-     window. Starry Night had this the other way round for as long as it had a
-     panel, which nobody had decided. */
-  flex-direction: column-reverse;
-  align-items: flex-end;
-  gap: 0.5rem;
+  inset: 1.25rem;
+  pointer-events: none;
   font:
     400 0.75rem/1.5 ui-monospace,
     "SF Mono",
@@ -119,13 +120,12 @@ html[data-idle="true"] #ui {
 }
 
 /* Takes as much height as there is and scrolls only when it genuinely cannot
-   fit. The reserve is the bar below it, its gap, and the window inset. */
+   fit. Its position and height are with the corners, below. */
 #ui .panel {
   display: flex;
   flex-direction: column;
   gap: var(--ui-row-gap, 0.3rem);
   min-width: var(--ui-panel-min, 22rem);
-  max-height: calc(100vh - 5.5rem);
   padding: 0.75rem 0.85rem;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -141,35 +141,17 @@ html[data-idle="true"] #ui {
   display: none;
 }
 
-/*
- * The split layout — `layout: "split"` in `createControls`, #223.
- *
- * Presets down the left edge in columns of five, the actions and `adjust` top
- * right with the panel opening beneath them, `about` alone bottom right.
- *
- * `#ui` spans the window so the three can sit in its corners, and **takes no
- * pointer itself** — it would otherwise cover the piece. Each corner takes the
- * pointer back, which means each has to give it up again while idle: the idle
- * rule above only reaches `#ui`, and a child's own `pointer-events: auto`
- * beats an inherited `none`. Without the second rule the hidden chrome would
- * still swallow clicks.
- */
-#ui[data-layout="split"] {
-  inset: 1.25rem;
-  display: block;
-  pointer-events: none;
-}
-
-#ui[data-layout="split"] > * {
+/* The corners. */
+#ui > * {
   position: absolute;
   pointer-events: auto;
 }
 
-html[data-idle="true"] #ui[data-layout="split"] > * {
+html[data-idle="true"] #ui > * {
   pointer-events: none;
 }
 
-#ui[data-layout="split"] .presets {
+#ui .presets {
   top: 0;
   left: 0;
   display: grid;
@@ -179,11 +161,11 @@ html[data-idle="true"] #ui[data-layout="split"] > * {
   gap: 0.35rem;
 }
 
-#ui[data-layout="split"] .preset {
+#ui .preset {
   text-align: left;
 }
 
-#ui[data-layout="split"] .bar {
+#ui .bar {
   top: 0;
   right: 0;
 }
@@ -191,13 +173,13 @@ html[data-idle="true"] #ui[data-layout="split"] > * {
 /* Beneath the bar, and short of the corner `about` holds. `max-height` is the
    content box, so the panel's own padding and border (about 1.6rem) come on
    top of it — measured, it overran `about` by 14px without them. */
-#ui[data-layout="split"] .panel {
+#ui .panel {
   top: 2.4rem;
   right: 0;
   max-height: calc(100vh - 2.5rem - 2.4rem - 2.6rem - 1.6rem);
 }
 
-#ui[data-layout="split"] > .about {
+#ui > .about {
   right: 0;
   bottom: 0;
 }
