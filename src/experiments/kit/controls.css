@@ -196,6 +196,20 @@ html[data-idle="true"] #ui > * {
   margin-top: 0;
 }
 
+/* A governed group's rows, under its governor — #242. Laid out the way the panel
+   lays out rows, since they used to sit in it directly, and hidden while the
+   governor holds its off value. An author `display` beats `[hidden]`, so both
+   are stated. */
+#ui .rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-row-gap, 0.3rem);
+}
+
+#ui .rows[hidden] {
+  display: none;
+}
+
 #ui .row {
   display: grid;
   grid-template-columns: var(--ui-label-col, 6rem) 1fr var(--ui-value-col, 4.75rem);

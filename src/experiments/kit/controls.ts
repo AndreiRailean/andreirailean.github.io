@@ -260,13 +260,43 @@ export type Controls<S> = {
   setIdle: (idle: boolean | null) => void
 }
 
+/**
+ * A group one of whose controls switches the rest of it on — #242.
+ *
+ * A layer of a piece, in crowd's case: boulders, a chase, a kind of ground.
+ * While `governor` holds `off` the group's other rows hide, because every one
+ * of them is inert, and the panel shows only what the scene uses. The governor
+ * is an ordinary control in the group — a toggle, a slider whose zero means
+ * absent, or a choice whose `off` option is the plain case — and it stays in
+ * view under the heading, since it is how the group is switched back on.
+ *
+ * `off` is compared with the same one-level equality the preset matching uses.
+ * It is the piece's to state rather than the kit's to guess: crowd's ground is
+ * off at `"open"`, its boulders at `0`.
+ *
+ * **Hidden is not reset.** The kit only hides; making an off layer's other
+ * values canonical is the piece's validator's job, or two scenes that look the
+ * same would stop matching the same preset.
+ */
+export type GovernedGroup<K extends string> = {
+  name: string
+  governor: K
+  off: unknown
+}
+
 export type Options<S extends object> = {
   root: HTMLElement
   settings: S
   controls: Control<string & keyof S>[]
   presets: Preset<S>[]
-  /** Heading order. Omitted, the rows run together with no headings. */
-  groups?: readonly string[]
+  /**
+   * Heading order. Omitted, the rows run together with no headings.
+   *
+   * An entry may be a **governed group** instead of a name: one of its controls
+   * decides whether the rest mean anything, and its other rows hide while that
+   * control holds `off`. See `GovernedGroup`.
+   */
+  groups?: readonly (string | GovernedGroup<string & keyof S>)[]
   actions?: Action<S>[]
   /**
    * The one validator every external input passes through, so the panel cannot
@@ -464,8 +494,12 @@ export function createControls<S extends object>(options: Options<S>): Controls<
    * state that has to be remembered, decided about on load and kept out of the
    * shared URL, which is a lot to buy before the scrolling is a problem.
    */
+  /** Each governed group's body, and what switches it off. */
+  const governed: { body: HTMLElement; governor: string & keyof S; off: unknown }[] = []
+
   if (groups && groups.length > 0) {
-    for (const group of groups) {
+    for (const entry of groups) {
+      const group = typeof entry === "string" ? entry : entry.name
       const inGroup = specs.filter((control) => control.group === group)
       if (inGroup.length === 0) continue
 
@@ -474,7 +508,27 @@ export function createControls<S extends object>(options: Options<S>): Controls<
       heading.textContent = group
       panel.append(heading)
 
-      for (const control of inGroup) panel.append(makeRow(control))
+      if (typeof entry === "string") {
+        for (const control of inGroup) panel.append(makeRow(control))
+        continue
+      }
+
+      // The governor first, under its heading, and the rest in a body that
+      // `render()` hides while the governor holds `off`.
+      const governor = inGroup.find((control) => keysOf(control).includes(entry.governor))
+      if (!governor) throw new Error(`group "${group}" is governed by ${entry.governor}, which has no control in it`)
+      const governorRow = makeRow(governor)
+      governorRow.classList.add("governor")
+      panel.append(governorRow)
+
+      const body = document.createElement("div")
+      body.className = "rows"
+      body.dataset.governor = entry.governor
+      // Published so a test, or a piece's stylesheet, can tell what off is.
+      body.dataset.off = JSON.stringify(entry.off)
+      for (const control of inGroup) if (control !== governor) body.append(makeRow(control))
+      panel.append(body)
+      governed.push({ body, governor: entry.governor, off: entry.off })
     }
   } else {
     for (const control of specs) panel.append(makeRow(control))
@@ -611,6 +665,8 @@ export function createControls<S extends object>(options: Options<S>): Controls<
   // --- state ---------------------------------------------------------------
 
   function render() {
+    for (const { body, governor, off } of governed) body.hidden = sameValue(current[governor], off)
+
     for (const control of specs) {
       if (control.kind === "choice") {
         const byValue = choiceButtons.get(control.key)
