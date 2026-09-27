@@ -622,7 +622,7 @@ export function createThrong(settings: Settings, observer: Observer) {
       current.boulders,
       current.boulder,
       current.layout,
-      current.aisle,
+      current.passage,
       current.seed,
       halfWidth,
       pathShape,
@@ -638,7 +638,7 @@ export function createThrong(settings: Settings, observer: Observer) {
         observer.x,
         observer.y,
         current.layout,
-        current.aisle,
+        current.passage,
       )
     }
     const asked = Math.max(6, current.reach)
