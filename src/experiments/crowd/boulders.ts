@@ -124,6 +124,8 @@ function cellHash(i: number, j: number, k: number, seed: number): number {
  * @param path the way, so nothing is put on it.
  * @param halfWidth half the corridor; infinite on open ground.
  * @param startX where I am standing, which nothing is put on.
+ * @param layout on open ground: 0 scattered, 1 a square grid, 2 a hexagonal one.
+ * @param passage on a grid, the width of the passages between boulders, metres.
  */
 export function createBoulders(
   coverage: number,
@@ -133,6 +135,8 @@ export function createBoulders(
   halfWidth: number,
   startX: number,
   startY: number,
+  layout = 0,
+  passage = 3,
 ): Boulders {
   if (coverage <= 0 || size <= 0) return NONE
 
@@ -140,8 +144,23 @@ export function createBoulders(
   // draw on [a, b]·size is (a² + ab + b²)/3 · size², and a share of cells is empty.
   const meanSq = ((SMALLEST * SMALLEST + SMALLEST * LARGEST + LARGEST * LARGEST) / 3) * size * size
   const period = Math.sqrt((Math.PI * meanSq * (1 - MISSING)) / Math.min(0.6, coverage))
-  const largest = LARGEST * size
   const open = !Number.isFinite(halfWidth)
+
+  // **A grid, square or hexagonal**, for open ground and loops: "if we leave
+  // passages between them relatively wide, the grid may reveal itself". Every
+  // boulder nearly the same size, on its site exactly, so the regularity is the
+  // boulders' and the randomness is all the heads'. On a square grid the
+  // passages cross, and you can walk one straight for ever; on a hexagonal one
+  // every passage ends at a boulder, so every way through turns.
+  const grid = layout >= 1 && !(!open && "centre" in path)
+  const hex = layout >= 2
+  const sitePeriod = 2 * size + Math.max(0.5, passage)
+  const rowPeriod = hex ? (sitePeriod * Math.sqrt(3)) / 2 : sitePeriod
+  // `coverage` still means a share of the ground: at or above what a full grid
+  // covers every site is filled, and below it that share of sites is.
+  const fullGrid = (Math.PI * size * size) / (sitePeriod * rowPeriod)
+  const filled = Math.min(1, coverage / fullGrid)
+  const largest = grid ? size * 1.08 : LARGEST * size
 
   const cache = new Map<number, Boulder | null>()
   const cellKey = (i: number, j: number) => (i + 32768) * 65536 + (j + 32768)
@@ -197,6 +216,26 @@ export function createBoulders(
     return made
   }
 
+  /** A grid site: row `j`, place `i` along it, the odd rows shifted half a site on a hexagonal grid. */
+  function site(i: number, j: number): Boulder | null {
+    const k = cellKey(i, j)
+    const cached = cache.get(k)
+    if (cached !== undefined) return cached
+    if (cache.size > CACHE_LIMIT) cache.clear()
+    let made: Boulder | null = null
+    if (cellHash(i, j, 0, seed) < filled) {
+      const r = size * (0.92 + 0.16 * cellHash(i, j, 3, seed))
+      // Half a period in, so where I start is a crossing of passages, not a boulder.
+      const x = (i + 0.5 + (hex && j & 1 ? 0.5 : 0)) * sitePeriod
+      const y = (j + 0.5) * rowPeriod
+      const clearOfStart = Math.hypot(x - startX, y - startY) - r > START_CLEAR
+      const clearOfWay = open || Math.abs(path.lateral(x, y)) - r > halfWidth + 0.3
+      if (clearOfStart && clearOfWay) made = { x, y, r, side: cellHash(i, j, 4, seed) < 0.5 ? 1 : -1 }
+    }
+    cache.set(k, made)
+    return made
+  }
+
   function cell(i: number, j: number): Boulder | null {
     const k = cellKey(i, j)
     const cached = cache.get(k)
@@ -225,6 +264,18 @@ export function createBoulders(
       for (let k = Math.floor((x - reach) / step) - 1; k <= k1; k++) {
         const b = verge(k)
         if (b) visit(b)
+      }
+      return
+    }
+    if (grid) {
+      const reach = radius + largest
+      const j1 = Math.floor((y + reach) / rowPeriod)
+      const i1 = Math.floor((x + reach) / sitePeriod)
+      for (let j = Math.floor((y - reach) / rowPeriod) - 1; j <= j1; j++) {
+        for (let i = Math.floor((x - reach) / sitePeriod) - 1; i <= i1; i++) {
+          const b = site(i, j)
+          if (b) visit(b)
+        }
       }
       return
     }

@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest"
 import { makeCamera } from "@/experiments/crowd/camera"
 import { drawFrame, makeScratch } from "@/experiments/crowd/draw"
 import { DEFAULT_SETTINGS } from "@/experiments/crowd/settings"
-import type { Boulder } from "@/experiments/crowd/boulders"
+import { createBoulders, type Boulder } from "@/experiments/crowd/boulders"
+import { createPath } from "@/experiments/crowd/path"
 import type { Person } from "@/experiments/crowd/throng"
 
 /**
@@ -86,5 +87,39 @@ describe("a boulder", () => {
     expect(inside.rocks).toBe(0)
     expect(inside.hidden).toBe(0)
     expect(frame([standing(40, 0)], [rock(10, 0, 3)]).rocks).toBe(1)
+  })
+})
+
+describe("a grid of boulders", () => {
+  /**
+   * "if they're laid out not in straight lines, but more like a hexagonal grid,
+   * turns would always be required". Asserted on the layout itself: on a square
+   * grid each boulder has four neighbours at one period, on a hexagonal one six
+   * — and scattered, neither, which is the control that says the count can fail.
+   */
+  const open = createPath(0, 300, 0, 0)
+  function neighbours(layout: number) {
+    const rocks = createBoulders(0.4, 3, 11, open, Infinity, 1000, 1000, layout, 6)
+    const found = rocks.within(0, 0, 40, [])
+    const period = 2 * 3 + 6
+    const counts = found.map(
+      (b) => found.filter((o) => o !== b && Math.abs(Math.hypot(o.x - b.x, o.y - b.y) - period) < 0.01).length,
+    )
+    return { found: found.length, most: Math.max(...counts) }
+  }
+
+  it("puts four at one period round each boulder on a square grid, six on a hexagonal one", () => {
+    expect(neighbours(1).found).toBeGreaterThan(20)
+    expect(neighbours(1).most).toBe(4)
+    expect(neighbours(2).most).toBe(6)
+    expect(neighbours(0).most).toBeLessThan(2)
+  })
+
+  it("keeps where I start a crossing of passages, not a boulder", () => {
+    for (const layout of [1, 2]) {
+      const rocks = createBoulders(0.4, 3, 11, open, Infinity, 0, 0, layout, 6)
+      expect(rocks.inside(0, 0)).toBe(0)
+      expect(rocks.within(0, 0, 12, []).length).toBeGreaterThan(0)
+    }
   })
 })

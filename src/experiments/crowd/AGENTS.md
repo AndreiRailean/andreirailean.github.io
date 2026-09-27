@@ -593,6 +593,18 @@ but much larger and of black colour so the blend in with the background".
   declared in `BOUNDS` directly, since a setting with no slider has no track.
   `structure.test.ts` pins the stalls scene for the gaze and catch tests that
   were measured on it.
+- **A grid of boulders is a forest: it hides most of the crowd.** `layout` 1
+  and 2 put nearly equal boulders exactly on a square or hexagonal lattice,
+  `aisle` (as "passages") apart, origin at a crossing; `coverage` fills that
+  share of sites. At 3 m boulders and 4–7 m passages, 80–89% of the heads in
+  view were hidden — you see down the passage you are in, and the grid is in
+  which way you turn. Boulders below eye height (1.2 m) hid 0.5%. Grids apply
+  on open ground and loops only; streets and trails keep their verges.
+- **Hundreds of boulders in view is the draw's cost, not the simulation's.**
+  A grid put 420–500 outlines in a frame at 5.6–7.8 ms headless. Outlines now
+  take as many points as they are big (8 to 64) and a boulder off the frame is
+  dropped — it cannot cover anything on screen — which took the square grid to
+  4.1 ms with the hidden share unchanged to three places.
 - **Rebuilt only when their own inputs change** (`boulderShape` in
   `throng.ts`), and kept clear of wherever I stand when they are built, since
   on a loop that is not the origin.

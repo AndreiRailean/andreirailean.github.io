@@ -186,8 +186,11 @@ export type SphereSight = {
   outline: number[]
 }
 
-/** Points round a silhouette. At 500 px across, 64 leaves a facet under a pixel deep. */
+/** Most points round a silhouette. At 500 px across, 64 leaves a facet under a pixel deep. */
 const OUTLINE_POINTS = 64
+
+/** Fewest: a distant boulder a few pixels across is a circle at eight. */
+const OUTLINE_FEWEST = 8
 
 /** A world point in the eye's own frame. Written into `out`: right, up, ahead. */
 export function toEye(camera: Camera, x: number, y: number, z: number, out: number[]): number[] {
@@ -263,13 +266,21 @@ export function sightSphere(camera: Camera, x: number, y: number, z: number, r: 
   const half = camera.width / 2
   const middle = camera.height / 2
   const f = camera.focal
+  // As many points as the outline is big: a grid of boulders is hundreds of
+  // them in view, most a few pixels across.
+  const across = (f * ringR) / Math.max(NEAR, along)
+  const points = Math.max(OUTLINE_FEWEST, Math.min(OUTLINE_POINTS, Math.ceil(Math.sqrt(across) * 4)))
   // Sutherland–Hodgman against the one plane `ahead = NEAR`.
   let prevX = 0
   let prevY = 0
   let prevZ = 0
   let prevIn = false
-  for (let k = 0; k <= OUTLINE_POINTS; k++) {
-    const t = (k / OUTLINE_POINTS) * Math.PI * 2
+  let minX = Infinity
+  let maxX = -Infinity
+  let minY = Infinity
+  let maxY = -Infinity
+  for (let k = 0; k <= points; k++) {
+    const t = (k / points) * Math.PI * 2
     const c = Math.cos(t) * ringR
     const s = Math.sin(t) * ringR
     const px = ox + ax * c + bx * s
@@ -288,5 +299,15 @@ export function sightSphere(camera: Camera, x: number, y: number, z: number, r: 
     prevZ = pz
     prevIn = isIn
   }
+  for (let p = 0; p < outline.length; p += 2) {
+    const ox2 = outline[p]!
+    const oy2 = outline[p + 1]!
+    if (ox2 < minX) minX = ox2
+    if (ox2 > maxX) maxX = ox2
+    if (oy2 < minY) minY = oy2
+    if (oy2 > maxY) maxY = oy2
+  }
+  // Off the frame altogether: nothing on screen is behind it.
+  if (maxX < 0 || minX > camera.width || maxY < 0 || minY > camera.height) return false
   return true
 }

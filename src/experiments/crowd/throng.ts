@@ -618,7 +618,15 @@ export function createThrong(settings: Settings, observer: Observer) {
     stalls = createStalls(current.stalls, current.aisle, current.seed)
     // **Rebuilt only when their own inputs change**, and clear of wherever I am
     // standing when they are — which on a loop is not the origin.
-    const rocks = [current.boulders, current.boulder, current.seed, halfWidth, pathShape].join()
+    const rocks = [
+      current.boulders,
+      current.boulder,
+      current.layout,
+      current.aisle,
+      current.seed,
+      halfWidth,
+      pathShape,
+    ].join()
     if (rocks !== boulderShape) {
       boulderShape = rocks
       boulders = createBoulders(
@@ -629,6 +637,8 @@ export function createThrong(settings: Settings, observer: Observer) {
         halfWidth,
         observer.x,
         observer.y,
+        current.layout,
+        current.aisle,
       )
     }
     const asked = Math.max(6, current.reach)

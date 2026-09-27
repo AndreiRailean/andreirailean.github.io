@@ -457,3 +457,28 @@ Open, for him:
 - **The trail's reveal depends on the stretch.** A seed decides whether the
   first minute is a grove or a clearing. A setting for grove length is the
   obvious lever if he wants it.
+
+## 2026-09-27 — boulders on a grid, and whether this stays one piece
+
+> ah, let's leave market as is. it is the original and it's the only piece that
+> has the organic unstructured wandering feel. others have landscape structure.
+>
+> i'm wondering if it is possible to have boulders arranged in a grid like
+> market stalls. if we leave passages between them relatively wide, the grid may
+> reveal itself, especially when turning the head and changing walking
+> direction. or if they're laid out not in straight lines, but more like a
+> hexagonal grid, turns would always be required and would always carry
+> geometric structure sprinkled with randomness of heads.
+>
+> "crowds" as a piece turns out to be very stimulating and gives rise to many
+> ideas. makes me wonder if it all stays one big experiment that keeps on
+> getting new presets or if there's need to talk about layering of concepts or
+> simplification (reduction of certain controls) so we can more efficiently
+> drive particular scenarios while keeping the main theme.
+
+Built as a `layout` slider — scattered, square grid, hexagonal grid — with the
+old aisle setting back as `passages`, and three presets: **boulder grid**,
+**honeycomb**, **honeycomb chase**. Market left as it is. Measured: a grid of
+3 m boulders hides 80–89% of the heads in view — you see down the passage you
+are in — so passage width is the lever. The one-piece-or-layers question is
+answered in the session and left open here: his call.
