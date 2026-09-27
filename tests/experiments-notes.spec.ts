@@ -25,7 +25,7 @@ const NOTES = [
 ]
 
 /** In this order, on every note, forever. That is the whole point of the layout. */
-const EXITS = ["open the piece", "all experiments"]
+const EXITS = ["view the piece", "all experiments"]
 
 /**
  * Everything is looked for inside `main`, which is the note itself.
@@ -125,7 +125,7 @@ test("crowd: about opens over the scene on screen, and a click outside the note 
   expect(await shown(page), "closing the note moved the scene").toBe("2")
 })
 
-test("crowd: Back and Escape close the note, and 'open the piece' does too", async ({ page }) => {
+test("crowd: Back and Escape close the note, and 'view the piece' does too", async ({ page }) => {
   const experiment = await openExperiment(page, "crowd", { idle: false })
   await experiment.api(({ api }) => api.preset(2))
 
@@ -139,7 +139,7 @@ test("crowd: Back and Escape close the note, and 'open the piece' does too", asy
   await expect(overlay(page)).toBeHidden()
 
   await page.locator("#ui a.about").click()
-  await overlay(page).locator(".exits a", { hasText: "open the piece" }).click()
+  await overlay(page).locator(".exits a", { hasText: "view the piece" }).click()
   await expect(overlay(page)).toBeHidden()
   await expect(page).toHaveURL(/\/experiments\/crowd\/\?/)
   expect(await shown(page)).toBe("1")

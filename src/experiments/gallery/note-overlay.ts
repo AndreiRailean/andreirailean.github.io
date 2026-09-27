@@ -80,7 +80,7 @@ export function mountNoteOverlay(overlay: HTMLElement): void {
   overlay.addEventListener("click", (event) => {
     const target = event.target
     if (!(target instanceof Element)) return
-    // "open the piece" keeps its address for a reader without script, and
+    // "view the piece" keeps its address for a reader without script, and
     // closes the overlay for everyone else.
     if (target.closest(`a[href="${piecePath}"]`)) {
       event.preventDefault()
