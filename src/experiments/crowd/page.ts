@@ -62,8 +62,6 @@ export function boot(): void {
     // Headless on a touch device: the kit keeps the settings, the validator and
     // the URL sync, and draws no bar.
     chrome: !isReel(),
-    // Sixteen presets: split them from the actions and the note — #223.
-    layout: "split",
     aboutHref: "/experiments/crowd/about/",
     settings,
     controls: CONTROLS,
