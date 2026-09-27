@@ -32,6 +32,9 @@ export default defineConfig({
   // rather than accumulated, so a failure here is a real difference and not
   // weather. A retry would only hide it.
   retries: 0,
+  // EXPERIMENT (#133): test-level scheduling across all of CI's cores.
+  fullyParallel: true,
+  workers: process.env.CI ? 4 : undefined,
   // Settling a large scene is the slow part. Nothing compiles on first request
   // any more — the suite drives a static build, so that cost was paid once by
   // `astro build` before any test ran.
