@@ -15,6 +15,25 @@ import { expect, openExperiment, test } from "./support/experiment.ts"
 
 const PIECES = ["bubbles", "crowd", "dangler", "embers", "flotsam", "psyxels", "starry-night", "walkers"]
 
+/**
+ * **Every test here is about the chrome, so every one holds the piece.** A
+ * running piece queues every round trip — a `boundingBox`, a keypress, an
+ * `api.get()` — behind its own rendering on the one core a headless page has;
+ * "A running piece starves the thread Playwright is talking to" in
+ * `tests/AGENTS.md` has the mechanism. Two tests here did this by hand and
+ * thirteen did not. `pause` parks the frame loop and nothing else: the kit's
+ * state, its URL sync and `data-preset` all go on without it.
+ *
+ * Measured on this file alone, two workers as CI runs it, held and running
+ * alternated so both met the same load: 3.2 and 3.3 minutes held, 4.5 and 4.4
+ * running. It was 40% of the browser suite's test time before this (#133).
+ */
+const openHeld = async (...args: Parameters<typeof openExperiment<BaseApi>>) => {
+  const experiment = await openExperiment<BaseApi>(...args)
+  await experiment.api(({ api }) => api.pause(true))
+  return experiment
+}
+
 for (const slug of PIECES) {
   /**
    * **Where the chrome sits — #223.** Presets down the left edge in columns of
@@ -26,7 +45,7 @@ for (const slug of PIECES) {
   test(`${slug}: presets run down the left, the bar and its panel sit top right, about bottom right`, async ({
     page,
   }) => {
-    const experiment = await openExperiment<BaseApi>(page, slug, { idle: false })
+    const experiment = await openHeld(page, slug, { idle: false })
     await experiment.api(({ api }) => api.panel(true))
 
     const box = async (selector: string) => {
@@ -62,7 +81,7 @@ for (const slug of PIECES) {
   })
 
   test(`${slug}: the bar ends with adjust, and the presets lead their column from one`, async ({ page }) => {
-    await openExperiment<BaseApi>(page, slug, { idle: false })
+    await openHeld(page, slug, { idle: false })
 
     const labels = await page.locator(".bar button, .bar a").allTextContents()
     expect(labels.at(-1)).toBe("adjust")
@@ -72,7 +91,7 @@ for (const slug of PIECES) {
   })
 
   test(`${slug}: c opens the panel, Escape closes it, and a digit loads a preset`, async ({ page }) => {
-    const experiment = await openExperiment<BaseApi>(page, slug, { idle: false })
+    const experiment = await openHeld(page, slug, { idle: false })
     const panel = page.locator(".panel")
 
     await page.keyboard.press("c")
@@ -95,9 +114,7 @@ for (const slug of PIECES) {
    * presets — paired with a presence assertion that some title claims a key.
    */
   test(`${slug}: every key a preset's title names loads that preset`, async ({ page }) => {
-    const experiment = await openExperiment<BaseApi>(page, slug, { idle: false })
-    // A chrome test, so hold the piece: see "A running piece starves the thread".
-    await experiment.api(({ api }) => api.pause(true))
+    const experiment = await openHeld(page, slug, { idle: false })
     const shown = () => page.evaluate(() => document.documentElement.dataset.preset)
 
     const titles = await page
@@ -127,7 +144,7 @@ for (const slug of PIECES) {
    * by comparing settings, which is what the kit itself uses to decide.
    */
   test(`${slug}: left and right step through the presets, and stop at both ends`, async ({ page }) => {
-    const experiment = await openExperiment<BaseApi>(page, slug, { idle: false })
+    const experiment = await openHeld(page, slug, { idle: false })
     const shown = () => page.evaluate(() => document.documentElement.dataset.preset)
 
     const names = await experiment.api(({ api }) => api.presets())
@@ -163,7 +180,7 @@ for (const slug of PIECES) {
    * preset.
    */
   test(`${slug}: a focused slider keeps its own arrow keys`, async ({ page }) => {
-    const experiment = await openExperiment<BaseApi>(page, slug, { idle: false })
+    const experiment = await openHeld(page, slug, { idle: false })
     await experiment.api(({ api }) => api.panel(true))
 
     const slider = page.locator(".panel input[type=range]").first()
@@ -210,7 +227,7 @@ for (const slug of PIECES) {
    * a piece keeps its scenes.
    */
   test(`${slug}: a bare address lands on the primary`, async ({ page }) => {
-    const experiment = await openExperiment<BaseApi>(page, slug, { idle: true })
+    const experiment = await openHeld(page, slug, { idle: true })
 
     const landed = await experiment.api(({ api }) => api.get())
     // **`preset(1)`, not `preset(0)`.** The number is the keyboard digit rather
@@ -241,7 +258,7 @@ for (const slug of PIECES) {
    * anyone having to move a scene off its baseline to earn it.
    */
   test(`${slug}: a bare address is rewritten to the scene it landed on`, async ({ page }) => {
-    const experiment = await openExperiment<BaseApi>(page, slug, { idle: true })
+    const experiment = await openHeld(page, slug, { idle: true })
 
     const landed = await experiment.api(({ api }) => api.get())
     const address = page.url()
@@ -265,7 +282,7 @@ for (const slug of PIECES) {
    * the address that page rewrote for itself.
    */
   test(`${slug}: says what its own address means`, async ({ page }) => {
-    const experiment = await openExperiment<BaseApi>(page, slug, { idle: true })
+    const experiment = await openHeld(page, slug, { idle: true })
 
     const showing = await experiment.api(({ api }) => api.get())
     const address = page.url()
@@ -284,7 +301,7 @@ for (const slug of PIECES) {
   })
 
   test(`${slug}: publishes which preset is on screen, and stops when it is nobody's`, async ({ page }) => {
-    const experiment = await openExperiment<BaseApi>(page, slug, { idle: false })
+    const experiment = await openHeld(page, slug, { idle: false })
     const html = page.locator("html")
     const shown = () => page.evaluate(() => document.documentElement.dataset.preset)
 
@@ -453,7 +470,7 @@ for (const slug of PIECES) {
   })
 
   test(`${slug}: the panel is reachable by keyboard and its rows are labelled`, async ({ page }) => {
-    const experiment = await openExperiment<BaseApi>(page, slug, { idle: false })
+    const experiment = await openHeld(page, slug, { idle: false })
     await experiment.api(({ api }) => api.panel(true))
 
     // Every row carries its own tooltip and a label, which is the only thing
@@ -479,7 +496,7 @@ for (const slug of PIECES) {
    * then goes back to what it said.
    */
   test(`${slug}: the copy row offers at least one labelled action and reports back`, async ({ page }) => {
-    const experiment = await openExperiment<BaseApi>(page, slug, { idle: false })
+    const experiment = await openHeld(page, slug, { idle: false })
     await experiment.api(({ api }) => api.panel(true))
 
     const buttons = page.locator(".panel .row.copy button")
@@ -523,7 +540,7 @@ for (const slug of PIECES) {
    * has none and is not wrong for it.
    */
   test(`${slug}: both handles of a bound pair sit on one track and can be dragged`, async ({ page }) => {
-    const experiment = await openExperiment<BaseApi>(page, slug, { idle: false })
+    const experiment = await openHeld(page, slug, { idle: false })
 
     // **Held, and that is worth 35x on every round trip.** This test is about
     // the chrome, and a running piece starves the main thread it shares with
