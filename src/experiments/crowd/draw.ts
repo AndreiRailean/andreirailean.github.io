@@ -258,16 +258,20 @@ export function drawFrame(
         // out past it people walk through them — and a dome is narrower at head
         // height than at the ground, so a head near the edge of the footprint is
         // outside the sphere and was drawn on the boulder's flank, at the
-        // boulder's own distance. About one drawn head in ten past 24 m on a
-        // honeycomb: "only the first two rows of boulders … are opaque".
+        // boulder's own distance: 2–9 drawn heads a frame past 24 m on a honeycomb.
         const fx = person.x - rock.at.x
         const fy = person.y - rock.at.y
         if (fx * fx + fy * fy < rock.at.r * rock.at.r) {
           blocked = 1
           break
         }
+        // Hidden by any boulder wins over cut by another. **Not the larger of
+        // the two numbers**: cut is 2 and hidden is 1, and taking the maximum
+        // left a head cut by one boulder's edge and wholly behind the next
+        // marked as cut — 20–32 of them a frame on a honeycomb.
         const verdict = blockedBy(rock, hx, hy, hz, span)
-        if (verdict > blocked) blocked = verdict
+        if (verdict === 1) blocked = 1
+        else if (verdict === 2) blocked = 2
       }
       if (blocked === 1) {
         hidden++

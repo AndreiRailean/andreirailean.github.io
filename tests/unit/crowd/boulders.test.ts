@@ -91,6 +91,17 @@ describe("a boulder", () => {
     expect(frame([standing(20, 3.4)], [rock(20, 0, 3)]).hidden).toBe(0)
   })
 
+  it("hides somebody behind one boulder even when another's edge cuts them", () => {
+    // The first boulder in the list grazes the sight line, which marks the
+    // head as cut; the second is squarely in front of it. Taking the larger
+    // verdict kept "cut" (2) over "hidden" (1) — 20–32 heads a frame.
+    const atEye = Math.sqrt(9 - 1.6 * 1.6)
+    const grazing = rock(20, atEye + 0.01, 3)
+    const squarely = rock(40, 0, 3)
+    expect(frame([standing(60, 0)], [grazing]).cut).toBe(1)
+    expect(frame([standing(60, 0)], [grazing, squarely]).hidden).toBe(1)
+  })
+
   it("throws no outline when I am inside it, rather than blacking out the frame", () => {
     const inside = frame([standing(40, 0)], [rock(1, 0, 3)])
     expect(inside.rocks).toBe(0)
