@@ -301,7 +301,7 @@ export function createSea(spec: SeaSpec): Sea {
  *
  * At `gusts` 0 this reproduces the steady sea exactly, trigonometry and all
  * skipped, which is what makes the closed-form return property in
- * `tests/unit/flotsam/waves.test.ts` still exactly true there.
+ * `src/experiments/flotsam/tests/waves.test.ts` still exactly true there.
  */
 export function gustSea(sea: Sea, gusts: number, time: number): void {
   const strength = Math.min(1, Math.max(0, gusts))

@@ -1,13 +1,13 @@
 import type { ExperimentApi } from "@/experiments/embers/runner"
-import { expect, openExperiment, test } from "./support/experiment"
-import { litPixels as countLit } from "./support/canvas.ts"
+import { expect, openExperiment, test } from "../../../../tests/support/experiment"
+import { litPixels as countLit } from "../../../../tests/support/canvas.ts"
 
 /**
  * Embers, driven through its console API.
  *
  * **What is here is deliberately only what needs a browser.** The physics — the
  * plume, the drag balance, the cooling, the eddy field — is DOM-free and lives in
- * `tests/unit/embers/fire.test.ts`, which answers in milliseconds and is where
+ * `src/experiments/embers/tests/fire.test.ts`, which answers in milliseconds and is where
  * both of the piece's real faults were found. What that cannot reach is the
  * canvas: whether anything is actually painted, what a frame costs, and whether
  * a reduced-motion visitor gets a fire or an empty rectangle.
@@ -23,7 +23,7 @@ import { litPixels as countLit } from "./support/canvas.ts"
  * it was run by itself, which is the exact signature of flotsam's #65.
  *
  * The claim underneath it is about *area*, which is arithmetic:
- * `tests/unit/embers/mark.test.ts` holds `haloRadius` to it, and the measured
+ * `src/experiments/embers/tests/mark.test.ts` holds `haloRadius` to it, and the measured
  * milliseconds live in `src/experiments/embers/AGENTS.md`, where a measurement
  * belongs.
  */

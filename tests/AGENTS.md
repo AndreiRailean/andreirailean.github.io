@@ -2,10 +2,17 @@
 
 Two runners, split by **what a check needs** rather than by how fast it is.
 
-| Runner     | Files                     | Command                 | For                                          |
-| ---------- | ------------------------- | ----------------------- | -------------------------------------------- |
-| Vitest     | `tests/unit/**/*.test.ts` | `pnpm run test:unit`    | A function and a number. No DOM.             |
-| Playwright | `tests/*.spec.ts`         | `pnpm run test:browser` | A real page: canvas, layout, the console API |
+| Runner     | Files                                                          | Command                 | For                                          |
+| ---------- | -------------------------------------------------------------- | ----------------------- | -------------------------------------------- |
+| Vitest     | `tests/unit/**/*.test.ts`, `src/experiments/*/tests/*.test.ts` | `pnpm run test:unit`    | A function and a number. No DOM.             |
+| Playwright | `tests/*.spec.ts`, `src/experiments/*/tests/*.spec.ts`         | `pnpm run test:browser` | A real page: canvas, layout, the console API |
+
+**A piece's tests live beside it**, in `src/experiments/<slug>/tests/`: its unit
+tests and its browser spec. `tests/` keeps only what spans pieces — `support/`,
+the structural checks in `unit/`, and the kit, notes, index and showcase specs.
+See `src/experiments/docs/adr/20260928-a-piece-is-a-library-behind-three-files.md`.
+A check that reads specs as text lists them through `tests/unit/specs.ts`, never
+`readdirSync("tests")`, which would silently stop seeing every piece's.
 
 `pnpm test` runs both. The extensions are load-bearing — each runner is
 configured to collect only its own, or they collect each other's files and fail
@@ -17,7 +24,7 @@ browser suite takes seconds and a cold dev server, and answering "did I break th
 solver" should not.
 
 **A full `pnpm run test:unit` no longer answers in milliseconds, and two pieces
-are why.** `tests/unit/walkers/` and `tests/unit/crowd/` simulate hours of crowd
+are why.** `src/experiments/walkers/tests/` and `src/experiments/crowd/tests/` simulate hours of crowd
 to assert things no screenshot and no shorter run can — a counterflow sorting
 into files, a population holding without arriving in waves, a head that glances
 and comes back — and between them they are **722 of the suite's 736 seconds**
@@ -38,7 +45,7 @@ at about nine minutes, longer than the browser job.
 
 So `stroll` is three files and `throng` is two, cut along `describe` lines
 that already shared nothing but constants, and those constants live in
-`tests/unit/crowd/support.ts`. **When a crowd file grows past a couple of
+`src/experiments/crowd/tests/support.ts`. **When a crowd file grows past a couple of
 minutes, split it the same way rather than adding to it**: the cost of one more
 file is an import line, and the cost of one more minute in the heaviest file is
 paid by every PR. Read file times with `--reporter=json`, since the default
@@ -347,7 +354,7 @@ threshold count of an afterglow moves under a per cent, because light spread
 thin crosses the cut in both directions, while the set difference between the
 two masks is 1.6–2.5% of the lit area against a control of under 0.05%. #109 is
 the worked case; "the afterglow leaves light where the psyx no longer is" in
-`tests/psyxels.spec.ts` is the shape. Two things make it safe rather than
+`src/experiments/psyxels/tests/psyxels.spec.ts` is the shape. Two things make it safe rather than
 flaky: both reads happen inside **one** `experiment.api` call, so nothing can
 step the piece between them, and it comes with a **null control** — the same
 reading with the thing under test left alone, asserted to come out near zero.
@@ -367,7 +374,7 @@ one animation frame, so the canvas holds the _previous_ frame until that frame
 runs. A `getImageData` in the round trip straight after a `set()` is inside that
 window, and how wide the window is depends on when the browser next produces a
 frame — which differs between one CI runner and another. **Wait for a frame
-before reading**; `painted()` in `tests/flotsam.spec.ts` is the one-liner.
+before reading**; `painted()` in `src/experiments/flotsam/tests/flotsam.spec.ts` is the one-liner.
 
 **This is not only about pixels.** A `stats()` field accumulated _while drawing_
 goes stale in exactly the same window, and it comes back as an ordinary number
@@ -416,17 +423,17 @@ hides. It cost two sessions and three disproved hypotheses as issue #65:
 ## Writing a check for a new experiment
 
 1. **Unit first.** Anything expressible as a function of numbers goes in
-   `tests/unit/<slug>/`, one file per module of the piece, named after it. The
+   `src/experiments/<slug>/tests/`, one file per module of the piece, named after it. The
    `@/` alias resolves, so import the module by the path the piece itself uses.
-2. **Then the page**, in `tests/<slug>.spec.ts`, via `openExperiment` from
+2. **Then the page**, in `src/experiments/<slug>/tests/<slug>.spec.ts`, via `openExperiment` from
    `tests/support/experiment.ts`. It waits for `window.experiment`, fails the
    test on any console error, and hands back a handle typed with that piece's own
-   `ExperimentApi`.
+   `ExperimentApi`, exported from its `runner.ts`.
 3. **Anything the piece exposes only through the pointer needs a console API
    first.** See the Console API section of `src/experiments/AGENTS.md`; a control
    that cannot be driven from `window.experiment` cannot be tested at all.
 4. **Assert the property, not the current output.** Every test in
-   `tests/unit/dangler/` corresponds to a bug that actually happened, and each
+   `src/experiments/dangler/tests/` corresponds to a bug that actually happened, and each
    one names it. A test that would pass on a broken implementation is worse than
    no test, so break the code and watch it fail before trusting it.
 5. **A preset is a set of parameters, and its test is in the unit runner.**
@@ -444,7 +451,7 @@ hides. It cost two sessions and three disproved hypotheses as issue #65:
    fails in half a second. And read the property from the state, not from a
    number the mechanism under test computes about itself: `stats().overlap` is
    counted inside the contact solver, so a crowd with no solver reported none.
-   `tests/unit/walkers/crowd.test.ts` has all three shapes, and #238 the reasoning.
+   `src/experiments/walkers/tests/crowd.test.ts` has all three shapes, and #238 the reasoning.
 
 Callbacks handed to `experiment.api()` run inside the page: nothing from the
 test's scope travels with them. Values go through the second argument — the

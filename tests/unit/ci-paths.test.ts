@@ -152,6 +152,10 @@ const TESTED = [
   // to refuse.
   "tests/support/preview-server.ts",
   "tests/support/experiment.ts",
+  // A piece's own spec, in the same folder as the unit tests the filter skips.
+  // The near miss for `src/experiments/*/tests/*.test.ts`.
+  "src/experiments/walkers/tests/walkers.spec.ts",
+  "src/experiments/walkers/tests/park.ts",
 ]
 
 /**
@@ -165,7 +169,10 @@ const TESTED = [
  */
 const SKIPPED = [
   { path: "tests/unit/showcase-play.test.ts", why: "a unit test; the browser suite imports nothing from it" },
-  { path: "tests/unit/walkers/park.ts", why: "a unit harness, reached only from tests/unit" },
+  {
+    path: "src/experiments/walkers/tests/crowd.test.ts",
+    why: "a piece's unit test, beside it since #238; the browser suite imports nothing from it",
+  },
 ]
 
 /**

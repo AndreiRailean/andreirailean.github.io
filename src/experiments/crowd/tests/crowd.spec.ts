@@ -1,11 +1,11 @@
 import type { ExperimentApi } from "@/experiments/crowd/runner"
 import { PRESETS } from "@/experiments/crowd/presets"
-import { expect, openExperiment, test } from "./support/experiment"
+import { expect, openExperiment, test } from "../../../../tests/support/experiment"
 
 /**
  * Crowd, driven through its console API.
  *
- * The division of labour with `tests/unit/crowd/` is sharp, and it is the same
+ * The division of labour with `src/experiments/crowd/tests/` is sharp, and it is the same
  * one Walkers draws: the crowd needs no browser at all. Who is out there,
  * whether they walk through each other, whether the population holds over a
  * hundred metres of walking, whether a counterflow sorts itself into files —
@@ -119,7 +119,15 @@ test("a head passing close is large and a head at the back is a speck", async ({
   // The batching holds: one fill per brightness rather than one per head. Worth
   // 1.50ms to 1.09 at this head count, which is real and is not what makes the
   // piece affordable — see the measurement in `draw.ts`.
-  expect(stats.fills).toBeLessThan(stats.drawn / 3)
+  //
+  // **Against a ratio a per-head fill cannot reach, not against a third.** How
+  // many heads reach the glass depends on when the frame is read: twelve runs
+  // here measured `drawn` from 1,372 to 1,864 with `fills` between 160 and 176,
+  // and a loaded CI runner read `fills` 111 against under 333 heads, failing
+  // `drawn / 3`. `fills` hardly moves — it counts brightness bands and rocks —
+  // so the old bound was a bound on the head count. Unbatched, `fills` is at
+  // least `drawn`, which this still fails by a wide margin.
+  expect(stats.fills).toBeLessThan(stats.drawn * 0.6)
 
   // **The draw is a small part of the frame, and `fps` cannot say so.** A loop
   // capped by the display reports 60 whether a frame paints in 1ms or 10, so a

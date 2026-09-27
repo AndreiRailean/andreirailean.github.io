@@ -78,8 +78,8 @@ export function specifiers(source: string): string[] {
  * Where an import reaches past a piece's public files, if it does.
  *
  * `importer` is the importing file's path from the repo root. A file inside
- * the piece's own folder may import anything of it; so may, until the move in
- * #238's third step, the piece's unit tests and browser spec in `tests/`.
+ * the piece's own folder may import anything of it, which includes its tests
+ * in `src/experiments/<slug>/tests/`.
  */
 export function reachesPast(importer: string, specifier: string, pieces: readonly string[]): string | null {
   const match = /^@\/experiments\/([^/]+)\/(.+)$/.exec(specifier)
@@ -88,7 +88,6 @@ export function reachesPast(importer: string, specifier: string, pieces: readonl
   // A slug written as `${…}` is any piece, so it is held to the same rule.
   if (!pieces.includes(slug!) && !slug!.startsWith("${")) return null
   if (importer.startsWith(`${EXPERIMENTS}/${slug}/`)) return null
-  if (importer.startsWith(`tests/unit/${slug}/`) || importer === `tests/${slug}.spec.ts`) return null
   return PUBLIC.has(rest!) ? null : `${importer} imports ${specifier}`
 }
 

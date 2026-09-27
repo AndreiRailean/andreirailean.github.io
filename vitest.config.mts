@@ -21,7 +21,10 @@ export default defineConfig({
   test: {
     // `.test.ts` here, `.spec.ts` for Playwright. The two runners would
     // otherwise collect each other's files and fail on the other's imports.
-    include: ["tests/unit/**/*.test.ts"],
+    // A piece's own unit tests live beside it, in `src/experiments/<slug>/tests/`;
+    // `tests/unit/` keeps only what spans pieces. See
+    // `src/experiments/docs/adr/20260928-a-piece-is-a-library-behind-three-files.md`.
+    include: ["tests/unit/**/*.test.ts", "src/experiments/*/tests/*.test.ts"],
     // Nothing here touches a DOM. A piece's own modules are written for a
     // browser but the ones under test take numbers and return numbers.
     environment: "node",
@@ -30,7 +33,7 @@ export default defineConfig({
      *
      * Most of this suite answers in single-digit milliseconds, which is the
      * point of it. A handful do not: a claim about how long a psyx *lives*
-     * needs samples, so `tests/unit/psyxels/field.test.ts` steps a fully-inked
+     * needs samples, so `src/experiments/psyxels/tests/field.test.ts` steps a fully-inked
      * mask for hundreds of updates and its slowest test took **4865ms** on an
      * idle machine — 135ms inside the default. It duly failed in a full run
      * with prettier and eslint just before it, and a vitest timeout is reported

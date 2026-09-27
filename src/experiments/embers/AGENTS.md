@@ -21,7 +21,7 @@ embers.ts    the canvas, the clock, the pool, the loop
 ```
 
 **The first six touch no DOM on purpose**, and it is the single most useful thing
-about the layout: `tests/unit/embers/fire.test.ts` runs the whole simulation
+about the layout: `src/experiments/embers/tests/fire.test.ts` runs the whole simulation
 headless in milliseconds, and it is what found both of the real faults below.
 Keep it that way — if something arithmetic needs a canvas, the canvas is in the
 wrong place.
@@ -118,7 +118,7 @@ still for seven — and the slower you set it the worse it got, which is the
 opposite of what the control is for. `framePlan` steps by the time that actually
 elapsed, cut into substeps no longer than `STEP`; both integrators in `ember.ts`
 are exponential and stable at any `dt`, which is what makes that safe.
-`tests/unit/embers/clock.test.ts` holds it.
+`src/experiments/embers/tests/clock.test.ts` holds it.
 
 **`trail` was a badly scaled control, not a wrong mechanism.** It held the
 fraction of the previous frame surviving one frame at 60 Hz, and that maps to a
@@ -218,7 +218,7 @@ exactly as they should; there are simply a fiftieth as many as asked for.
 take. It is a **reservation and not an eviction**, deliberately: taking a slot
 back from a live ember would shorten every ember's life the moment the sputter
 went past the ceiling, which is a far stranger thing for a density control to do
-than simply stop adding. `tests/unit/embers/bed.test.ts` holds it, and
+than simply stop adding. `src/experiments/embers/tests/bed.test.ts` holds it, and
 `fire.test.ts` now asks every preset whether its splinters actually reach the air
 — which replaced an upper bound on the population that was only ever a proxy for
 this, and a bad one, since a scene is allowed to sit at its ceiling.
@@ -243,7 +243,7 @@ overlay reporting `0 vortices` is a sampled instant rather than a dead field.
   than fewer embers. `experiment.debug(true)` prints `drawMs` separately from
   `fps` precisely so the two can be told apart.
 
-  The relationship is held by `tests/unit/embers/mark.test.ts`, on `haloRadius`,
+  The relationship is held by `src/experiments/embers/tests/mark.test.ts`, on `haloRadius`,
   and **not** by a timing assertion — which was tried and was genuinely flaky.
   The section's own advice is that a headless run's absolute frame times are
   pessimistic and its _ratios_ are trustworthy, and that does not survive four

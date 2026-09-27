@@ -33,7 +33,7 @@ Every item below was a real bug in this experiment, not a hypothetical.
   silently disabled glimmers by default once. `settingsFromQuery` skips absent
   and blank params and requires `Number.isFinite`, so all three cases keep the
   default; an explicit `0` still reads as `0`. Covered by
-  `tests/unit/starry-night/settings.test.ts`.
+  `src/experiments/starry-night/tests/settings.test.ts`.
 - **Do not set `accent-color` on the sliders.** The UA derives the unfilled track
   and thumb contrast from the accent's _perceived_ luminance, which swings wildly
   with hue at fixed lightness, so the track flips to a contrasting scheme partway

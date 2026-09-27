@@ -177,7 +177,7 @@ export function createCurrent(spec: CurrentSpec, patchWidth: number, patchHeight
  *
  * u = ∇⊥ψ = (∂ψ/∂y, −∂ψ/∂x), which is what makes it divergence-free. Writing it
  * any other way — even an algebraically equal one — is how that property gets
- * lost, so the two lines below are load-bearing and `tests/unit/flotsam/current.test.ts`
+ * lost, so the two lines below are load-bearing and `src/experiments/flotsam/tests/current.test.ts`
  * measures the divergence rather than trusting them.
  */
 export function currentAt(current: Current, x: number, y: number, time: number, out: { x: number; y: number }): void {

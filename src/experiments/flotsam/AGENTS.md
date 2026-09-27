@@ -13,7 +13,7 @@ keeping them apart.
   of flotsam has a _rest position_ — the parcel of water it sits on — and where
   it is drawn is that position plus `sample()`. Nothing accumulates, so a sea of
   any violence leaves it exactly where it found it. This is the piece's thesis
-  and `tests/flotsam.spec.ts` asserts it as `transport === 0`.
+  and `src/experiments/flotsam/tests/flotsam.spec.ts` asserts it as `transport === 0`.
 - **The current is integrated.** It moves the rest positions, and it is the only
   thing in the piece that takes flotsam anywhere.
 
@@ -248,7 +248,7 @@ in order to work at all, and every one of them was learned by breaking it.
 
   Measured, raising `gleam` from 0 to 24 on a scene of large pieces: centred, the
   lit area grew 7% and a piece's own level went 624 → 712; at the rim, 157% and
-  624 → 632. `tests/flotsam.spec.ts` asserts all three, and each one was
+  624 → 632. `src/experiments/flotsam/tests/flotsam.spec.ts` asserts all three, and each one was
   confirmed to fail with its fix backed out.
 
   A fourth followed from the same root and needed a control rather than a fix: a
@@ -315,7 +315,7 @@ in order to work at all, and every one of them was learned by breaking it.
   by it, and giving both one alpha tripled the haze on every 2× screen the moment
   the floor moved to device pixels. The glare keeps a css-px reference, read as
   an area ratio — a smaller speck reflects less light — rather than as a
-  pixel-grid correction. `tests/flotsam.spec.ts` pins both halves and each was
+  pixel-grid correction. `src/experiments/flotsam/tests/flotsam.spec.ts` pins both halves and each was
   watched to fail. See #94.
 - **`stats().dimmedDots` says how much of the population is only haze.** `light`
   will not: it is dominated by a thirty-pixel halo, so it barely moves when every
@@ -373,7 +373,7 @@ in order to work at all, and every one of them was learned by breaking it.
   hundred times the area of a one-pixel one. When a scene is slow, read `fillPx`
   before reaching for `dots`.
 - **Never use `DEFAULT_SETTINGS` as a neutral baseline in a test.** It is
-  editorial. `tests/unit/flotsam/waves.test.ts` states its own `PLAIN` sea, and
+  editorial. `src/experiments/flotsam/tests/waves.test.ts` states its own `PLAIN` sea, and
   anything measuring physics should do the same — Dangler records two checks
   that went quietly vacuous when its defaults moved.
 - **`prefers-reduced-motion` freezes the clock rather than pinning settings.**
@@ -383,7 +383,7 @@ in order to work at all, and every one of them was learned by breaking it.
   clock gives a still with all the shape and gathering intact.
 - **Settings round-trip through the query string.** Anything added to `Settings`
   needs a `Control`, or the panel and shared URLs quietly disagree — asserted in
-  `tests/flotsam.spec.ts`.
+  `src/experiments/flotsam/tests/flotsam.spec.ts`.
 
 ## Shape of the code
 
@@ -436,11 +436,11 @@ it.
   says whether the sea has folded (0 or below), and `orbit` against `transport`
   is the piece's whole argument in two numbers — how far it swings against how
   fast it is actually going anywhere.
-- **`tests/flotsam.spec.ts` drives the API under `pnpm test`**, and every test in
+- **`src/experiments/flotsam/tests/flotsam.spec.ts` drives the API under `pnpm test`**, and every test in
   it is one of the traps above. Add to it rather than reaching for `webcheck`,
   which cannot evaluate JS.
 
-**`tests/unit/flotsam/` covers the physics, and you should run it after touching
+**`src/experiments/flotsam/tests/` covers the physics, and you should run it after touching
 any of it** — `pnpm exec vitest run flotsam` for all of it, `pnpm exec vitest waves` while
 editing the sea. One file per module, and every assertion is a property no
 screenshot could show: a float that comes back after exactly one period, a sea
