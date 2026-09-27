@@ -78,6 +78,8 @@ type Preset = { label: string; settings: Record<string, unknown> }
 async function settingsModule(slug: string) {
   return (await import(`../../src/experiments/${slug}/settings.ts`)) as {
     PRESETS?: Preset[]
+    DEFAULT_SETTINGS?: Record<string, unknown>
+    normalizeSettings?: (patch: Record<string, unknown>) => Record<string, unknown>
   }
 }
 
@@ -141,6 +143,33 @@ describe.each(slugs)("%s", (slug) => {
         `cannot fall behind the scene it sits on. Offsetting is fine; typing a number is not. ` +
         `Or say why not with a "${OPT_OUT} <reason>" comment.`,
     ).toBe(true)
+  })
+
+  /**
+   * **A preset is a set of parameters, and this is its test.** Complete — it
+   * names every setting, so nothing about it rests on the defaults — and already
+   * normal, so the validator changes nothing: no value out of range, no value
+   * between steps, nothing a clamp would quietly move. Together with the two
+   * address round-trips (`experiments-urls` for the query, `experiments-address`
+   * for the packed scene), that is everything a preset can be wrong about in
+   * code. Whether it *looks* right is not a test: every preset goes through the
+   * same renderer, so rendering each one proves nothing that rendering the
+   * primary does not, and costs a browser run per preset. #238.
+   *
+   * Dangler and Starry Night had this for themselves; it is the section's now.
+   */
+  it("gives every preset every setting, each already normal", async () => {
+    const { PRESETS, DEFAULT_SETTINGS, normalizeSettings } = await settingsModule(slug)
+    if (!PRESETS || !DEFAULT_SETTINGS || !normalizeSettings) {
+      throw new Error(`${slug}/settings.ts does not export PRESETS, DEFAULT_SETTINGS and normalizeSettings`)
+    }
+    expect(PRESETS.length, `${slug} has no presets`).toBeGreaterThan(0)
+
+    const keys = Object.keys(DEFAULT_SETTINGS).sort()
+    for (const { label, settings } of PRESETS) {
+      expect(Object.keys(settings).sort(), `${slug}'s "${label}" does not name every setting`).toEqual(keys)
+      expect(normalizeSettings(settings), `${slug}'s "${label}" is not already normal`).toEqual(settings)
+    }
   })
 
   it("gives every preset a usable hue", async () => {
