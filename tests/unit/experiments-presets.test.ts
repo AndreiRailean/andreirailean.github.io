@@ -124,8 +124,14 @@ describe.each(slugs)("%s", (slug) => {
    * it; flotsam's was right only because its numbers had not moved yet.
    */
   it("computes the note's accent from the primary rather than hardcoding it", () => {
-    const page = read(`${PAGES}/${slug}/about.astro`)
-    if (page === null || optsOutOfFile(page)) return
+    // The theme is on the note's page — or, where the note is read over the
+    // piece (#223), on the piece's own component, which serves both addresses.
+    // Found nowhere, it reports against `about.astro` and fails as "not found".
+    const about = read(`${PAGES}/${slug}/about.astro`)
+    if (about === null) return
+    const piece = read(`src/experiments/${slug}/Piece.astro`)
+    const page = piece !== null && !/accent:/.test(about) && /accent:/.test(piece) ? piece : about
+    if (optsOutOfFile(page)) return
 
     const accent = /accent:\s*(.+),/.exec(page)?.[1] ?? ""
     expect(

@@ -1,0 +1,88 @@
+---
+import PiecePage from "@/experiments/gallery/PiecePage.astro"
+import type { NoteTheme } from "@/experiments/gallery/NoteOverlay.astro"
+import { PRESETS } from "@/experiments/dangler/settings"
+
+// The note's furniture is the gallery's; only the paint is Dangler's. See
+// docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.
+
+// Taken from the primary rather than written down, so the furniture cannot
+// drift away from the scene behind it. It did: this read `hsl(38, …)`, which
+// matched the defaults until they moved on 2026-08-28 and then did not, and the
+// note wore amber over a blue piece for two days. Saturation and lightness stay
+// Dangler's own — the hue is what has to agree. See CONTEXT.md on *primary*.
+const primary = PRESETS[0]!.settings
+
+const theme: NoteTheme = {
+  bg: "#05070c",
+  sheet: "rgb(5 7 12 / 78%)",
+  fg: "#d9d5cc",
+  bright: "#f6f2ea",
+  muted: "#8a8377",
+  edge: "rgb(255 255 255 / 11%)",
+  accent: `hsl(${primary.hue}, 58%, 66%)`,
+}
+
+interface Props {
+  /** Render with the note already open, for the note's own address. */
+  note?: boolean
+}
+
+const { note = false } = Astro.props
+---
+
+<PiecePage slug="dangler" note={note} theme={theme} backdrop={0.5}>
+  <style is:global>
+    /* No light scheme and no invert. Inverting a piece whose whole subject is
+         emitted light gives dark dots on white, which is a different piece. */
+    html {
+      --ground: #05070c;
+      --accent: hsl(38, 62%, 62%);
+      --ui-text: rgb(255 255 255 / 72%);
+      --ui-label: rgb(255 255 255 / 50%);
+      --ui-heading: rgb(255 255 255 / 34%);
+      --ui-panel: rgb(8 10 18 / 84%);
+      --ui-chip: rgb(10 12 22 / 74%);
+      --ui-edge: rgb(255 255 255 / 12%);
+      --ui-edge-hover: rgb(255 255 255 / 30%);
+      --ui-on-bg: hsl(38, 40%, 40%);
+      --ui-on-text: hsl(38, 60%, 95%);
+      --ui-on-edge: rgb(255 255 255 / 38%);
+      --track: rgb(255 255 255 / 16%);
+      --ui-fade: 0.35s;
+
+      /* The kit's own measures, which the pieces legitimately disagree
+           about: a panel of fifteen rows and one of twenty-seven do not
+           want the same widths. */
+      --ui-label-col: 6.75rem;
+      --ui-value-col: 4.25rem;
+      --ui-panel-min: 23rem;
+      --ui-row-gap: 0.26rem;
+    }
+
+    html,
+    body {
+      margin: 0;
+      height: 100%;
+      background: var(--ground);
+    }
+
+    body {
+      overflow: hidden;
+    }
+
+    canvas {
+      position: fixed;
+      inset: 0;
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+  <canvas id="lights"></canvas>
+  <script>
+    import { boot } from "@/experiments/dangler/page"
+
+    boot()
+  </script>
+</PiecePage>

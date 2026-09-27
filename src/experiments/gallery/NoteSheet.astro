@@ -1,0 +1,178 @@
+---
+import type { CollectionEntry } from "astro:content"
+import { render } from "astro:content"
+
+/**
+ * The note's text column — title, dates, the write-up, and its two exits.
+ *
+ * Rendered inside the overlay a piece opens over itself (`NoteOverlay.astro`,
+ * #223). Every rule is scoped under `.note`, because it sits inside a piece's
+ * page, whose own elements a bare `p` or `a` rule would reach.
+ *
+ * Colours come from the note's theme properties (`--fg`, `--bright`, …), which
+ * whoever mounts this sets on an ancestor.
+ */
+
+interface Props {
+  entry: CollectionEntry<"experiments">
+}
+
+const { entry } = Astro.props
+const { Content } = await render(entry)
+const { title, summary, slug, started, updated } = entry.data
+
+const formatDate = (date: Date) => date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
+---
+
+<div class="note">
+  <main>
+    <div class="sheet">
+      <p class="exits">
+        <a href={`/experiments/${slug}/`}>view the piece</a>
+        <a href="/experiments/">all experiments</a>
+      </p>
+      <h1>{title}</h1>
+      <p class="summary">{summary}</p>
+      <p class="dates">
+        <time datetime={started.toISOString()}>{formatDate(started)}</time>
+        {
+          formatDate(updated) !== formatDate(started) && (
+            <>
+              {" · last changed "}
+              <time datetime={updated.toISOString()}>{formatDate(updated)}</time>
+            </>
+          )
+        }
+      </p>
+      <Content />
+    </div>
+  </main>
+</div>
+
+<style is:global>
+  .note {
+    color: var(--fg);
+    font:
+      400 1rem/1.7 ui-sans-serif,
+      system-ui,
+      -apple-system,
+      "Segoe UI",
+      sans-serif;
+  }
+
+  .note main {
+    max-width: 40rem;
+    margin: 0 auto;
+  }
+
+  /* Blur *and* opacity, rather than either alone: opacity by itself leaves
+         the piece showing through the text, and blur by itself is not enough
+         contrast where something bright sits under a line of type. */
+  .note .sheet {
+    padding: clamp(1.5rem, 4vw, 2.75rem);
+    background: var(--sheet);
+    border: 1px solid var(--edge);
+    border-radius: 0.5rem;
+    backdrop-filter: blur(16px) saturate(130%);
+  }
+
+  /*
+       * The way out, at the top, in the same monospace the index's placards and
+       * a piece's own chrome use. It is above the title because leaving should
+       * not require reading to the end of a long note first.
+       */
+  .note .exits {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    margin: 0 0 clamp(1.75rem, 5vh, 2.75rem);
+    font:
+      400 0.75rem/1.5 ui-monospace,
+      "SF Mono",
+      Menlo,
+      monospace;
+    letter-spacing: 0.04em;
+  }
+
+  .note h1 {
+    margin: 0;
+    color: var(--bright);
+    font-size: clamp(1.6rem, 5vw, 2.1rem);
+    font-weight: 500;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+
+  .note .summary {
+    margin: 0.6rem 0 0;
+    color: var(--muted);
+    font-size: 1.05rem;
+    text-wrap: pretty;
+  }
+
+  .note .dates {
+    margin: 1.5rem 0 0;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--edge);
+    color: var(--muted);
+    font:
+      400 0.75rem/1.5 ui-monospace,
+      "SF Mono",
+      Menlo,
+      monospace;
+    letter-spacing: 0.04em;
+  }
+
+  .note h2 {
+    margin: 2.5rem 0 0.75rem;
+    color: var(--bright);
+    font-size: 1.05rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+
+  .note p {
+    margin: 0 0 1.1rem;
+  }
+
+  .note a {
+    color: var(--accent);
+    text-underline-offset: 0.2em;
+  }
+
+  .note strong {
+    color: var(--bright);
+    font-weight: 500;
+  }
+
+  .note code {
+    padding: 0.1em 0.35em;
+    background: rgb(255 255 255 / 7%);
+    border-radius: 0.25rem;
+    color: var(--bright);
+    font:
+      400 0.875em/1 ui-monospace,
+      "SF Mono",
+      Menlo,
+      monospace;
+  }
+
+  .note ul {
+    margin: 0 0 1.1rem;
+    padding-left: 1.1rem;
+  }
+
+  .note li {
+    margin-bottom: 0.6rem;
+  }
+
+  .note li::marker {
+    color: var(--muted);
+  }
+
+  .note hr {
+    margin: 2.5rem 0;
+    border: 0;
+    border-top: 1px solid var(--edge);
+  }
+</style>

@@ -2,8 +2,8 @@ import { copyText } from "@/experiments/kit/copy"
 import { toggleFullscreen } from "@/experiments/kit/fullscreen"
 
 /**
- * The chrome: a bar of presets, a settings panel, and the idle behaviour that
- * hides both.
+ * The chrome: a column of presets, a bar of actions and `adjust`, a settings
+ * panel, the way to the note, and the idle behaviour that hides all of it.
  *
  * **Offered, not imposed.** Per
  * `../docs/adr/20260828-the-piece-is-independent-the-gallery-is-not`, a piece
@@ -22,7 +22,7 @@ import { toggleFullscreen } from "@/experiments/kit/fullscreen"
  *
  * **It renders DOM, not appearance.** The class names below are the contract
  * with a piece's own stylesheet: `.bar`, `.panel`, `.group`, `.row`, `.label`,
- * `.value`, `.span`, `.modes`, `.modes.set`, `.mode`, `.mode.glyph`, `.preset`,
+ * `.value`, `.span`, `.modes`, `.modes.set`, `.mode`, `.mode.glyph`, `.presets`, `.preset`,
  * `.toggle`, `.copy`, `.about` — plus `data-active` and `data-locked` on a mode.
  * A piece that uses a control kind it has no CSS for will render it unstyled and
  * nothing will say so — that has happened here twice now, and
@@ -366,10 +366,22 @@ export function createControls<S extends object>(options: Options<S>): Controls<
   panel.className = "panel"
   panel.hidden = true
 
+  /**
+   * The presets have a column of their own, apart from the bar — #223.
+   *
+   * They used to lead one bar with the actions, `adjust` and `about` after
+   * them, and at sixteen presets everything that was not a scene sat at the far
+   * end of a row of scenes. So the presets run down the left edge in columns of
+   * five, the bar holds the actions and `adjust` top right with the panel
+   * opening beneath it, and `about` has the bottom-right corner to itself.
+   */
+  const presetColumn = document.createElement("div")
+  presetColumn.className = "presets"
+
   // Built either way, appended only when the chrome is wanted: `render()` writes
   // to these nodes on every change and a headless mount would otherwise need a
   // second code path through the one function everything goes through.
-  if (chrome) root.append(bar, panel)
+  if (chrome) root.append(presetColumn, bar, panel)
 
   // --- idle handling -------------------------------------------------------
 
@@ -414,7 +426,8 @@ export function createControls<S extends object>(options: Options<S>): Controls<
   settingsToggle.title = "Show or hide these controls (key c, Escape closes)"
   settingsToggle.addEventListener("click", () => setPanelOpen(!panelOpen))
 
-  bar.append(...presetButtons, ...actionButtons, settingsToggle)
+  presetColumn.append(...presetButtons)
+  bar.append(...actionButtons, settingsToggle)
 
   // The gallery placard: present when you look for it, gone while you watch.
   if (aboutHref) {
@@ -423,7 +436,8 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     about.href = aboutHref
     about.textContent = "about"
     about.title = "A written note on this piece and how it came to look this way"
-    bar.append(about)
+    // Its own corner, rather than the end of the bar.
+    if (chrome) root.append(about)
   }
 
   // --- the panel -----------------------------------------------------------

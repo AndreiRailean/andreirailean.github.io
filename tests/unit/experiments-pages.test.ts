@@ -52,8 +52,44 @@ it("finds the pages, so an empty run cannot pass for a clean one", () => {
   expect(slugs.length).toBeGreaterThan(0)
 })
 
+/**
+ * The file that boots the piece: the route itself, or the piece's own
+ * component when the route only renders one. Crowd's does, because one
+ * component serves both its addresses — the piece, and the piece with its note
+ * open (#223). Followed rather than exempted, so the checks below still read
+ * the script that runs.
+ */
+function bootingSource(slug: string): string {
+  const route = readFileSync(`${PAGES}/${slug}/index.astro`, "utf8")
+  const piece = `src/experiments/${slug}/Piece.astro`
+  return route.includes(`@/experiments/${slug}/Piece.astro`) ? readFileSync(piece, "utf8") : route
+}
+
 describe.each(slugs)("%s", (slug) => {
-  const page = readFileSync(`${PAGES}/${slug}/index.astro`, "utf8")
+  const page = bootingSource(slug)
+
+  /**
+   * **Served by the gallery's page, at both addresses — #223.** The document,
+   * `#ui`, the interactive view and the note are `gallery/PiecePage.astro`'s,
+   * so a piece does not roll its own page any more than its own controls. A
+   * route that writes its own document, or a note page of its own, fails here.
+   */
+  it("is served by the gallery's page, at both of its addresses", () => {
+    for (const route of ["index", "about"]) {
+      const source = readFileSync(`${PAGES}/${slug}/${route}.astro`, "utf8")
+      expect(
+        source.includes(`@/experiments/${slug}/Piece.astro`) && /<Piece\b/.test(source),
+        `${slug}/${route}.astro does not render src/experiments/${slug}/Piece.astro`,
+      ).toBe(true)
+    }
+    const piece = readFileSync(`src/experiments/${slug}/Piece.astro`, "utf8")
+    expect(
+      piece.includes("@/experiments/gallery/PiecePage.astro") && /<PiecePage\b/.test(piece),
+      `src/experiments/${slug}/Piece.astro does not render gallery/PiecePage.astro — ` +
+        `the document, the chrome's mount and the note are the gallery's`,
+    ).toBe(true)
+    expect(piece, `${slug}'s Piece.astro writes its own document`).not.toMatch(/<html\b|<!doctype/i)
+  })
 
   it("boots from a module rather than carrying the script itself", () => {
     const lines = statements(scriptBody(page))

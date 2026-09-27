@@ -16,26 +16,59 @@ import { expect, openExperiment, test } from "./support/experiment.ts"
 const PIECES = ["bubbles", "crowd", "dangler", "embers", "flotsam", "psyxels", "starry-night", "walkers"]
 
 for (const slug of PIECES) {
-  test(`${slug}: the panel opens above the bar, not below it`, async ({ page }) => {
+  /**
+   * **Where the chrome sits — #223.** Presets down the left edge in columns of
+   * five; the actions and `adjust` top right, with the panel opening downward
+   * beneath them and stopping short of `about`, which has the bottom-right
+   * corner to itself. It used to be one bar in the bottom-right corner, where
+   * sixteen presets buried everything that was not a scene.
+   */
+  test(`${slug}: presets run down the left, the bar and its panel sit top right, about bottom right`, async ({
+    page,
+  }) => {
     const experiment = await openExperiment<BaseApi>(page, slug, { idle: false })
     await experiment.api(({ api }) => api.panel(true))
 
-    const panel = await page.locator(".panel").boundingBox()
-    const bar = await page.locator(".bar").boundingBox()
-    if (!panel || !bar) throw new Error(`${slug}: no chrome on the page`)
+    const box = async (selector: string) => {
+      const found = await page.locator(selector).first().boundingBox()
+      if (!found) throw new Error(`${slug}: nothing at ${selector}`)
+      return found
+    }
+    const { width, height } = page.viewportSize()!
+    const presets = await box("#ui .presets")
+    const bar = await box("#ui .bar")
+    const panel = await box("#ui .panel")
+    const about = await box("#ui > .about")
 
-    // The bar is what is anchored to the corner; the panel grows upward from it.
-    // Starry Night used to do the opposite, which nobody had decided.
-    expect(panel.y + panel.height).toBeLessThanOrEqual(bar.y + 1)
+    expect(presets.x, `${slug}: the presets are not on the left`).toBeLessThan(width / 4)
+    expect(presets.y, `${slug}: the presets do not start at the top`).toBeLessThan(height / 8)
+    expect(bar.x + bar.width, `${slug}: the bar is not on the right`).toBeGreaterThan(width * 0.9)
+    expect(bar.y, `${slug}: the bar is not at the top`).toBeLessThan(height / 8)
+    expect(about.x + about.width, `${slug}: about is not on the right`).toBeGreaterThan(width * 0.9)
+    expect(about.y + about.height, `${slug}: about is not at the bottom`).toBeGreaterThan(height * 0.9)
+    expect(panel.y, `${slug}: the panel is not beneath the bar`).toBeGreaterThanOrEqual(bar.y + bar.height - 1)
+    expect(panel.y + panel.height, `${slug}: the panel runs over about`).toBeLessThanOrEqual(about.y + 1)
+
+    // Five to a column: the sixth preset starts the next one, to the right of the first.
+    const buttons = page.locator("#ui .presets .preset")
+    if ((await buttons.count()) > 5) {
+      const first = (await buttons.nth(0).boundingBox())!
+      const fifth = (await buttons.nth(4).boundingBox())!
+      const sixth = (await buttons.nth(5).boundingBox())!
+      expect(fifth.x, `${slug}: the fifth preset left the first column`).toBeCloseTo(first.x, 0)
+      expect(sixth.x, `${slug}: the sixth preset did not start a second column`).toBeGreaterThan(first.x + 1)
+      expect(sixth.y, `${slug}: the second column does not start at the top`).toBeCloseTo(first.y, 0)
+    }
   })
 
-  test(`${slug}: the bar ends with adjust, then the way to the note`, async ({ page }) => {
+  test(`${slug}: the bar ends with adjust, and the presets lead their column from one`, async ({ page }) => {
     await openExperiment<BaseApi>(page, slug, { idle: false })
 
     const labels = await page.locator(".bar button, .bar a").allTextContents()
-    expect(labels.slice(-2)).toEqual(["adjust", "about"])
-    // Presets are numbered from one and lead the bar, because the digits load them.
-    expect(labels[0]).toMatch(/^1 /)
+    expect(labels.at(-1)).toBe("adjust")
+    await expect(page.locator("#ui > .about")).toHaveText("about")
+    // Numbered from one, because the digits load them.
+    expect((await page.locator("#ui .presets .preset").allTextContents())[0]).toMatch(/^1 /)
   })
 
   test(`${slug}: c opens the panel, Escape closes it, and a digit loads a preset`, async ({ page }) => {
@@ -68,7 +101,7 @@ for (const slug of PIECES) {
     const shown = () => page.evaluate(() => document.documentElement.dataset.preset)
 
     const titles = await page
-      .locator(".bar button.preset")
+      .locator("#ui button.preset")
       .evaluateAll((buttons) => buttons.map((b) => b.getAttribute("title") ?? ""))
     const claims = titles.flatMap((title, index) => {
       const key = /\(key ([^,)]+)/.exec(title)?.[1]

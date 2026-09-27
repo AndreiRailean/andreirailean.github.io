@@ -1,0 +1,95 @@
+---
+import PiecePage from "@/experiments/gallery/PiecePage.astro"
+import type { NoteTheme } from "@/experiments/gallery/NoteOverlay.astro"
+import { PRESETS } from "@/experiments/crowd/settings"
+
+// Read off the primary rather than written down, so promoting a preset moves the
+// note's accent along with the poster and the landing scene. Every instance of
+// this fault in the section was a hue typed as a literal, correct on the day.
+//
+// The piece itself is white on black — every preset is `tint: 0` — so the hue
+// reaches nothing a visitor sees in the canvas. It is still the right thing to
+// derive from: it is the one colour the piece states, and the alternative is a
+// literal here, which is the exact mechanism this section keeps being bitten by.
+const { hue } = PRESETS[0]!.settings
+const theme = {
+  bg: "#000",
+  sheet: `hsl(${hue} 22% 5% / 80%)`,
+  fg: `hsl(${hue} 10% 86%)`,
+  bright: `hsl(${hue} 14% 97%)`,
+  muted: `hsl(${hue} 9% 58%)`,
+  edge: `hsl(${hue} 20% 84% / 12%)`,
+  accent: `hsl(${hue} 42% 76%)`,
+} satisfies NoteTheme
+
+interface Props {
+  /** Render with the note already open, for the note's own address. */
+  note?: boolean
+}
+
+const { note = false } = Astro.props
+---
+
+<PiecePage slug="crowd" note={note} theme={theme} backdrop={0.42}>
+  <style is:global>
+    html {
+      /* Set from JS on every change; the fallback keeps the page sane before
+           the first paint and without script. Every scene this piece ships is
+           `tint: 0` and therefore white — the hue is what the *chrome* and the
+           note are tinted from, which is why it exists at all. */
+      --hue: 208;
+
+      /* Black, and meant literally. The piece is white circles on black and
+           the fade runs to the ground colour, so a "nearly black" here would put
+           a floor under the fog and give the crowd a visible far wall. */
+      --ground: #000;
+
+      --accent: hsl(var(--hue) 40% 74%);
+      --ui-text: rgb(255 255 255 / 74%);
+      --ui-label: rgb(255 255 255 / 48%);
+      --ui-heading: hsl(var(--hue) 28% 70%);
+      --ui-panel: rgb(8 9 11 / 86%);
+      --ui-chip: rgb(12 13 16 / 78%);
+      --ui-edge: rgb(225 235 255 / 13%);
+      --ui-edge-hover: rgb(225 235 255 / 34%);
+      --ui-on-bg: hsl(var(--hue) 22% 30%);
+      --ui-on-text: hsl(var(--hue) 30% 95%);
+      --ui-on-edge: rgb(215 230 255 / 42%);
+      --track: rgb(225 235 255 / 15%);
+      --ui-fade: 0.35s;
+
+      /* The kit's measures, which the pieces legitimately disagree about:
+           twenty rows in five groups want a wider panel than fifteen, and the
+           values here are speeds and metres rather than percentages. */
+      --ui-label-col: 6rem;
+      --ui-value-col: 6.25rem;
+      --ui-panel-min: 23rem;
+      --ui-row-gap: 0.38rem;
+    }
+
+    html,
+    body {
+      margin: 0;
+      height: 100%;
+      background: var(--ground);
+    }
+
+    body {
+      overflow: hidden;
+    }
+
+    canvas {
+      position: fixed;
+      inset: 0;
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+  <canvas id="square"></canvas>
+  <script>
+    import { boot } from "@/experiments/crowd/page"
+
+    boot()
+  </script>
+</PiecePage>

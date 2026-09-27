@@ -93,6 +93,12 @@ src/pages/experiments/<slug>/  index.astro (the piece), about.astro (the note)
   see them. `tests/unit/experiments-pages.test.ts` keeps a page to an import and
   a call; the reasoning is in
   `docs/adr/20260906-a-page-holds-no-logic.md`.
+- **A piece is served by the gallery's page.** `gallery/PiecePage.astro` owns
+  the document, `#ui`, the interactive view and the note, which is read over
+  the running piece at both addresses. A piece's `src/experiments/<slug>/Piece.astro`
+  supplies only its stylesheet, canvas, boot and note colours, and its two
+  routes render it in one line each. `tests/unit/experiments-pages.test.ts`
+  holds this; see `docs/adr/20260927-a-piece-is-served-by-the-gallerys-page.md`.
 - An experiment page **imports nothing from the rest of the site** — no
   `Layout.astro`, no `globals.css`, no Tailwind. It is a bare document.
   **`pnpm run lint` fails this now**, so it is no longer convention: inside
