@@ -22,9 +22,11 @@ import { describe, expect, it } from "vitest"
  * in the piece's name in an error string, well past the third-copy rule, for as
  * long as the pages existed.
  *
- * So the script moved to `src/experiments/<slug>/page.ts` and the page calls
- * `boot()`. This keeps it there. See
- * `src/experiments/docs/adr/20260906-a-page-holds-no-logic.md`.
+ * So the script moved to `src/experiments/<slug>/page.ts` and the page called
+ * `boot()`; since #238 the boot is the gallery's, handed the piece's three
+ * files. This keeps it there. See
+ * `src/experiments/docs/adr/20260906-a-page-holds-no-logic.md` and
+ * `src/experiments/docs/adr/20260928-a-piece-is-a-library-behind-three-files.md`.
  */
 
 const PAGES = "src/pages/experiments"
@@ -91,27 +93,40 @@ describe.each(slugs)("%s", (slug) => {
     expect(piece, `${slug}'s Piece.astro writes its own document`).not.toMatch(/<html\b|<!doctype/i)
   })
 
-  it("boots from a module rather than carrying the script itself", () => {
+  /**
+   * **The gallery's boot, handed the piece's three files, and nothing else.**
+   * A piece is a library behind `settings.ts`, `presets.ts` and `runner.ts`,
+   * and `gallery/boot.ts` wires any piece from them, so the script is those
+   * imports and one call. Anything more is logic that a grep of
+   * `src/experiments/` will not find and `kit-adoption` cannot read — and a
+   * piece reaching past its three files is a second way in. See
+   * `src/experiments/docs/adr/20260928-a-piece-is-a-library-behind-three-files.md`.
+   */
+  it("boots through the gallery from the piece's three files", () => {
     const lines = statements(scriptBody(page))
-
-    // An import and a call. Anything else is logic that a grep of
-    // `src/experiments/` will not find and `kit-adoption` cannot read.
-    const strays = lines.filter((line) => !line.startsWith("import ") && !/^boot\(\)$/.test(line))
+    const imports = lines.filter((line) => line.startsWith("import "))
+    const strays = lines.filter((line) => !line.startsWith("import ") && !/^boot\(\{.*\}\)$/.test(line))
 
     expect(
       strays,
-      `${slug}'s page carries script of its own (${strays.slice(0, 3).join(" / ")}). Move it to ` +
-        `src/experiments/${slug}/page.ts and call boot() — code outside src/experiments is invisible ` +
-        `to a grep of the section and to kit-adoption.test.ts, which is how five copies of ` +
-        `requireElement went unnoticed.`,
+      `${slug}'s page carries script of its own (${strays.slice(0, 3).join(" / ")}). A page imports ` +
+        `gallery/boot and the piece's settings, presets and runner, and calls boot() — code outside ` +
+        `src/experiments is invisible to a grep of the section and to kit-adoption.test.ts, which is how ` +
+        `five copies of requireElement went unnoticed.`,
     ).toEqual([])
-  })
-
-  it("imports its boot from the section, not from a path that climbs out of it", () => {
-    const body = scriptBody(page)
     expect(
-      body.includes(`@/experiments/${slug}/page`),
-      `${slug}'s page does not import its boot from @/experiments/${slug}/page`,
-    ).toBe(true)
+      lines.filter((line) => line.startsWith("boot(")),
+      `${slug}'s page does not call boot() once`,
+    ).toHaveLength(1)
+
+    const from = imports.map((line) => /from "([^"]+)"/.exec(line)?.[1]).sort()
+    expect(from, `${slug}'s page imports something other than the boot and the piece's three files`).toEqual(
+      [
+        "@/experiments/gallery/boot",
+        `@/experiments/${slug}/presets`,
+        `@/experiments/${slug}/runner`,
+        `@/experiments/${slug}/settings`,
+      ].sort(),
+    )
   })
 })
