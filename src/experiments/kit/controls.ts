@@ -313,6 +313,19 @@ export type Options<S extends object> = {
    * piece with no `window.experiment` is a piece no test can reach.
    */
   chrome?: boolean
+  /**
+   * Where the chrome sits. Default `"bar"`: one corner, presets then actions
+   * then `adjust` then `about` in a single wrapping row.
+   *
+   * `"split"` separates the presets from everything else — #223. With sixteen
+   * presets the bar buried `adjust`, the actions and `about` at the far end of
+   * a run of scenes. Split puts the presets down the left edge in columns of
+   * five, the actions and `adjust` top right with the panel opening beneath
+   * them, and `about` alone bottom right. Same buttons, same class names, same
+   * state; only the containers differ, and the presets get their own,
+   * `.presets`.
+   */
+  layout?: "bar" | "split"
 }
 
 /**
@@ -366,10 +379,17 @@ export function createControls<S extends object>(options: Options<S>): Controls<
   panel.className = "panel"
   panel.hidden = true
 
+  /** The presets' own column, used only by the split layout. */
+  const presetColumn = document.createElement("div")
+  presetColumn.className = "presets"
+
   // Built either way, appended only when the chrome is wanted: `render()` writes
   // to these nodes on every change and a headless mount would otherwise need a
   // second code path through the one function everything goes through.
-  if (chrome) root.append(bar, panel)
+  if (chrome && options.layout === "split") {
+    root.dataset.layout = "split"
+    root.append(presetColumn, bar, panel)
+  } else if (chrome) root.append(bar, panel)
 
   // --- idle handling -------------------------------------------------------
 
@@ -414,7 +434,13 @@ export function createControls<S extends object>(options: Options<S>): Controls<
   settingsToggle.title = "Show or hide these controls (key c, Escape closes)"
   settingsToggle.addEventListener("click", () => setPanelOpen(!panelOpen))
 
-  bar.append(...presetButtons, ...actionButtons, settingsToggle)
+  const split = options.layout === "split"
+  if (split) {
+    presetColumn.append(...presetButtons)
+    bar.append(...actionButtons, settingsToggle)
+  } else {
+    bar.append(...presetButtons, ...actionButtons, settingsToggle)
+  }
 
   // The gallery placard: present when you look for it, gone while you watch.
   if (aboutHref) {
@@ -423,7 +449,9 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     about.href = aboutHref
     about.textContent = "about"
     about.title = "A written note on this piece and how it came to look this way"
-    bar.append(about)
+    // Split, it is its own corner rather than the end of the bar.
+    if (split && chrome) root.append(about)
+    else bar.append(about)
   }
 
   // --- the panel -----------------------------------------------------------

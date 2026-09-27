@@ -52,8 +52,21 @@ it("finds the pages, so an empty run cannot pass for a clean one", () => {
   expect(slugs.length).toBeGreaterThan(0)
 })
 
+/**
+ * The file that boots the piece: the route itself, or the piece's own
+ * component when the route only renders one. Crowd's does, because one
+ * component serves both its addresses — the piece, and the piece with its note
+ * open (#223). Followed rather than exempted, so the checks below still read
+ * the script that runs.
+ */
+function bootingSource(slug: string): string {
+  const route = readFileSync(`${PAGES}/${slug}/index.astro`, "utf8")
+  const piece = `src/experiments/${slug}/Piece.astro`
+  return route.includes(`@/experiments/${slug}/Piece.astro`) ? readFileSync(piece, "utf8") : route
+}
+
 describe.each(slugs)("%s", (slug) => {
-  const page = readFileSync(`${PAGES}/${slug}/index.astro`, "utf8")
+  const page = bootingSource(slug)
 
   it("boots from a module rather than carrying the script itself", () => {
     const lines = statements(scriptBody(page))

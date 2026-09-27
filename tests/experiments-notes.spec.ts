@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test"
-import { expect, test } from "./support/experiment.ts"
+import { expect, openExperiment, test } from "./support/experiment.ts"
 import { litPixels as countLit } from "./support/canvas.ts"
 
 /**
@@ -25,7 +25,7 @@ const NOTES = [
 ]
 
 /** In this order, on every note, forever. That is the whole point of the layout. */
-const EXITS = ["open the piece", "all experiments"]
+const EXITS = ["view the piece", "all experiments"]
 
 /**
  * Everything is looked for inside `main`, which is the note itself.
@@ -86,3 +86,74 @@ const LIT_THRESHOLD = 90
 async function litPixels(page: Page): Promise<number> {
   return countLit(page, LIT_THRESHOLD, 0)
 }
+
+/**
+ * **A note read over its piece — #223.** Crowd's `about` used to leave the
+ * piece for a page of its own, and coming back meant finding "open the piece"
+ * at the top of the note and landing on the primary rather than on the scene
+ * that had been on screen. Now the note is an overlay on the running piece, and
+ * every way of dismissing it leaves the viewer where they were.
+ *
+ * Asserted through the published `data-preset`, which is how the kit says which
+ * scene is on screen, and through the address, which is what a shared link or a
+ * reload would restore.
+ */
+const shown = (page: Page) => page.evaluate(() => document.documentElement.dataset.preset)
+const overlay = (page: Page) => page.locator("#note")
+
+test("crowd: about opens over the scene on screen, and a click outside the note leaves that scene", async ({
+  page,
+}) => {
+  const experiment = await openExperiment(page, "crowd", { idle: false })
+  await experiment.api(({ api }) => api.preset(3))
+  expect(await shown(page)).toBe("2")
+
+  await page.locator("#ui a.about").click()
+  await expect(overlay(page)).toBeVisible()
+  await expect(page).toHaveURL(/\/experiments\/crowd\/about\/\?/)
+
+  // The piece hears no keys while the note is up: a digit would change the
+  // scene under the text.
+  await page.keyboard.press("5")
+  expect(await shown(page), "a digit changed the scene under the note").toBe("2")
+
+  // Outside the text column, on the right of the window.
+  const width = page.viewportSize()!.width
+  await page.mouse.click(width - 20, 300)
+  await expect(overlay(page)).toBeHidden()
+  await expect(page).toHaveURL(/\/experiments\/crowd\/\?/)
+  expect(await shown(page), "closing the note moved the scene").toBe("2")
+})
+
+test("crowd: Back and Escape close the note, and 'view the piece' does too", async ({ page }) => {
+  const experiment = await openExperiment(page, "crowd", { idle: false })
+  await experiment.api(({ api }) => api.preset(2))
+
+  await page.locator("#ui a.about").click()
+  await page.goBack()
+  await expect(overlay(page)).toBeHidden()
+  await expect(page).toHaveURL(/\/experiments\/crowd\/\?/)
+
+  await page.locator("#ui a.about").click()
+  await page.keyboard.press("Escape")
+  await expect(overlay(page)).toBeHidden()
+
+  await page.locator("#ui a.about").click()
+  await overlay(page).locator(".exits a", { hasText: "view the piece" }).click()
+  await expect(overlay(page)).toBeHidden()
+  await expect(page).toHaveURL(/\/experiments\/crowd\/\?/)
+  expect(await shown(page)).toBe("1")
+})
+
+test("crowd: the note's own address is the piece with the note open, on the primary", async ({ page }) => {
+  await page.goto("/experiments/crowd/about/")
+  await page.waitForFunction(() => (window as { experiment?: unknown }).experiment)
+
+  await expect(overlay(page)).toBeVisible()
+  expect(await shown(page)).toBe("0")
+
+  await page.mouse.click(20, 300)
+  await expect(overlay(page)).toBeHidden()
+  await expect(page).toHaveURL(/\/experiments\/crowd\/(\?|$)/)
+  expect(await shown(page)).toBe("0")
+})
