@@ -562,3 +562,22 @@ Open, for him:
 > are variations of what we have done before in other experiments. it's the
 > first person view with active, natural gazing around is what makes it feel
 > different.
+
+## 2026-09-28 — a core and plugins
+
+> addressing control sprawl is another way to address my "is this another
+> experiment" question. we both agree that "me" and looking is the key of this
+> piece (even though it is called "crowd"). then we have a crowd (walkers,
+> bystanders, groups) + topography (including obstacles). it almost feels like
+> there's a core set of settings that control what happens and then there are
+> "plugins" that enhance and complicate the scene and those could be swappable
+> or composable.
+
+> yes, when restructure in 238 is done and merged, you can start on the
+> layering.
+
+> i'm stepping away. when restructure is done, you can open and merge PRs as
+> needed. talk to other sessions if you need assistance with layering.
+
+Filed as #242, reviewed once by the steward (five points on the issue), and
+started when #238 landed.

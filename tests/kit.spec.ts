@@ -20,7 +20,7 @@ const PIECES = ["bubbles", "crowd", "dangler", "embers", "flotsam", "psyxels", "
  * them adds itself here**, and every other piece is asserted to have none, so
  * the check below can neither sit vacuous on an adopter nor miss one.
  */
-const GOVERNED = new Set<string>([])
+const GOVERNED = new Set<string>(["crowd"])
 
 /**
  * **Every test here is about the chrome, so every one holds the piece.** A

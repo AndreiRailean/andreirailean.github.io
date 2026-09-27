@@ -643,6 +643,35 @@ but much larger and of black colour so the blend in with the background".
   `throng.ts`), and kept clear of wherever I stand when they are built, since
   on a loop that is not the origin.
 
+## Layers: the panel shows what a scene uses (#242)
+
+Andrei, 2026-09-28: "a core set of settings that control what happens and then
+there are 'plugins' that enhance and complicate the scene". The first step is
+the panel, over unchanged behaviour: groups me, look, crowd (the core and the
+crowd have no off), then **ground**, **boulders** and **chase**, each governed by
+the control in its heading and collapsed while it is off.
+
+- **`ground` is the one stored truth for the way** — 0 open, 1 street, 2 trail,
+  3 loop. `normalizeSettings` makes `width`, `bend` and `loop` agree with it and
+  resets every setting a scene does not use to `OFF`, so two scenes that look
+  alike are the same scene (the kit matches presets by every key). Old
+  addresses infer it in `settingsFromQuery`, and `passage` from their `aisle`.
+- **Resetting is only safe because off is the identity**, which
+  `tests/layers.test.ts` holds per layer: a seeded walk with a hidden setting
+  moved is numerically identical, people and picture. It caught a leak planted
+  on purpose — and first _failed_ to, because `lining` is guarded twice, once
+  where it is read and once in `structured`; only removing both leaked.
+- **The kit hides a group only while its governor is off**, so a street's panel
+  still lists the trail's and the loop's rows. `reconcile` makes moving one of
+  them choose that ground — a street that bends is a trail — rather than
+  letting normalize reset it and the slider snap back.
+- **The crowd has no off**: `density` stops at 0.5. Whether it should is
+  Andrei's question, on #242.
+- **Not done yet**: the simulation still reads every setting directly. Moving
+  each layer's hooks behind a module (`layers/<name>.ts`) is the next step, and
+  moving the crowd's placement out of the ground (`structured` in `throng.ts`)
+  is a re-measurement, not a refactor.
+
 ## What is not here, and would be worth having
 
 - **Nobody is going anywhere in particular.** People carry a heading, not a
