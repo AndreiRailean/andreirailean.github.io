@@ -1,6 +1,6 @@
 import type { ExperimentApi } from "@/experiments/starry-night/runner"
-import { expect, openExperiment, test } from "./support/experiment"
-import { litPixels as countLit } from "./support/canvas.ts"
+import { expect, openExperiment, test } from "../../../../tests/support/experiment"
+import { litPixels as countLit } from "../../../../tests/support/canvas.ts"
 
 /**
  * Starry Night, driven through its console API.

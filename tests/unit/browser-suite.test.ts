@@ -1,4 +1,5 @@
-import { readdirSync, readFileSync } from "node:fs"
+import { browserSpecs, piecesAmong } from "./specs.ts"
+import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 
 /**
@@ -30,12 +31,10 @@ import { describe, expect, it } from "vitest"
  * is the only one that has ever happened — nobody has argued for a slow test,
  * they have just written it where the symptom appeared.
  *
- * The counter-pressure is the harness. `tests/unit/walkers/park.ts` offers
+ * The counter-pressure is the harness. `src/experiments/walkers/tests/park.ts` offers
  * `settle`, `set` and `stats` under the names the page uses, so the answer to
  * "it was easier in the browser" is now "it is not".
  */
-
-const SPECS = "tests"
 
 /** What a page owns, and no headless harness can answer. */
 const NEEDS_A_PAGE = [
@@ -115,7 +114,7 @@ function boundaryBefore(source: string, position: number): number {
  * exactly today, and a false positive costs one line of justification.
  */
 function casesIn(file: string): Case[] {
-  return casesFrom(readFileSync(`${SPECS}/${file}`, "utf8"), file)
+  return casesFrom(readFileSync(file, "utf8"), file)
 }
 
 export function casesFrom(source: string, file = "(inline)"): Case[] {
@@ -155,18 +154,20 @@ export function misplacedIn(source: string, file = "(inline)"): string[] {
     .map((item) => `${item.file} › ${item.title}`)
 }
 
-const files = readdirSync(SPECS).filter((name) => name.endsWith(".spec.ts"))
+const files = browserSpecs()
 
 describe("the browser suite earns its place", () => {
   it("finds the specs at all", () => {
     // A regex that silently matches nothing is the failure mode this whole file
     // has: it would pass for ever and check nothing.
     expect(files.length).toBeGreaterThan(5)
+    // And the pieces' own, which live beside them since #238.
+    expect(piecesAmong(files).length, "found no spec under src/experiments/<slug>/tests/").toBeGreaterThan(3)
     expect(files.flatMap(casesIn).length).toBeGreaterThan(40)
   })
 
   it("has no test that settles a scene and then asks only the model", () => {
-    const misplaced = files.flatMap((file) => misplacedIn(readFileSync(`${SPECS}/${file}`, "utf8"), file))
+    const misplaced = files.flatMap((file) => misplacedIn(readFileSync(file, "utf8"), file))
 
     expect(
       misplaced,
@@ -177,8 +178,8 @@ describe("the browser suite earns its place", () => {
         "the same arithmetic in either runner. What it buys is that the browser",
         "suite stops growing with tests that do not need it, and that a spec's",
         "serial chain, which sets the whole suite's wall clock, gets shorter.",
-        "Move them to tests/unit/<piece>/ — walkers has a harness with the same",
-        "verbs at tests/unit/walkers/park.ts — or, if the page really is the",
+        "Move them to src/experiments/<piece>/tests/ as a .test.ts — walkers has a",
+        "harness with the same verbs at src/experiments/walkers/tests/park.ts — or, if the page really is the",
         'subject, write "browser-because: <reason>" in a comment above the test.',
         "The reason is not optional; the marker alone does not satisfy this.",
       ].join(" "),

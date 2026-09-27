@@ -440,8 +440,8 @@ for (const slug of PIECES) {
    * the kit gains a kind that has no track, the default hands back
    * `min: control.min` off a control with no `min`. The property is *present*
    * and `undefined`, the type says `number`, and every consumer that trusts it
-   * gets `NaN` out of its own arithmetic. `tests/dangler.spec.ts` and
-   * `tests/starry-night.spec.ts` both compute `min + (max - min) * 0.37` to
+   * gets `NaN` out of its own arithmetic. `src/experiments/dangler/tests/dangler.spec.ts` and
+   * `src/experiments/starry-night/tests/starry-night.spec.ts` both compute `min + (max - min) * 0.37` to
    * sweep every control, so the value written is `NaN` and the assertion after
    * it passes, having moved nothing. That is exactly how #85 was missed.
    *

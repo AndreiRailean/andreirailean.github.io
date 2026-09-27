@@ -1,11 +1,11 @@
 import type { ExperimentApi } from "@/experiments/walkers/runner"
 import { PRESETS } from "@/experiments/walkers/presets"
-import { expect, openExperiment, test } from "./support/experiment"
+import { expect, openExperiment, test } from "../../../../tests/support/experiment"
 
 /**
  * Walkers, driven through its console API.
  *
- * The division of labour with `tests/unit/walkers/` is sharper here than in the
+ * The division of labour with `src/experiments/walkers/tests/` is sharper here than in the
  * other pieces, because the crowd needs no browser at all: `crowd.ts` is
  * arithmetic on numbers, so everything about who is out there and whether they
  * walk through each other is asserted in the unit suite, where four hundred
@@ -211,7 +211,7 @@ test("heads lean out over their own feet, and lean further from a lower camera",
  * browser-because: `settle` is the page's verb, not the crowd's. `advance` in
  * `walkers.ts` is what capped itself at sixteen steps, and `crowd.step` — all
  * the headless harness has — was never wrong. Asserting this against
- * `tests/unit/walkers/park.ts` would be asserting that a loop written in the
+ * `src/experiments/walkers/tests/park.ts` would be asserting that a loop written in the
  * test file runs the number of times the test file asked it to.
  */
 test("settle moves the park forward, and by a lot", async ({ page }) => {

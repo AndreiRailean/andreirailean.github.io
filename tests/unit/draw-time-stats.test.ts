@@ -1,4 +1,5 @@
-import { readdirSync, readFileSync } from "node:fs"
+import { browserSpecs, piecesAmong } from "./specs.ts"
+import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 
 /**
@@ -31,8 +32,6 @@ import { describe, expect, it } from "vitest"
  * reasoning as `kit-adoption.test.ts`, and the same escape hatch: a read that
  * genuinely needs no frame says so on the spot.
  */
-
-const SPECS = "tests"
 
 /**
  * Fields a piece fills in while drawing. Reading one without a frame is the bug.
@@ -113,10 +112,11 @@ function fieldsRead(readLine: string, after: readonly string[]): string[] {
   return ALL.filter((field) => new RegExp(`\\b${escaped}\\.${field}\\b`).test(body))
 }
 
-const specs = readdirSync(SPECS).filter((name) => name.endsWith(".spec.ts"))
+const specs = browserSpecs()
 
 it("finds the browser specs, so an empty run cannot pass for a clean one", () => {
   expect(specs.length).toBeGreaterThan(0)
+  expect(piecesAmong(specs).length, "found no spec under src/experiments/<slug>/tests/").toBeGreaterThan(3)
 })
 
 /**
@@ -139,7 +139,7 @@ function codeLines(lines: readonly string[]): { text: string; at: number }[] {
 }
 
 describe.each(specs)("%s", (file) => {
-  const source = readFileSync(`${SPECS}/${file}`, "utf8")
+  const source = readFileSync(file, "utf8")
   const lines = source.split("\n")
   const code = codeLines(lines)
 

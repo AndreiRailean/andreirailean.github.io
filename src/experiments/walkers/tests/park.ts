@@ -15,7 +15,7 @@ import { makeView, type View } from "@/experiments/walkers/view"
  * the wrong home.
  *
  * **Be honest about what moving one saves.** The first case moved out of
- * `tests/walkers.spec.ts` cost about 18 seconds there and costs 16.3 here: the
+ * `src/experiments/walkers/tests/walkers.spec.ts` cost about 18 seconds there and costs 16.3 here: the
  * settle dominates, and simulating thirty seconds of park is the same
  * arithmetic in either runner. What is saved per test is the page — a browser
  * launch, a navigation, a compile — and what is saved structurally is that
@@ -32,7 +32,7 @@ import { makeView, type View } from "@/experiments/walkers/view"
  * What is **not** here is the three fields that only exist because something
  * drew: `heads`, `fps` and `running`. That is not an omission to be fixed — it
  * is the line itself. An assertion that needs one of them needs a page and
- * belongs in `tests/walkers.spec.ts`; an assertion that does not, does not.
+ * belongs in `src/experiments/walkers/tests/walkers.spec.ts`; an assertion that does not, does not.
  */
 export type Park = {
   /** Run the crowd forward, in seconds of park. */

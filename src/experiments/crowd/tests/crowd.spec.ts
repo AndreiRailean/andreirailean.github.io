@@ -1,11 +1,11 @@
 import type { ExperimentApi } from "@/experiments/crowd/runner"
 import { PRESETS } from "@/experiments/crowd/presets"
-import { expect, openExperiment, test } from "./support/experiment"
+import { expect, openExperiment, test } from "../../../../tests/support/experiment"
 
 /**
  * Crowd, driven through its console API.
  *
- * The division of labour with `tests/unit/crowd/` is sharp, and it is the same
+ * The division of labour with `src/experiments/crowd/tests/` is sharp, and it is the same
  * one Walkers draws: the crowd needs no browser at all. Who is out there,
  * whether they walk through each other, whether the population holds over a
  * hundred metres of walking, whether a counterflow sorts itself into files —

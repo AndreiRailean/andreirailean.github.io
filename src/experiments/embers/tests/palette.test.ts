@@ -127,7 +127,7 @@ describe("the ramp", () => {
  * of 0.21 at a long exposure, winking out while plainly lit.
  *
  * Nothing in a still shows an ember that should be there. What caught it was
- * `tests/embers.spec.ts` asserting that fewer embers are drawn than are alive,
+ * `src/experiments/embers/tests/embers.spec.ts` asserting that fewer embers are drawn than are alive,
  * which had quietly become impossible: retire above the paint cutoff and every
  * live ember is painted by construction. That is a browser test failing for an
  * arithmetic reason, which is exactly the trade this file exists to avoid.

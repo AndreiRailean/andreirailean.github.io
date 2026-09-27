@@ -3,9 +3,9 @@ import type { Page } from "@playwright/test"
 /**
  * Counting the lit pixels on a piece's canvas.
  *
- * Four specs had written this out — `tests/dangler.spec.ts` and
- * `tests/starry-night.spec.ts` byte-identically apart from `async function`
- * against a `const` arrow, `tests/flotsam.spec.ts` with a frame wait in front of
+ * Four specs had written this out — `src/experiments/dangler/tests/dangler.spec.ts` and
+ * `src/experiments/starry-night/tests/starry-night.spec.ts` byte-identically apart from `async function`
+ * against a `const` arrow, `src/experiments/flotsam/tests/flotsam.spec.ts` with a frame wait in front of
  * it, and `tests/experiments-notes.spec.ts` tolerating a canvas that has not
  * arrived. The section hoists on the third copy; this was the fourth.
  *

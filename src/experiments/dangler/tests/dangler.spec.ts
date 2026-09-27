@@ -1,8 +1,8 @@
 import type { ExperimentApi } from "@/experiments/dangler/runner"
 import { DEFAULT_SETTINGS } from "@/experiments/dangler/settings"
 import { PRESETS } from "@/experiments/dangler/presets"
-import { expect, openExperiment, test } from "./support/experiment"
-import { litPixels as countLit } from "./support/canvas.ts"
+import { expect, openExperiment, test } from "../../../../tests/support/experiment"
+import { litPixels as countLit } from "../../../../tests/support/canvas.ts"
 
 /**
  * Dangler, driven through its console API.
@@ -106,7 +106,7 @@ test("settings survive the round trip through the query string", async ({ page }
   expect(
     applied.skipped,
     "dangler has gained a control with no track, and this sweep cannot move it. Extend the loop " +
-      "to set it the way tests/starry-night.spec.ts does for its choice and toggle rows, rather " +
+      "to set it the way src/experiments/starry-night/tests/starry-night.spec.ts does for its choice and toggle rows, rather " +
       "than leaving the round trip silently not covering it.",
   ).toEqual([])
 
