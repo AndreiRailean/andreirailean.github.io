@@ -93,6 +93,10 @@ src/pages/experiments/<slug>/  index.astro (the piece), about.astro (the note)
   see them. `tests/unit/experiments-pages.test.ts` keeps a page to an import and
   a call; the reasoning is in
   `docs/adr/20260906-a-page-holds-no-logic.md`.
+- **A piece may read its note over itself** instead of on a separate page.
+  Both routes then render one `src/experiments/<slug>/Piece.astro`, and the
+  route checks follow into it. Crowd does this, along with the kit's
+  `layout: "split"`; see `docs/adr/20260927-a-note-is-read-over-its-piece.md`.
 - An experiment page **imports nothing from the rest of the site** — no
   `Layout.astro`, no `globals.css`, no Tailwind. It is a bare document.
   **`pnpm run lint` fails this now**, so it is no longer convention: inside
