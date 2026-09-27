@@ -37,6 +37,16 @@ Mid-change, run one module: `pnpm exec vitest rope`, `pnpm exec vitest run setti
 browser suite takes seconds and a cold dev server, and answering "did I break the
 solver" should not.
 
+**A measurement you will throw away is a probe, not a test.** Put it in
+`probes/<name>.test.ts` and run `pnpm run probe probes/<name>.test.ts`. It gets the
+`@/` alias and prints what it logs. The default reporter swallows a passing
+test's `console.log`; the probe runner uses the verbose one. `probes/` is
+gitignored and excluded from lint, the type checker and both suites, so it can
+never be committed or turn a check red. `tests/unit/probes.test.ts` holds all of
+that. Do not copy a probe into `tests/unit/` to run it: a `git add` of the folder
+has committed one. A probe that turns into a check worth keeping gets rewritten
+as one, in the piece's `tests/`, with a failure it has been seen to produce.
+
 **A full `pnpm run test:unit` no longer answers in milliseconds, and two pieces
 are why.** `src/experiments/walkers/tests/` and `src/experiments/crowd/tests/` simulate hours of crowd
 to assert things no screenshot and no shorter run can — a counterflow sorting

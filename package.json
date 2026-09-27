@@ -24,7 +24,8 @@
     "test:browser": "playwright test",
     "test:headed": "playwright test --headed",
     "runners": "node scripts/runners.ts",
-    "test:affected": "node scripts/affected.ts"
+    "test:affected": "node scripts/affected.ts",
+    "probe": "vitest run --config vitest.probe.config.mts"
   },
   "dependencies": {
     "@astrojs/react": "^6.0.3",
