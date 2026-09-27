@@ -12,7 +12,17 @@ const __dirname = path.dirname(__filename)
 
 export default tseslint.config(
   {
-    ignores: ["dist/**/*", ".astro/", "public/showcase/**"], // `pnpm run runners` output: bundled and minified
+    ignores: [
+      "dist/**/*",
+      ".astro/",
+      // `pnpm run runners` output: bundled and minified
+      "public/showcase/**",
+      // Private scratch space and throwaway probes, both gitignored. eslint
+      // scans gitignored directories, so a scratch Playwright script turned the
+      // lint job red once — #240.
+      ".scratch/",
+      "probes/",
+    ],
   },
   {
     languageOptions: {
