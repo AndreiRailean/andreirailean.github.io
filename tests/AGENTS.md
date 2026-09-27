@@ -18,6 +18,20 @@ A check that reads specs as text lists them through `tests/unit/specs.ts`, never
 configured to collect only its own, or they collect each other's files and fail
 on the other's imports.
 
+**CI runs what a change can affect.** On a pull request both test jobs run
+`pnpm run test:affected <unit|browser>`, which maps the diff to a set of pieces:
+a change inside `src/experiments/<slug>/` or its routes selects that piece,
+prose selects none, and **anything else selects everything**. Unit always runs
+`tests/unit/` plus each selected piece's `tests/`; browser runs each selected
+piece's spec, its `<slug>: ` slice of `kit.spec.ts` and `experiments-notes.spec.ts`,
+and the index spec. Every push to `main` runs both suites whole, so a mis-map
+fails one merge later. Run it locally with `pnpm run test:affected unit` —
+it diffs against `origin/main`, including uncommitted work — and add `--dry-run`
+to see the selection alone. `scripts/affected.ts` has the reasoning, and
+`tests/unit/affected.test.ts` holds the default, the shared-spec list in it, and
+the workflows. **A new spec in `tests/` fails that check until it is declared
+shared**, because a shared spec only runs when everything does.
+
 Mid-change, run one module: `pnpm exec vitest rope`, `pnpm exec vitest run settings`, or
 `pnpm exec vitest` to watch. That is the whole reason the unit runner exists; the
 browser suite takes seconds and a cold dev server, and answering "did I break the

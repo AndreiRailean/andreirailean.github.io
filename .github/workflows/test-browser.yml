@@ -62,6 +62,8 @@ name: Browser tests
 # and covers everything. If `Browser tests` is ever made required, this filter
 # has to go or grow a job that always reports.
 on:
+  push:
+    branches: [main]
   pull_request:
     paths-ignore:
       - "src/assets/**"
@@ -96,9 +98,13 @@ on:
 # A second push to the same branch supersedes the first, so an iterative session
 # does not leave a queue of runs testing commits nobody will merge. Keyed on the
 # ref rather than the workflow alone, or one branch's push would cancel another's.
+#
+# Not on `main`, where each push is a merge whose full run is the backstop for
+# the pull request's selected one: cancelling it would lose exactly the run that
+# says which merge broke something.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # One job rather than two steps beside the unit suite, because the browser suite
 # is most of the wall clock and the unit suite needs none of what makes it slow.
@@ -125,6 +131,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
 
       - name: Read the Node version
         id: node
@@ -155,8 +163,22 @@ jobs:
       #
       # PW_USE_BUNDLED_CHROMIUM so this tests the build installed above rather
       # than whatever the runner image happens to ship.
+      # **Only what the change can affect, on a pull request; everything on
+      # `main`.** `scripts/affected.ts` maps the diff to a set of pieces and
+      # falls back to the whole suite for any path it does not recognise, so an
+      # unknown path costs time and never coverage. Selection happens here rather
+      # than in a path filter because a skipped check reports as missing.
+      # `HEAD^1` is the base branch tip on the merge ref a pull request checks
+      # out, hence `fetch-depth: 2`. The push to `main` runs everything, so a
+      # mis-map fails one merge later, traceable to that merge.
+      # `tests/unit/affected.test.ts` holds both halves. See #238.
       - name: Browser tests
-        run: pnpm run test:browser
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            pnpm run test:affected browser --base HEAD^1
+          else
+            pnpm run test:browser
+          fi
         env:
           PW_USE_BUNDLED_CHROMIUM: "1"
 

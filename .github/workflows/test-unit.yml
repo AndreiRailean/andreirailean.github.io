@@ -34,14 +34,17 @@ name: Unit tests
 # not this filter, because there is not one.
 
 on:
-  - pull_request
+  push:
+    branches: [main]
+  pull_request:
 
 # A second push to the same branch supersedes the first, so an iterative session
 # does not leave a queue of runs testing commits nobody will merge. Keyed on the
 # ref rather than the workflow alone, or one branch's push would cancel another's.
+# Not cancelled on `main`, where the full run is the backstop; see test-browser.yml.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   unit:
@@ -49,6 +52,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
 
       # See lint.yml for why this is pnpm/setup rather than actions/setup-node,
       # why `.node-version` is read into an output, and why the install is a step
@@ -67,5 +72,19 @@ jobs:
 
       # No Playwright browsers here: nothing under tests/unit/ opens a page, and
       # that is the whole point of the split from test-browser.yml.
+      # **Only what the change can affect, on a pull request; everything on
+      # `main`.** `scripts/affected.ts` maps the diff to a set of pieces and
+      # falls back to the whole suite for any path it does not recognise, so an
+      # unknown path costs time and never coverage. Selection happens here rather
+      # than in a path filter because a skipped check reports as missing.
+      # `HEAD^1` is the base branch tip on the merge ref a pull request checks
+      # out, hence `fetch-depth: 2`. The push to `main` runs everything, so a
+      # mis-map fails one merge later, traceable to that merge.
+      # `tests/unit/affected.test.ts` holds both halves. See #238.
       - name: Unit tests
-        run: pnpm run test:unit
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            pnpm run test:affected unit --base HEAD^1
+          else
+            pnpm run test:unit
+          fi
