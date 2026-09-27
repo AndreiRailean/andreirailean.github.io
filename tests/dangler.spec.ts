@@ -1,5 +1,6 @@
-import type { ExperimentApi } from "@/experiments/dangler/api"
-import { DEFAULT_SETTINGS, PRESETS } from "@/experiments/dangler/settings"
+import type { ExperimentApi } from "@/experiments/dangler/runner"
+import { DEFAULT_SETTINGS } from "@/experiments/dangler/settings"
+import { PRESETS } from "@/experiments/dangler/presets"
 import { expect, openExperiment, test } from "./support/experiment"
 import { litPixels as countLit } from "./support/canvas.ts"
 

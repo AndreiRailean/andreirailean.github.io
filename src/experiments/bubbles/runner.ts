@@ -16,6 +16,7 @@
 import { decodeScene } from "@/experiments/address"
 import { createBubbles } from "@/experiments/bubbles/bubbles"
 import { normalizeSettings, REGISTRY, type Settings } from "@/experiments/bubbles/settings"
+import type { Live, PieceApi } from "@/experiments/piece"
 
 /** The whole contract between a runner and whatever hosts it. */
 export type Mounted = {
@@ -43,9 +44,40 @@ function read(scene: string): Settings {
   return normalizeSettings(decoded as Partial<Settings>)
 }
 
-export function mount(canvas: HTMLCanvasElement, scene: string, _options: MountOptions = {}): Mounted {
-  const water = createBubbles(canvas, read(scene))
+/**
+ * The piece live: what the gallery's page drives, and what `mount` below is
+ * written in terms of, so there is one way a point becomes pixels.
+ *
+ * The verbs are the piece's own, and reach the console and the bar through
+ * `gallery/boot.ts`. See
+ * `../docs/adr/20260928-a-piece-is-a-library-behind-three-files.md`.
+ */
+export function start(canvas: HTMLCanvasElement, settings: Settings) {
+  const water = createBubbles(canvas, settings)
   water.start()
+
+  return {
+    setSettings: water.setSettings,
+    setPaused: water.setPaused,
+    stats: water.stats,
+    destroy: water.stop,
+    verbs: {
+      // Clamped: a console call asking for an hour would hold the tab for it.
+      settle: (seconds: number) => water.settle(Math.max(0, Math.min(600, Number(seconds) || 0))),
+      clear: () => water.clear(),
+    },
+  } satisfies Live<Settings>
+}
+
+/** `window.experiment` on this piece's page, derived rather than written out. */
+export type ExperimentApi = PieceApi<
+  Settings,
+  ReturnType<typeof start>["verbs"],
+  ReturnType<ReturnType<typeof start>["stats"]>
+>
+
+export function mount(canvas: HTMLCanvasElement, scene: string, _options: MountOptions = {}): Mounted {
+  const live = start(canvas, read(scene))
 
   /**
    * Water that has been going a while, rather than jets just switched on.
@@ -64,13 +96,13 @@ export function mount(canvas: HTMLCanvasElement, scene: string, _options: MountO
    * own playback — which matters here, where the published scenes run at an
    * eighth speed.
    */
-  water.settle(30)
+  live.verbs.settle(30)
 
   return {
-    setScene: (next) => water.setSettings(read(next)),
-    setPaused: water.setPaused,
-    stats: water.stats,
+    setScene: (next) => live.setSettings(read(next)),
+    setPaused: live.setPaused,
+    stats: live.stats,
     // `stop()` is teardown here, not the pause — it drops the resize listener.
-    destroy: water.stop,
+    destroy: live.destroy,
   }
 }

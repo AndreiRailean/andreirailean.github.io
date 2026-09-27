@@ -4,7 +4,8 @@ import { createStroll } from "@/experiments/crowd/stroll"
 import { createThrong } from "@/experiments/crowd/throng"
 import type { Boulder } from "@/experiments/crowd/boulders"
 import { bodyRadius } from "@/experiments/crowd/body"
-import { normalizeSettings, PRESETS, type Settings } from "@/experiments/crowd/settings"
+import { normalizeSettings, type Settings } from "@/experiments/crowd/settings"
+import { PRESETS } from "@/experiments/crowd/presets"
 
 /**
  * The structured crowd: a lining that stands, a way that bends, teams.

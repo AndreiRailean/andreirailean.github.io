@@ -23,6 +23,7 @@ import {
   type SubjectKind,
 } from "@/experiments/psyxels/subject"
 import { GLYPH_NAMES, indexOfGlyph, isGlyphName, paintGlyph, type GlyphName } from "@/experiments/psyxels/glyphs"
+import type { Chrome } from "@/experiments/piece"
 
 /**
  * Everything tunable, in one place, shared by the engine, the panel and the URL.
@@ -611,319 +612,6 @@ export const DEFAULT_SETTINGS: Settings = {
 }
 
 /**
- * Recorded scenes, each written out in full.
- *
- * **No preset inherits from another, and none inherits from `DEFAULT_SETTINGS`.**
- * They were spread over the defaults at first, which reads as tidy and is a
- * trap: the day the featured scene changed, every preset that had not named a
- * setting silently took the new one's value for it, and half of them ended up
- * being watched at a quarter speed with a light trail meant for something else.
- * The section's convention — Flotsam states it in the same words — is that a
- * scene someone found by dragging sliders should stay the scene they found.
- *
- * Position one is only position one. It is what a bare URL lands on, and the
- * page rewrites the address to its full query so a visitor leaves with a link to
- * *that scene* rather than to whatever is featured next month. Nothing else
- * follows from being first.
- */
-export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
-  {
-    label: "alive",
-    hint: "Every hue at once, packed fine and overlapping, with the levels above showing through — and a word rather than a letter, so the field has to hold five shapes and the spaces between them.",
-    settings: {
-      seed: 639953,
-      subject: "Alive",
-      face: "roman",
-      polarity: "ink",
-      fill: 0.85,
-      coarse: 0.03,
-      levels: 4,
-      detail: 0.84,
-      variety: 0.66,
-      threshold: 0.06,
-      fuzz: 0.21,
-      flatten: 0.65,
-      inset: -0.34,
-      bloom: 0.04,
-      solid: 0.03,
-      layers: 0.71,
-      glow: 0.25,
-      afterglow: 0.06,
-      wander: 0.6,
-      spin: 0,
-      weight: 0.11,
-      glyphs: ["minus", "plus", "circled-minus", "circled-plus", "ring"],
-      morph: 0.34,
-      ease: 0.37,
-      churn: 55.5,
-      flicker: 1.15,
-      pulse: 0.97,
-      tempo: 0.15,
-      wave: 0.65,
-      hue: 260,
-      spread: 180,
-      edge: 0.55,
-      edgeHue: -138,
-      wildness: 0.81,
-      saturation: 0.69,
-      playback: 1.15,
-    },
-  },
-  {
-    label: "neon",
-    hint: "Fine grain at a high threshold, half-solid, spread across the whole wheel: tube light rather than ink.",
-    settings: {
-      seed: 639953,
-      subject: "A",
-      face: "roman",
-      polarity: "ink",
-      fill: 0.82,
-      coarse: 0.027,
-      levels: 2,
-      detail: 0.49,
-      variety: 0.45,
-      threshold: 0.71,
-      fuzz: 0.6,
-      flatten: 0.31,
-      inset: -0.12,
-      bloom: 0.2,
-      solid: 0.37,
-      layers: 0.45,
-      glow: 0.35,
-      afterglow: 0.4,
-      wander: 0.6,
-      spin: 0,
-      weight: 0.145,
-      glyphs: ["minus", "plus", "circled-minus"],
-      morph: 0.83,
-      ease: 1,
-      churn: 58.5,
-      flicker: 10,
-      pulse: 1,
-      tempo: 1.94,
-      wave: 0.35,
-      hue: 355,
-      spread: 180,
-      edge: 0.12,
-      edgeHue: 125,
-      wildness: 0.61,
-      saturation: 1,
-      playback: 0.26,
-    },
-  },
-  {
-    label: "ampersand",
-    hint: "A script ampersand, held still and lit from within: no frame changes at all, only breathing.",
-    settings: {
-      seed: 639953,
-      subject: "&",
-      face: "script",
-      polarity: "ink",
-      fill: 0.79,
-      coarse: 0.027,
-      levels: 2,
-      detail: 0.49,
-      variety: 0.45,
-      threshold: 0.71,
-      fuzz: 0.6,
-      flatten: 0.63,
-      inset: -0.12,
-      bloom: 0.2,
-      solid: 0,
-      layers: 0.45,
-      glow: 0.24,
-      afterglow: 0.12,
-      wander: 0.6,
-      spin: 0,
-      weight: 0.145,
-      glyphs: ["minus", "plus", "circled-minus", "circled-plus", "ring", "dot"],
-      morph: 0.5,
-      ease: 1,
-      churn: 59,
-      flicker: 0,
-      pulse: 0.45,
-      tempo: 0.45,
-      wave: 0.83,
-      hue: 355,
-      spread: 180,
-      edge: 0.74,
-      edgeHue: 125,
-      wildness: 1,
-      saturation: 0.35,
-      playback: 1,
-    },
-  },
-  {
-    label: "mono",
-    hint: "One hue and almost no colour: the packing and its light, and nothing else to look at.",
-    settings: {
-      seed: 639953,
-      subject: "A",
-      face: "typewriter",
-      polarity: "ink",
-      fill: 0.73,
-      coarse: 0.037,
-      levels: 3,
-      detail: 0.55,
-      variety: 0.58,
-      threshold: 0.38,
-      fuzz: 0.45,
-      flatten: 0.88,
-      inset: 0.16,
-      bloom: 0.2,
-      solid: 0,
-      layers: 0.45,
-      glow: 0.35,
-      afterglow: 0.4,
-      wander: 0.47,
-      spin: 0,
-      weight: 0.06,
-      glyphs: ["minus", "plus", "circled-minus"],
-      morph: 0.83,
-      ease: 1,
-      churn: 5,
-      flicker: 0.5,
-      pulse: 0.3,
-      tempo: 1.94,
-      wave: 0.35,
-      hue: 318,
-      spread: 20,
-      edge: 0.61,
-      edgeHue: -180,
-      wildness: 0.03,
-      saturation: 0.22,
-      playback: 1.92,
-    },
-  },
-  {
-    label: "maker",
-    hint: "A face at the finest grain the piece has, lit from within and picked out at every contour.",
-    settings: {
-      seed: 2207,
-      subject: "avatar",
-      face: "roman",
-      polarity: "ink",
-      fill: 0.89,
-      coarse: 0.018,
-      levels: 3,
-      detail: 0.82,
-      variety: 0.65,
-      threshold: 0.72,
-      fuzz: 0.38,
-      flatten: 0.33,
-      inset: 0.33,
-      bloom: 0.62,
-      solid: 0.14,
-      layers: 0.8,
-      glow: 0.61,
-      afterglow: 0,
-      wander: 0.6,
-      spin: 0,
-      weight: 0.08,
-      glyphs: ["minus", "plus", "circled-minus", "circled-plus", "ring", "dot", "cross", "circled-cross", "bar"],
-      morph: 0.5,
-      ease: 1.25,
-      churn: 13.5,
-      flicker: 1,
-      pulse: 0.91,
-      tempo: 0.37,
-      wave: 0.93,
-      hue: 219,
-      spread: 180,
-      edge: 0.88,
-      edgeHue: -180,
-      wildness: 0.89,
-      saturation: 0.26,
-      playback: 0.89,
-    },
-  },
-  {
-    label: "maybe",
-    hint: "Few frames, big psyxels, slow repacking: the field as a sign rather than a texture.",
-    settings: {
-      seed: 771,
-      subject: "&",
-      face: "roman",
-      polarity: "ink",
-      fill: 0.8,
-      coarse: 0.195,
-      levels: 3,
-      detail: 0.7,
-      variety: 0.64,
-      threshold: 0.32,
-      fuzz: 0.45,
-      flatten: 0.88,
-      inset: 0.12,
-      bloom: 0.2,
-      solid: 0,
-      layers: 0.45,
-      glow: 0.35,
-      afterglow: 0.4,
-      wander: 0.47,
-      spin: 0,
-      weight: 0.15,
-      glyphs: ["minus", "plus"],
-      morph: 0.83,
-      ease: 1,
-      churn: 16,
-      flicker: 0.35,
-      pulse: 0.45,
-      tempo: 0.1,
-      wave: 0.9,
-      hue: 156,
-      spread: 96,
-      edge: 0.12,
-      edgeHue: 125,
-      wildness: 0.85,
-      saturation: 0.8,
-      playback: 1,
-    },
-  },
-  {
-    label: "luna",
-    hint: "The word as a hole again, and everything around it held: one grain everywhere rather than a range of them, and every psyx keeping the mark and the colour it was dealt. Made of the four that are drawn rather than built — a moon, a star, a heart and a leaf — each facing whichever way it was born facing, so the field reads as things strewn about rather than as signs stamped in rows — and nothing moves in it but the breath.",
-    settings: {
-      seed: 639953,
-      subject: "Luna",
-      face: "roman",
-      polarity: "void",
-      fill: 0.88,
-      coarse: 0.018,
-      levels: 0,
-      detail: 0.25,
-      variety: 0.01,
-      threshold: 0.71,
-      fuzz: 0.96,
-      flatten: 0.31,
-      inset: -0.12,
-      bloom: 0,
-      solid: 0.14,
-      layers: 0.06,
-      glow: 0.51,
-      afterglow: 0.11,
-      wander: 0.6,
-      spin: 1,
-      weight: 0.145,
-      glyphs: ["moon", "star", "heart", "leaf"],
-      morph: 0.36,
-      ease: 1.12,
-      churn: 0,
-      flicker: 0,
-      pulse: 1,
-      tempo: 1.44,
-      wave: 0.6,
-      hue: 171,
-      spread: 180,
-      edge: 0,
-      edgeHue: -109,
-      wildness: 0.63,
-      saturation: 0.75,
-      playback: 0.14,
-    },
-  },
-]
-
-/**
  * The grid every numeric setting is stored on, keyed the way `BOUNDS` is.
  *
  * `normalizeSettings` snaps to this, so a value arriving from the query string
@@ -1232,7 +920,7 @@ export function urlForSettings(settings: Settings, pathname: string): string {
  * absent, blank and unparseable are all "not a setting" there, so a URL made
  * only of those is one the piece would read as carrying nothing.
  */
-function namesASetting(params: URLSearchParams): boolean {
+export function namesASetting(params: URLSearchParams): boolean {
   // The packed form names the whole scene by definition, so it settles this
   // before any per-key test runs.
   const packed = params.get("s")
@@ -1243,18 +931,6 @@ function namesASetting(params: URLSearchParams): boolean {
     const raw = params.get(key)
     return raw !== null && raw.trim() !== "" && Number.isFinite(Number(raw))
   })
-}
-
-/**
- * The scene a freshly-opened URL should show.
- *
- * `featured` says the caller should rewrite the address, so a landing visitor
- * has a URL describing the scene in front of them rather than one standing for
- * "whatever is featured".
- */
-export function settingsForLanding(params: URLSearchParams): { settings: Settings; featured: boolean } {
-  if (namesASetting(params)) return { settings: settingsFromQuery(params), featured: false }
-  return { settings: normalizeSettings(PRESETS[0]!.settings), featured: true }
 }
 
 /**
@@ -1292,4 +968,63 @@ export function needsSubject(before: Settings, after: Settings): boolean {
     before.polarity !== after.polarity ||
     before.fill !== after.fill
   )
+}
+
+/**
+ * What the frame needs from this piece beyond its settings tables, as data —
+ * see `Chrome` in `../piece.ts`. Here rather than in `runner.ts`, because every
+ * export of that file ships in a frozen runner, which draws none of this.
+ */
+export const CHROME: Chrome<Settings> = {
+  slug: "psyxels",
+  title: "Psyxels",
+  canvas: "stage",
+  groups: GROUP_ORDER,
+  theme: (settings) => ({
+    style: {
+      "--accent": `hsl(${settings.hue}, 70%, 66%)`,
+      "--ui-on-bg": `hsl(${settings.hue}, 42%, 40%)`,
+      "--ui-on-text": `hsl(${settings.hue}, 70%, 96%)`,
+    },
+  }),
+  actions: [
+    {
+      label: "reroll",
+      hint: "A fresh packing of the same picture. The seed travels in the address bar.",
+      shortcut: "r",
+      verb: "reroll",
+    },
+  ],
+  copy: { label: "copy link to this field", title: "Copy this page's address, which carries every setting above." },
+  hatches: { debug: "flag", run: "seconds" },
+  banner: [
+    ["experiment.get()", "current settings"],
+    ["experiment.set({ wildness: 1 })", "change one or more"],
+    ["experiment.preset(1)", "load a preset by number or name"],
+    ["experiment.presets()", "what the presets are called"],
+    ["experiment.controls()", "every control, with its bounds and blurb"],
+    ["experiment.reroll()", "a fresh packing of the same picture (or press r)"],
+    ["experiment.run(60)", "skip a minute of repacking forward"],
+    ["experiment.debug(true)", "show the squares the packing chose"],
+    ["experiment.panel(true)", "open the settings panel"],
+    ["experiment.pause()", "hold the field where it is, or let it run on"],
+    ["experiment.idle(false)", "stop the chrome hiding itself"],
+    ["experiment.fullscreen()", "toggle fullscreen (or press f)"],
+    ["experiment.awake()", "is the display being held awake"],
+    ["experiment.stats()", "psyxels, sizes, how well the subject survives, fps"],
+    ["experiment.url()", "a link that restores this exact scene"],
+  ],
+}
+
+/**
+ * A fresh arrangement at the same settings: the bar's reroll button and
+ * `experiment.reroll()` both call this, through `gallery/boot.ts`, so the two
+ * cannot come to mean different things.
+ *
+ * Pure, and the piece's rather than the frame's, because which values a seed
+ * may take is this piece's to say. The frame knows only that a rerollable piece
+ * has a `seed`.
+ */
+export function reroll(settings: Settings, seed?: number): Settings {
+  return normalizeSettings({ ...settings, seed: seed ?? Math.floor(Math.random() * (SEED_BOUNDS.max + 1)) })
 }

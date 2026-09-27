@@ -7,6 +7,8 @@ import {
   type SliderControl,
   type Track,
 } from "@/experiments/kit/controls"
+import type { Chrome } from "@/experiments/piece"
+import { groundColour } from "@/experiments/embers/draw"
 
 /** Re-exported so a consumer needs one import for a control and its keys. */
 export { keysOf } from "@/experiments/kit/controls"
@@ -449,290 +451,6 @@ export const DEFAULT_SETTINGS: Settings = {
 }
 
 /**
- * Starting points, not conclusions.
- *
- * Every one of them states every setting and **inherits from nothing** — not
- * from another preset and not from `DEFAULT_SETTINGS`. Spreading over the
- * defaults reads as tidy and quietly hands every scene's unnamed settings to
- * whatever the defaults become; Psyxels lost four of its six scenes that way.
- * See `../docs/adr/20260830-a-preset-inherits-from-nothing.md`.
- */
-export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
-  {
-    label: "winter blues",
-    hint: "A wide fire on a cold night, close in, with nothing warm left in it.",
-    settings: {
-      count: 1010,
-      sputter: 2.75,
-      pops: 8,
-      bursts: 4.5,
-      bed: 4,
-      hearth: 0.5,
-      firelight: 0,
-      updraft: 7.9,
-      spread: 0.5,
-      swirl: 0.3,
-      churn: 0.75,
-      mixing: 0.55,
-      wind: 0.5,
-      gust: 1.2,
-      sizeMin: 2.8,
-      sizeMax: 7.2,
-      flutter: 1,
-      heat: 1790,
-      burn: 1.25,
-      breath: 0.85,
-      span: 4.45,
-      hue: 217,
-      hueSpread: 0,
-      exposure: 2,
-      flare: 0.5,
-      shutter: 0.11,
-      playback: 0.38,
-      mark: "mote",
-    },
-  },
-  {
-    label: "wide hearth",
-    hint: "Right up against a fire wider than the frame, in a real crosswind.",
-    settings: {
-      count: 590,
-      sputter: 0.95,
-      pops: 0.3,
-      bursts: 7,
-      bed: 4,
-      hearth: 0.1,
-      firelight: 0.06,
-      updraft: 2.7,
-      spread: 0.11,
-      swirl: 1.5,
-      churn: 0.35,
-      mixing: 1.1,
-      wind: -2.5,
-      gust: 0.45,
-      sizeMin: 0.4,
-      sizeMax: 1.5,
-      flutter: 0.8,
-      heat: 1610,
-      burn: 0.3,
-      breath: 0.95,
-      span: 1.27,
-      hue: 54,
-      hueSpread: 13,
-      exposure: 2.31,
-      flare: 0.75,
-      shutter: 0.05,
-      playback: 0.12,
-      mark: "ember",
-    },
-  },
-  {
-    label: "campfire",
-    hint: "An ordinary fire on a still evening, from far enough back to see the whole column.",
-    settings: {
-      count: 2200,
-      sputter: 1.4,
-      pops: 1.1,
-      bursts: 6,
-      bed: 0.55,
-      hearth: 0.24,
-      firelight: 0.5,
-      updraft: 4.6,
-      spread: 0.16,
-      swirl: 1,
-      churn: 1,
-      mixing: 0.55,
-      wind: 0.15,
-      gust: 0.5,
-      sizeMin: 0.6,
-      sizeMax: 5.2,
-      flutter: 0.7,
-      heat: 1480,
-      burn: 0.8,
-      breath: 1,
-      span: 4.5,
-      hue: 25,
-      hueSpread: 5,
-      exposure: 2.2,
-      flare: 1.5,
-      shutter: 0.03,
-      playback: 0.45,
-      mark: "ember",
-    },
-  },
-  {
-    label: "bonfire",
-    hint: "A wide fire going hard, throwing plumes of embers a long way up.",
-    settings: {
-      count: 3200,
-      sputter: 1.7,
-      pops: 2.4,
-      bursts: 14,
-      bed: 1.6,
-      hearth: 0.6,
-      firelight: 0.62,
-      updraft: 8.4,
-      spread: 0.15,
-      swirl: 1.25,
-      churn: 1.2,
-      mixing: 0.6,
-      wind: -0.6,
-      gust: 1.4,
-      sizeMin: 0.5,
-      sizeMax: 7.8,
-      flutter: 0.75,
-      heat: 1620,
-      burn: 0.85,
-      breath: 1.2,
-      span: 11,
-      hue: 22,
-      hueSpread: 6,
-      exposure: 1.5,
-      flare: 0.8,
-      shutter: 0.04,
-      playback: 0.5,
-      mark: "ember",
-    },
-  },
-  {
-    label: "night wind",
-    hint: "A small fire in a real wind. Nothing gets to go straight up.",
-    settings: {
-      count: 1900,
-      sputter: 1.6,
-      pops: 0.8,
-      bursts: 4,
-      bed: 0.34,
-      hearth: 0.18,
-      firelight: 0.28,
-      updraft: 3.4,
-      spread: 0.2,
-      swirl: 1.4,
-      churn: 1.5,
-      mixing: 0.75,
-      wind: 1.65,
-      gust: 2.6,
-      sizeMin: 0.6,
-      sizeMax: 3.4,
-      flutter: 1.05,
-      heat: 1450,
-      burn: 1.3,
-      breath: 1.6,
-      span: 4.4,
-      hue: 28,
-      hueSpread: 5,
-      exposure: 2.2,
-      flare: 1.3,
-      shutter: 0.065,
-      playback: 0.4,
-      mark: "ember",
-    },
-  },
-  {
-    label: "coals",
-    hint: "Close in over the bed, where an ember is big enough to see turning.",
-    settings: {
-      count: 1100,
-      sputter: 2.2,
-      pops: 0.5,
-      bursts: 2.5,
-      bed: 0.24,
-      hearth: 0.06,
-      firelight: 0.6,
-      updraft: 2.4,
-      spread: 0.17,
-      swirl: 0.8,
-      churn: 0.65,
-      mixing: 0.35,
-      wind: 0.15,
-      gust: 0.4,
-      sizeMin: 2.4,
-      sizeMax: 11,
-      flutter: 1.35,
-      heat: 1360,
-      burn: 0.55,
-      breath: 0.7,
-      span: 0.95,
-      hue: 20,
-      hueSpread: 5,
-      exposure: 3.2,
-      flare: 0.9,
-      shutter: 0.025,
-      playback: 0.22,
-      mark: "flake",
-    },
-  },
-  {
-    label: "cinder rain",
-    hint: "Heavy embers the column cannot hold, zig-zagging back down.",
-    settings: {
-      count: 2200,
-      sputter: 1.5,
-      pops: 3.2,
-      bursts: 9,
-      bed: 0.7,
-      hearth: 0.34,
-      firelight: 0.3,
-      updraft: 2.8,
-      spread: 0.26,
-      swirl: 1.55,
-      churn: 1.35,
-      mixing: 0.85,
-      wind: -0.8,
-      gust: 1.1,
-      sizeMin: 3.6,
-      sizeMax: 13,
-      flutter: 1.6,
-      heat: 1560,
-      burn: 0.65,
-      breath: 0.85,
-      span: 5.5,
-      hue: 18,
-      hueSpread: 4,
-      exposure: 2.2,
-      flare: 1.3,
-      shutter: 0.075,
-      playback: 0.35,
-      mark: "ember",
-    },
-  },
-  {
-    label: "foxfire",
-    hint: "The same air, carrying something that is not fire at all.",
-    settings: {
-      count: 2600,
-      sputter: 1.2,
-      pops: 0.3,
-      bursts: 7,
-      bed: 0.8,
-      hearth: 0.4,
-      firelight: 0.16,
-      updraft: 4.8,
-      spread: 0.18,
-      swirl: 1.15,
-      churn: 0.75,
-      mixing: 0.55,
-      wind: 0.5,
-      gust: 1.2,
-      sizeMin: 0.4,
-      sizeMax: 2.6,
-      flutter: 0.4,
-      heat: 1560,
-      burn: 0.3,
-      breath: 0.35,
-      span: 5.5,
-      hue: 176,
-      hueSpread: 52,
-      exposure: 2,
-      flare: 2.1,
-      shutter: 0.055,
-      playback: 0.45,
-      mark: "mote",
-    },
-  },
-]
-
-/**
  * The numeric shape of every setting a handle owns: its bounds, its step, its scale.
  *
  * **Written out rather than derived from `CONTROLS`, and that is the point.**
@@ -948,7 +666,7 @@ export function urlForSettings(settings: Settings, pathname: string): string {
 }
 
 /** Whether a query string names any setting at all. */
-function namesASetting(params: URLSearchParams): boolean {
+export function namesASetting(params: URLSearchParams): boolean {
   const packed = params.get("s")
   if (packed !== null && packed !== "" && decodeScene(REGISTRY, packed)) return true
   if (isMark(params.get("mark"))) return true
@@ -959,13 +677,40 @@ function namesASetting(params: URLSearchParams): boolean {
 }
 
 /**
- * The scene a freshly-opened URL should show.
- *
- * `featured` says the caller should rewrite the address, so a landing visitor
- * leaves with a URL describing the fire in front of them rather than one
- * standing for "whatever is featured".
+ * What the frame needs from this piece beyond its settings tables, as data —
+ * see `Chrome` in `../piece.ts`. Here rather than in `runner.ts`, because every
+ * export of that file ships in a frozen runner, which draws none of this.
  */
-export function settingsForLanding(params: URLSearchParams): { settings: Settings; featured: boolean } {
-  if (namesASetting(params)) return { settings: settingsFromQuery(params), featured: false }
-  return { settings: normalizeSettings(PRESETS[0]!.settings), featured: true }
+export const CHROME: Chrome<Settings> = {
+  slug: "embers",
+  title: "Embers",
+  canvas: "fire",
+  groups: GROUPS,
+  theme: (settings) => ({ style: { "--hue": String(settings.hue), "--ground": groundColour(settings.hue) } }),
+  actions: [
+    {
+      label: "burst",
+      hint: "Make the fire surge now: a puff of hot gas and a slug of embers with it (b)",
+      shortcut: "b",
+      verb: "burst",
+    },
+  ],
+  hatches: { debug: "flag", settle: "seconds" },
+  banner: [
+    ["experiment.get()", "current settings"],
+    ["experiment.set({ hue: 200 })", "change one or more"],
+    ["experiment.preset(1)", "load a preset by number or name"],
+    ["experiment.presets()", "what the presets are called"],
+    ["experiment.controls()", "every control, with its bounds and blurb"],
+    ["experiment.burst()", "make the fire surge (or press b)"],
+    ["experiment.settle(20)", "run the fire forward twenty seconds"],
+    ["experiment.debug(true)", "draw the plume and its vortices"],
+    ["experiment.panel(true)", "open the settings panel"],
+    ["experiment.pause()", "hold the fire where it is, or let it run on"],
+    ["experiment.idle(false)", "stop the chrome hiding itself"],
+    ["experiment.fullscreen()", "toggle fullscreen (or press f)"],
+    ["experiment.stats()", "embers alive and drawn, vortices, vigour, fps"],
+    ["experiment.decode(url)", "what scene an address describes"],
+    ["experiment.url()", "a link that restores this exact state"],
+  ],
 }

@@ -1,4 +1,4 @@
-import type { ExperimentApi } from "@/experiments/embers/api"
+import type { ExperimentApi } from "@/experiments/embers/runner"
 import { expect, openExperiment, test } from "./support/experiment"
 import { litPixels as countLit } from "./support/canvas.ts"
 

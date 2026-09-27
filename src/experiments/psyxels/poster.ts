@@ -1,5 +1,5 @@
 import type { PosterRecipe } from "@/experiments/poster"
-import type { ExperimentApi } from "@/experiments/psyxels/api"
+import type { ExperimentApi } from "@/experiments/psyxels/runner"
 
 /**
  * What Psyxels looks like when someone should want to click it.

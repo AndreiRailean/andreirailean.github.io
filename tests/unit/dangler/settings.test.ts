@@ -1,13 +1,17 @@
 import { describe, expect, it } from "vitest"
 import {
   DEFAULT_SETTINGS,
-  PRESETS,
   normalizeSettings,
-  settingsForLanding,
   settingsFromQuery,
   settingsToQuery,
   urlForSettings,
 } from "@/experiments/dangler/settings"
+import { PRESETS } from "@/experiments/dangler/presets"
+import * as module from "@/experiments/dangler/settings"
+import { settingsForLanding as landing } from "@/experiments/piece"
+
+/** The landing rule as the gallery's boot applies it to this piece. */
+const settingsForLanding = (params: URLSearchParams) => landing(module, PRESETS, params)
 
 /**
  * Settings round-trip through the query string, which is what makes a URL the

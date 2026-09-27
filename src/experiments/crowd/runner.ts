@@ -12,6 +12,7 @@
 import { decodeScene } from "@/experiments/address"
 import { normalizeSettings, REGISTRY, type Settings } from "@/experiments/crowd/settings"
 import { createCrowd } from "@/experiments/crowd/crowd"
+import type { Live, PieceApi, Rerollable } from "@/experiments/piece"
 
 /** The whole contract between a runner and whatever hosts it. */
 export type Mounted = {
@@ -37,14 +38,47 @@ function read(scene: string): Settings {
   return normalizeSettings(decoded as Partial<Settings>)
 }
 
-export function mount(canvas: HTMLCanvasElement, scene: string, _options: MountOptions = {}): Mounted {
-  const square = createCrowd(canvas, read(scene))
+/**
+ * The piece live: what the gallery's page drives, and what `mount` below is
+ * written in terms of, so there is one way a point becomes pixels.
+ *
+ * The verbs are the piece's own, and reach the console and the bar through
+ * `gallery/boot.ts`. See
+ * `../docs/adr/20260928-a-piece-is-a-library-behind-three-files.md`.
+ */
+export function start(canvas: HTMLCanvasElement, settings: Settings) {
+  const square = createCrowd(canvas, settings)
   square.start()
 
   return {
-    setScene: (next) => square.setSettings(read(next)),
+    setSettings: square.setSettings,
     setPaused: square.setPaused,
     stats: square.stats,
     destroy: square.destroy,
+    verbs: {
+      settle: (seconds: number) => {
+        square.settle(seconds)
+        return square.stats()
+      },
+    },
+  } satisfies Live<Settings>
+}
+
+/** `window.experiment` on this piece's page, derived rather than written out. */
+export type ExperimentApi = PieceApi<
+  Settings,
+  ReturnType<typeof start>["verbs"],
+  ReturnType<ReturnType<typeof start>["stats"]>
+> &
+  Rerollable
+
+export function mount(canvas: HTMLCanvasElement, scene: string, _options: MountOptions = {}): Mounted {
+  const live = start(canvas, read(scene))
+
+  return {
+    setScene: (next) => live.setSettings(read(next)),
+    setPaused: live.setPaused,
+    stats: live.stats,
+    destroy: live.destroy,
   }
 }

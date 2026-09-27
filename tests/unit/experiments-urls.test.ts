@@ -1,5 +1,6 @@
 import { readdirSync, statSync } from "node:fs"
 import { describe, expect, it } from "vitest"
+import { settingsForLanding as landing } from "@/experiments/piece"
 
 /**
  * A shared address states the whole scene, in every piece.
@@ -50,13 +51,22 @@ type Settings = Record<string, unknown>
  * same reason `tests/unit/experiments-presets.test.ts` does it this way.
  */
 async function settingsModule(slug: string) {
-  return (await import(`../../src/experiments/${slug}/settings.ts`)) as {
+  const settings = (await import(`../../src/experiments/${slug}/settings.ts`)) as {
     DEFAULT_SETTINGS: Settings
-    PRESETS: { label: string; settings: Settings }[]
     settingsToQuery: (settings: Settings) => URLSearchParams
     settingsFromQuery: (params: URLSearchParams) => Settings
     urlForSettings: (settings: Settings, pathname: string) => string
-    settingsForLanding: (params: URLSearchParams) => { settings: Settings; featured: boolean }
+    namesASetting: (params: URLSearchParams) => boolean
+    normalizeSettings: (patch: Partial<Settings>, base?: Settings) => Settings
+  }
+  const { PRESETS } = (await import(`../../src/experiments/${slug}/presets.ts`)) as {
+    PRESETS: { label: string; hint: string; settings: Settings }[]
+  }
+  return {
+    ...settings,
+    PRESETS,
+    // The landing rule as the gallery's boot applies it to this piece.
+    settingsForLanding: (params: URLSearchParams) => landing(settings, PRESETS, params),
   }
 }
 

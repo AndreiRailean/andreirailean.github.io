@@ -49,7 +49,7 @@ const NOT_A_PIECE = new Set(["docs", "gallery", "kit"])
 /**
  * The marker, for the messages. `tests/unit/opt-out.ts` owns what satisfies it.
  *
- * Two of the checks below read the same `settings.ts` for unrelated reasons, so
+ * Two of the checks below read the same `presets.ts` for unrelated reasons, so
  * each names itself. Starry Night carried one unqualified line — written about a
  * preset spreading over `DEFAULT_SETTINGS` — and it was also the reason nothing
  * checked that the piece had a primary or that its presets carried usable hues.
@@ -76,11 +76,13 @@ type Preset = { label: string; settings: Record<string, unknown> }
  * one. The `@/` alias form resolves for a literal import and not for this.
  */
 async function settingsModule(slug: string) {
-  return (await import(`../../src/experiments/${slug}/settings.ts`)) as {
-    PRESETS?: Preset[]
+  // The presets are their own file since #238, beside the space they sit in.
+  const settings = (await import(`../../src/experiments/${slug}/settings.ts`)) as {
     DEFAULT_SETTINGS?: Record<string, unknown>
     normalizeSettings?: (patch: Record<string, unknown>) => Record<string, unknown>
   }
+  const presets = (await import(`../../src/experiments/${slug}/presets.ts`)) as { PRESETS?: Preset[] }
+  return { ...settings, PRESETS: presets.PRESETS }
 }
 
 const read = (path: string) => {
@@ -96,20 +98,21 @@ it("finds the experiments, so an empty run cannot pass for a clean one", () => {
 })
 
 describe.each(slugs)("%s", (slug) => {
-  const source = readFileSync(`${EXPERIMENTS}/${slug}/settings.ts`, "utf8")
+  // Where a preset opt-out is written: beside the presets it excuses.
+  const source = readFileSync(`${EXPERIMENTS}/${slug}/presets.ts`, "utf8")
 
   it("has a primary, which is the first preset", async () => {
     if (optsOutOf(source, "primary")) return
     const { PRESETS } = await settingsModule(slug)
     expect(
       PRESETS,
-      `${slug}/settings.ts exports no PRESETS. The first one is the primary — the poster, ` +
+      `${slug}/presets.ts exports no PRESETS. The first one is the primary — the poster, ` +
         `the about page's backdrop and a bare visit all come from it.`,
     ).toBeDefined()
     expect(
       PRESETS!.length,
       `${slug} has no presets, so there is nothing for the index poster or the note to render. ` +
-        `Or say why not with a "${OPT_OUT_PRIMARY} <reason>" comment in settings.ts.`,
+        `Or say why not with a "${OPT_OUT_PRIMARY} <reason>" comment in presets.ts.`,
     ).toBeGreaterThan(0)
   })
 
@@ -161,7 +164,9 @@ describe.each(slugs)("%s", (slug) => {
   it("gives every preset every setting, each already normal", async () => {
     const { PRESETS, DEFAULT_SETTINGS, normalizeSettings } = await settingsModule(slug)
     if (!PRESETS || !DEFAULT_SETTINGS || !normalizeSettings) {
-      throw new Error(`${slug}/settings.ts does not export PRESETS, DEFAULT_SETTINGS and normalizeSettings`)
+      throw new Error(
+        `${slug}/settings.ts does not export DEFAULT_SETTINGS and normalizeSettings, or presets.ts PRESETS`,
+      )
     }
     expect(PRESETS.length, `${slug} has no presets`).toBeGreaterThan(0)
 
@@ -187,7 +192,7 @@ describe.each(slugs)("%s", (slug) => {
         `so every preset needs one in [0, 360). If this piece genuinely has no hue control, ` +
         `that is the point at which the section has to decide how to derive one from its other ` +
         `settings — raise it rather than working around it, or say why not with a ` +
-        `"${OPT_OUT_HUE} <reason>" comment in settings.ts.`,
+        `"${OPT_OUT_HUE} <reason>" comment in presets.ts.`,
     ).toEqual([])
   })
 })

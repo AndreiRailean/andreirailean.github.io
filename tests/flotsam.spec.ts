@@ -1,5 +1,6 @@
-import type { ExperimentApi } from "@/experiments/flotsam/api"
-import { DEFAULT_SETTINGS, PRESETS } from "@/experiments/flotsam/settings"
+import type { ExperimentApi } from "@/experiments/flotsam/runner"
+import { DEFAULT_SETTINGS } from "@/experiments/flotsam/settings"
+import { PRESETS } from "@/experiments/flotsam/presets"
 import { expect, openExperiment, test } from "./support/experiment"
 import { litPixels as countLit } from "./support/canvas.ts"
 

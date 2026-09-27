@@ -10,6 +10,7 @@
 import { decodeScene } from "@/experiments/address"
 import { createFlotsam } from "@/experiments/flotsam/flotsam"
 import { normalizeSettings, REGISTRY, type Settings } from "@/experiments/flotsam/settings"
+import type { Live, PieceApi, Rerollable } from "@/experiments/piece"
 
 /** The whole contract between a runner and whatever hosts it. */
 export type Mounted = {
@@ -29,14 +30,45 @@ function read(scene: string): Settings {
   return normalizeSettings(decoded as Partial<Settings>)
 }
 
-export function mount(canvas: HTMLCanvasElement, scene: string, _options: MountOptions = {}): Mounted {
-  const sea = createFlotsam(canvas, read(scene))
+/**
+ * The piece live: what the gallery's page drives, and what `mount` below is
+ * written in terms of, so there is one way a point becomes pixels.
+ *
+ * The verbs are the piece's own, and reach the console and the bar through
+ * `gallery/boot.ts`. See
+ * `../docs/adr/20260928-a-piece-is-a-library-behind-three-files.md`.
+ */
+export function start(canvas: HTMLCanvasElement, settings: Settings) {
+  const sea = createFlotsam(canvas, settings)
   sea.start()
 
   return {
-    setScene: (next) => sea.setSettings(read(next)),
+    setSettings: sea.setSettings,
     setPaused: sea.setPaused,
     stats: sea.stats,
+    destroy: sea.stop,
+    verbs: {
+      run: (seconds: number) => sea.run(seconds),
+      debug: (on: boolean) => sea.setDebug(on),
+    },
+  } satisfies Live<Settings>
+}
+
+/** `window.experiment` on this piece's page, derived rather than written out. */
+export type ExperimentApi = PieceApi<
+  Settings,
+  ReturnType<typeof start>["verbs"],
+  ReturnType<ReturnType<typeof start>["stats"]>
+> &
+  Rerollable
+
+export function mount(canvas: HTMLCanvasElement, scene: string, _options: MountOptions = {}): Mounted {
+  const live = start(canvas, read(scene))
+
+  return {
+    setScene: (next) => live.setSettings(read(next)),
+    setPaused: live.setPaused,
+    stats: live.stats,
 
     /**
      * `stop()` is this piece's teardown, not merely its pause.
@@ -52,6 +84,6 @@ export function mount(canvas: HTMLCanvasElement, scene: string, _options: MountO
      * only for a host that mounts repeatedly, which is what a wall is. Fixed in
      * #168 and checked by `tests/unit/experiments-listeners.test.ts`.
      */
-    destroy: sea.stop,
+    destroy: live.destroy,
   }
 }

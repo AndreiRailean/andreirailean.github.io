@@ -1,7 +1,7 @@
 ---
 import PiecePage from "@/experiments/gallery/PiecePage.astro"
 import type { NoteTheme } from "@/experiments/gallery/NoteOverlay.astro"
-import { PRESETS } from "@/experiments/bubbles/settings"
+import { PRESETS } from "@/experiments/bubbles/presets"
 
 // The note's furniture is the gallery's; only the paint is this piece's. See
 // docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.
@@ -87,8 +87,11 @@ const { note = false } = Astro.props
   </style>
   <canvas id="water"></canvas>
   <script>
-    import { boot } from "@/experiments/bubbles/page"
+    import { boot } from "@/experiments/gallery/boot"
+    import * as settings from "@/experiments/bubbles/settings"
+    import { PRESETS } from "@/experiments/bubbles/presets"
+    import { start } from "@/experiments/bubbles/runner"
 
-    boot()
+    boot({ settings, presets: PRESETS, start })
   </script>
 </PiecePage>

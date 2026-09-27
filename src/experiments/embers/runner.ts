@@ -15,6 +15,7 @@
 import { decodeScene } from "@/experiments/address"
 import { createEmbers } from "@/experiments/embers/embers"
 import { normalizeSettings, REGISTRY, type Settings } from "@/experiments/embers/settings"
+import type { Live, PieceApi } from "@/experiments/piece"
 
 /** The whole contract between a runner and whatever hosts it. */
 export type Mounted = {
@@ -38,9 +39,45 @@ function read(scene: string): Settings {
   return normalizeSettings(decoded as Partial<Settings>)
 }
 
-export function mount(canvas: HTMLCanvasElement, scene: string, _options: MountOptions = {}): Mounted {
-  const fire = createEmbers(canvas, read(scene))
+/**
+ * The piece live: what the gallery's page drives, and what `mount` below is
+ * written in terms of, so there is one way a point becomes pixels.
+ *
+ * The verbs are the piece's own, and reach the console and the bar through
+ * `gallery/boot.ts`. See
+ * `../docs/adr/20260928-a-piece-is-a-library-behind-three-files.md`.
+ */
+export function start(canvas: HTMLCanvasElement, settings: Settings) {
+  const fire = createEmbers(canvas, settings)
   fire.start()
+  let debugging = false
+
+  return {
+    setSettings: fire.setSettings,
+    setPaused: fire.setPaused,
+    stats: fire.stats,
+    destroy: fire.stop,
+    verbs: {
+      settle: (seconds: number) => fire.settle(Math.max(0, Math.min(600, Number(seconds) || 0))),
+      burst: () => fire.burst(),
+      debug: (on?: boolean) => {
+        debugging = on === undefined ? !debugging : Boolean(on)
+        fire.setDebug(debugging)
+        return debugging
+      },
+    },
+  } satisfies Live<Settings>
+}
+
+/** `window.experiment` on this piece's page, derived rather than written out. */
+export type ExperimentApi = PieceApi<
+  Settings,
+  ReturnType<typeof start>["verbs"],
+  ReturnType<ReturnType<typeof start>["stats"]>
+>
+
+export function mount(canvas: HTMLCanvasElement, scene: string, _options: MountOptions = {}): Mounted {
+  const live = start(canvas, read(scene))
 
   /**
    * A fire that has been going a while, rather than one just lit.
@@ -54,14 +91,14 @@ export function mount(canvas: HTMLCanvasElement, scene: string, _options: MountO
    * Seconds of *fire*, not of wall clock, so it is unaffected by the scene's
    * own playback.
    */
-  fire.settle(14)
+  live.verbs.settle(14)
 
   return {
-    setScene: (next) => fire.setSettings(read(next)),
-    setPaused: fire.setPaused,
-    stats: fire.stats,
+    setScene: (next) => live.setSettings(read(next)),
+    setPaused: live.setPaused,
+    stats: live.stats,
     // `stop()` is teardown here, not the pause — it drops both listeners. See
     // the note at the top.
-    destroy: fire.stop,
+    destroy: live.destroy,
   }
 }

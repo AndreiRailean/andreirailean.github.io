@@ -8,6 +8,7 @@ import {
   type Track,
 } from "@/experiments/kit/controls"
 import { isMode, MODES, type Mode } from "@/experiments/starry-night/character"
+import type { Chrome } from "@/experiments/piece"
 
 /** Re-exported so a consumer needs one import for a control and its keys. */
 export { keysOf } from "@/experiments/kit/controls"
@@ -236,82 +237,6 @@ export const DEFAULT_SETTINGS: Settings = {
   minLifetimeMs: 6_000,
   maxLifetimeMs: 26_000,
 }
-
-/**
- * Starting points, not conclusions. Keys 1-3 load these; the intent is that you
- * explore with the sliders, then a URL worth keeping gets baked in here.
- *
- * Every one of them states every setting and inherits from nothing — not from
- * another preset and not from `DEFAULT_SETTINGS`. `deep field` was a spread over
- * the defaults until #128, which is the shape that cost Psyxels four of its six
- * scenes; see `../docs/adr/20260830-a-preset-inherits-from-nothing.md`. The
- * values below are the ones that spread produced, written out unchanged.
- */
-export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
-  {
-    label: "deep field",
-    hint: "Many faint layers on a dark sky. The starting point.",
-    settings: {
-      mode: "depth",
-      invert: false,
-      layerCount: 14,
-      fade: 0.1,
-      curve: 1,
-      glimmersPerSecond: 0.5,
-      densityScale: 1,
-      nearRadius: 3,
-      sizeMix: 1,
-      wobble: 0.22,
-      clouds: 0.15,
-      haze: 0.2,
-      hue: 247,
-      minLifetimeMs: 6_000,
-      maxLifetimeMs: 26_000,
-    },
-  },
-  {
-    label: "clay",
-    hint: "Dark stars pressed into a warm light ground.",
-    settings: {
-      mode: "depth",
-      invert: true,
-      layerCount: 13,
-      fade: 0.13,
-      curve: 1,
-      glimmersPerSecond: 1.45,
-      densityScale: 3,
-      nearRadius: 16,
-      sizeMix: 0.65,
-      wobble: 0.22,
-      clouds: 0.25,
-      haze: 0,
-      hue: 30,
-      minLifetimeMs: 2500,
-      maxLifetimeMs: 9500,
-    },
-  },
-  {
-    label: "alive",
-    hint: "Short lifespans and frequent flares, so the sky never settles.",
-    settings: {
-      mode: "depth",
-      invert: false,
-      layerCount: 18,
-      fade: 0.45,
-      curve: 1,
-      glimmersPerSecond: 1.75,
-      densityScale: 0.6,
-      nearRadius: 2.6,
-      sizeMix: 1,
-      wobble: 0.22,
-      clouds: 0.22,
-      haze: 0,
-      hue: 225,
-      minLifetimeMs: 3500,
-      maxLifetimeMs: 10500,
-    },
-  },
-]
 
 /**
  * The numeric shape of every setting a slider owns: its bounds and its grid.
@@ -586,7 +511,7 @@ export function settingsToQuery(settings: Settings): URLSearchParams {
  * anything that is not `0` or `false` is true — so it counts here on exactly
  * that test rather than on being readable.
  */
-function namesASetting(params: URLSearchParams): boolean {
+export function namesASetting(params: URLSearchParams): boolean {
   // The packed form names the whole scene by definition, so it settles this
   // before any per-key test runs.
   const packed = params.get("s")
@@ -600,20 +525,27 @@ function namesASetting(params: URLSearchParams): boolean {
 }
 
 /**
- * The scene a freshly-opened URL should show.
- *
- * `featured` says the caller should rewrite the address, so a landing visitor
- * has a URL describing the sky in front of them rather than one standing for
- * "whatever is featured". The piece read `settingsFromQuery` here until #128,
- * which landed a bare address on `DEFAULT_SETTINGS` — the baseline rather than
- * the chosen scene, and correct only for as long as the two coincide.
- *
- * They do coincide today, so the rewrite this enables is still a no-op: the
- * address `urlForSettings` writes for the primary is empty, because every value
- * in it equals the default it is diffed against. That half of #128 is a scene
- * choice rather than a mechanism, and is left open there.
+ * What the frame needs from this piece beyond its settings tables, as data —
+ * see `Chrome` in `../piece.ts`. Here rather than in `runner.ts`, because every
+ * export of that file ships in a frozen runner, which draws none of this.
  */
-export function settingsForLanding(params: URLSearchParams): { settings: Settings; featured: boolean } {
-  if (namesASetting(params)) return { settings: settingsFromQuery(params), featured: false }
-  return { settings: normalizeSettings(PRESETS[0]!.settings), featured: true }
+export const CHROME: Chrome<Settings> = {
+  slug: "starry-night",
+  title: "Starry Night",
+  canvas: "sky",
+  theme: (settings) => ({ style: { "--hue": String(settings.hue) }, data: { invert: String(settings.invert) } }),
+  banner: [
+    ["experiment.get()", "current settings"],
+    ["experiment.set({ hue: 30 })", "change one or more"],
+    ["experiment.preset(1)", "load a preset by number or name"],
+    ["experiment.presets()", "what the presets are called"],
+    ["experiment.controls()", "every control, with its bounds and blurb"],
+    ["experiment.panel(true)", "open the settings panel"],
+    ["experiment.pause()", "hold the sky where it is, or let it run on"],
+    ["experiment.idle(false)", "stop the chrome hiding itself"],
+    ["experiment.fullscreen()", "toggle fullscreen (or press f)"],
+    ["experiment.awake()", "is the display being held awake"],
+    ["experiment.stats()", "dots, fill calls per frame, fps, and whether the loop is running"],
+    ["experiment.url()", "a link that restores this exact state"],
+  ],
 }

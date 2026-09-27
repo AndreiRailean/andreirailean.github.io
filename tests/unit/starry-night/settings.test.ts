@@ -4,16 +4,20 @@ import {
   CONTROLS,
   isNumericControl,
   DEFAULT_SETTINGS,
-  PRESETS,
   keysOf,
   needsRebuild,
   normalizeSettings,
   reconcile,
-  settingsForLanding,
   settingsFromQuery,
   settingsToQuery,
   urlForSettings,
 } from "@/experiments/starry-night/settings"
+import { PRESETS } from "@/experiments/starry-night/presets"
+import * as module from "@/experiments/starry-night/settings"
+import { settingsForLanding as landing } from "@/experiments/piece"
+
+/** The landing rule as the gallery's boot applies it to this piece. */
+const settingsForLanding = (params: URLSearchParams) => landing(module, PRESETS, params)
 
 /**
  * Settings round-trip through the query string, which makes a URL the unit of

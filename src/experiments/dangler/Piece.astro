@@ -1,7 +1,7 @@
 ---
 import PiecePage from "@/experiments/gallery/PiecePage.astro"
 import type { NoteTheme } from "@/experiments/gallery/NoteOverlay.astro"
-import { PRESETS } from "@/experiments/dangler/settings"
+import { PRESETS } from "@/experiments/dangler/presets"
 
 // The note's furniture is the gallery's; only the paint is Dangler's. See
 // docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.
@@ -81,8 +81,11 @@ const { note = false } = Astro.props
   </style>
   <canvas id="lights"></canvas>
   <script>
-    import { boot } from "@/experiments/dangler/page"
+    import { boot } from "@/experiments/gallery/boot"
+    import * as settings from "@/experiments/dangler/settings"
+    import { PRESETS } from "@/experiments/dangler/presets"
+    import { start } from "@/experiments/dangler/runner"
 
-    boot()
+    boot({ settings, presets: PRESETS, start })
   </script>
 </PiecePage>

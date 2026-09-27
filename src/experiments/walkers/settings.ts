@@ -7,6 +7,7 @@ import {
   type SliderControl,
   type Track,
 } from "@/experiments/kit/controls"
+import type { Chrome } from "@/experiments/piece"
 
 /** Re-exported so a consumer needs one import for a control and its keys. */
 export { keysOf } from "@/experiments/kit/controls"
@@ -430,107 +431,6 @@ export const DEFAULT_SETTINGS: Settings = {
 }
 
 /**
- * Scenes worth keeping, each stating every setting.
- *
- * **A preset inherits from nothing** — not from another preset and not from
- * `DEFAULT_SETTINGS`. Spreading over the defaults reads as tidy and is the trap
- * that cost Psyxels four of its six scenes; see
- * `../docs/adr/20260830-a-preset-inherits-from-nothing.md`.
- */
-export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
-  {
-    label: "chalky",
-    hint: "Nothing drawn but where people went, in chalk on slate. Andrei's, found with the sliders.",
-    settings: {
-      flow: "wander",
-      palette: "quiet",
-      dusk: true,
-      heads: false,
-      density: 26,
-      grouping: 0.15,
-      children: 0.16,
-      runners: 0.6,
-      settling: 0,
-      paceLow: 0.9,
-      paceHigh: 3.15,
-      play: 1.3,
-      gaze: 0,
-      bob: 0.9,
-      span: 24,
-      camera: 60,
-      traces: 6,
-      // Given as 360, which is the same colour: the hue every presentation
-      // surface reads has to be in [0, 360), and `tests/unit/experiments-presets`
-      // holds every piece to it.
-      hue: 0,
-      tint: 0.18,
-      spread: 78,
-      pastel: 1,
-      playback: 0.65,
-      seed: 58901,
-    },
-  },
-  {
-    label: "bacteria",
-    hint: "Far enough up that people are motile specks. Found by accident and kept.",
-    settings: {
-      flow: "wander",
-      palette: "kin",
-      dusk: true,
-      heads: true,
-      density: 34,
-      grouping: 0.3,
-      children: 0.46,
-      runners: 0.6,
-      settling: 0,
-      paceLow: 1.05,
-      paceHigh: 4.05,
-      play: 1.1,
-      gaze: 1.45,
-      bob: 0.8,
-      span: 30,
-      camera: 150,
-      traces: 0,
-      hue: 230,
-      tint: 0.74,
-      spread: 108,
-      pastel: 1,
-      playback: 1,
-      seed: 44232,
-    },
-  },
-  {
-    label: "busy",
-    hint: "Nobody with anybody, all going the same way, from high enough up that a person is a point of light.",
-    settings: {
-      flow: "through",
-      palette: "crowd",
-      dusk: true,
-      heads: true,
-      density: 55,
-      grouping: 0,
-      children: 0.6,
-      runners: 0.6,
-      settling: 0.02,
-      paceLow: 1.1,
-      paceHigh: 4.05,
-      play: 1.5,
-      gaze: 0,
-      bob: 2.5,
-      span: 15.5,
-      camera: 150,
-      traces: 0,
-      hue: 245,
-      tint: 0.18,
-      spread: 120,
-      pastel: 1,
-      playback: 1,
-      seed: 1307,
-    },
-  },
-]
-
-/**
  * The numeric shape of every setting a slider owns: its bounds and its grid.
  *
  * **Written out rather than derived from `CONTROLS`, and that is the point.**
@@ -785,7 +685,7 @@ export function settingsToQuery(settings: Settings): URLSearchParams {
  * absent, blank and unparseable are all "not a setting" there, so an address
  * made only of those is one the piece would read as carrying nothing.
  */
-function namesASetting(params: URLSearchParams): boolean {
+export function namesASetting(params: URLSearchParams): boolean {
   // The packed form names the whole scene by definition, so it settles this
   // before any per-key test runs.
   const packed = params.get("s")
@@ -796,24 +696,6 @@ function namesASetting(params: URLSearchParams): boolean {
     const raw = params.get(key)
     return raw !== null && raw.trim() !== "" && Number.isFinite(Number(raw))
   })
-}
-
-/**
- * The scene a freshly-opened address should show.
- *
- * **A bare visit lands on the primary, not on `DEFAULT_SETTINGS`.** The two are
- * different things — see `../CONTEXT.md` — and the defaults are an arbitrary
- * place to start from rather than a scene anybody chose.
- *
- * `featured` says the caller should rewrite the address, so a landing visitor
- * leaves with a URL describing the park in front of them rather than one
- * standing for "whatever is featured this month". That indirection is the whole
- * point: the featured scene can move without invalidating a link anybody has
- * already copied.
- */
-export function settingsForLanding(params: URLSearchParams): { settings: Settings; featured: boolean } {
-  if (namesASetting(params)) return { settings: settingsFromQuery(params), featured: false }
-  return { settings: normalizeSettings(PRESETS[0]!.settings), featured: true }
 }
 
 /** The address that restores exactly these settings. */
@@ -847,4 +729,56 @@ const VIEW_KEYS = ["span", "camera", "density"] as const satisfies readonly (key
 
 export function needsRemeasure(before: Settings, after: Settings): boolean {
   return VIEW_KEYS.some((key) => before[key] !== after[key])
+}
+
+/**
+ * What the frame needs from this piece beyond its settings tables, as data —
+ * see `Chrome` in `../piece.ts`. Here rather than in `runner.ts`, because every
+ * export of that file ships in a frozen runner, which draws none of this.
+ */
+export const CHROME: Chrome<Settings> = {
+  slug: "walkers",
+  title: "Walkers",
+  canvas: "park",
+  groups: GROUPS,
+  theme: (settings) => ({ style: { "--hue": String(settings.hue) }, data: { dusk: String(settings.dusk) } }),
+  actions: [
+    {
+      label: "another crowd",
+      hint: "A different set of people at the same settings (r)",
+      shortcut: "r",
+      verb: "reroll",
+    },
+  ],
+  hatches: { debug: "flag", settle: "seconds" },
+  banner: [
+    ["experiment.get()", "current settings"],
+    ["experiment.set({ density: 20 })", "change one or more"],
+    ["experiment.preset(1)", "load a preset by number or name"],
+    ["experiment.presets()", "what the presets are called"],
+    ["experiment.controls()", "every control, with its bounds and blurb"],
+    ["experiment.settle(60)", "run a minute of park without drawing it"],
+    ["experiment.reroll()", "a different crowd at the same settings"],
+    ["experiment.debug(true)", "goals, bodies and gaze rays over the top"],
+    ["experiment.panel(true)", "open the settings panel"],
+    ["experiment.pause()", "hold the park where it is, or let it run on"],
+    ["experiment.idle(false)", "stop the chrome hiding itself"],
+    ["experiment.fullscreen()", "toggle fullscreen (or press f)"],
+    ["experiment.awake()", "is the display being held awake"],
+    ["experiment.stats()", "who is out there, how fast, and how far anyone has been pushed into anyone"],
+    ["experiment.url()", "a link that restores this exact state"],
+  ],
+}
+
+/**
+ * A fresh arrangement at the same settings: the bar's reroll button and
+ * `experiment.reroll()` both call this, through `gallery/boot.ts`, so the two
+ * cannot come to mean different things.
+ *
+ * Pure, and the piece's rather than the frame's, because which values a seed
+ * may take is this piece's to say. The frame knows only that a rerollable piece
+ * has a `seed`.
+ */
+export function reroll(settings: Settings, seed?: number): Settings {
+  return normalizeSettings({ ...settings, seed: seed ?? Math.floor(Math.random() * (SEED_BOUNDS.max + 1)) })
 }

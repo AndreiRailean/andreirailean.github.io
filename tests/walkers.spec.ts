@@ -1,5 +1,5 @@
-import type { ExperimentApi } from "@/experiments/walkers/api"
-import { PRESETS } from "@/experiments/walkers/settings"
+import type { ExperimentApi } from "@/experiments/walkers/runner"
+import { PRESETS } from "@/experiments/walkers/presets"
 import { expect, openExperiment, test } from "./support/experiment"
 
 /**

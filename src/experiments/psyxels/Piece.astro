@@ -3,7 +3,7 @@ import PiecePage from "@/experiments/gallery/PiecePage.astro"
 import type { NoteTheme } from "@/experiments/gallery/NoteOverlay.astro"
 import { getImage } from "astro:assets"
 import avatar from "@/experiments/psyxels/avatar.jpg"
-import { PRESETS } from "@/experiments/psyxels/settings"
+import { PRESETS } from "@/experiments/psyxels/presets"
 
 // The portrait's address is handed to the script as an attribute rather than
 // imported inside it, because only the frontmatter gets Astro's resolved,
@@ -101,8 +101,11 @@ const { note = false } = Astro.props
   </style>
   <canvas id="stage" data-avatar={portrait.src}></canvas>
   <script>
-    import { boot } from "@/experiments/psyxels/page"
+    import { boot } from "@/experiments/gallery/boot"
+    import * as settings from "@/experiments/psyxels/settings"
+    import { PRESETS } from "@/experiments/psyxels/presets"
+    import { start } from "@/experiments/psyxels/runner"
 
-    boot()
+    boot({ settings, presets: PRESETS, start })
   </script>
 </PiecePage>
