@@ -104,6 +104,11 @@ test("the frame is a band around the eye line, because heads are all near one he
 })
 
 test("a head passing close is large and a head at the back is a speck", async ({ page }) => {
+  // Forty seconds of crowd is about 32s of arithmetic alone and over the
+  // default 60 when the suite runs four workers on CI's four cores, as it
+  // does (#133) — twice in four runs. The work is the claim, so it gets room
+  // rather than a shorter walk.
+  test.setTimeout(150_000)
   const experiment = await openCrowd(page, { idle: false })
   await experiment.api(({ api, arg }) => api.set(arg), { ...MODEST, density: 45, fade: 15 })
   // Long enough that somebody has actually come past. The claim is about the
