@@ -611,3 +611,13 @@ it on; values render on one line in the kit, and the formats that did not fit
 were shortened (free, 6% cover, hexagonal). Walkers' pace band needed its value
 column widened to stay whole. Measured: no row moves when boulders go from none
 to a share, or when the way is toggled.
+
+## 2026-09-29 — a toggle group
+
+> standard treatment for these kinds of toggles is a "toggle group" - what
+> shadcn calls them. having one button change label based on state is
+> possible, but is unorthodox and surprising
+
+Done in the kit, for every piece: a toggle is two buttons, the current one lit,
+each setting its own value. Crowd's way, starry night's sky and walkers' two
+toggles all change with it.
