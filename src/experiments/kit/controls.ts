@@ -47,6 +47,18 @@ type Shared = {
   hint: string
   /** Heading to file the row under. Ignored unless `groups` is given. */
   group?: string
+  /**
+   * True while this row can do nothing in the current scene — a loop's corners
+   * while the way is not a loop. **Shown, never hidden**: the row is drawn
+   * disabled and dimmed, so the panel keeps its shape as the scene changes.
+   * Hiding rows was built first, for governed groups, and made the whole panel
+   * jump whenever a layer was switched: "we can disable unused controls without
+   * hiding them".
+   *
+   * Given the piece's settings. Typed `never` here so a piece can annotate its
+   * own settings type on the argument.
+   */
+  inert?: (settings: never) => boolean
 }
 
 /**
@@ -264,17 +276,18 @@ export type Controls<S> = {
  * A group one of whose controls switches the rest of it on — #242.
  *
  * A layer of a piece, in crowd's case: boulders, a chase, a kind of ground.
- * While `governor` holds `off` the group's other rows hide, because every one
- * of them is inert, and the panel shows only what the scene uses. The governor
+ * While `governor` holds `off` the group's other rows are **inert** — drawn
+ * disabled, never hidden, so the panel keeps its shape (see `inert` on a
+ * control for why hiding was dropped). The governor
  * is an ordinary control in the group — a toggle, a slider whose zero means
  * absent, or a choice whose `off` option is the plain case — and it stays in
  * view under the heading, since it is how the group is switched back on.
  *
  * `off` is compared with the same one-level equality the preset matching uses.
- * It is the piece's to state rather than the kit's to guess: crowd's ground is
- * off at `"open"`, its boulders at `0`.
+ * It is the piece's to state rather than the kit's to guess: crowd's way and
+ * its boulders are both off at `0`.
  *
- * **Hidden is not reset.** The kit only hides; making an off layer's other
+ * **Inert is not reset.** The kit only disables; making an off layer's other
  * values canonical is the piece's validator's job, or two scenes that look the
  * same would stop matching the same preset.
  */
@@ -496,6 +509,8 @@ export function createControls<S extends object>(options: Options<S>): Controls<
    */
   /** Each governed group's body, and what switches it off. */
   const governed: { body: HTMLElement; governor: string & keyof S; off: unknown }[] = []
+  /** Every row the panel drew, with its control, so `render()` can mark the inert ones. */
+  const drawn: { row: HTMLElement; control: Control<string & keyof S> }[] = []
 
   if (groups && groups.length > 0) {
     for (const entry of groups) {
@@ -513,8 +528,8 @@ export function createControls<S extends object>(options: Options<S>): Controls<
         continue
       }
 
-      // The governor first, under its heading, and the rest in a body that
-      // `render()` hides while the governor holds `off`.
+      // The governor first, under its heading, and the rest in a body whose
+      // rows `render()` makes inert while the governor holds `off`.
       const governor = inGroup.find((control) => keysOf(control).includes(entry.governor))
       if (!governor) throw new Error(`group "${group}" is governed by ${entry.governor}, which has no control in it`)
       const governorRow = makeRow(governor)
@@ -552,6 +567,12 @@ export function createControls<S extends object>(options: Options<S>): Controls<
   }
 
   function makeRow(control: Control<string & keyof S>): HTMLDivElement {
+    const row = buildRow(control)
+    drawn.push({ row, control })
+    return row
+  }
+
+  function buildRow(control: Control<string & keyof S>): HTMLDivElement {
     const row = document.createElement("div")
     row.className = "row"
     row.title = control.hint
@@ -665,7 +686,21 @@ export function createControls<S extends object>(options: Options<S>): Controls<
   // --- state ---------------------------------------------------------------
 
   function render() {
-    for (const { body, governor, off } of governed) body.hidden = sameValue(current[governor], off)
+    const offBodies = new Set<HTMLElement>()
+    for (const { body, governor, off } of governed) {
+      const isOff = sameValue(current[governor], off)
+      body.dataset.inert = String(isOff)
+      if (isOff) offBodies.add(body)
+    }
+    for (const { row, control } of drawn) {
+      const underOff = row.parentElement !== null && offBodies.has(row.parentElement)
+      const inert = underOff || (control.inert ? control.inert(current as never) : false)
+      row.dataset.inert = String(inert)
+      row.setAttribute("aria-disabled", String(inert))
+      for (const input of row.querySelectorAll<HTMLInputElement | HTMLButtonElement>("input, button")) {
+        input.disabled = inert
+      }
+    }
 
     for (const control of specs) {
       if (control.kind === "choice") {

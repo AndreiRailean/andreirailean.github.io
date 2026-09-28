@@ -2,7 +2,15 @@ import { describe, expect, it } from "vitest"
 import { makeCamera, horizonFor } from "@/experiments/crowd/camera"
 import { drawFrame, makeScratch } from "@/experiments/crowd/draw"
 import { PRESETS } from "@/experiments/crowd/presets"
-import { normalizeSettings, OFF, reconcile, type Settings } from "@/experiments/crowd/settings"
+import { encodeScene } from "@/experiments/address"
+import {
+  normalizeSettings,
+  OFF,
+  reconcile,
+  REGISTRY,
+  settingsFromQuery,
+  type Settings,
+} from "@/experiments/crowd/settings"
 import { createStroll } from "@/experiments/crowd/stroll"
 import { createThrong } from "@/experiments/crowd/throng"
 import type { Boulder } from "@/experiments/crowd/boulders"
@@ -81,7 +89,16 @@ const CASES: { name: string; base: Settings; moved: Partial<Settings>[] }[] = [
       { hold: 0.8 },
     ],
   },
-  { name: "a street", base: scene("the street"), moved: [{ meander: 120 }, { corners: 0.8 }] },
+  {
+    name: "a street",
+    base: scene("the street"),
+    moved: [{ meander: 120 }, { corners: 0.8 }, { watchers: 80 }, { hills: 100 }, { effort: 1 }, { line: 0.6 }],
+  },
+  {
+    name: "scattered boulders",
+    base: scene("boulders"),
+    moved: [{ passage: 7 }],
+  },
   { name: "a trail", base: scene("the trail"), moved: [{ corners: 0.8 }] },
   { name: "a loop", base: scene("loop run"), moved: [{ bend: 30 }, { meander: 120 }] },
 ]
@@ -125,33 +142,44 @@ describe("normalizing", () => {
   })
 })
 
-describe("moving a ground's own setting", () => {
-  /**
-   * The kit hides the ground group only on open ground, so a street's panel
-   * shows the bend and loop rows as well. Normalize resets those on a street —
-   * so without the choice being made for it, dragging one would snap straight
-   * back. Paired with the open case, where the rows are hidden and nothing is
-   * chosen.
-   */
-  const street = scene("the street")
-  const drag = (key: keyof Settings, value: number, from = street) =>
+describe("a way", () => {
+  const drag = (key: keyof Settings, value: number, from: Settings) =>
     normalizeSettings(reconcile({ ...from, [key]: value }, key))
 
-  it("makes a street that bends a trail, and keeps the bend", () => {
-    const bent = drag("bend", 25)
-    expect(bent.ground).toBe(2)
-    expect(bent.bend).toBe(25)
-  })
-
-  it("makes a way with a length a loop", () => {
-    const looped = drag("corners", 0.5)
-    expect(looped.ground).toBe(3)
-    expect(looped.loop).toBeGreaterThan(0)
-  })
-
-  it("gives a way chosen from open ground a street's width, not open ground's", () => {
-    const chosen = drag("ground", 1, scene("market"))
+  it("chosen on open ground gets a street's width, and dragging its width to the end does not snap back", () => {
+    const chosen = drag("way", 1, scene("market"))
     expect(chosen.width).toBeLessThan(20)
-    expect(drag("width", 250).width).toBeGreaterThan(200)
+    expect(drag("width", 250, scene("the street")).width).toBeGreaterThan(200)
+  })
+
+  it("resets what the rest of it makes inert, and keeps what it uses", () => {
+    const loop = normalizeSettings({ ...scene("loop run"), bend: 30, corners: 0.4 })
+    expect(loop.bend).toBe(OFF.bend)
+    expect(loop.corners).toBe(0.4)
+    const trail = normalizeSettings({ ...scene("the trail"), corners: 0.4, bend: 30 })
+    expect(trail.corners).toBe(OFF.corners)
+    expect(trail.bend).toBe(30)
+  })
+})
+
+describe("an address from before the way", () => {
+  /**
+   * Addresses from #250 carry `ground` (0 open, 1–3 street, trail, loop), now
+   * retired; older ones carry neither and meant a way whenever `width` was
+   * under the top of its track. Both open onto the scene they described.
+   */
+  const withGround = REGISTRY.map((slot) => (slot.key === "ground" ? { ...slot, retired: undefined } : slot))
+  const open = (scene: Record<string, number>, registry: readonly unknown[] = withGround) =>
+    settingsFromQuery(new URLSearchParams({ s: encodeScene(registry as never, scene) }))
+
+  it("reads a trail written with ground as a way, and open ground as open", () => {
+    expect(open({ ground: 2, width: 3.5, bend: 30 }).way).toBe(1)
+    expect(open({ ground: 2, width: 3.5, bend: 30 }).bend).toBe(30)
+    expect(open({ ground: 0, width: 250 }).way).toBe(0)
+  })
+
+  it("reads an address with only a width as a way when the width has sides", () => {
+    expect(open({ width: 7 }, REGISTRY).way).toBe(1)
+    expect(open({ width: 250 }, REGISTRY).way).toBe(0)
   })
 })

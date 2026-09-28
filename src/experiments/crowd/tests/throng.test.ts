@@ -167,7 +167,7 @@ describe("the world travels with the observer", () => {
     // one starts with a companion just outside it — 40 people out of 1,386. The
     // wall force is what deals with that, and asserting after it has had a
     // moment tests the placement *and* the wall rather than only the placement.
-    const street = walk({ density: 45, reach: 220, ground: 1, width: 7 }, 3)
+    const street = walk({ density: 45, reach: 220, way: 1, width: 7 }, 3)
     expect(open.crowd.stats().budgeted).toBe(true)
     expect(street.crowd.stats().world).toBeCloseTo(220, 6)
     expect(street.crowd.stats().budgeted).toBe(false)

@@ -2,6 +2,11 @@
 
 Each experiment is a full-page programmed graphic.
 
+**A panel row that can do nothing is disabled in place, never hidden.** A kit
+control's `inert`, and a governed group whose governor is off, both dim and
+disable the row; hiding made the bottom-anchored panel jump on every switch.
+See `docs/adr/20260928-an-inert-control-is-disabled-not-hidden.md`.
+
 ## A piece is a library behind three files
 
 **The frame is common; what a piece draws is its own.** Every piece is wired

@@ -649,28 +649,41 @@ Andrei, 2026-09-28: "a core set of settings that control what happens and then
 there are 'plugins' that enhance and complicate the scene". The first step is
 the panel, over unchanged behaviour: groups me, look, crowd (the core and the
 crowd have no off), then **ground**, **boulders** and **chase**, each governed by
-the control in its heading and collapsed while it is off.
+the control in its heading.
 
-- **`ground` is the one stored truth for the way** — 0 open, 1 street, 2 trail,
-  3 loop. `normalizeSettings` makes `width`, `bend` and `loop` agree with it and
-  resets every setting a scene does not use to `OFF`, so two scenes that look
-  alike are the same scene (the kit matches presets by every key). Old
-  addresses infer it in `settingsFromQuery`, and `passage` from their `aisle`.
+- **Inert, never hidden.** The first version hid a layer's rows while it was
+  off, and the panel — anchored to the bottom — jumped every time a layer was
+  switched: "we can disable unused controls without hiding them". Rows now stay
+  put, dimmed and disabled (`inert` on a kit control, `data-inert` on the row).
+  Measured: the panel's top and height do not move across open ground, a way
+  and a loop.
+- **`way` is the one stored truth**: open ground or a way with sides. The first
+  version had `ground` as open, street, trail or loop, and moving a loop's
+  length turned a street into a loop, which read as weird: "not clear why
+  'loop' type is even needed for ground if anything appears to be loopable".
+  Street and trail were only `bend` at zero or not, and a loop is a way with a
+  length, so the kinds of way are its settings, not a choice. `ground` is a
+  retired slot; `settingsFromQuery` reads it, or `width` for older addresses.
+- **`INERT` is one table read twice**: the panel draws a row disabled while its
+  rule holds, and `normalizeSettings` resets it to `OFF` — a bend on a loop,
+  corners off a loop, watchers without a lining, hills and effort without a
+  climb, my line without a hold, passages off a grid. Two scenes that look
+  alike are then the same scene, which is what the kit's preset matching needs.
 - **Resetting is only safe because off is the identity**, which
-  `tests/layers.test.ts` holds per layer: a seeded walk with a hidden setting
-  moved is numerically identical, people and picture. It caught a leak planted
-  on purpose — and first _failed_ to, because `lining` is guarded twice, once
-  where it is read and once in `structured`; only removing both leaked.
-- **The kit hides a group only while its governor is off**, so a street's panel
-  still lists the trail's and the loop's rows. `reconcile` makes moving one of
-  them choose that ground — a street that bends is a trail — rather than
-  letting normalize reset it and the slider snap back.
+  `tests/layers.test.ts` holds per rule: a seeded walk with an inert setting
+  moved is numerically identical, people and picture. It caught a planted leak —
+  and first failed to, because `lining` is guarded twice, once where it is read
+  and once in `structured`; only removing both leaked.
+- **A control's `inert` must be an arrow, not `INERT.bend`.** A property read
+  in the `CONTROLS` literal cannot be proved side-effect free, so the bundler
+  kept the whole panel in every frozen runner; `runner-bundle.test.ts` caught
+  it (45 of 45 hints shipped).
 - **The crowd has no off**: `density` stops at 0.5. Whether it should is
   Andrei's question, on #242.
 - **Not done yet**: the simulation still reads every setting directly. Moving
   each layer's hooks behind a module (`layers/<name>.ts`) is the next step, and
-  moving the crowd's placement out of the ground (`structured` in `throng.ts`)
-  is a re-measurement, not a refactor.
+  moving the crowd's placement out of the way (`structured` in `throng.ts`) is a
+  re-measurement, not a refactor.
 
 ## What is not here, and would be worth having
 

@@ -122,6 +122,7 @@ exports[`crowd > has not edited a slot in place 1`] = `
   "perch num grid=0.5 origin=0 bits=6",
   "ground num grid=1 origin=0 bits=2",
   "passage num grid=0.1 origin=1.6 bits=7",
+  "way num grid=1 origin=0 bits=1",
 ]
 `;
 
@@ -129,6 +130,7 @@ exports[`crowd > retires a slot by appending to the retired list, never by editi
 [
   "9 walk",
   "23 companions",
+  "48 ground",
 ]
 `;
 
