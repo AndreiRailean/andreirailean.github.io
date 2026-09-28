@@ -581,3 +581,14 @@ Open, for him:
 
 Filed as #242, reviewed once by the steward (five points on the issue), and
 started when #238 landed.
+
+## 2026-09-28 — the panel jumps, and loop is not a ground
+
+> ground slider makes the whole pannel jump because it cuts sections below and
+> when there's not enough content to present, the whole control panel moves
+> down to touch the bottom of the panel. it feels like we're trying to do 2
+> things: disable controls that don't matter (i.e. when groud: none) and reduce
+> the size of controls section. we can disable unused controls without hiding
+> them. some relationships are weird. moving the "loop" control turns the
+> ground to loop. not clear why "loop" type is even needed for ground if
+> anything appears to be loopable. i can't recommend a solution

@@ -120,13 +120,14 @@ export type Settings = {
   /** How far above the ground my eye is raised, in metres, as if standing on something. 0 is my own height. */
   perch: number
   /**
-   * What the ground is: 0 open, 1 a street, 2 a trail, 3 a loop. **The one
-   * stored truth for it** — `normalizeSettings` enforces `width`, `bend` and
-   * `loop` from this, and resets every ground setting the chosen ground does not
-   * use, so a scene never carries a leftover. Old addresses, which predate it,
-   * infer it in `settingsFromQuery`.
+   * Whether there is a way at all: 0 is open ground, 1 a way with sides. **The
+   * one stored truth for it** — `normalizeSettings` makes `width` agree. What
+   * kind of way is not a choice but its settings: straight or bending is `bend`,
+   * a circuit is `loop`. (Replaced `ground`, which offered open, street, trail
+   * and loop as four kinds: "not clear why 'loop' type is even needed for
+   * ground if anything appears to be loopable".)
    */
-  ground: number
+  way: number
   /** How wide the passages between boulders on a grid are, in metres. */
   passage: number
   /** How boulders are laid out on open ground: 0 scattered, 1 a square grid, 2 a hexagonal grid. */
@@ -163,10 +164,26 @@ export const isNumericControl = (control: Control): control is NumericControl =>
  * around — and filing those under `look` with the field of view would bury the
  * thing the piece is actually about.
  */
-/** What `ground`'s values are called, in order. */
-export const GROUND_NAMES = ["open", "street", "trail", "loop"] as const
-
 export const GROUPS = ["me", "look", "crowd", "ground", "boulders", "chase", "paint"] as const
+
+/**
+ * **Which settings do nothing, given the rest of a way.** One table, read by
+ * both the panel — each row is drawn disabled while its rule holds — and
+ * `normalizeSettings`, which resets it to `OFF`. A loop is its own shape, so a
+ * bend does nothing on one; a loop's corners do nothing on a way that is not a
+ * loop; watchers need a lining, the hills' spacing and the effort need a climb,
+ * my line needs me to be holding it. `tests/layers.test.ts` holds that each is
+ * the identity.
+ */
+export const INERT = {
+  bend: (s: Settings) => s.loop > 0,
+  meander: (s: Settings) => s.loop > 0 || s.bend <= 0,
+  corners: (s: Settings) => s.loop <= 0,
+  watchers: (s: Settings) => s.lining <= 0,
+  hills: (s: Settings) => s.climb <= 0,
+  effort: (s: Settings) => s.climb <= 0,
+  line: (s: Settings) => s.hold <= 0,
+} as const satisfies Partial<Record<keyof typeof OFF, (s: Settings) => boolean>>
 
 export const CONTROLS: Control[] = [
   {
@@ -305,6 +322,7 @@ export const CONTROLS: Control[] = [
   {
     kind: "slider",
     key: "line",
+    inert: (s: Settings) => INERT.line(s),
     label: "my line",
     group: "ground",
     min: -1,
@@ -417,14 +435,14 @@ export const CONTROLS: Control[] = [
   },
   {
     kind: "slider",
-    key: "ground",
-    label: "ground",
+    key: "way",
+    label: "way",
     group: "ground",
     min: 0,
-    max: 3,
+    max: 1,
     step: 1,
-    format: (v) => GROUND_NAMES[Math.round(v)] ?? "open",
-    hint: "What I am walking on. Open ground has no way and no sides: a square, a field. A street is a straight way between walls; a trail bends; a loop comes back to where it started. Each shows only its own settings, and switching resets the ones the new ground does not use.",
+    format: (v) => (v < 0.5 ? "open ground" : "a way"),
+    hint: "Whether I am on open ground — a square, a field, no sides — or on a way with sides to it. What kind of way is its own settings: it runs straight until it bends, and it is a circuit if it has a length. Everything below does nothing on open ground, and shows so.",
   },
   {
     kind: "slider",
@@ -452,6 +470,7 @@ export const CONTROLS: Control[] = [
   {
     kind: "slider",
     key: "watchers",
+    inert: (s: Settings) => INERT.watchers(s),
     label: "watchers",
     group: "ground",
     min: 0,
@@ -463,6 +482,7 @@ export const CONTROLS: Control[] = [
   {
     kind: "slider",
     key: "bend",
+    inert: (s: Settings) => INERT.bend(s),
     label: "bend",
     group: "ground",
     min: 0,
@@ -474,6 +494,7 @@ export const CONTROLS: Control[] = [
   {
     kind: "slider",
     key: "meander",
+    inert: (s: Settings) => INERT.meander(s),
     label: "meander",
     group: "ground",
     min: 40,
@@ -496,6 +517,7 @@ export const CONTROLS: Control[] = [
   {
     kind: "slider",
     key: "hills",
+    inert: (s: Settings) => INERT.hills(s),
     label: "hills",
     group: "ground",
     min: 40,
@@ -507,6 +529,7 @@ export const CONTROLS: Control[] = [
   {
     kind: "slider",
     key: "effort",
+    inert: (s: Settings) => INERT.effort(s),
     label: "effort",
     group: "ground",
     min: 0,
@@ -529,6 +552,7 @@ export const CONTROLS: Control[] = [
   {
     kind: "slider",
     key: "corners",
+    inert: (s: Settings) => INERT.corners(s),
     label: "corners",
     group: "ground",
     min: 0,
@@ -584,6 +608,7 @@ export const CONTROLS: Control[] = [
   {
     kind: "slider",
     key: "passage",
+    inert: (s: Settings) => s.layout < 1,
     label: "passages",
     group: "boulders",
     min: 1.6,
@@ -721,7 +746,7 @@ export const DEFAULT_SETTINGS: Settings = {
   aisle: 3,
   boulders: 0,
   boulder: 6,
-  ground: 0,
+  way: 0,
   passage: 3,
   layout: 0,
   perch: 0,
@@ -782,7 +807,7 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   boulders: { min: 0, max: 0.4, step: 0.01 },
   boulder: { min: 1, max: 25, step: 0.5 },
   layout: { min: 0, max: 2, step: 1 },
-  ground: { min: 0, max: 3, step: 1 },
+  way: { min: 0, max: 1, step: 1 },
   passage: { min: 1.6, max: 8, step: 0.1 },
   perch: { min: 0, max: 30, step: 0.5 },
   shade: { min: 0, max: 1, step: 0.05 },
@@ -884,14 +909,6 @@ export const OFF = {
   aisle: 3,
 } as const satisfies Partial<Settings>
 
-/** The ground settings each ground uses. Everything else in the ground group is reset. */
-const GROUND_USES: readonly (readonly (keyof typeof OFF)[])[] = [
-  [],
-  ["width", "lining", "watchers", "climb", "hills", "effort", "keep", "line", "hold"],
-  ["width", "lining", "watchers", "climb", "hills", "effort", "keep", "line", "hold", "bend", "meander"],
-  ["width", "lining", "watchers", "climb", "hills", "effort", "keep", "line", "hold", "loop", "corners"],
-]
-
 const GROUND_KEYS = [
   "width",
   "lining",
@@ -908,11 +925,8 @@ const GROUND_KEYS = [
   "hold",
 ] as const
 
-/** A corridor's width when a ground that has one is chosen with none. */
+/** A way's width when a way is chosen on open ground. */
 const STREET_WIDTH = 8
-
-/** A loop's length when a loop is chosen with none. */
-const LOOP_LENGTH = 600
 
 /**
  * **`ground` is the one stored truth**, and the settings that used to imply it
@@ -920,15 +934,22 @@ const LOOP_LENGTH = 600
  * a loop has a length.
  */
 function layered(settings: Settings): Settings {
-  const ground = Math.round(settings.ground)
-  const uses = GROUND_USES[ground] ?? []
-  for (const key of GROUND_KEYS) if (!uses.includes(key)) settings[key] = OFF[key]
-  // A way always has sides. Just under the top of the track rather than a jump
-  // to a street's width, so dragging `width` to the end does not snap back;
-  // choosing a way from open ground is `reconcile`'s, which knows it was chosen.
-  if (ground > 0 && settings.width >= BOUNDS.width.max) settings.width = BOUNDS.width.max - 0.5
-  if (ground === 3 && settings.loop <= 0) settings.loop = LOOP_LENGTH
+  if (Math.round(settings.way) <= 0) {
+    for (const key of GROUND_KEYS) settings[key] = OFF[key]
+  } else {
+    // A way always has sides. Just under the top of the track rather than a
+    // jump to a street's width, so dragging `width` to the end does not snap
+    // back; choosing a way from open ground is `reconcile`'s, which knows.
+    if (settings.width >= BOUNDS.width.max) settings.width = BOUNDS.width.max - 0.5
+    // Within a way, what the rest of it makes inert — the same rules the
+    // panel's rows show as disabled, in `INERT`.
+    for (const key of Object.keys(INERT) as (keyof typeof INERT)[]) {
+      if (INERT[key](settings)) settings[key] = OFF[key]
+    }
+  }
 
+  // Passages are a grid's; scattered boulders have none.
+  if (settings.layout < 1) settings.passage = OFF.passage
   if (settings.boulders <= 0) {
     settings.boulder = OFF.boulder
     settings.layout = OFF.layout
@@ -941,23 +962,22 @@ function layered(settings: Settings): Settings {
 }
 
 /**
- * The ground an address meant, from the settings that used to decide it, for
- * addresses written before `ground` was a setting.
+ * Whether an address meant a way, for addresses written before `way` was a
+ * setting: from `ground` if it carries that (#250), from `width` if older.
  */
-function groundOf(scene: Partial<Settings>): number {
-  if ((scene.loop ?? 0) > 0) return 3
-  if ((scene.width ?? DEFAULT_SETTINGS.width) >= BOUNDS.width.max) return 0
-  if ((scene.bend ?? 0) > 0) return 2
-  return 1
+function wayOf(scene: Partial<Settings> & { ground?: number }): number {
+  if (scene.ground !== undefined) return scene.ground > 0 ? 1 : 0
+  return (scene.width ?? DEFAULT_SETTINGS.width) >= BOUNDS.width.max ? 0 : 1
 }
 
 /**
- * Fills in what an address from before the layers left out: its ground, and
+ * Fills in what an address from before the layers left out: whether it is a way, and
  * the boulder grid's passages, which were the stalls' `aisle` then.
  */
-function fromOlder(scene: Partial<Settings>): Partial<Settings> {
-  const patch = { ...scene }
-  if (patch.ground === undefined) patch.ground = groundOf(scene)
+function fromOlder(scene: Partial<Settings> & { ground?: number }): Partial<Settings> {
+  const patch: Partial<Settings> & { ground?: number } = { ...scene }
+  delete patch.ground
+  if (patch.way === undefined) patch.way = wayOf(scene)
   if (patch.passage === undefined && scene.aisle !== undefined) patch.passage = scene.aisle
   return patch
 }
@@ -969,19 +989,9 @@ function fromOlder(scene: Partial<Settings>): Partial<Settings> {
  * the top down. Here the moved key is known, so the other end gives way.
  */
 export function reconcile(next: Settings, changed: keyof Settings): Settings {
-  // Choosing a way from open ground gives it a street's width, not a 250 m one.
-  if (changed === "ground" && Math.round(next.ground) > 0 && next.width >= BOUNDS.width.max) {
+  // Choosing a way on open ground gives it a street's width, not a 250 m one.
+  if (changed === "way" && Math.round(next.way) > 0 && next.width >= BOUNDS.width.max) {
     return { ...next, width: STREET_WIDTH }
-  }
-  // **Moving a ground's own setting chooses that ground.** The kit hides the
-  // ground group only while it is open, so a street shows the bend and loop
-  // rows too; without this, dragging one would be reset to off on the spot and
-  // the slider would snap back. A street that bends is a trail; a way with a
-  // length is a loop.
-  const ground = Math.round(next.ground)
-  if ((changed === "bend" || changed === "meander") && ground !== 2 && ground !== 0) return { ...next, ground: 2 }
-  if ((changed === "loop" || changed === "corners") && ground !== 3 && ground !== 0) {
-    return { ...next, ground: 3, loop: next.loop > 0 ? next.loop : LOOP_LENGTH }
   }
   if (changed === "paceLow" && next.paceLow > next.paceHigh) return { ...next, paceHigh: next.paceLow }
   if (changed === "paceHigh" && next.paceHigh < next.paceLow) return { ...next, paceLow: next.paceHigh }
@@ -1090,8 +1100,11 @@ export const REGISTRY: readonly Slot[] = [
   { key: "perch", kind: "num", grid: 0.5, origin: 0, bits: 6 },
   // Appended for the layers (#242): the ground as one stored choice, and the
   // boulder grid's passages as their own setting rather than the stalls' aisle.
-  { key: "ground", kind: "num", grid: 1, origin: 0, bits: 2 },
+  { key: "ground", kind: "num", grid: 1, origin: 0, bits: 2, retired: true },
   { key: "passage", kind: "num", grid: 0.1, origin: 1.6, bits: 7 },
+  // `ground` retired above for this: open ground or a way, with the kind of way
+  // left to its settings.
+  { key: "way", kind: "num", grid: 1, origin: 0, bits: 1 },
 ]
 
 /**
@@ -1174,7 +1187,7 @@ const WORLD_KEYS = [
   "boulder",
   "layout",
   "passage",
-  "ground",
+  "way",
 ] as const satisfies readonly (keyof Settings)[]
 
 export function needsRestock(before: Settings, after: Settings): boolean {
@@ -1197,7 +1210,7 @@ export const CHROME: Chrome<Settings> = {
     "me",
     "look",
     "crowd",
-    { name: "ground", governor: "ground", off: 0 },
+    { name: "ground", governor: "way", off: 0 },
     { name: "boulders", governor: "boulders", off: 0 },
     { name: "chase", governor: "chase", off: 0 },
     "paint",
