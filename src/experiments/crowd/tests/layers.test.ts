@@ -143,11 +143,11 @@ describe("normalizing", () => {
 })
 
 describe("a way", () => {
-  const drag = (key: keyof Settings, value: number, from: Settings) =>
+  const drag = (key: keyof Settings, value: number | boolean, from: Settings) =>
     normalizeSettings(reconcile({ ...from, [key]: value }, key))
 
   it("chosen on open ground gets a street's width, and dragging its width to the end does not snap back", () => {
-    const chosen = drag("way", 1, scene("market"))
+    const chosen = drag("way", true, scene("market"))
     expect(chosen.width).toBeLessThan(20)
     expect(drag("width", 250, scene("the street")).width).toBeGreaterThan(200)
   })
@@ -173,13 +173,13 @@ describe("an address from before the way", () => {
     settingsFromQuery(new URLSearchParams({ s: encodeScene(registry as never, scene) }))
 
   it("reads a trail written with ground as a way, and open ground as open", () => {
-    expect(open({ ground: 2, width: 3.5, bend: 30 }).way).toBe(1)
+    expect(open({ ground: 2, width: 3.5, bend: 30 }).way).toBe(true)
     expect(open({ ground: 2, width: 3.5, bend: 30 }).bend).toBe(30)
-    expect(open({ ground: 0, width: 250 }).way).toBe(0)
+    expect(open({ ground: 0, width: 250 }).way).toBe(false)
   })
 
   it("reads an address with only a width as a way when the width has sides", () => {
-    expect(open({ width: 7 }, REGISTRY).way).toBe(1)
-    expect(open({ width: 250 }, REGISTRY).way).toBe(0)
+    expect(open({ width: 7 }, REGISTRY).way).toBe(true)
+    expect(open({ width: 250 }, REGISTRY).way).toBe(false)
   })
 })

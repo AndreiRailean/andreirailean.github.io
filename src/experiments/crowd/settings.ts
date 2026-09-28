@@ -127,7 +127,7 @@ export type Settings = {
    * and loop as four kinds: "not clear why 'loop' type is even needed for
    * ground if anything appears to be loopable".)
    */
-  way: number
+  way: boolean
   /** How wide the passages between boulders on a grid are, in metres. */
   passage: number
   /** How boulders are laid out on open ground: 0 scattered, 1 a square grid, 2 a hexagonal grid. */
@@ -144,7 +144,8 @@ export type Settings = {
   seed: number
 }
 
-export type NumericKey = keyof Settings
+/** Every setting but the one boolean, `way`. */
+export type NumericKey = { [K in keyof Settings]: Settings[K] extends number ? K : never }[keyof Settings]
 
 export type Control = KitControl<string & keyof Settings>
 
@@ -321,6 +322,17 @@ export const CONTROLS: Control[] = [
   },
   {
     kind: "slider",
+    key: "hold",
+    label: "hold",
+    group: "ground",
+    min: 0,
+    max: 1,
+    step: 0.05,
+    format: (v) => (v <= 0 ? "free" : `${Math.round(v * 100)}%`),
+    hint: "How firmly I keep to my line, by the same pull the crowd uses to keep its side. At 0 my line is ignored and I keep to whatever side everybody else does.",
+  },
+  {
+    kind: "slider",
     key: "line",
     inert: (s: Settings) => INERT.line(s),
     label: "my line",
@@ -331,17 +343,6 @@ export const CONTROLS: Control[] = [
     format: (v) =>
       Math.abs(v) < 0.025 ? "the middle" : `${Math.round(Math.abs(v) * 100)}% ${v > 0 ? "left" : "right"}`,
     hint: "Where across the way I keep myself, as a share of the distance from the middle to the edge. It only does anything with hold turned up; at hold 0 I follow the crowd's own rule like everybody else. The middle, held firmly, is the gap between two streams keeping to their sides — which is where a runner goes.",
-  },
-  {
-    kind: "slider",
-    key: "hold",
-    label: "hold",
-    group: "ground",
-    min: 0,
-    max: 1,
-    step: 0.05,
-    format: (v) => (v <= 0 ? "follow the crowd" : `${Math.round(v * 100)}%`),
-    hint: "How firmly I keep to my line, by the same pull the crowd uses to keep its side. At 0 my line is ignored and I keep to whatever side everybody else does.",
   },
   {
     kind: "slider",
@@ -434,14 +435,11 @@ export const CONTROLS: Control[] = [
     hint: "How far the crowd extends. Beyond it there is nobody — so this is the control that decides whether you are in the middle of something enormous or in a knot of twenty people with empty ground behind them. It is separate from **distance** on purpose: one is how far people exist, the other is how far you can see, and a scene where the first is shorter than the second shows you the crowd actually ending. Pull it in and the same density arrives as a press of people right around you.",
   },
   {
-    kind: "slider",
+    kind: "toggle",
     key: "way",
     label: "way",
     group: "ground",
-    min: 0,
-    max: 1,
-    step: 1,
-    format: (v) => (v < 0.5 ? "open ground" : "a way"),
+    labels: ["open ground", "a way"],
     hint: "Whether I am on open ground — a square, a field, no sides — or on a way with sides to it. What kind of way is its own settings: it runs straight until it bends, and it is a circuit if it has a length. Everything below does nothing on open ground, and shows so.",
   },
   {
@@ -569,7 +567,7 @@ export const CONTROLS: Control[] = [
     min: 0,
     max: 0.4,
     step: 0.01,
-    format: (v) => (v <= 0 ? "none" : `${Math.round(v * 100)}% of the ground`),
+    format: (v) => (v <= 0 ? "none" : `${Math.round(v * 100)}% cover`),
     hint: "Great round boulders sitting on the ground, painted the ground's own black — so a boulder is never seen, only the heads it hides are missed. Everybody walks round them. They are placed at random, so some land together as islands, and in a street or on a trail they stand beside the way and never on it: the line of people goes round the bend and behind them, and comes back out at the clearing. A little is a reveal; a lot and the far crowd is gone, which is the infinity going with it.",
   },
   {
@@ -602,7 +600,7 @@ export const CONTROLS: Control[] = [
     min: 0,
     max: 2,
     step: 1,
-    format: (v) => (v < 0.5 ? "scattered" : v < 1.5 ? "square grid" : "hexagonal grid"),
+    format: (v) => (v < 0.5 ? "scattered" : v < 1.5 ? "square" : "hexagonal"),
     hint: "How the boulders are laid out on open ground. Scattered is at random, landing together as islands. A square grid lines them up with passages crossing between them, straight ones you can walk for ever — and the grid shows itself when you turn and look down another passage. A hexagonal grid has every passage end at a boulder, so every way through turns. On a grid they are all nearly one size, so the only randomness is the heads'. Streets and trails always line their verges instead.",
   },
   {
@@ -746,7 +744,7 @@ export const DEFAULT_SETTINGS: Settings = {
   aisle: 3,
   boulders: 0,
   boulder: 6,
-  way: 0,
+  way: false,
   passage: 3,
   layout: 0,
   perch: 0,
@@ -807,7 +805,6 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   boulders: { min: 0, max: 0.4, step: 0.01 },
   boulder: { min: 1, max: 25, step: 0.5 },
   layout: { min: 0, max: 2, step: 1 },
-  way: { min: 0, max: 1, step: 1 },
   passage: { min: 1.6, max: 8, step: 0.1 },
   perch: { min: 0, max: 30, step: 0.5 },
   shade: { min: 0, max: 1, step: 0.05 },
@@ -934,7 +931,8 @@ const STREET_WIDTH = 8
  * a loop has a length.
  */
 function layered(settings: Settings): Settings {
-  if (Math.round(settings.way) <= 0) {
+  settings.way = Boolean(settings.way)
+  if (!settings.way) {
     for (const key of GROUND_KEYS) settings[key] = OFF[key]
   } else {
     // A way always has sides. Just under the top of the track rather than a
@@ -965,9 +963,9 @@ function layered(settings: Settings): Settings {
  * Whether an address meant a way, for addresses written before `way` was a
  * setting: from `ground` if it carries that (#250), from `width` if older.
  */
-function wayOf(scene: Partial<Settings> & { ground?: number }): number {
-  if (scene.ground !== undefined) return scene.ground > 0 ? 1 : 0
-  return (scene.width ?? DEFAULT_SETTINGS.width) >= BOUNDS.width.max ? 0 : 1
+function wayOf(scene: Partial<Settings> & { ground?: number }): boolean {
+  if (scene.ground !== undefined) return scene.ground > 0
+  return (scene.width ?? DEFAULT_SETTINGS.width) < BOUNDS.width.max
 }
 
 /**
@@ -990,7 +988,7 @@ function fromOlder(scene: Partial<Settings> & { ground?: number }): Partial<Sett
  */
 export function reconcile(next: Settings, changed: keyof Settings): Settings {
   // Choosing a way on open ground gives it a street's width, not a 250 m one.
-  if (changed === "way" && Math.round(next.way) > 0 && next.width >= BOUNDS.width.max) {
+  if (changed === "way" && next.way && next.width >= BOUNDS.width.max) {
     return { ...next, width: STREET_WIDTH }
   }
   if (changed === "paceLow" && next.paceLow > next.paceHigh) return { ...next, paceHigh: next.paceLow }
@@ -1104,7 +1102,9 @@ export const REGISTRY: readonly Slot[] = [
   { key: "passage", kind: "num", grid: 0.1, origin: 1.6, bits: 7 },
   // `ground` retired above for this: open ground or a way, with the kind of way
   // left to its settings.
-  { key: "way", kind: "num", grid: 1, origin: 0, bits: 1 },
+  { key: "way", kind: "num", grid: 1, origin: 0, bits: 1, retired: true },
+  // `way` again, as the boolean it always was: a toggle, not a two-stop slider.
+  { key: "way", kind: "bool" },
 ]
 
 /**
@@ -1210,7 +1210,7 @@ export const CHROME: Chrome<Settings> = {
     "me",
     "look",
     "crowd",
-    { name: "ground", governor: "way", off: 0 },
+    { name: "ground", governor: "way", off: false },
     { name: "boulders", governor: "boulders", off: 0 },
     { name: "chase", governor: "chase", off: 0 },
     "paint",

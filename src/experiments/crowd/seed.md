@@ -592,3 +592,22 @@ started when #238 landed.
 > them. some relationships are weird. moving the "loop" control turns the
 > ground to loop. not clear why "loop" type is even needed for ground if
 > anything appears to be loopable. i can't recommend a solution
+
+## 2026-09-28 — a toggle, my line, and values that wrap
+
+> representing booleans as sliders is quite something. when way can have 2
+> options: open ground and "a way" - that's a toggle.
+> "my line" appears to be always disabled, at least I haven't figured out what
+> turns it on.
+> "boulders" are also jumpy when the value goes from "none" (one line) to "%%
+> of the ground" (two lines)
+>
+> let's fix the jumpiness by adjusting value render and not spend much more
+> time on this. clearly, this is a hard problem to solve.
+
+Done, and stopped there: `way` is a toggle (a boolean slot, the numeric one
+retired); `hold` now sits above `my line`, since holding a line is what turns
+it on; values render on one line in the kit, and the formats that did not fit
+were shortened (free, 6% cover, hexagonal). Walkers' pace band needed its value
+column widened to stay whole. Measured: no row moves when boulders go from none
+to a share, or when the way is toggled.
