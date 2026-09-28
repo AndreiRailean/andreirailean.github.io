@@ -112,11 +112,18 @@ export type ChoiceControl<K> = Shared & {
   options: { value: string; label: string }[]
 }
 
-/** A boolean, as one button that says which way it currently is. */
+/**
+ * A boolean, as a **toggle group**: two buttons side by side, the current one
+ * lit, each setting its own value — the same row a choice draws.
+ *
+ * It used to be one button whose label flipped to say which way it currently
+ * was, which reads as an action rather than a state: "having one button change
+ * label based on state is possible, but is unorthodox and surprising".
+ */
 export type ToggleControl<K> = Shared & {
   kind: "toggle"
   key: K
-  /** What the button reads when the setting is off, then on. */
+  /** What the off button reads, then the on button. */
   labels: [string, string]
 }
 
@@ -489,7 +496,7 @@ export function createControls<S extends object>(options: Options<S>): Controls<
   const spans = new Map<string, HTMLElement>()
   const valueLabels = new Map<string, HTMLElement>()
   const choiceButtons = new Map<string, Map<string, HTMLButtonElement>>()
-  const toggleButtons = new Map<string, HTMLButtonElement>()
+  const toggleButtons = new Map<string, [HTMLButtonElement, HTMLButtonElement]>()
   const setButtons = new Map<string, Map<string, HTMLButtonElement>>()
 
   /** What a set control currently holds, tolerating a setting that is not one. */
@@ -634,12 +641,13 @@ export function createControls<S extends object>(options: Options<S>): Controls<
         }
         choiceButtons.set(control.key, byValue)
       } else {
-        const element = button(control.labels[0], "mode")
-        element.addEventListener("click", () =>
-          apply(normalize({ ...current, [control.key]: !current[control.key] }, control.key)),
-        )
-        toggleButtons.set(control.key, element)
-        group.append(element)
+        const pair = [false, true].map((value) => {
+          const element = button(control.labels[value ? 1 : 0], "mode")
+          element.addEventListener("click", () => apply(normalize({ ...current, [control.key]: value }, control.key)))
+          group.append(element)
+          return element
+        }) as [HTMLButtonElement, HTMLButtonElement]
+        toggleButtons.set(control.key, pair)
       }
 
       row.append(label, group)
@@ -728,11 +736,11 @@ export function createControls<S extends object>(options: Options<S>): Controls<
       }
 
       if (control.kind === "toggle") {
-        const element = toggleButtons.get(control.key)
-        if (element) {
+        const pair = toggleButtons.get(control.key)
+        if (pair) {
           const on = Boolean(current[control.key])
-          element.textContent = control.labels[on ? 1 : 0]
-          element.dataset.active = String(on)
+          pair[0].dataset.active = String(!on)
+          pair[1].dataset.active = String(on)
         }
         continue
       }

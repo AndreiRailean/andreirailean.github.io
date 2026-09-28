@@ -147,6 +147,40 @@ for (const slug of PIECES) {
     }
   })
 
+  /**
+   * **A toggle is a toggle group**: two buttons, the current one lit, each
+   * setting its own value. It used to be one button whose label flipped, which
+   * reads as an action — "unorthodox and surprising". So the labels must not
+   * move, exactly one is lit, and clicking the unlit one is what flips it.
+   */
+  test(`${slug}: every toggle is two buttons, one lit, that set their own value`, async ({ page }) => {
+    const experiment = await openHeld(page, slug, { idle: false })
+    await experiment.api(({ api }) => api.panel(true))
+    type Listed = { kind: string; key: string; label: string }
+    const listed = await experiment.api(({ api }) => (api as unknown as { controls: () => Listed[] }).controls())
+    const toggles = listed.filter((control) => control.kind === "toggle")
+    for (const toggle of toggles) {
+      const row = page.locator("#ui .panel .row").filter({ has: page.locator(".label", { hasText: toggle.label }) })
+      const buttons = row.locator("button.mode")
+      await expect(buttons, `${slug}: ${toggle.key} is not two buttons`).toHaveCount(2)
+      const labels = await buttons.allTextContents()
+      await expect(row.locator('button.mode[data-active="true"]'), `${slug}: ${toggle.key} lights one`).toHaveCount(1)
+      const before = Boolean((await experiment.api(({ api }) => api.get()))[toggle.key])
+      await buttons.nth(before ? 0 : 1).click()
+      const after = Boolean((await experiment.api(({ api }) => api.get()))[toggle.key])
+      expect(after, `${slug}: ${toggle.key} did not flip`).toBe(!before)
+      await expect(buttons.nth(after ? 1 : 0), `${slug}: ${toggle.key} lit the wrong one`).toHaveAttribute(
+        "data-active",
+        "true",
+      )
+      await expect(
+        row.locator('button.mode[data-active="true"]'),
+        `${slug}: ${toggle.key} lights both after the click`,
+      ).toHaveCount(1)
+      expect(await buttons.allTextContents(), `${slug}: ${toggle.key}'s labels moved`).toEqual(labels)
+    }
+  })
+
   test(`${slug}: the bar ends with adjust, and the presets lead their column from one`, async ({ page }) => {
     await openHeld(page, slug, { idle: false })
 
