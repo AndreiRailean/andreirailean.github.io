@@ -1,6 +1,6 @@
 ---
 name: wrap-up
-description: Clear what this session leaves behind in its worktree — servers a script started, merged branches, probe worktrees, stray processes — and report what is not safe to touch. Use when the work is done or handed off, when Andrei says the session is over, before going idle for a long stretch, and whenever you are about to say a task is finished.
+description: Clear what this session leaves behind in its worktree — servers a script started, merged branches, probe worktrees, runner builds nothing names, stray processes — and report what is not safe to touch. Use when the work is done or handed off, when Andrei says the session is over, before going idle for a long stretch, and whenever you are about to say a task is finished.
 ---
 
 # Leave the worktree as you found it
@@ -138,7 +138,57 @@ concurrently.** Never `git stash pop` and never bare `git stash`. If this sessio
 pushed an entry, find it by its unique tag, `apply` it by SHA, and drop that entry
 specifically. If the list holds entries you did not create, leave them and say so.
 
-## 5. Stray processes
+## 5. Built runners nobody published
+
+**Delete this worktree's untracked runners before closing.** `pnpm run runners`
+— which every build, preview, poster capture and browser run calls — writes each
+piece's current build into `public/showcase/runners/`, and in that directory
+**tracked is published, untracked is build output**. Nothing reads a runner
+nothing names, the next build rewrites it, and they pile up: sixteen in one worktree
+after one day, and a `git add -A` in that state staged eight of them, which
+would have published them.
+
+**Keep any runner something here names**, because that is the case where it is
+needed and nobody published it. Naming a runner — a wall entry, a page, an
+embed — is what makes it wanted, and committing it is what publishes it, so a
+runner that is named and untracked is a publish somebody forgot. That is
+decidable, so it is checked rather than judged: the loop below searches every
+file in the worktree — tracked, with its uncommitted edits, and untracked —
+for the runner's filename. **A runner nothing names cannot be loaded by
+anything**, and `pnpm run runners` rebuilds it byte for byte from the same
+source, so deleting it loses nothing.
+
+```bash
+for f in $(git ls-files --others --exclude-standard public/showcase/runners/); do
+  name=$(basename "$f")
+  if git grep -qF "$name" -- ':!public/showcase/runners/' ||
+    git ls-files --others --exclude-standard -z -- ':!public/showcase/runners/' |
+      xargs -0 -r grep -lF "$name" 2>/dev/null | grep -q .; then
+    echo "NAMED BUT UNPUBLISHED: $f — commit it, or stop naming it"
+  else
+    rm -- "$f"
+  fi
+done
+```
+
+**The last `grep -q .` is load-bearing.** With no untracked files, `xargs -r`
+runs nothing and exits 0, so testing its status reads every runner as named and
+deletes none. The first draft of this loop did that, and was caught by un-naming
+a runner and watching it survive. It tests whether anything was printed instead.
+
+**A `NAMED BUT UNPUBLISHED` line is not something to clean up.** It means the
+work is not finished. Commit the runner with whatever names it, or report it if
+that is not yours to do. On the committed side it is already caught:
+`tests/unit/showcase-runners.test.ts` fails when a tracked file names a runner
+that is not committed. This catches the same thing before the naming is
+committed.
+
+**Untracked only, and this worktree only.** A tracked runner is published and is
+never deleted, edited or renamed — `pnpm run prune` is the only tool for those,
+and it is not part of closing. Another worktree's untracked runners are its own
+session's.
+
+## 6. Stray processes
 
 Test runners and builds occasionally outlive the command that started them:
 
@@ -149,25 +199,41 @@ ps -eo pid,etime,args | grep -E "[p]laywright|[v]itest|[a]stro build"
 Report anything long-running rather than killing it blind — it may be another
 worktree's suite mid-run.
 
-## 6. What you cannot clean, say out loud
+## 7. What you cannot clean, say out loud
 
 Finish by reporting, not fixing:
 
 - **Open pull requests you authored**, and whether they are green. A queued PR is
   fine; a queued PR nobody knows about is not.
-- **Uncommitted changes** — `git status --porcelain`. Never discard them to make
-  the tree look tidy.
+- **Uncommitted changes** — `git status --porcelain`, **unfiltered**. Never
+  discard them to make the tree look tidy, and never pipe them through a
+  `grep -v` to make the count look tidy either.
 - **Anything left running on purpose**, and why. "A preview is up on the review
   port because Andrei is mid-review" is a useful sentence; a silently running
   server is not.
 
 ## The shape of a good report
 
+**Ready to close means `git status --porcelain` prints nothing** — not "nothing
+of mine", not "nothing but build output". If it prints anything, the session is
+not ready, and the report says what is there and why.
+
+That definition is written down because a session got it wrong while doing
+everything else here correctly. It checked the tree after every step with
+`git status --porcelain | grep -v public/showcase/runners/`, reported "0
+changes", and told Andrei the session was ready to close with sixteen untracked
+runners in the worktree. The filter was deliberate, since those files were build
+output, and it still meant the number reported was not the number he would see.
+It is the pipe-on-a-check shape the root `AGENTS.md` warns about: the check
+worked, and a filter added to it hid the answer. Step 5 is what makes an
+unfiltered count reachable, so there is no longer a reason to filter.
+
 State the numbers, because they are checkable and a claim is not:
 
 ```
-tree: 0 changes · HEAD: <branch> @ <sha>
+tree: 0 changes (`git status --porcelain | wc -l`, unfiltered) · HEAD: <branch> @ <sha>
 astro processes: 0 · open PRs: 0 · stash: 0 · worktrees: 8
+untracked runners: 0 (or: named but unpublished, listed)
 available: 13.3 GB
 left running: nothing
 ```
