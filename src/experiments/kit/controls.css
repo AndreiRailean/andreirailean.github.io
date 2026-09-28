@@ -235,6 +235,13 @@ html[data-idle="true"] #ui > * {
 #ui .value {
   text-align: right;
   font-variant-numeric: tabular-nums;
+  /* One line, always. A value that wrapped — crowd's boulders going from
+     "none" to "4% of the ground" — made its row taller and moved every row
+     below it as the slider was dragged. A piece keeps its formats short enough
+     to fit; the ellipsis is the backstop, not the design. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* A choice or a toggle takes the track's column and the value's, having no
