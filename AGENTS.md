@@ -122,7 +122,10 @@ capture and a browser run each build and leave a preview server up by design, an
 a merged branch will refuse to delete while its upstream ref is stale. Neither is
 found by remembering. `/wrap-up` clears what is yours — servers, branches, probe
 worktrees — and reports what is not safe to touch, because `astro preview stop`
-and the stash are per-worktree and shared respectively. It is best-effort by
+and the stash are per-worktree and shared respectively. It also deletes
+the worktree's untracked runners that nothing names — build output that piles up
+and that one `git add -A` away would be published — and reports any that
+something names but nobody committed. It is best-effort by
 nature: a session that ends abruptly never runs it, which is why leftovers
 announce themselves through `.astro/*.json` instead.
 

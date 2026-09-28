@@ -308,7 +308,11 @@ and the old scene stays the scene that was approved.
 
 **Old runners are never deleted.** They accumulate in `public/showcase/runners/`
 and git is the retention, because GitHub Pages keeps no history. An untracked
-runner beside a tracked one is a newer build of the same source; leave both.
+runner beside a tracked one is a newer build of the same source; leave both
+while working. **At the end of a session `/wrap-up` deletes untracked runners
+that nothing names**, because nothing can load them and the next build rewrites
+them. It keeps any that something names, and reports each as a publish nobody
+finished.
 
 ## Verifying
 
