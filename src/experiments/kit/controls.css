@@ -197,9 +197,8 @@ html[data-idle="true"] #ui > * {
 }
 
 /* A governed group's rows, under its governor — #242. Laid out the way the panel
-   lays out rows, since they used to sit in it directly, and hidden while the
-   governor holds its off value. An author `display` beats `[hidden]`, so both
-   are stated. */
+   lays out rows, since they used to sit in it directly. Inert rather than
+   hidden while the governor holds its off value (below). */
 #ui .rows {
   display: flex;
   flex-direction: column;
@@ -208,6 +207,18 @@ html[data-idle="true"] #ui > * {
 
 #ui .rows[hidden] {
   display: none;
+}
+
+/* A row that can do nothing in this scene: a layer that is off, or a setting
+   the rest of the scene makes inert. Dimmed and disabled in place, never
+   hidden, so the panel keeps its shape as the scene changes. */
+#ui .row[data-inert="true"] {
+  opacity: 0.32;
+}
+
+#ui .row[data-inert="true"] input,
+#ui .row[data-inert="true"] button {
+  cursor: default;
 }
 
 #ui .row {

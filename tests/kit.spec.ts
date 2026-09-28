@@ -88,12 +88,14 @@ for (const slug of PIECES) {
   })
 
   /**
-   * **A governed group shows only what the scene uses — #242.** While its
-   * governor holds its off value the group's other rows are hidden; turned on,
-   * they come back. The governor itself stays in view either way, since it is
-   * how the group is switched back on.
+   * **A governed group disables what the scene does not use — #242.** While its
+   * governor holds its off value the group's other rows are inert: **still
+   * shown**, disabled and marked, because hiding them made the whole panel jump
+   * whenever a layer was switched. Turned on, at least one of them is live
+   * again. The governor itself stays live either way, since it is how the group
+   * is switched back on.
    */
-  test(`${slug}: a governed group hides its rows while its governor is off`, async ({ page }) => {
+  test(`${slug}: a governed group's rows are inert, not hidden, while its governor is off`, async ({ page }) => {
     const experiment = await openHeld(page, slug, { idle: false })
     await experiment.api(({ api }) => api.panel(true))
     const bodies = page.locator("#ui .panel .rows[data-governor]")
@@ -112,10 +114,24 @@ for (const slug of PIECES) {
       const off: unknown = JSON.parse((await body.getAttribute("data-off"))!)
 
       await experiment.api(({ api, arg }) => api.set({ [arg.key]: arg.off } as never), { key, off })
-      await expect(body, `${slug}: ${key} is off and its rows still show`).toBeHidden()
+      await expect(body, `${slug}: ${key} is off and its rows were hidden`).toBeVisible()
+      const rows = body.locator(".row")
+      expect(await rows.count(), `${slug}: ${key}'s group has no rows under its governor`).toBeGreaterThan(0)
+      await expect(
+        body.locator('.row[data-inert="false"]'),
+        `${slug}: ${key} is off and a row is still live`,
+      ).toHaveCount(0)
+      await expect(
+        body.locator("input:not([disabled])"),
+        `${slug}: ${key} is off and an input still takes a drag`,
+      ).toHaveCount(0)
       const governor = body.locator("xpath=preceding-sibling::*[1]")
       await expect(governor, `${slug}: ${key}'s governor is not the row above its group`).toHaveClass(/\bgovernor\b/)
       await expect(governor, `${slug}: ${key} is off and its governor went with the rows`).toBeVisible()
+      await expect(governor, `${slug}: ${key} is off and its governor cannot be switched back on`).toHaveAttribute(
+        "data-inert",
+        "false",
+      )
 
       // On: the first preset that uses the group, so "on" is a value the piece chose.
       let on = false
@@ -124,7 +140,10 @@ for (const slug of PIECES) {
         on = JSON.stringify(scene[key]) !== JSON.stringify(off)
       }
       expect(on, `${slug}: no preset turns ${key} on, so its rows can never be seen`).toBe(true)
-      await expect(body, `${slug}: ${key} is on and its rows are still hidden`).toBeVisible()
+      await expect(
+        body.locator('.row[data-inert="false"]').first(),
+        `${slug}: ${key} is on and every one of its rows is still inert`,
+      ).toBeVisible()
     }
   })
 
