@@ -654,13 +654,18 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   trail: { min: 0, max: 0.95, step: 0.05 },
   span: { min: 0.3, max: 4, step: 0.05 },
   hue: { min: 0, max: 360, step: 1 },
-  seed: { min: 1, max: 9999, step: 1 },
 }
 
+/** Bounds for the seed, which has no slider and so no track, so `reroll` and the address cannot disagree. */
+export const SEED_BOUNDS = { min: 1, max: 9999 }
+
 /** Bounds for every numeric setting, narrowed from `TRACKS` rather than declared twice. */
-export const BOUNDS: Record<NumericKey, { min: number; max: number }> = Object.fromEntries(
-  Object.entries(TRACKS).map(([key, track]) => [key, { min: track!.min, max: track!.max }]),
-) as Record<NumericKey, { min: number; max: number }>
+export const BOUNDS: Record<NumericKey, { min: number; max: number }> = {
+  ...(Object.fromEntries(
+    Object.entries(TRACKS).map(([key, track]) => [key, { min: track!.min, max: track!.max }]),
+  ) as Record<NumericKey, { min: number; max: number }>),
+  seed: SEED_BOUNDS,
+}
 
 /**
  * Settings stored finer than their control's step.
@@ -706,6 +711,8 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
     settings[key] = Number.isFinite(value) ? clamp(value, bound.min, bound.max) : base[key]
     settings[key] = snap(key, settings[key])
   }
+  // No track, so nothing above put it on a grid.
+  settings.seed = Math.round(settings.seed)
 
   // A birth size band that came in reversed would have every bubble born at a
   // negative width of radius, which is a silent nothing rather than a visible
@@ -988,5 +995,5 @@ export const CHROME: Chrome<Settings> = {
  * has a `seed`.
  */
 export function reroll(settings: Settings, seed?: number): Settings {
-  return normalizeSettings({ ...settings, seed: seed ?? 1 + Math.floor(Math.random() * 9999) })
+  return normalizeSettings({ ...settings, seed: seed ?? SEED_BOUNDS.min + Math.floor(Math.random() * SEED_BOUNDS.max) })
 }

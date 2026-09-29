@@ -800,7 +800,6 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   hue: { min: 0, max: 359, step: 1 },
   tint: { min: 0, max: 1, step: 0.02 },
   playback: { min: 0, max: 2, step: 0.05 },
-  seed: { min: 0, max: 99999, step: 1 },
 }
 
 /**

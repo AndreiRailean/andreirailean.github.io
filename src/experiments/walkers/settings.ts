@@ -454,7 +454,6 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   spread: { min: 0, max: 120, step: 1 },
   pastel: { min: 0, max: 1, step: 0.02 },
   playback: { min: 0, max: 2, step: 0.05 },
-  seed: { min: 0, max: 99999, step: 1 },
 }
 
 /**
