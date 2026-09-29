@@ -240,6 +240,27 @@ html[data-idle="true"] #ui > * {
   content: "\25B8";
 }
 
+/* A heading that holds its box's switch: the name on the left, the switch on
+   the right, and no label of its own, since the heading already is one. */
+#ui .panel.boxed .group:has(.switch) {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+#ui .panel.boxed .group .row.switch {
+  display: flex;
+  margin-left: auto;
+  letter-spacing: normal;
+  text-transform: none;
+  font-size: 0.75rem;
+  cursor: default;
+}
+
+#ui .panel.boxed .group .row.switch .label {
+  display: none;
+}
+
 /* Folded: the heading and nothing else. */
 #ui .panel.boxed > .box[data-folded="true"] > :not(.group) {
   display: none;

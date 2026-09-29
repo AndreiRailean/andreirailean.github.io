@@ -28,6 +28,10 @@ although the packed address could carry it unnoticed: "that is not something we
 want to encode in the URL… though i'd avoid that as long as I can". A shared
 link opens with every box unfolded.
 
+**A toggle that governs a box sits in its heading**, because it switches the
+whole section rather than one control inside it: "it's the whole section
+that's being turned on and off". A governor with a range of values stays a row.
+
 ## Considered Options
 
 - **Tabs inside the panel**, Photoshop's answer. Not taken: they put groups out
