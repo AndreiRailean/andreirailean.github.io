@@ -22,6 +22,9 @@ const PIECES = ["bubbles", "crowd", "dangler", "embers", "flotsam", "psyxels", "
  */
 const GOVERNED = new Set<string>(["crowd"])
 
+/** Pieces whose panel is boxed (`boxes` in their CHROME), so the box test holds them to it. */
+const BOXED = new Set<string>(["crowd"])
+
 /**
  * **Every test here is about the chrome, so every one holds the piece.** A
  * running piece queues every round trip — a `boundingBox`, a keypress, an
@@ -179,6 +182,50 @@ for (const slug of PIECES) {
       ).toHaveCount(1)
       expect(await buttons.allTextContents(), `${slug}: ${toggle.key}'s labels moved`).toEqual(labels)
     }
+  })
+
+  /**
+   * **Boxes: nothing scrolls, and a fold is the viewer's, not the scene's.**
+   * A boxed panel stacks a box per group down the right edge instead of
+   * scrolling one column, and a box's heading folds it to the heading alone —
+   * remembered in the browser across a reload, and never written into the
+   * address, which is the scene's.
+   */
+  test(`${slug}: a boxed panel does not scroll, and a fold survives a reload without touching the address`, async ({
+    page,
+  }) => {
+    const experiment = await openHeld(page, slug, { idle: false })
+    await experiment.api(({ api }) => api.panel(true))
+    const boxes = page.locator("#ui .panel.boxed > .box")
+    if (!BOXED.has(slug)) {
+      expect(await boxes.count(), `${slug} has boxes; add it to BOXED so they are tested`).toBe(0)
+      return
+    }
+    expect(await boxes.count(), `${slug} is listed in BOXED but draws no boxes`).toBeGreaterThan(1)
+    const panel = page.locator("#ui .panel")
+    const scrolls = await panel.evaluate((element) => element.scrollHeight > element.clientHeight + 1)
+    expect(scrolls, `${slug}'s boxed panel scrolls`).toBe(false)
+
+    const first = boxes.first()
+    const rowsIn = first.locator(".row")
+    await expect(rowsIn.first(), `${slug}: an open box shows its rows`).toBeVisible()
+    const before = page.url()
+    await first.locator(".group").click()
+    await expect(rowsIn.first(), `${slug}: a folded box still shows its rows`).toBeHidden()
+    expect(page.url(), `${slug}: folding a box changed the address`).toBe(before)
+
+    await page.reload()
+    await page.waitForFunction(() => "experiment" in window)
+    await page.evaluate(() =>
+      (window as unknown as { experiment: { panel: (o: boolean) => void } }).experiment.panel(true),
+    )
+    await expect(
+      page.locator("#ui .panel.boxed > .box").first().locator(".row").first(),
+      `${slug}: a fold did not survive a reload`,
+    ).toBeHidden()
+    // And unfolds, so the test leaves the browser as it found it.
+    await page.locator("#ui .panel.boxed > .box").first().locator(".group").click()
+    await expect(page.locator("#ui .panel.boxed > .box").first().locator(".row").first()).toBeVisible()
   })
 
   test(`${slug}: the bar ends with adjust, and the presets lead their column from one`, async ({ page }) => {
