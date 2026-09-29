@@ -621,3 +621,26 @@ to a share, or when the way is toggled.
 Done in the kit, for every piece: a toggle is two buttons, the current one lit,
 each setting its own value. Crowd's way, starry night's sky and walkers' two
 toggles all change with it.
+
+## 2026-09-29 — sections as boxes
+
+> that is looking better now. i'm looking at the screen and am thinking that
+> perhaps each sesion could be a box and those boxes stack along the right side
+> of the screen masonry grid style. this would eliminate the scroll inside
+> controller panel and would provide better anchoring of section. this ui looks
+> like photoshop panels for layers, etc. Photoshop solves this problem by
+> providing tabs inside the panel, but that pushes sections out of sight and
+> makes them hard to discover. we're not there yet. this boxed grouping
+> naturally leads to layer-per-file (aka modular) approach.
+
+> a user (me) could then decide to collapse some modules so they stay
+> collapsed if they're not in use. that is not something we want to encode in
+> the URL, though, but we could - the url is so opaque to the user that we could
+> store other bits of state there. though i'd avoid that as long as I can.
+
+Built as a kit option, on for crowd: each group is a box, stacked down the
+right edge and wrapping into columns to the left, so nothing scrolls. A box's
+heading folds it, remembered per piece in the browser's storage and never in
+the address. Open: at 1280×800 the boxes need three columns and the second and
+third cover the preset buttons; folding two boxes brings it to two, which still
+covers presets 16–23.
