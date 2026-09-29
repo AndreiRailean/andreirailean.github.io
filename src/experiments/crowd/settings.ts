@@ -573,7 +573,7 @@ export const CONTROLS: Control[] = [
   {
     kind: "slider",
     key: "boulder",
-    label: "boulder size",
+    label: "size",
     group: "boulders",
     min: 1,
     max: 25,
@@ -663,7 +663,7 @@ export const CONTROLS: Control[] = [
   {
     kind: "slider",
     key: "shade",
-    label: "boulder shade",
+    label: "shade",
     group: "boulders",
     min: 0,
     max: 1,
@@ -1203,6 +1203,9 @@ export const CHROME: Chrome<Settings> = {
   slug: "crowd",
   title: "Crowd",
   canvas: "square",
+  // A box per group, stacked down the right edge: the panel had outgrown one
+  // scrolling column.
+  boxes: true,
   // **Layers**, #242: a layer's heading holds the control that switches it,
   // and its rows hide while that control is off. The core — me, look — and the
   // crowd have no off.

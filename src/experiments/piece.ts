@@ -77,6 +77,8 @@ export type Chrome<S> = {
    * while one of its controls holds its off value — `GovernedGroup` in the kit.
    */
   groups?: readonly (string | GovernedGroup<string & keyof S>)[]
+  /** Each group in a box of its own, stacked down the right edge — `boxes` in the kit. */
+  boxes?: boolean
   /**
    * How a scene tints the document: custom properties on `<html>`, and
    * `data-*` attributes beside them. Applied on landing and on every change,

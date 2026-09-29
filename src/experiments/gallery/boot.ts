@@ -87,6 +87,7 @@ export function boot<S extends object, V extends Verbs, T>(piece: Piece<S, V, T>
     settings,
     controls: module.CONTROLS as Control<string & keyof S>[],
     groups: chrome.groups,
+    ...(chrome.boxes ? { boxes: true, folds: chrome.slug } : {}),
     presets,
     actions: (chrome.actions ?? []).map(({ label, hint, shortcut, verb }) => ({
       label,

@@ -317,6 +317,25 @@ export type Options<S extends object> = {
    * control holds `off`. See `GovernedGroup`.
    */
   groups?: readonly (string | GovernedGroup<string & keyof S>)[]
+  /**
+   * **Each group in a box of its own**, the boxes stacked down the right edge
+   * and wrapping into further columns to the left as the frame runs out of
+   * height, so nothing scrolls and no group is out of sight. Crowd's panel had
+   * outgrown one scrolling column: "each section could be a box and those boxes
+   * stack along the right side of the screen masonry grid style". Tabs were
+   * the other answer and were not taken, because they put groups out of sight.
+   * Needs `groups`; without them there is one box.
+   */
+  boxes?: boolean
+  /**
+   * With `boxes`, the key under which the viewer's folded boxes are remembered,
+   * one per piece. A box folds to its heading when the heading is clicked:
+   * "a user could then decide to collapse some modules so they stay collapsed
+   * if they're not in use". **Browser storage, never the address**: which boxes
+   * a viewer keeps folded is theirs, not the scene's, so a shared link opens
+   * every box. Storage that is blocked or empty just means nothing is folded.
+   */
+  folds?: string
   actions?: Action<S>[]
   /**
    * The one validator every external input passes through, so the panel cannot
@@ -391,7 +410,19 @@ function button(label: string, className = ""): HTMLButtonElement {
 }
 
 export function createControls<S extends object>(options: Options<S>): Controls<S> {
-  const { root, controls: specs, presets, groups, actions = [], normalize, url, onChange, aboutHref } = options
+  const {
+    root,
+    controls: specs,
+    presets,
+    groups,
+    boxes = false,
+    folds,
+    actions = [],
+    normalize,
+    url,
+    onChange,
+    aboutHref,
+  } = options
   const copyActions: CopyAction[] = options.copy ?? [
     {
       label: "copy link to these settings",
@@ -413,7 +444,46 @@ export function createControls<S extends object>(options: Options<S>): Controls<
   bar.className = "bar"
 
   const panel = document.createElement("div")
-  panel.className = "panel"
+  panel.className = boxes ? "panel boxed" : "panel"
+  // The viewer's folded boxes. Every read and write is guarded: private
+  // windows, blocked storage and previews all throw or come back empty, and
+  // each of those simply means nothing is folded.
+  const foldKey = folds ? `kit:folds:${folds}` : null
+  const folded = new Set<string>()
+  if (foldKey) {
+    try {
+      const stored = JSON.parse(window.localStorage.getItem(foldKey) ?? "[]") as unknown
+      if (Array.isArray(stored)) for (const name of stored) if (typeof name === "string") folded.add(name)
+    } catch {
+      folded.clear()
+    }
+  }
+  const fold = (box: HTMLElement, heading: HTMLElement) => {
+    const name = box.dataset.group ?? ""
+    const now = !folded.has(name)
+    if (now) folded.add(name)
+    else folded.delete(name)
+    box.dataset.folded = String(now)
+    heading.setAttribute("aria-expanded", String(!now))
+    if (!foldKey) return
+    try {
+      window.localStorage.setItem(foldKey, JSON.stringify([...folded]))
+    } catch {
+      // Remembered for this page only, then.
+    }
+  }
+
+  /** Where the next group's rows go: the panel, or that group's own box. */
+  let into: HTMLElement = panel
+  const openBox = (name: string) => {
+    if (!boxes) return
+    const box = document.createElement("section")
+    box.className = "box"
+    box.dataset.group = name
+    box.dataset.folded = String(folded.has(name))
+    panel.append(box)
+    into = box
+  }
   panel.hidden = true
 
   /**
@@ -525,13 +595,27 @@ export function createControls<S extends object>(options: Options<S>): Controls<
       const inGroup = specs.filter((control) => control.group === group)
       if (inGroup.length === 0) continue
 
+      openBox(group)
       const heading = document.createElement("div")
       heading.className = "group"
       heading.textContent = group
-      panel.append(heading)
+      if (boxes) {
+        const box = into
+        heading.setAttribute("role", "button")
+        heading.tabIndex = 0
+        heading.title = "fold or unfold"
+        heading.setAttribute("aria-expanded", String(box.dataset.folded !== "true"))
+        heading.addEventListener("click", () => fold(box, heading))
+        heading.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter" && event.key !== " ") return
+          event.preventDefault()
+          fold(box, heading)
+        })
+      }
+      into.append(heading)
 
       if (typeof entry === "string") {
-        for (const control of inGroup) panel.append(makeRow(control))
+        for (const control of inGroup) into.append(makeRow(control))
         continue
       }
 
@@ -541,7 +625,7 @@ export function createControls<S extends object>(options: Options<S>): Controls<
       if (!governor) throw new Error(`group "${group}" is governed by ${entry.governor}, which has no control in it`)
       const governorRow = makeRow(governor)
       governorRow.classList.add("governor")
-      panel.append(governorRow)
+      into.append(governorRow)
 
       const body = document.createElement("div")
       body.className = "rows"
@@ -549,11 +633,12 @@ export function createControls<S extends object>(options: Options<S>): Controls<
       // Published so a test, or a piece's stylesheet, can tell what off is.
       body.dataset.off = JSON.stringify(entry.off)
       for (const control of inGroup) if (control !== governor) body.append(makeRow(control))
-      panel.append(body)
+      into.append(body)
       governed.push({ body, governor: entry.governor, off: entry.off })
     }
   } else {
-    for (const control of specs) panel.append(makeRow(control))
+    openBox("")
+    for (const control of specs) into.append(makeRow(control))
   }
 
   function makeSlider(control: SliderControl<string & keyof S> | RangeControl<string & keyof S>, key: string) {
@@ -675,6 +760,7 @@ export function createControls<S extends object>(options: Options<S>): Controls<
   // `.row.copy` a single full-width column, so stacking keeps every button the
   // size the one button has always been, and the row count stays the thing
   // `.row:not(.copy)` filters out.
+  if (copyActions.length > 0) openBox("actions")
   for (const action of copyActions) {
     const copyRow = document.createElement("div")
     copyRow.className = "row copy"
@@ -688,7 +774,7 @@ export function createControls<S extends object>(options: Options<S>): Controls<
       }, 1600)
     })
     copyRow.append(copyButton)
-    panel.append(copyRow)
+    into.append(copyRow)
   }
 
   // --- state ---------------------------------------------------------------

@@ -184,6 +184,67 @@ html[data-idle="true"] #ui > * {
   bottom: 0;
 }
 
+/* **Boxed**: each group a box of its own, stacked down the right edge and
+   wrapping into further columns to the left, so nothing scrolls and no group
+   is out of sight. The panel itself becomes an invisible column of the boxes'
+   width; the columns after the first overflow it leftward (`direction: rtl`),
+   which is what anchors the first to the corner. Its height is the corner's
+   space less the gaps, with no padding of its own to allow for. */
+#ui .panel.boxed {
+  flex-wrap: wrap;
+  align-content: flex-start;
+  direction: rtl;
+  gap: 0.45rem;
+  width: var(--ui-panel-min, 22rem);
+  min-width: 0;
+  max-height: calc(100vh - 2.4rem - 2.6rem - 0.4rem);
+  padding: 0;
+  overflow: visible;
+  background: none;
+  border: 0;
+  backdrop-filter: none;
+}
+
+#ui .panel.boxed[hidden] {
+  display: none;
+}
+
+#ui .panel.boxed > .box {
+  direction: ltr;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-row-gap, 0.3rem);
+  box-sizing: border-box;
+  width: var(--ui-panel-min, 22rem);
+  padding: 0.6rem 0.85rem 0.7rem;
+  background: var(--ui-panel, rgb(8 10 18 / 84%));
+  border: 1px solid var(--ui-edge, rgb(255 255 255 / 12%));
+  border-radius: 0.4rem;
+  backdrop-filter: blur(8px);
+}
+
+#ui .panel.boxed .group {
+  margin-top: 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* A fold mark, pointing down while open and right while folded. */
+#ui .panel.boxed .group::before {
+  display: inline-block;
+  width: 1em;
+  content: "\25BE";
+}
+
+#ui .panel.boxed > .box[data-folded="true"] .group::before {
+  content: "\25B8";
+}
+
+/* Folded: the heading and nothing else. */
+#ui .panel.boxed > .box[data-folded="true"] > :not(.group) {
+  display: none;
+}
+
 #ui .group {
   margin-top: 0.5rem;
   color: var(--ui-heading, rgb(255 255 255 / 34%));
