@@ -151,14 +151,20 @@ html[data-idle="true"] #ui > * {
   pointer-events: none;
 }
 
+/* Down the left edge for as long as there is height, and only then a second
+   column (Andrei, #258: "presets run the left side until they have to wrap").
+   It was columns of five from #223, which put crowd's 23 in five columns
+   reaching 793px across, under the boxes of any screen below 1600. */
 #ui .presets {
   top: 0;
   left: 0;
-  display: grid;
-  grid-template-rows: repeat(5, auto);
-  grid-auto-columns: max-content;
-  grid-auto-flow: column;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  align-items: stretch;
   gap: 0.35rem;
+  max-height: 100%;
 }
 
 #ui .preset {

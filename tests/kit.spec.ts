@@ -77,17 +77,38 @@ for (const slug of PIECES) {
     expect(about.y + about.height, `${slug}: about is not at the bottom`).toBeGreaterThan(height * 0.9)
     expect(panel.y, `${slug}: the panel is not beneath the bar`).toBeGreaterThanOrEqual(bar.y + bar.height - 1)
     expect(panel.y + panel.height, `${slug}: the panel runs over about`).toBeLessThanOrEqual(about.y + 1)
+  })
 
-    // Five to a column: the sixth preset starts the next one, to the right of the first.
-    const buttons = page.locator("#ui .presets .preset")
-    if ((await buttons.count()) > 5) {
-      const first = (await buttons.nth(0).boundingBox())!
-      const fifth = (await buttons.nth(4).boundingBox())!
-      const sixth = (await buttons.nth(5).boundingBox())!
-      expect(fifth.x, `${slug}: the fifth preset left the first column`).toBeCloseTo(first.x, 0)
-      expect(sixth.x, `${slug}: the sixth preset did not start a second column`).toBeGreaterThan(first.x + 1)
-      expect(sixth.y, `${slug}: the second column does not start at the top`).toBeCloseTo(first.y, 0)
-    }
+  /**
+   * **The presets run down the left edge until they have to wrap.** Columns
+   * of five from #223 put crowd's 23 five columns across, under the boxes of
+   * any screen below 1600; Andrei, on #258, wanted them down the edge "until
+   * they have to wrap into another column", at every size.
+   *
+   * Held at a short window so the wrap happens: a second column must start at
+   * the top, and only once the first could not have taken one more.
+   */
+  test(`${slug}: the presets fill the left edge before they wrap`, async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 420 })
+    await openHeld(page, slug, { idle: false })
+    const boxes = await page
+      .locator("#ui .presets .preset")
+      .evaluateAll((all) => all.map((element) => element.getBoundingClientRect().toJSON() as DOMRect))
+    expect(boxes.length, `${slug} has no presets`).toBeGreaterThan(0)
+    const first = boxes[0]!
+    const inFirst = boxes.filter((box) => Math.abs(box.x - first.x) < 1)
+    const rest = boxes.slice(inFirst.length)
+    const floor = await page.locator("#ui").evaluate((element) => element.getBoundingClientRect().bottom)
+    // The first column is the leading presets, in order, with no gaps.
+    expect(boxes.slice(0, inFirst.length), `${slug}: the first column is not the leading presets`).toEqual(inFirst)
+    if (rest.length === 0) return
+    const last = inFirst.at(-1)!
+    expect(
+      last.bottom + (last.y - (inFirst.at(-2) ?? first).bottom) + last.height,
+      `${slug}: a second column started while the first had room for another preset`,
+    ).toBeGreaterThan(floor)
+    expect(rest[0]!.x, `${slug}: the second column is not to the right of the first`).toBeGreaterThan(first.x + 1)
+    expect(rest[0]!.y, `${slug}: the second column does not start at the top`).toBeCloseTo(first.y, 0)
   })
 
   /**

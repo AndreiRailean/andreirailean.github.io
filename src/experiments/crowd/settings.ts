@@ -682,17 +682,6 @@ export const CONTROLS: Control[] = [
     format: (v) => `${v.toFixed(2)}x`,
     hint: "Clock rate. Everything time-dependent goes through it — my stride, the crowd's, the looking, the stopping — so half speed is the same walk taken slowly rather than a slower walk. 0 holds the frame.",
   },
-  {
-    kind: "slider",
-    key: "seed",
-    label: "seed",
-    group: "crowd",
-    min: 0,
-    max: 99_999,
-    step: 1,
-    format: (v) => String(Math.round(v)),
-    hint: "Decides who is out there: their heights, their ages, who is with whom, where they are going and the order I meet them. Same seed and same settings, same walk. The button in the bar draws a new one.",
-  },
 ]
 
 /** Bounds for the seed, so `reroll` and the panel cannot disagree about them. */
@@ -811,7 +800,6 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   hue: { min: 0, max: 359, step: 1 },
   tint: { min: 0, max: 1, step: 0.02 },
   playback: { min: 0, max: 2, step: 0.05 },
-  seed: { min: 0, max: 99999, step: 1 },
 }
 
 /**
