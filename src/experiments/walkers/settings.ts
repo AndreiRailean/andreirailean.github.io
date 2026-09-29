@@ -382,17 +382,6 @@ export const CONTROLS: Control[] = [
     format: (v) => `${v.toFixed(2)}x`,
     hint: "Clock rate. Everything time-dependent goes through it — steps, gaze, play, the rate people arrive — so half speed is the same crowd watched slowly rather than a slower crowd. 0 holds the frame.",
   },
-  {
-    kind: "slider",
-    key: "seed",
-    label: "seed",
-    group: "crowd",
-    min: 0,
-    max: 99_999,
-    step: 1,
-    format: (v) => String(Math.round(v)),
-    hint: "Decides who turns up: their heights, their ages, their colours, and the order they arrive in. Same seed and same settings, same crowd. The button in the bar draws a new one.",
-  },
 ]
 
 /** Bounds for the seed, so `reroll` and the panel cannot disagree about them. */

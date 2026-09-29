@@ -556,17 +556,6 @@ export const CONTROLS: Control[] = [
     format: (v) => `${Math.round(v)}°`,
     hint: "Colour of these controls and of the written note. The water is black and the bubbles are white, and nothing in the picture uses this — an observer is meant to see white circles and nothing else.",
   },
-  {
-    kind: "slider",
-    key: "seed",
-    label: "seed",
-    group: "picture",
-    min: 1,
-    max: 9999,
-    step: 1,
-    format: (v) => String(Math.round(v)),
-    hint: "Which arrangement of jets you get, which way each one turns when spin is loose, and which set of eddies the background flow is made of. It does not freeze anything: the eddies still move on their own clock whatever this says, and unsettled is what decides how fast. Reroll gives you a new one.",
-  },
 ]
 
 /**
