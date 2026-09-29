@@ -23,7 +23,7 @@ const PIECES = ["bubbles", "crowd", "dangler", "embers", "flotsam", "psyxels", "
 const GOVERNED = new Set<string>(["crowd"])
 
 /** Pieces whose panel is boxed (`boxes` in their CHROME), so the box test holds them to it. */
-const BOXED = new Set<string>(["crowd"])
+const BOXED = new Set<string>(["bubbles", "crowd", "dangler", "embers", "flotsam", "psyxels", "walkers"])
 
 /**
  * **Every test here is about the chrome, so every one holds the piece.** A
@@ -230,6 +230,51 @@ for (const slug of PIECES) {
     // And unfolds, so the test leaves the browser as it found it.
     await page.locator("#ui .panel.boxed > .box").first().locator(".group").click()
     await expect(page.locator("#ui .panel.boxed > .box").first().locator(".row").first()).toBeVisible()
+  })
+
+  /**
+   * **Every row fits its box, at every preset — #257.** The unboxed panel grew
+   * to its widest row; a box is exactly `--ui-panel-min` wide, border-box, so
+   * a row wider than that is clipped at the box's edge or wraps a button onto
+   * two lines, and nothing else says so. Psyxels' subject choices ran 86px past
+   * the edge and walkers' "to a spot" broke in two the day the two were boxed.
+   *
+   * The presence half is the count: a box with no rows measured would pass.
+   */
+  test(`${slug}: every row of a boxed panel fits its box, at every preset`, async ({ page }) => {
+    test.skip(!BOXED.has(slug), "not boxed")
+    const experiment = await openHeld(page, slug, { idle: false })
+    await experiment.api(({ api }) => api.panel(true))
+    const presets = await page.locator("#ui .presets .preset").count()
+    for (let index = 1; index <= presets; index++) {
+      await experiment.api(({ api, arg }) => api.preset(arg), index)
+      const { measured, misfits } = await page.evaluate(() => {
+        const misfits: string[] = []
+        let measured = 0
+        for (const box of document.querySelectorAll<HTMLElement>("#ui .panel.boxed > .box")) {
+          const style = getComputedStyle(box)
+          const edge =
+            box.getBoundingClientRect().right - parseFloat(style.paddingRight) - parseFloat(style.borderRightWidth)
+          for (const row of box.querySelectorAll<HTMLElement>(".row")) {
+            if (row.getClientRects().length === 0) continue
+            measured++
+            const name = row.querySelector(".label")?.textContent ?? "?"
+            for (const part of row.querySelectorAll<HTMLElement>("button, .value, .label, input")) {
+              if (part.getBoundingClientRect().right > edge + 1) misfits.push(`${name}: runs past the box`)
+              const text = [...part.childNodes].find((node) => node.nodeType === Node.TEXT_NODE)
+              if (!text) continue
+              const range = document.createRange()
+              range.selectNodeContents(text)
+              const lines = new Set([...range.getClientRects()].map((rect) => Math.round(rect.top)))
+              if (lines.size > 1) misfits.push(`${name}: "${text.textContent}" wraps`)
+            }
+          }
+        }
+        return { measured, misfits: [...new Set(misfits)] }
+      })
+      expect(measured, `${slug}: no rows were measured`).toBeGreaterThan(0)
+      expect(misfits, `${slug}, preset ${index}: a row does not fit its box; raise --ui-panel-min`).toEqual([])
+    }
   })
 
   /**

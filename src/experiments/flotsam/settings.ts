@@ -816,6 +816,8 @@ export const CHROME: Chrome<Settings> = {
   slug: "flotsam",
   title: "Flotsam",
   canvas: "water",
+  // A box per group, stacked down the right edge, as crowd has — #257.
+  boxes: true,
   groups: GROUP_ORDER,
   theme: (settings) => ({
     style: {

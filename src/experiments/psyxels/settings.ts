@@ -985,6 +985,8 @@ export const CHROME: Chrome<Settings> = {
   slug: "psyxels",
   title: "Psyxels",
   canvas: "stage",
+  // A box per group, stacked down the right edge, as crowd has — #257.
+  boxes: true,
   groups: GROUP_ORDER,
   theme: (settings) => ({
     style: {

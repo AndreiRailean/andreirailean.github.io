@@ -66,7 +66,9 @@ const { note = false } = Astro.props
            twenty-seven rows in four groups want a wider panel than fifteen. */
       --ui-label-col: 6.5rem;
       --ui-value-col: 5.25rem;
-      --ui-panel-min: 23rem;
+      /* A box is this wide, border-box, so it is the widest row plus the box's
+         padding: `mark` ran past 23rem. `tests/kit.spec.ts` holds it (#257). */
+      --ui-panel-min: 24.5rem;
       --ui-row-gap: 0.38rem;
     }
 
