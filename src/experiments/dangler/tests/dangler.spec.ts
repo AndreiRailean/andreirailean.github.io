@@ -151,8 +151,12 @@ test("the panel opens styled, with a row for every control", async ({ page }) =>
 
   // A panel that rendered unstyled went unnoticed once. Its background is the
   // cheapest proof the stylesheet reached it, since the piece imports no
-  // globals.css and owns every rule itself.
-  const background = await panel.evaluate((node) => getComputedStyle(node).backgroundColor)
+  // globals.css and owns every rule itself. Boxed, the ground is each box's and
+  // the panel around them is bare (#257).
+  const background = await panel
+    .locator(".box")
+    .first()
+    .evaluate((node) => getComputedStyle(node).backgroundColor)
   expect(background).not.toBe("rgba(0, 0, 0, 0)")
 
   await experiment.shot("panel")

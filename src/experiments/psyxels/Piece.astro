@@ -76,7 +76,9 @@ const { note = false } = Astro.props
            the name column is narrower than Flotsam's. */
       --ui-label-col: 6.5rem;
       --ui-value-col: 5rem;
-      --ui-panel-min: 22.5rem;
+      /* A box is this wide, border-box, so it is the widest row plus the box's
+         padding: the subject choices ran past 22.5rem. `tests/kit.spec.ts` holds it (#257). */
+      --ui-panel-min: 28rem;
       --ui-row-gap: 0.26rem;
     }
 

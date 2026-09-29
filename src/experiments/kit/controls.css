@@ -189,7 +189,10 @@ html[data-idle="true"] #ui > * {
    is out of sight. The panel itself becomes an invisible column of the boxes'
    width; the columns after the first overflow it leftward (`direction: rtl`),
    which is what anchors the first to the corner. Its height is the corner's
-   space less the gaps, with no padding of its own to allow for. */
+   space less the gaps, with no padding of its own to allow for. The 2.5rem is
+   `#ui`'s own inset, top and bottom, as in the unboxed height: without it a
+   full column ran 22px over `about` at 1280×900, which crowd's short columns
+   never reached and psyxels' and walkers' did (#257). */
 #ui .panel.boxed {
   flex-wrap: wrap;
   align-content: flex-start;
@@ -197,7 +200,7 @@ html[data-idle="true"] #ui > * {
   gap: 0.45rem;
   width: var(--ui-panel-min, 22rem);
   min-width: 0;
-  max-height: calc(100vh - 2.4rem - 2.6rem - 0.4rem);
+  max-height: calc(100vh - 2.5rem - 2.4rem - 2.6rem);
   padding: 0;
   overflow: visible;
   background: none;

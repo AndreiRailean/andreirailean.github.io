@@ -951,6 +951,8 @@ export const CHROME: Chrome<Settings> = {
   slug: "bubbles",
   title: "Bubbles",
   canvas: "water",
+  // A box per group, stacked down the right edge, as crowd has — #257.
+  boxes: true,
   groups: GROUPS,
   theme: (settings) => ({ style: { "--hue": String(settings.hue) } }),
   actions: [

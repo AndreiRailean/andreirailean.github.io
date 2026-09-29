@@ -44,3 +44,13 @@ that's being turned on and off". A governor with a range of values stays a row.
 The boxes take width from the scene. At 1280×800 crowd needs three columns, and
 the second and third cover the preset buttons at the top left; folding two
 boxes brings it to two, which still covers some of them. That is open.
+
+**A box is exactly `--ui-panel-min` wide, and the unboxed panel was not.** The
+unboxed panel took that value as its minimum content width and grew to fit its
+widest row. A box is fixed at the value, border-box. So a piece that moves to
+boxes loses about 1.8rem of content width, and a row that is wider than what is
+left clips at the box's edge or wraps a button. When #257 boxed six more pieces,
+three of them needed a wider `--ui-panel-min`: psyxels, embers and walkers.
+`tests/kit.spec.ts` now checks every row of every boxed piece against its box, at
+every preset, so a piece that gains a wider row fails there rather than on screen.
+Crowd was tuned under the boxed rule, which is why the rule stays as it is.

@@ -685,6 +685,8 @@ export const CHROME: Chrome<Settings> = {
   slug: "embers",
   title: "Embers",
   canvas: "fire",
+  // A box per group, stacked down the right edge, as crowd has — #257.
+  boxes: true,
   groups: GROUPS,
   theme: (settings) => ({ style: { "--hue": String(settings.hue), "--ground": groundColour(settings.hue) } }),
   actions: [

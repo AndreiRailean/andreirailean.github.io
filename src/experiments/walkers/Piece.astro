@@ -73,7 +73,9 @@ const { note = false } = Astro.props
       /* Wide enough for the pace band at its widest, "0.90–3.15 m/s", on one
          line: the kit's values no longer wrap, so a narrower column clips it. */
       --ui-value-col: 6.25rem;
-      --ui-panel-min: 21rem;
+      /* A box is this wide, border-box, so it is the widest row plus the box's
+         padding: "to a spot" wrapped at 21rem. `tests/kit.spec.ts` holds it (#257). */
+      --ui-panel-min: 23rem;
       --ui-row-gap: 0.36rem;
     }
 
