@@ -386,15 +386,6 @@ html[data-idle="true"] #ui > * {
   opacity: 0.75;
 }
 
-#ui .row.copy {
-  grid-template-columns: 1fr;
-  margin-top: 0.6rem;
-}
-
-#ui .row.copy button {
-  width: 100%;
-}
-
 /* --- a plain slider ------------------------------------------------------ */
 
 /* Styled by hand rather than with `accent-color`. The UA derives the unfilled

@@ -99,7 +99,6 @@ export function boot<S extends object, V extends Verbs, T>(piece: Piece<S, V, T>
     })),
     normalize: (next, changed) => module.normalizeSettings(reconcile && changed ? reconcile(next, changed) : next),
     url: (next) => module.urlForSettings(next, window.location.pathname),
-    ...(chrome.copy ? { copy: [{ ...chrome.copy, text: () => window.location.href }] } : {}),
     onChange: (next) => {
       applyTheme(chrome, next)
       scene.setSettings(next)

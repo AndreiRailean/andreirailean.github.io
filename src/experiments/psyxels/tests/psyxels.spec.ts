@@ -908,7 +908,7 @@ test("the settings panel opens with a row for every control", async ({ page }) =
   const experiment = await openPsyxels(page, { idle: false })
   await experiment.api(({ api }) => api.panel(true))
 
-  const rows = page.locator(".panel .row:not(.copy)")
+  const rows = page.locator(".panel .row")
   const controls = await experiment.api(({ api }) => api.controls())
   // One row per control, and a bound pair would be one row for two keys — there
   // are none here, so the two counts agree.
