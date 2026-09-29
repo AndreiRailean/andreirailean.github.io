@@ -228,11 +228,21 @@ for (const slug of PIECES) {
     await expect(page.locator("#ui .panel.boxed > .box").first().locator(".row").first()).toBeVisible()
   })
 
-  test(`${slug}: the bar ends with adjust, and the presets lead their column from one`, async ({ page }) => {
-    await openHeld(page, slug, { idle: false })
+  /**
+   * **The bar reads reroll, copy link, adjust — #257.** The piece's own actions
+   * first, where it has any, then `copy link`, then `adjust`. The copy action
+   * was a full-width row at the foot of the panel until then, and the presence
+   * half here is what keeps the absence half honest: a panel with no copy row
+   * passes as readily when the button is gone altogether.
+   */
+  test(`${slug}: the bar ends copy link, adjust, and the presets lead their column from one`, async ({ page }) => {
+    const experiment = await openHeld(page, slug, { idle: false })
 
     const labels = await page.locator(".bar button, .bar a").allTextContents()
-    expect(labels.at(-1)).toBe("adjust")
+    expect(labels.slice(-2)).toEqual(["copy link", "adjust"])
+    await experiment.api(({ api }) => api.panel(true))
+    await expect(page.locator(".panel")).toBeVisible()
+    await expect(page.locator(".panel .copy")).toHaveCount(0)
     await expect(page.locator("#ui > .about")).toHaveText("about")
     // Numbered from one, because the digits load them.
     expect((await page.locator("#ui .presets .preset").allTextContents())[0]).toMatch(/^1 /)
@@ -642,7 +652,7 @@ for (const slug of PIECES) {
 
     // Every row carries its own tooltip and a label, which is the only thing
     // naming a bare slider.
-    const rows = page.locator(".panel .row:not(.copy)")
+    const rows = page.locator(".panel .row")
     const count = await rows.count()
     expect(count).toBeGreaterThan(0)
     for (let i = 0; i < count; i++) {
@@ -652,8 +662,9 @@ for (const slug of PIECES) {
   })
 
   /**
-   * The panel's copy row, which had no test at all until the row learned to
-   * carry more than one action.
+   * The bar's copy button, which had no test at all until the copy action
+   * learned to carry more than one thing (#144), and moved from the panel to the
+   * bar in #257.
    *
    * Deliberately not asserting what reached the clipboard. `kit/copy.ts` has two
    * paths — `navigator.clipboard` and a legacy selection fallback for the
@@ -662,11 +673,10 @@ for (const slug of PIECES) {
    * relies on and the part a refactor can break: it announces the outcome and
    * then goes back to what it said.
    */
-  test(`${slug}: the copy row offers at least one labelled action and reports back`, async ({ page }) => {
-    const experiment = await openHeld(page, slug, { idle: false })
-    await experiment.api(({ api }) => api.panel(true))
+  test(`${slug}: the bar's copy button is labelled and reports back`, async ({ page }) => {
+    await openHeld(page, slug, { idle: false })
 
-    const buttons = page.locator(".panel .row.copy button")
+    const buttons = page.locator(".bar .copy")
     expect(await buttons.count()).toBeGreaterThan(0)
 
     const first = buttons.first()

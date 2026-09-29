@@ -86,8 +86,6 @@ export type Chrome<S> = {
    */
   theme: (settings: S) => { style?: Record<string, string>; data?: Record<string, string> }
   actions?: ChromeAction[]
-  /** A "copy link" button, labelled for what the piece shows. */
-  copy?: { label: string; title: string }
   /** Query parameters that call a verb, in the order they are honoured. */
   hatches?: Record<string, Hatch>
   /** Printed once on load: each line a call and what it does. */

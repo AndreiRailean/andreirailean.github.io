@@ -832,7 +832,6 @@ export const CHROME: Chrome<Settings> = {
       verb: "reroll",
     },
   ],
-  copy: { label: "copy link to this water", title: "Copy this page's address, which carries every setting above." },
   hatches: { debug: "flag", run: "seconds" },
   banner: [
     ["experiment.get()", "current settings"],

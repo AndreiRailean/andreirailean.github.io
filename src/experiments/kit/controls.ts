@@ -352,9 +352,14 @@ export type Options<S extends object> = {
   /** Where the written note lives. Omitted, no link is shown. */
   aboutHref?: string
   /**
-   * What the panel offers to copy, in order, one full-width button each.
+   * What the bar offers to copy, in order, one button each, after the piece's
+   * actions and before `adjust`.
    *
-   * Defaults to the one action the panel has always had: this page's address.
+   * Defaults to the one action every piece has: `copy link`, this page's
+   * address. It sat in the panel as a full-width row until #257, which put it
+   * in the bar reading exactly those two words, so the bar reads **reroll, copy
+   * link, adjust** on every piece and nobody has to open the panel to share a
+   * scene.
    *
    * The kit owns the button, its label, the copied / copy-failed reply and the
    * clipboard fallback in `copy.ts` — all genuinely shared, and `copy.ts` in
@@ -385,7 +390,7 @@ export type Options<S extends object> = {
 }
 
 /**
- * One entry in the panel's copy row.
+ * One copy button in the bar.
  *
  * `text` is a function rather than a string because the interesting things to
  * copy are all derived from settings that move under it — the address changes
@@ -425,8 +430,8 @@ export function createControls<S extends object>(options: Options<S>): Controls<
   } = options
   const copyActions: CopyAction[] = options.copy ?? [
     {
-      label: "copy link to these settings",
-      title: "Copy this page's address, which carries every setting above.",
+      label: "copy link",
+      title: "Copy this page's address, which carries every setting.",
       text: () => window.location.href,
     },
   ]
@@ -542,12 +547,25 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     return element
   })
 
+  const copyButtons = copyActions.map((action) => {
+    const element = button(action.label, "copy")
+    if (action.title) element.title = action.title
+    element.addEventListener("click", async () => {
+      const copied = await copyText(action.text())
+      element.textContent = copied ? "copied" : "copy failed"
+      window.setTimeout(() => {
+        element.textContent = action.label
+      }, 1600)
+    })
+    return element
+  })
+
   const settingsToggle = button("adjust", "toggle")
   settingsToggle.title = "Show or hide these controls (key c, Escape closes)"
   settingsToggle.addEventListener("click", () => setPanelOpen(!panelOpen))
 
   presetColumn.append(...presetButtons)
-  bar.append(...actionButtons, settingsToggle)
+  bar.append(...actionButtons, ...copyButtons, settingsToggle)
 
   // The gallery placard: present when you look for it, gone while you watch.
   if (aboutHref) {
@@ -754,27 +772,6 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     }
 
     return row
-  }
-
-  // One row each rather than one row of several: `controls.css` gives
-  // `.row.copy` a single full-width column, so stacking keeps every button the
-  // size the one button has always been, and the row count stays the thing
-  // `.row:not(.copy)` filters out.
-  if (copyActions.length > 0) openBox("actions")
-  for (const action of copyActions) {
-    const copyRow = document.createElement("div")
-    copyRow.className = "row copy"
-    const copyButton = button(action.label, "copy")
-    if (action.title) copyButton.title = action.title
-    copyButton.addEventListener("click", async () => {
-      const copied = await copyText(action.text())
-      copyButton.textContent = copied ? "copied" : "copy failed"
-      window.setTimeout(() => {
-        copyButton.textContent = action.label
-      }, 1600)
-    })
-    copyRow.append(copyButton)
-    into.append(copyRow)
   }
 
   // --- state ---------------------------------------------------------------
