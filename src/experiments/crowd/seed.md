@@ -644,3 +644,25 @@ heading folds it, remembered per piece in the browser's storage and never in
 the address. Open: at 1280×800 the boxes need three columns and the second and
 third cover the preset buttons; folding two boxes brings it to two, which still
 covers presets 16–23.
+
+## 2026-09-29 — the section is the switch, and done for now
+
+> nice. this looks much better than scrolling controls. let's create a ticket
+> for steward to take this pattern to other experiments. i don't care about
+> small screens yet. file a ticket to test that resolution out by steward and
+> suggest approaches.
+>
+> with this boxed controls approach it is obvious that ground:a way is a
+> toggle that turns on ground structure entirely. so it's the whole section
+> that's being turned on and off, not one control inside the section.
+>
+> tell steward in that ticket to move the "copy link" part to the top and
+> break it out of the box. it should be just a "copy link" (two words) next to
+> "adjust" button in the top right corner: reroll, copy, adjust. this applies
+> to all experiments.
+>
+> i think we've done enough here. let's open a PR and merge when green.
+
+The way toggle now sits in the ground box's heading, switching the section.
+Filed #257 (boxed panels and "copy link" in the bar, for every piece) and #258
+(small screens, measured, with approaches), both for the steward.

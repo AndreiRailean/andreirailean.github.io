@@ -128,7 +128,11 @@ for (const slug of PIECES) {
         body.locator("input:not([disabled])"),
         `${slug}: ${key} is off and an input still takes a drag`,
       ).toHaveCount(0)
-      const governor = body.locator("xpath=preceding-sibling::*[1]")
+      // The row just above the group, or — for a toggle in a boxed panel — the
+      // switch inside the heading just above it.
+      const governor = body.locator(
+        "xpath=preceding-sibling::*[1]/descendant-or-self::*[contains(concat(' ', normalize-space(@class), ' '), ' governor ')]",
+      )
       await expect(governor, `${slug}: ${key}'s governor is not the row above its group`).toHaveClass(/\bgovernor\b/)
       await expect(governor, `${slug}: ${key} is off and its governor went with the rows`).toBeVisible()
       await expect(governor, `${slug}: ${key} is off and its governor cannot be switched back on`).toHaveAttribute(

@@ -623,7 +623,11 @@ export function createControls<S extends object>(options: Options<S>): Controls<
         heading.tabIndex = 0
         heading.title = "fold or unfold"
         heading.setAttribute("aria-expanded", String(box.dataset.folded !== "true"))
-        heading.addEventListener("click", () => fold(box, heading))
+        // A click on the heading's own switch switches; anywhere else folds.
+        heading.addEventListener("click", (event) => {
+          if ((event.target as HTMLElement).closest(".row")) return
+          fold(box, heading)
+        })
         heading.addEventListener("keydown", (event) => {
           if (event.key !== "Enter" && event.key !== " ") return
           event.preventDefault()
@@ -643,7 +647,17 @@ export function createControls<S extends object>(options: Options<S>): Controls<
       if (!governor) throw new Error(`group "${group}" is governed by ${entry.governor}, which has no control in it`)
       const governorRow = makeRow(governor)
       governorRow.classList.add("governor")
-      into.append(governorRow)
+      // **A toggle that governs a box switches the box, so it sits in the
+      // box's heading**: "it's the whole section that's being turned on and
+      // off, not one control inside the section". A governor with a range of
+      // values — a slider whose zero is off — stays a row, since the section
+      // is not simply on or off.
+      if (boxes && governor.kind === "toggle") {
+        governorRow.classList.add("switch")
+        heading.append(governorRow)
+      } else {
+        into.append(governorRow)
+      }
 
       const body = document.createElement("div")
       body.className = "rows"
