@@ -6,6 +6,9 @@ Each experiment is a full-page programmed graphic.
 control's `inert`, and a governed group whose governor is off, both dim and
 disable the row; hiding made the bottom-anchored panel jump on every switch.
 See `docs/adr/20260928-an-inert-control-is-disabled-not-hidden.md`.
+A boxed panel (`boxes` in `CHROME`) never scrolls, and a folded box is the
+viewer's, kept in browser storage and never in the address —
+`docs/adr/20260929-a-panel-in-boxes-folds-are-the-viewers.md`.
 
 ## A piece is a library behind three files
 
