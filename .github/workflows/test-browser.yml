@@ -2,7 +2,7 @@ name: Browser tests
 
 # Most `.spec.ts` here navigates to `/experiments/...`, so a change that cannot
 # reach the section cannot break them. Running the browser suite over five pieces
-# to approve a paragraph on the resume is the friction
+# to approve a paragraph of prose is the friction
 # `docs/adr/20260828-experiments-stay-in-the-site-repo.md` named as the cheapest
 # thing to fix. See #143.
 #
@@ -69,7 +69,6 @@ on:
       - "src/assets/**"
       - "src/lib/**"
       - "src/styles/**"
-      - "src/pages/resume.md"
       - "public/**"
       - "docs/**"
       - "src/experiments/docs/**"

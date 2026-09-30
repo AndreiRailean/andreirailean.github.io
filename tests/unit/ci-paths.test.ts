@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest"
  * tests read.
  *
  * `test-browser.yml` skips the browser suite for changes that provably cannot
- * reach an experiment — the resume, the site's components, agent docs, ADRs,
+ * reach an experiment — the site's components, agent docs, ADRs,
  * skills. That is worth having: a docs-only pull request was running the browser
  * suite over five pieces to approve a paragraph.
  *
