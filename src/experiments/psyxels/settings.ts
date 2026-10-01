@@ -7,6 +7,7 @@ import {
   type SetControl,
   type SliderControl,
   type TextControl,
+  type ToggleControl,
   type Track,
 } from "@/experiments/kit/controls"
 import {
@@ -72,6 +73,8 @@ export type Settings = {
   layers: number
   glow: number
   afterglow: number
+  /** How the afterglow forgets: a flat fade, or the same fade dithered (#117). */
+  dither: boolean
   wander: number
   spin: number
   weight: number
@@ -92,7 +95,10 @@ export type Settings = {
   playback: number
 }
 
-export type NumericKey = Exclude<keyof Settings, "subject" | "text" | "picture" | "face" | "polarity" | "glyphs">
+export type NumericKey = Exclude<
+  keyof Settings,
+  "subject" | "text" | "picture" | "face" | "polarity" | "glyphs" | "dither"
+>
 
 /**
  * The panel's boxes. `glyphs` was part of `subject` until #263: "glyphs
@@ -108,6 +114,7 @@ export type Control = (
   | ChoiceControl<"subject" | "face" | "polarity">
   | SetControl<"glyphs">
   | TextControl<"text" | "picture">
+  | ToggleControl<"dither">
 ) & {
   group: ControlGroup
 }
@@ -542,6 +549,15 @@ export const CONTROLS: Control[] = [
     hint: "How long the light takes to leave after the psyx that made it has gone. The buffer the glow is gathered in is faded rather than cleared, so it holds what was there — and a psyx easing out leaves its light behind for a moment, the way a phosphor does. It fades on the piece's own clock, so watching slowly lengthens the trail rather than shortening it.",
   },
   {
+    kind: "toggle",
+    group: "colour",
+    key: "dither",
+    label: "fade",
+    labels: ["flat", "dither"],
+    inert: (settings: Settings) => settings.glow === 0 || settings.afterglow === 0,
+    hint: "How the afterglow forgets. Flat fades the whole buffer a little each frame, and on a long afterglow that little is too small for an 8-bit pixel to act on: every light below half stops fading and stays, so the ground washes out. Dither fades the same amount in total but spends it on a sparse, shifting share of the pixels, each by enough to move. Same trail, same speed — only the floor differs. Flip it on a long afterglow to compare.",
+  },
+  {
     kind: "slider",
     group: "colour",
     key: "edge",
@@ -638,6 +654,7 @@ export const DEFAULT_SETTINGS: Settings = {
   layers: 0,
   glow: 0,
   afterglow: 0,
+  dither: false,
   wander: 0.15,
   spin: 0,
   weight: 0.15,
@@ -785,6 +802,7 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
     face: isFace(merged.face) ? merged.face : base.face,
     polarity: isPolarity(merged.polarity) ? merged.polarity : base.polarity,
     glyphs: normalizeGlyphs(merged.glyphs, base.glyphs),
+    dither: typeof merged.dither === "boolean" ? merged.dither : base.dither,
   }
 
   for (const key of Object.keys(BOUNDS) as NumericKey[]) {
@@ -966,6 +984,7 @@ export const REGISTRY: readonly Slot[] = [
   { key: "subject", kind: "enum", options: ["text", "picture"] },
   { key: "text", kind: "text", bytes: TEXT_BYTES },
   { key: "picture", kind: "text", bytes: PICTURE_BYTES },
+  { key: "dither", kind: "bool" },
 ]
 
 /**

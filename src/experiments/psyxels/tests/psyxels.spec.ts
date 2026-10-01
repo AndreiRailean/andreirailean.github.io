@@ -2,6 +2,7 @@ import type { ExperimentApi } from "@/experiments/psyxels/runner"
 import { DEFAULT_SETTINGS, settingsToQuery, type Settings } from "@/experiments/psyxels/settings"
 import { PRESETS } from "@/experiments/psyxels/presets"
 import { GLYPH_NAMES } from "@/experiments/psyxels/glyphs"
+import { eraseHalo } from "@/experiments/psyxels/fade"
 import { expect, openExperiment, test } from "../../../../tests/support/experiment"
 
 /**
@@ -1032,4 +1033,61 @@ test("holding the field stops its clock, and letting go picks up where it left o
    */
   expect(after - held, "the clock gained more than the time that has passed").toBeLessThan(elapsed + 0.3)
   expect(after - held, "the clock took the held interval in one step").toBeLessThan(HELD_MS / 1000 - 1)
+})
+
+/**
+ * #117, against a real rasteriser and nothing else: no field, no blur, no
+ * `lighter` accumulate. A buffer filled to full alpha is faded with the piece's
+ * own `eraseHalo`, injected by its source, at the rate a long afterglow on a
+ * slow playback asks for.
+ *
+ * Both halves are asserted, because either alone passes for the wrong reason:
+ * the flat fade **must still stall** — or this scene cannot show the mechanism
+ * and the dither's win would be vacuous — and the dither must reach near what
+ * the arithmetic says, at the same mean rate the flat fade has where it does
+ * not stall.
+ */
+test("a dithered afterglow fades to the ground where the flat one stalls at half", async ({ page }) => {
+  await page.setContent("<!doctype html><title>fade</title>")
+  const measured = await page.evaluate(
+    ({ source }) => {
+      const erase = new Function(`return (${source})`)() as (...args: unknown[]) => void
+      const run = (amount: number, frames: number, dither: boolean) => {
+        const side = 128
+        const canvas = document.createElement("canvas")
+        canvas.width = side
+        canvas.height = side
+        const ctx = canvas.getContext("2d")!
+        ctx.fillStyle = "#fff"
+        ctx.fillRect(0, 0, side, side)
+        const tileCanvas = document.createElement("canvas")
+        tileCanvas.width = 64
+        tileCanvas.height = 64
+        const thresholds = new Uint8Array(64 * 64).map(() => Math.floor(Math.random() * 256))
+        const tile = { canvas: tileCanvas, thresholds, data: null }
+        for (let frame = 0; frame < frames; frame++) erase(ctx, side, side, amount, dither, tile)
+        const alpha = ctx.getImageData(0, 0, side, side).data
+        let sum = 0
+        for (let i = 3; i < alpha.length; i += 4) sum += alpha[i]!
+        return sum / (side * side)
+      }
+      return {
+        // afterglow 0.95 at playback 0.4 and 60fps: 1 - exp(-(0.4/60) / 1.75).
+        slowFlat: run(0.0038, 600, false),
+        slowDither: run(0.0038, 600, true),
+        // A control at a rate the flat fade can act on all the way down:
+        // 255 × 0.3 moves, and so does 2 × 0.3. 255 × 0.7⁸ ≈ 15.
+        fastFlat: run(0.3, 8, false),
+        fastDither: run(0.3, 8, true),
+      }
+    },
+    { source: eraseHalo.toString() },
+  )
+
+  const ideal = 255 * (1 - 0.0038) ** 600
+  expect(measured.slowFlat, "the flat fade no longer stalls, so this scene shows nothing").toBeGreaterThan(110)
+  expect(measured.slowDither).toBeLessThan(ideal * 1.5)
+  expect(measured.slowDither).toBeGreaterThan(ideal * 0.5)
+  // Where the flat fade can act, the two remove the same amount.
+  expect(Math.abs(measured.fastDither - measured.fastFlat)).toBeLessThan(measured.fastFlat * 0.25)
 })
