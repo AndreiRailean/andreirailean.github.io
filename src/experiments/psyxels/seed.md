@@ -196,3 +196,19 @@ the subject choices. Recorded in #263 by the steward; copied here verbatim.
 > subject is "picture" user can set the url. glyphs and polarity fit together.
 > fill is a camera control that zooms in and out - it's ok to keep it there,
 > but it doesn't quite fit with the rest.
+
+## Open questions, 2026-10-02 — left by the session that built #263, #117 and #135
+
+Not asked of him in a message; written here so they outlive the session.
+
+- **#263.** The face labels are shorter now — sans, serif, script, mono — so the
+  row fits a narrower box. The stored values did not change. Are the old words
+  wanted back at the cost of a wider box?
+- **#263.** `fill` stays in the subject box, as he allowed. If it is a camera
+  control, does it want a box of its own, or does it move with zoom-like
+  controls if any ever arrive?
+- **#117.** `trail flat` and `trail dither` are the same scene except for the
+  fade. If dither looks cleaner, should it become the only fade (drop the
+  toggle), or the default for new scenes?
+- **#135.** `garden` puts sprout and spiral beside moon, heart and leaf. Does
+  either earn the flower's slot? Neither has been judged by eye in a field yet.
