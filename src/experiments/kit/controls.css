@@ -92,7 +92,7 @@ html[data-idle="true"] #ui {
 }
 
 #ui button,
-#ui a.about {
+#ui .corner a {
   margin: 0;
   padding: 0.3rem 0.6rem;
   font: inherit;
@@ -105,7 +105,7 @@ html[data-idle="true"] #ui {
   backdrop-filter: blur(6px);
 }
 
-#ui a.about {
+#ui .corner a {
   text-decoration: none;
 }
 
@@ -185,9 +185,11 @@ html[data-idle="true"] #ui > * {
   max-height: calc(100vh - 2.5rem - 2.4rem - 2.6rem - 1.6rem);
 }
 
-#ui > .about {
+#ui > .corner {
   right: 0;
   bottom: 0;
+  display: flex;
+  gap: 0.35rem;
 }
 
 /* **Boxed**: each group a box of its own, stacked down the right edge and

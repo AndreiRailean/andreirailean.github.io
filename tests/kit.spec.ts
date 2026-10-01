@@ -67,7 +67,7 @@ for (const slug of PIECES) {
     const presets = await box("#ui .presets")
     const bar = await box("#ui .bar")
     const panel = await box("#ui .panel")
-    const about = await box("#ui > .about")
+    const about = await box("#ui > .corner")
 
     expect(presets.x, `${slug}: the presets are not on the left`).toBeLessThan(width / 4)
     expect(presets.y, `${slug}: the presets do not start at the top`).toBeLessThan(height / 8)
@@ -313,7 +313,10 @@ for (const slug of PIECES) {
     await experiment.api(({ api }) => api.panel(true))
     await expect(page.locator(".panel")).toBeVisible()
     await expect(page.locator(".panel .copy")).toHaveCount(0)
-    await expect(page.locator("#ui > .about")).toHaveText("about")
+    // The corner holds the way back to every piece, then the note: the only way
+    // back used to be through the note (Andrei, 2026-10-02).
+    await expect(page.locator("#ui > .corner > a")).toHaveText(["all experiments", "about"])
+    expect(await page.locator("#ui > .corner > .index").getAttribute("href")).toBe("/experiments/")
     // Numbered from one, because the digits load them.
     expect((await page.locator("#ui .presets .preset").allTextContents())[0]).toMatch(/^1 /)
   })
