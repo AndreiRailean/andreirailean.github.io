@@ -80,6 +80,7 @@ const line = (slot: Slot) =>
     slot.kind,
     slot.kind === "num" ? `grid=${slot.grid} origin=${slot.origin} bits=${slot.bits}` : "",
     slot.kind === "enum" || slot.kind === "set" ? slot.options.join("|") : "",
+    slot.kind === "text" ? `bytes=${slot.bytes}` : "",
   ]
     .filter(Boolean)
     .join(" ")
@@ -226,5 +227,50 @@ describe("the codec", () => {
     expect(bitsOf(registry[1]!)).toBe(1)
     expect(bitsOf(registry[2]!)).toBe(2)
     expect(bitsOf(registry[3]!)).toBe(3)
+  })
+})
+
+/**
+ * Text is the one kind with no fixed width, so it gets its own cases: what a
+ * person types has to come back exactly, and what they type must not be able
+ * to make the address unbounded.
+ */
+describe("a text slot", () => {
+  const registry: Slot[] = [
+    { key: "count", kind: "num", grid: 1, origin: 0, bits: 6 },
+    { key: "word", kind: "text", bytes: 12 },
+    { key: "on", kind: "bool" },
+  ]
+
+  it("round-trips text, including the empty string and characters past ASCII", () => {
+    for (const word of ["Alive", "", "Ω & ü", "a b?c=d/#"]) {
+      const scene = { count: 9, word, on: true }
+      expect(decodeScene(registry, encodeScene(registry, scene))).toEqual(scene)
+    }
+  })
+
+  it("keeps the slots after it readable, whatever the text's length", () => {
+    // A variable-width slot that miscounted its own bytes would misalign every
+    // slot after it — `on` is the witness.
+    expect(decodeScene(registry, encodeScene(registry, { count: 1, word: "x", on: true }))).toMatchObject({ on: true })
+    expect(decodeScene(registry, encodeScene(registry, { count: 1, word: "twelve bytes", on: true }))).toMatchObject({
+      on: true,
+    })
+  })
+
+  it("cuts at its byte limit, on a character boundary", () => {
+    const long = decodeScene(registry, encodeScene(registry, { count: 1, word: "a much longer word than this", on: false }))
+    expect(long?.word).toBe("a much longe")
+    // Eleven ASCII bytes and then a two-byte character: it does not fit, and
+    // half of it must not be kept.
+    const wide = decodeScene(registry, encodeScene(registry, { count: 1, word: "abcdefghijkü", on: false }))
+    expect(wide?.word).toBe("abcdefghijk")
+  })
+
+  it("costs its length prefix and eight bits a byte", () => {
+    expect(bitsOf(registry[1]!)).toBe(4)
+    const empty = encodeScene(registry, { count: 1, word: "", on: true }).length
+    const full = encodeScene(registry, { count: 1, word: "twelve bytes", on: true }).length
+    expect(full - empty).toBe(16)
   })
 })

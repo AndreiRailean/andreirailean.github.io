@@ -395,6 +395,36 @@ html[data-idle="true"] #ui > * {
   opacity: 0.75;
 }
 
+/* --- a line of text ----------------------------------------------------- */
+
+/* Takes the track's column and the value's, as a choice does, and is drawn as
+   a chip so it sits among the buttons rather than reading as a browser form.
+   `min-width: 0` because an input's intrinsic width is about twenty
+   characters, and a grid track will not shrink below its content's: without it
+   one text row widens every box. */
+#ui input.text {
+  grid-column: 2 / span 2;
+  min-width: 0;
+  margin: 0;
+  padding: 0.3rem 0.5rem;
+  font: inherit;
+  letter-spacing: inherit;
+  color: var(--ui-text, inherit);
+  background: var(--ui-chip, rgb(10 12 22 / 74%));
+  border: 1px solid var(--ui-edge, rgb(255 255 255 / 12%));
+  border-radius: 0.3rem;
+  outline: none;
+}
+
+#ui input.text:hover,
+#ui input.text:focus {
+  border-color: var(--ui-edge-hover, rgb(255 255 255 / 30%));
+}
+
+#ui input.text::placeholder {
+  color: var(--ui-label, rgb(255 255 255 / 50%));
+}
+
 /* --- a plain slider ------------------------------------------------------ */
 
 /* Styled by hand rather than with `accent-color`. The UA derives the unfilled

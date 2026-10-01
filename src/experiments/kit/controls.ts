@@ -161,7 +161,34 @@ export type SetControl<K> = Shared & {
   columns?: number
 }
 
-export type Control<K> = SliderControl<K> | RangeControl<K> | ChoiceControl<K> | ToggleControl<K> | SetControl<K>
+/**
+ * Free text, as one line of input: psyxels' subject, which was a choice of five
+ * words until #263 — "no need to select from a limited set of subjects of
+ * textual kind".
+ *
+ * `maxLength` is a promise the address has to keep, not a nicety: whatever is
+ * typed goes into a shared link, so a piece states its limit here and in its
+ * registry's text slot, and the validator is what holds the two together.
+ *
+ * **Typing is not a shortcut.** While a text field has the focus the panel's
+ * keys — `c`, `f`, the digits, the arrows and a piece's own — are left alone,
+ * or typing "Luna" would load preset nothing, and the `c` in "Acid" would close
+ * the panel under the cursor.
+ */
+export type TextControl<K> = Shared & {
+  kind: "text"
+  key: K
+  maxLength: number
+  placeholder?: string
+}
+
+export type Control<K> =
+  | SliderControl<K>
+  | RangeControl<K>
+  | ChoiceControl<K>
+  | ToggleControl<K>
+  | SetControl<K>
+  | TextControl<K>
 
 export const keysOf = <K>(control: Control<K>): K[] => (control.kind === "range" ? control.keys : [control.key])
 
@@ -525,7 +552,10 @@ export function createControls<S extends object>(options: Options<S>): Controls<
       return
     }
     setIdle(false)
-    if (pointerOverUi) return
+    // Nor while somebody is typing into the panel: the chrome fading under a
+    // caret reads as the field having lost what was typed.
+    const focused = document.activeElement
+    if (pointerOverUi || (focused instanceof HTMLInputElement && focused.type === "text" && root.contains(focused))) return
     idleTimer = window.setTimeout(() => setIdle(true), IDLE_MS)
   }
 
@@ -586,6 +616,7 @@ export function createControls<S extends object>(options: Options<S>): Controls<
   const choiceButtons = new Map<string, Map<string, HTMLButtonElement>>()
   const toggleButtons = new Map<string, [HTMLButtonElement, HTMLButtonElement]>()
   const setButtons = new Map<string, Map<string, HTMLButtonElement>>()
+  const textInputs = new Map<string, HTMLInputElement>()
 
   /** What a set control currently holds, tolerating a setting that is not one. */
   const chosenOf = (key: string & keyof S): string[] => {
@@ -742,6 +773,24 @@ export function createControls<S extends object>(options: Options<S>): Controls<
       return row
     }
 
+    if (control.kind === "text") {
+      const input = document.createElement("input")
+      input.type = "text"
+      input.className = "text"
+      input.maxLength = control.maxLength
+      input.spellcheck = false
+      input.autocomplete = "off"
+      if (control.placeholder) input.placeholder = control.placeholder
+      input.dataset.key = control.key
+      input.setAttribute("aria-label", control.label)
+      input.addEventListener("input", () =>
+        apply(normalize({ ...current, [control.key]: input.value }, control.key)),
+      )
+      textInputs.set(control.key, input)
+      row.append(label, input)
+      return row
+    }
+
     if (control.kind === "choice" || control.kind === "toggle") {
       const group = document.createElement("div")
       group.className = "modes"
@@ -808,6 +857,15 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     }
 
     for (const control of specs) {
+      if (control.kind === "text") {
+        const input = textInputs.get(control.key)
+        const held = String(current[control.key] ?? "")
+        // Written only when it differs, so the caret stays where the person
+        // left it while they type.
+        if (input && input.value !== held) input.value = held
+        continue
+      }
+
       if (control.kind === "choice") {
         const byValue = choiceButtons.get(control.key)
         if (byValue) {
@@ -924,6 +982,9 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     // Leave browser and OS chords alone. Cmd+2 would switch tab and load a
     // preset at the same time.
     if (event.ctrlKey || event.metaKey || event.altKey) return
+
+    // A key typed into a text field is text. Escape still closes the panel.
+    if (event.target instanceof HTMLInputElement && event.target.type === "text" && event.key !== "Escape") return
 
     if (event.key === "Escape" && panelOpen) {
       setPanelOpen(false)

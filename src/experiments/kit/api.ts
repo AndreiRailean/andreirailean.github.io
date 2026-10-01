@@ -146,6 +146,7 @@ export type ControlReport =
   | { kind: "slider" | "range"; key: string; label: string; hint: string; group?: string; min: number; max: number }
   | { kind: "choice" | "set"; key: string; label: string; hint: string; group?: string; options: string[] }
   | { kind: "toggle"; key: string; label: string; hint: string; group?: string }
+  | { kind: "text"; key: string; label: string; hint: string; group?: string; maxLength: number }
 
 /**
  * A piece's control list, as `controls()` should report it.
@@ -189,6 +190,8 @@ export function reportControls<K>(controls: readonly Control<K>[]): ControlRepor
           return { kind: control.kind, ...shared, options: control.options.map(({ value }) => value) }
         case "toggle":
           return { kind: "toggle", ...shared }
+        case "text":
+          return { kind: "text", ...shared, maxLength: control.maxLength }
       }
     }),
   )
