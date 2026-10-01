@@ -84,6 +84,7 @@ export function boot<S extends object, V extends Verbs, T>(piece: Piece<S, V, T>
     // the URL sync, and draws no bar.
     chrome: !isReel(),
     aboutHref: `/experiments/${chrome.slug}/about/`,
+    indexHref: "/experiments/",
     settings,
     controls: module.CONTROLS as Control<string & keyof S>[],
     groups: chrome.groups,

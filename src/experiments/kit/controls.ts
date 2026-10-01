@@ -23,7 +23,7 @@ import { toggleFullscreen } from "@/experiments/kit/fullscreen"
  * **It renders DOM, not appearance.** The class names below are the contract
  * with a piece's own stylesheet: `.bar`, `.panel`, `.group`, `.row`, `.label`,
  * `.value`, `.span`, `.modes`, `.modes.set`, `.mode`, `.mode.glyph`, `.presets`, `.preset`,
- * `.toggle`, `.copy`, `.about` — plus `data-active` and `data-locked` on a mode.
+ * `.toggle`, `.copy`, `.corner`, `.index`, `.about` — plus `data-active` and `data-locked` on a mode.
  * A piece that uses a control kind it has no CSS for will render it unstyled and
  * nothing will say so — that has happened here twice now, and
  * `tests/kit.spec.ts` checks the range row's layout because of the second time.
@@ -352,6 +352,12 @@ export type Options<S extends object> = {
   /** Where the written note lives. Omitted, no link is shown. */
   aboutHref?: string
   /**
+   * Where every piece is listed. Omitted, no link is shown. It shares the
+   * bottom-right corner with `about`, ahead of it, because the only way back to
+   * the gallery used to be through the note.
+   */
+  indexHref?: string
+  /**
    * What the bar offers to copy, in order, one button each, after the piece's
    * actions and before `adjust`.
    *
@@ -427,6 +433,7 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     url,
     onChange,
     aboutHref,
+    indexHref,
   } = options
   const copyActions: CopyAction[] = options.copy ?? [
     {
@@ -568,15 +575,27 @@ export function createControls<S extends object>(options: Options<S>): Controls<
   bar.append(...actionButtons, ...copyButtons, settingsToggle)
 
   // The gallery placard: present when you look for it, gone while you watch.
+  // Its own corner, rather than the end of the bar, with the way back to every
+  // piece beside it.
+  const corner = document.createElement("div")
+  corner.className = "corner"
+  if (indexHref) {
+    const index = document.createElement("a")
+    index.className = "index"
+    index.href = indexHref
+    index.textContent = "all experiments"
+    index.title = "Every piece in the gallery"
+    corner.append(index)
+  }
   if (aboutHref) {
     const about = document.createElement("a")
     about.className = "about"
     about.href = aboutHref
     about.textContent = "about"
     about.title = "A written note on this piece and how it came to look this way"
-    // Its own corner, rather than the end of the bar.
-    if (chrome) root.append(about)
+    corner.append(about)
   }
+  if (chrome && corner.childElementCount > 0) root.append(corner)
 
   // --- the panel -----------------------------------------------------------
 
