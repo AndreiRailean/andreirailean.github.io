@@ -290,12 +290,14 @@ exports[`psyxels > has not edited a slot in place 1`] = `
   "text text bytes=32",
   "picture text bytes=200",
   "dither bool",
+  "glyphs set minus|plus|circled-minus|circled-plus|ring|dot|cross|circled-cross|bar|moon|star|diamond|eye|heart|leaf|sprout|spiral",
 ]
 `;
 
 exports[`psyxels > retires a slot by appending to the retired list, never by editing one 1`] = `
 [
   "1 subject",
+  "21 glyphs",
 ]
 `;
 

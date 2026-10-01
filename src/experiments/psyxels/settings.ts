@@ -946,6 +946,7 @@ export const REGISTRY: readonly Slot[] = [
   {
     key: "glyphs",
     kind: "set",
+    retired: true,
     options: [
       "minus",
       "plus",
@@ -985,6 +986,31 @@ export const REGISTRY: readonly Slot[] = [
   { key: "text", kind: "text", bytes: TEXT_BYTES },
   { key: "picture", kind: "text", bytes: PICTURE_BYTES },
   { key: "dither", kind: "bool" },
+  // #135 appended two marks. A set slot's options are its identity, so the
+  // fifteen-mark slot above is retired and still read.
+  {
+    key: "glyphs",
+    kind: "set",
+    options: [
+      "minus",
+      "plus",
+      "circled-minus",
+      "circled-plus",
+      "ring",
+      "dot",
+      "cross",
+      "circled-cross",
+      "bar",
+      "moon",
+      "star",
+      "diamond",
+      "eye",
+      "heart",
+      "leaf",
+      "sprout",
+      "spiral",
+    ],
+  },
 ]
 
 /**
