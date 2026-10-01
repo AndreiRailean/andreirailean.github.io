@@ -180,3 +180,19 @@ This became
 > is just postition one and when experiment is opened without any params it
 > redirects to the full url of the first preset. other presets are not impacted
 > when something else becomes number one.
+
+## 2026-09-30 — the boxes say what has to change (#263)
+
+Said after seeing psyxels boxed (#261), whose boxes had grown to 28rem to hold
+the subject choices. Recorded in #263 by the steward; copied here verbatim.
+
+> psyxels' wide boxes hint at the structural changes needed. Subject: "A",
+> "Alive", "L", "Luna", "&" - are all doable with just an input box so "Alive"
+> is what is typed in and can be changed to anything else - no need to select
+> from a limited set of subjects of textual kind. glyphs deserve their own box.
+> portrait should be a url pointing to the local avatar stored in the repo or
+> pointing to my github public avatar. "face" control only relates to typed
+> text. when subject is "text", user can enter text and choose the font. when
+> subject is "picture" user can set the url. glyphs and polarity fit together.
+> fill is a camera control that zooms in and out - it's ok to keep it there,
+> but it doesn't quite fit with the rest.
