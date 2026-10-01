@@ -106,6 +106,42 @@ jobs:
 
           echo "No runner was modified or renamed."
 
+      # **An added runner has to be named by something, or it is build output
+      # that a `git add -A` swept in** — #266, where #264 committed five and
+      # took two more commits to take them out again, leaving both in main's
+      # history. Tracked is published and untracked is build output, so a runner
+      # this pull request adds, which nothing in the tree names, is the second
+      # kind wearing the first's clothes.
+      #
+      # A failure rather than the warning below, because it is not the store's
+      # old hoard (those were published once and are allowed to sit) but an
+      # addition with no reason to exist, caught while it is still one `git rm
+      # --cached` away from gone. Naming it in the same pull request — a wall
+      # entry, a page — is what publishing is, and passes.
+      #
+      # Reachability is `prune-runners.ts --list`'s, not a third copy of it.
+      - name: No unnamed runner was added
+        run: |
+          set -euo pipefail
+
+          base="$(git rev-parse 'HEAD^1')"
+          added="$(git diff --diff-filter=A --name-only "$base" HEAD -- public/showcase/runners/ | xargs -r -n1 basename)"
+          if [ -z "$added" ]; then
+            echo "No runner was added."
+            exit 0
+          fi
+          echo "Added:"
+          printf '  %s\n' $added
+
+          unnamed="$(node scripts/prune-runners.ts --list | awk '$1 == "unpruned" { print $2 }')"
+          swept="$(comm -12 <(printf '%s\n' $added | sort) <(printf '%s\n' $unnamed | sort))"
+          if [ -n "$swept" ]; then
+            echo "::error title=An added runner is named by nothing::Nothing in the tree names it, so it is build output rather than a publish — usually a git add -A. Take it out with git rm --cached, or name it in the same pull request. See #266."
+            printf '%s\n' "$swept"
+            exit 1
+          fi
+          echo "Every added runner is named."
+
       # **A warning, never a failure.** A runner nothing names costs 22kb and is
       # visible to `ls`; the failure this repo needs checks for is the silent one,
       # and that is the tree check above. Failing here would fail on something
