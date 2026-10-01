@@ -1,4 +1,4 @@
-import { decodeScene, encodeScene, type Slot } from "@/experiments/address"
+import { decodeScene, encodeScene, withinBytes, type Slot } from "@/experiments/address"
 import {
   gridAt,
   snapToGrid,
@@ -6,6 +6,7 @@ import {
   type RangeControl,
   type SetControl,
   type SliderControl,
+  type TextControl,
   type Track,
 } from "@/experiments/kit/controls"
 import {
@@ -14,10 +15,14 @@ import {
   isFace,
   isPolarity,
   isSubject,
+  LEGACY_SUBJECTS,
+  LOCAL_PORTRAIT,
+  PICTURE_BYTES,
   POLARITIES,
   POLARITY_LABELS,
   SUBJECT_LABELS,
   SUBJECTS,
+  TEXT_BYTES,
   type Face,
   type Polarity,
   type SubjectKind,
@@ -47,6 +52,10 @@ import type { Chrome } from "@/experiments/piece"
 export type Settings = {
   seed: number
   subject: SubjectKind
+  /** What is typed, when the subject is text. */
+  text: string
+  /** Where the picture is, when the subject is a picture. */
+  picture: string
   face: Face
   polarity: Polarity
   fill: number
@@ -83,9 +92,14 @@ export type Settings = {
   playback: number
 }
 
-export type NumericKey = Exclude<keyof Settings, "subject" | "face" | "polarity" | "glyphs">
+export type NumericKey = Exclude<keyof Settings, "subject" | "text" | "picture" | "face" | "polarity" | "glyphs">
 
-export type ControlGroup = "subject" | "packing" | "colour" | "life"
+/**
+ * The panel's boxes. `glyphs` was part of `subject` until #263: "glyphs
+ * deserve their own box … glyphs and polarity fit together" — the marks and
+ * which side of the picture they are made of, against what the picture is.
+ */
+export type ControlGroup = "subject" | "glyphs" | "packing" | "colour" | "life"
 
 /** The panel's row kinds. A bound pair has no use here; a choice and a set do. */
 export type Control = (
@@ -93,6 +107,7 @@ export type Control = (
   | RangeControl<NumericKey>
   | ChoiceControl<"subject" | "face" | "polarity">
   | SetControl<"glyphs">
+  | TextControl<"text" | "picture">
 ) & {
   group: ControlGroup
 }
@@ -111,7 +126,7 @@ type TrackedControl = (SliderControl<NumericKey> | RangeControl<NumericKey>) & {
 export const isTrackedControl = (control: Control): control is TrackedControl =>
   control.kind === "slider" || control.kind === "range"
 
-export const GROUP_ORDER: ControlGroup[] = ["subject", "packing", "colour", "life"]
+export const GROUP_ORDER: ControlGroup[] = ["subject", "glyphs", "packing", "colour", "life"]
 
 /** Widest legal seed. Kept small enough to stay readable in a shared URL. */
 export const SEED_BOUNDS = { min: 0, max: 999_999 }
@@ -169,7 +184,17 @@ export const CONTROLS: Control[] = [
     key: "subject",
     label: "subject",
     options: /* @__PURE__ */ SUBJECTS.map((value) => ({ value, label: SUBJECT_LABELS[value] })),
-    hint: "What is underneath. A letterform and a photograph go through exactly the same machinery: the picture is read as coverage, and coverage is what the packing subdivides. Black is not a dark subject, it is no subject — which is why the portrait's shadows are bare ground rather than dark psyxels.",
+    hint: "What is underneath: something typed, or a picture at an address. Both go through exactly the same machinery: the picture is read as coverage, and coverage is what the packing subdivides. Black is not a dark subject, it is no subject — which is why the portrait's shadows are bare ground rather than dark psyxels.",
+  },
+  {
+    kind: "text",
+    group: "subject",
+    key: "text",
+    label: "text",
+    maxLength: TEXT_BYTES,
+    placeholder: "type something",
+    inert: (settings: Settings) => settings.subject !== "text",
+    hint: "What is typed is what is pixellated. One letter is fitted to the height and arrives as one thick shape; a word is fitted to the width and spends it on several shapes and the gaps between them, so a word wants a finer grid to stay legible.",
   },
   {
     kind: "choice",
@@ -177,11 +202,25 @@ export const CONTROLS: Control[] = [
     key: "face",
     label: "face",
     options: /* @__PURE__ */ FACES.map((value) => ({ value, label: FACE_LABELS[value] })),
-    hint: "Which letterform the subject is drawn with. It is asked for as a kind of shape rather than a named font, so the machine supplies whatever it has of that kind — and the character is what survives being packed: a grotesque gives even strokes and a hard silhouette, a roman gives thick-and-thin and serifs that break into separate psyxels, a script gives a stroke that changes width as it turns. Ignored by the portrait, which is not typeset.",
+    inert: (settings: Settings) => settings.subject !== "text",
+    hint: "Which letterform the text is drawn with. It is asked for as a kind of shape rather than a named font, so the machine supplies whatever it has of that kind — and the character is what survives being packed: a grotesque gives even strokes and a hard silhouette, a roman gives thick-and-thin and serifs that break into separate psyxels, a script gives a stroke that changes width as it turns.",
+  },
+  {
+    kind: "text",
+    group: "subject",
+    key: "picture",
+    label: "picture",
+    maxLength: PICTURE_BYTES,
+    placeholder: LOCAL_PORTRAIT,
+    inert: (settings: Settings) => settings.subject !== "picture",
+    // Written out rather than interpolated from LOCAL_PORTRAIT: an
+    // interpolation is a call the bundler cannot prove pure, and it pinned the
+    // whole control list into the runner — `runner-bundle.test.ts`, #243.
+    hint: "The address of the picture to pixellate. /experiments/psyxels/avatar.jpg is the portrait kept with this piece; any image whose host allows it to be read across origins works too — GitHub's avatars do. A host that does not allow it leaves the frame empty, because its pixels cannot be read.",
   },
   {
     kind: "set",
-    group: "subject",
+    group: "glyphs",
     key: "glyphs",
     label: "glyphs",
     least: LEAST_GLYPHS,
@@ -196,7 +235,7 @@ export const CONTROLS: Control[] = [
   },
   {
     kind: "choice",
-    group: "subject",
+    group: "glyphs",
     key: "polarity",
     label: "polarity",
     options: /* @__PURE__ */ POLARITIES.map((value) => ({ value, label: POLARITY_LABELS[value] })),
@@ -580,7 +619,9 @@ export const CONTROLS: Control[] = [
  */
 export const DEFAULT_SETTINGS: Settings = {
   seed: 8412,
-  subject: "A",
+  subject: "text",
+  text: "A",
+  picture: LOCAL_PORTRAIT,
   face: "grotesque",
   polarity: "ink",
   fill: 0.82,
@@ -708,6 +749,22 @@ function normalizeGlyphs(value: unknown, base: GlyphName[]): GlyphName[] {
   return kept.length >= LEAST_GLYPHS ? [...kept] : [...base]
 }
 
+/**
+ * A subject as it was named before #263, read as the scene it meant.
+ *
+ * Every address written until then names one of six subjects through a slot
+ * that is retired now and still read. Five were text with the string fixed —
+ * `Luna` means text reading "Luna" — and `avatar` was the portrait, which is
+ * the picture at `LOCAL_PORTRAIT`. The console API and a hand-written URL take
+ * the same route, so `set({ subject: "Luna" })` still does what it did.
+ */
+function fromLegacy(patch: Partial<Settings>): Partial<Settings> {
+  const named = (patch as { subject?: unknown }).subject
+  if (typeof named !== "string" || !(LEGACY_SUBJECTS as readonly string[]).includes(named)) return patch
+  if (named === "avatar") return { ...patch, subject: "picture", picture: patch.picture ?? LOCAL_PORTRAIT }
+  return { ...patch, subject: "text", text: named }
+}
+
 /** Settings that must hold whole numbers. A psyx cannot be quartered 2.4 times. */
 const INTEGER_KEYS: NumericKey[] = ["seed", "levels"]
 
@@ -719,10 +776,12 @@ const INTEGER_KEYS: NumericKey[] = ["seed", "levels"]
  * could not.
  */
 export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEFAULT_SETTINGS): Settings {
-  const merged = { ...base, ...patch }
+  const merged = { ...base, ...fromLegacy(patch) }
   const settings: Settings = {
     ...merged,
     subject: isSubject(merged.subject) ? merged.subject : base.subject,
+    text: typeof merged.text === "string" ? withinBytes(merged.text, TEXT_BYTES) : base.text,
+    picture: typeof merged.picture === "string" ? withinBytes(merged.picture.trim(), PICTURE_BYTES) : base.picture,
     face: isFace(merged.face) ? merged.face : base.face,
     polarity: isPolarity(merged.polarity) ? merged.polarity : base.polarity,
     glyphs: normalizeGlyphs(merged.glyphs, base.glyphs),
@@ -775,7 +834,13 @@ function settingsFromNamedQuery(params: URLSearchParams): Settings {
   }
 
   const subject = params.get("subject")
-  if (isSubject(subject)) patch.subject = subject
+  if (isSubject(subject) || isLegacySubject(subject)) patch.subject = subject as SubjectKind
+
+  const text = params.get("text")
+  if (text !== null) patch.text = text
+
+  const picture = params.get("picture")
+  if (picture !== null && picture.trim() !== "") patch.picture = picture
 
   const face = params.get("face")
   if (isFace(face)) patch.face = face
@@ -788,6 +853,9 @@ function settingsFromNamedQuery(params: URLSearchParams): Settings {
 
   return normalizeSettings(patch)
 }
+
+const isLegacySubject = (value: unknown): boolean =>
+  typeof value === "string" && (LEGACY_SUBJECTS as readonly string[]).includes(value)
 
 /**
  * The marks an address names, or nothing if it names none legibly.
@@ -837,7 +905,7 @@ function glyphsFromQuery(params: URLSearchParams): GlyphName[] | null {
  */
 export const REGISTRY: readonly Slot[] = [
   { key: "seed", kind: "num", grid: 1, origin: 0, bits: 20 },
-  { key: "subject", kind: "enum", options: ["A", "Alive", "L", "Luna", "&", "avatar"] },
+  { key: "subject", kind: "enum", options: ["A", "Alive", "L", "Luna", "&", "avatar"], retired: true },
   { key: "face", kind: "enum", options: ["grotesque", "roman", "script", "typewriter"] },
   { key: "polarity", kind: "enum", options: ["ink", "void"] },
   { key: "fill", kind: "num", grid: 0.01, origin: 0.25, bits: 7 },
@@ -892,6 +960,12 @@ export const REGISTRY: readonly Slot[] = [
   { key: "wildness", kind: "num", grid: 0.01, origin: 0, bits: 7 },
   { key: "saturation", kind: "num", grid: 0.01, origin: 0, bits: 7 },
   { key: "playback", kind: "num", grid: 0.01, origin: 0, bits: 8 },
+  // #263: the subject became a mode, and what it shows became two settings.
+  // The retired slot above is still read, and `fromLegacy` turns what it says
+  // into these.
+  { key: "subject", kind: "enum", options: ["text", "picture"] },
+  { key: "text", kind: "text", bytes: TEXT_BYTES },
+  { key: "picture", kind: "text", bytes: PICTURE_BYTES },
 ]
 
 /**
@@ -931,7 +1005,15 @@ export function namesASetting(params: URLSearchParams): boolean {
   // before any per-key test runs.
   const packed = params.get("s")
   if (packed !== null && packed !== "" && decodeScene(REGISTRY, packed)) return true
-  if (isSubject(params.get("subject")) || isFace(params.get("face")) || isPolarity(params.get("polarity"))) return true
+  const subject = params.get("subject")
+  if (
+    isSubject(subject) ||
+    isLegacySubject(subject) ||
+    isFace(params.get("face")) ||
+    isPolarity(params.get("polarity"))
+  )
+    return true
+  if (params.get("text") !== null || (params.get("picture") ?? "").trim() !== "") return true
   if (glyphsFromQuery(params)) return true
   return (Object.keys(BOUNDS) as NumericKey[]).some((key) => {
     const raw = params.get(key)
@@ -952,6 +1034,8 @@ export function needsPacking(before: Settings, after: Settings): boolean {
   return (
     before.seed !== after.seed ||
     before.subject !== after.subject ||
+    before.text !== after.text ||
+    before.picture !== after.picture ||
     before.face !== after.face ||
     before.polarity !== after.polarity ||
     before.fill !== after.fill ||
@@ -970,6 +1054,8 @@ export function needsPacking(before: Settings, after: Settings): boolean {
 export function needsSubject(before: Settings, after: Settings): boolean {
   return (
     before.subject !== after.subject ||
+    before.text !== after.text ||
+    before.picture !== after.picture ||
     before.face !== after.face ||
     before.polarity !== after.polarity ||
     before.fill !== after.fill

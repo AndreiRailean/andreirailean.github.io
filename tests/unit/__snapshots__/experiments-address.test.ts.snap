@@ -286,10 +286,17 @@ exports[`psyxels > has not edited a slot in place 1`] = `
   "wildness num grid=0.01 origin=0 bits=7",
   "saturation num grid=0.01 origin=0 bits=7",
   "playback num grid=0.01 origin=0 bits=8",
+  "subject enum text|picture",
+  "text text bytes=32",
+  "picture text bytes=200",
 ]
 `;
 
-exports[`psyxels > retires a slot by appending to the retired list, never by editing one 1`] = `[]`;
+exports[`psyxels > retires a slot by appending to the retired list, never by editing one 1`] = `
+[
+  "1 subject",
+]
+`;
 
 exports[`starry-night > has not edited a slot in place 1`] = `
 [

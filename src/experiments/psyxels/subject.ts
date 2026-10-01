@@ -9,35 +9,68 @@
  */
 
 /**
- * What can be pixellated. Every one of them is a still image by the time the
- * field sees it.
+ * What can be pixellated: something typed, or a picture at an address. Every
+ * one of them is a still image by the time the field sees it.
  *
- * **A word is not a bigger letter.** A single glyph is fitted to the frame's
- * shorter side and arrives at the packing as one thick shape with a handful of
- * joins; a word is fitted to the frame's *width*, so the same fill spends that
- * width on four or five shapes and on the counters and sidebearings between
- * them. Measured on a 1280×800 frame, the median horizontal run of ink is 143
- * CSS pixels for a roman A at fill 0.74 and 70 for the word *Alive* at 0.85 —
- * about half the stroke to pack, from a subject that looks larger.
+ * **It was a choice of five words and a portrait until #263**, and the five
+ * were all the same subject — text — with the string fixed in advance: "'Alive'
+ * is what is typed in and can be changed to anything else". So the kind is now
+ * a mode, and the string and the address are settings of their own.
  *
- * So a word wants a finer grid than a letter does to stay readable, which is why
- * it is a different subject rather than a different setting.
+ * **A word is still not a bigger letter.** A single glyph is fitted to the
+ * frame's shorter side and arrives at the packing as one thick shape; a word is
+ * fitted to the frame's *width*, so the same fill spends that width on four or
+ * five shapes and on the counters between them — measured on a 1280×800 frame,
+ * the median horizontal run of ink is 143 CSS pixels for a roman A at fill 0.74
+ * and 70 for *Alive* at 0.85. A word wants a finer grid to stay readable, which
+ * is now the scene's business rather than the subject list's.
  */
-export const SUBJECTS = ["A", "Alive", "L", "Luna", "&", "avatar"] as const
+export const SUBJECTS = ["text", "picture"] as const
 
 export type SubjectKind = (typeof SUBJECTS)[number]
 
 export const SUBJECT_LABELS: Record<SubjectKind, string> = {
-  A: "A",
-  Alive: "Alive",
-  L: "L",
-  Luna: "Luna",
-  "&": "&",
-  avatar: "portrait",
+  text: "text",
+  picture: "picture",
 }
 
 export const isSubject = (value: unknown): value is SubjectKind =>
   typeof value === "string" && (SUBJECTS as readonly string[]).includes(value)
+
+/**
+ * The subjects as they were before #263, which every address written until
+ * then still carries. The five strings were the text; `avatar` was the
+ * portrait, which is now the picture at `LOCAL_PORTRAIT`.
+ */
+export const LEGACY_SUBJECTS = ["A", "Alive", "L", "Luna", "&", "avatar"] as const
+
+/** Most bytes of text a scene may carry; the address's text slot is cut here. */
+export const TEXT_BYTES = 32
+
+/** Most bytes a picture's address may run to. */
+export const PICTURE_BYTES = 200
+
+/**
+ * The portrait in the repo, at an address that outlives a build.
+ *
+ * In `public/`, because a file there is copied verbatim and unhashed: an
+ * `_astro/` asset is named by its contents and lasts only as long as the build
+ * that emitted it, which is the wrong lifetime for something written into a
+ * shared link. `../docs/adr/20260912-the-image-is-an-input-not-a-subject.md`
+ * measured both.
+ */
+export const LOCAL_PORTRAIT = "/experiments/psyxels/avatar.jpg"
+
+/**
+ * The same face, from GitHub — "or pointing to my github public avatar".
+ *
+ * The numeric `avatars.githubusercontent.com` form rather than
+ * `github.com/<name>.png`, because the latter is a redirect that carries no
+ * `access-control-allow-origin`, and a CORS request fails on the redirect
+ * before it reaches the image that would have allowed it. The image host
+ * itself sends `*`.
+ */
+export const GITHUB_PORTRAIT = "https://avatars.githubusercontent.com/u/25991?v=4"
 
 /**
  * Which side of the subject the psyxels are made of.
@@ -84,11 +117,16 @@ export const FACES = ["grotesque", "roman", "script", "typewriter"] as const
 
 export type Face = (typeof FACES)[number]
 
+/**
+ * Short words, because the row has to fit a box: "grotesque … typed" was the
+ * widest row in the panel once the subject choices had gone (#263). The values
+ * are unchanged, so every address still means the same face.
+ */
 export const FACE_LABELS: Record<Face, string> = {
-  grotesque: "grotesque",
-  roman: "roman",
+  grotesque: "sans",
+  roman: "serif",
   script: "script",
-  typewriter: "typed",
+  typewriter: "mono",
 }
 
 export const isFace = (value: unknown): value is Face =>
@@ -138,6 +176,15 @@ function fitText(ctx: CanvasRenderingContext2D, text: string, face: Face, boxWid
 
 export type Drawn = { ok: boolean }
 
+/** What `paintSubject` needs to know about the scene. */
+export type SubjectSpec = {
+  subject: SubjectKind
+  text: string
+  face: Face
+  fill: number
+  polarity: Polarity
+}
+
 /**
  * Paints the subject, centred, filling `fill` of the frame's shorter side.
  *
@@ -147,39 +194,43 @@ export type Drawn = { ok: boolean }
  * wants. A photograph comes back as its own tones, and the dark half of a
  * portrait is *absence of subject* rather than a dark subject — which is what
  * makes the same threshold control sculpt both.
+ *
+ * `picture` is the decoded image for a picture subject, or null while it loads
+ * or after it failed; either way the frame is left empty and `ok` says so.
  */
 export function paintSubject(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
-  kind: SubjectKind,
-  face: Face,
-  fill: number,
-  polarity: Polarity,
-  avatar: HTMLImageElement | null,
+  spec: SubjectSpec,
+  picture: HTMLImageElement | null,
 ): Drawn {
   ctx.clearRect(0, 0, width, height)
-  const box = Math.min(width, height) * fill
+  const box = Math.min(width, height) * spec.fill
 
-  if (kind === "avatar") {
-    if (!avatar || !avatar.complete || avatar.naturalWidth === 0) return { ok: false }
-    const scale = box / Math.max(avatar.naturalWidth, avatar.naturalHeight)
-    const w = avatar.naturalWidth * scale
-    const h = avatar.naturalHeight * scale
-    ctx.drawImage(avatar, (width - w) / 2, (height - h) / 2, w, h)
-    invert(ctx, width, height, polarity)
+  if (spec.subject === "picture") {
+    if (!picture || !picture.complete || picture.naturalWidth === 0) return { ok: false }
+    const scale = box / Math.max(picture.naturalWidth, picture.naturalHeight)
+    const w = picture.naturalWidth * scale
+    const h = picture.naturalHeight * scale
+    ctx.drawImage(picture, (width - w) / 2, (height - h) / 2, w, h)
+    invert(ctx, width, height, spec.polarity)
     return { ok: true }
   }
 
-  ctx.save()
-  ctx.fillStyle = "#fff"
-  ctx.textAlign = "center"
-  ctx.textBaseline = "alphabetic"
-  ctx.translate(width / 2, height / 2)
-  fitText(ctx, kind, face, width * fill, box)
-  ctx.fillText(kind, 0, 0)
-  ctx.restore()
-  invert(ctx, width, height, polarity)
+  // Nothing typed is nothing to draw, which is not a failure — and a void
+  // still inverts it, so an empty stencil is a full frame.
+  if (spec.text.trim() !== "") {
+    ctx.save()
+    ctx.fillStyle = "#fff"
+    ctx.textAlign = "center"
+    ctx.textBaseline = "alphabetic"
+    ctx.translate(width / 2, height / 2)
+    fitText(ctx, spec.text, spec.face, width * spec.fill, box)
+    ctx.fillText(spec.text, 0, 0)
+    ctx.restore()
+  }
+  invert(ctx, width, height, spec.polarity)
   return { ok: true }
 }
 

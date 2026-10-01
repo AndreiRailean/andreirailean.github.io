@@ -100,6 +100,12 @@ export type PsyxelsStats = {
   /** Seconds on the piece's own clock, which `playback` scales. */
   clock: number
   fps: number
+  /**
+   * Where a picture subject is: `"loading"`, `"ready"`, or `"failed"` — a
+   * missing file, or a host that does not let a canvas read it, which look the
+   * same from here and leave the frame empty. `"none"` for a text subject.
+   */
+  picture: "none" | "loading" | "ready" | "failed"
 }
 
 export type Psyxels = {
@@ -123,17 +129,62 @@ export type Psyxels = {
   stats: () => PsyxelsStats
 }
 
-export type Options = {
-  /** The photographic subject. Absent, the piece still runs; the portrait is blank. */
-  avatar?: HTMLImageElement | null
-}
-
-export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, options: Options = {}): Psyxels {
+export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings): Psyxels {
   const context = canvas.getContext("2d")
   if (!context) throw new Error("Psyxels: no 2d context")
   const ctx = context
 
-  const avatar = options.avatar ?? null
+  /**
+   * The picture subject, fetched from its address.
+   *
+   * **`crossOrigin` before `src`, always.** The mask reads the picture back with
+   * `getImageData`, and a cross-origin image drawn without it taints the canvas
+   * and makes that throw — on every origin but the picture's own, which is to
+   * say only where nobody is testing. With it, a host that does not send
+   * `access-control-allow-origin` fails the load instead, and the frame is
+   * empty rather than the piece broken.
+   *
+   * One image per address: typing a URL asks for every prefix of it, and only
+   * the one that is still the setting when it arrives is drawn.
+   */
+  let picture: HTMLImageElement | null = null
+  let pictureFor = ""
+  let pictureState: PsyxelsStats["picture"] = "none"
+  const onPicture = (event: Event) => {
+    const image = event.currentTarget as HTMLImageElement
+    image.removeEventListener("load", onPicture)
+    image.removeEventListener("error", onPicture)
+    if (image !== picture) return
+    pictureState = event.type === "load" ? "ready" : "failed"
+    if (settings.subject !== "picture") return
+    rebuildMask()
+    rebuildField()
+  }
+  function wantPicture(): void {
+    if (settings.subject !== "picture") {
+      pictureState = "none"
+      return
+    }
+    if (settings.picture === pictureFor && picture) {
+      pictureState = picture.complete && picture.naturalWidth > 0 ? "ready" : pictureState
+      return
+    }
+    pictureFor = settings.picture
+    if (settings.picture === "") {
+      picture = null
+      pictureState = "failed"
+      return
+    }
+    const image = new Image()
+    image.crossOrigin = "anonymous"
+    image.decoding = "async"
+    image.addEventListener("load", onPicture)
+    image.addEventListener("error", onPicture)
+    picture = image
+    pictureState = "loading"
+    image.src = settings.picture
+  }
+
   let settings = initial
   let width = 0
   let height = 0
@@ -214,7 +265,8 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
     stage.width = cols
     stage.height = rows
     stageCtx.setTransform(cols / width, 0, 0, cols / width, 0, 0)
-    paintSubject(stageCtx, width, height, settings.subject, settings.face, settings.fill, settings.polarity, avatar)
+    wantPicture()
+    paintSubject(stageCtx, width, height, settings, picture)
     mask = buildMask(stage, width, height)
     forget()
   }
@@ -627,16 +679,10 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
   observer?.observe(canvas)
   window.addEventListener("resize", resize)
 
-  // The portrait usually is not decoded yet when the piece is created, and an
+  // A picture is never decoded yet the first time the mask is built, and an
   // undecoded image rasterises to nothing at all — a blank subject, a field with
-  // no psyxels in it, and no error anywhere. Rebuilding on load is the whole fix,
-  // and it costs nothing on the scenes that never look at it.
-  const onAvatarLoad = () => {
-    if (settings.subject !== "avatar") return
-    rebuildMask()
-    rebuildField()
-  }
-  if (avatar && !avatar.complete) avatar.addEventListener("load", onAvatarLoad)
+  // no psyxels in it, and no error anywhere. `onPicture` rebuilding on arrival
+  // is the whole fix, and it costs nothing on the scenes that never look at one.
 
   return {
     start() {
@@ -664,7 +710,9 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
       window.cancelAnimationFrame(handle)
       observer?.disconnect()
       window.removeEventListener("resize", resize)
-      avatar?.removeEventListener("load", onAvatarLoad)
+      picture?.removeEventListener("load", onPicture)
+      picture?.removeEventListener("error", onPicture)
+      picture = null
     },
 
     setSettings(next) {
@@ -745,6 +793,7 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings, opti
         colours: palette.size(),
         clock,
         fps,
+        picture: pictureState,
       }
     },
   }
