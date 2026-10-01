@@ -163,7 +163,9 @@ src/pages/experiments/<slug>/  index.astro (the piece), about.astro (the note)
   written. The URL still went into the HTML, so the only symptom was a 404 in
   production: `astro dev` serves every import off disk, and `astro build`
   reports nothing. `await getImage({ src: portrait, format: "jpeg" })` asks for a
-  file and therefore gets one.
+  file and therefore gets one. **Unless the picture's address goes into a
+  scene**, as psyxels' does since #263: then it lives in `public/`, unhashed,
+  because a link outlives the build that emitted an `_astro/` name.
 
 ## Presets
 

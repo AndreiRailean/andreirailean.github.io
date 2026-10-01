@@ -112,3 +112,22 @@ Recorded so nobody re-costs them.
   append-only guard, and a second thing for an address to pin.
 - **Drop the `maker` preset.** Rejected because it treats the symptom. The
   subject stays worth having; it is the ownership that is wrong.
+
+## Update, 2026-10-02 — #263 gave the input a shape
+
+Andrei, on 2026-09-30: _"portrait should be a url pointing to the local avatar
+stored in the repo or pointing to my github public avatar."_ So the open
+question "what the input's shape is" has an answer from him: **an address,
+carried in the scene.** `subject` is now `text` or `picture`, and `picture` is
+a URL in a bounded text slot of the packed address.
+
+That keeps this record's distinction rather than undoing it — a URL _is_ a
+string and packs into an address, where the file never could — and it removes
+the need for an asset channel: a frozen runner fetches the address like the
+page does, with `crossOrigin = "anonymous"` set first, as _What survives the
+redirection_ asked. The portrait the repo keeps moved to
+`public/experiments/psyxels/avatar.jpg`, the unhashed place the measurements
+above found has a runner's retention.
+
+Left as `proposed`: whether the avatar case still leaves the piece for a
+standalone experiment is his call, and nothing in #263 says either way.
