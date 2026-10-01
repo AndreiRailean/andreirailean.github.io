@@ -259,7 +259,10 @@ describe("a text slot", () => {
   })
 
   it("cuts at its byte limit, on a character boundary", () => {
-    const long = decodeScene(registry, encodeScene(registry, { count: 1, word: "a much longer word than this", on: false }))
+    const long = decodeScene(
+      registry,
+      encodeScene(registry, { count: 1, word: "a much longer word than this", on: false }),
+    )
     expect(long?.word).toBe("a much longe")
     // Eleven ASCII bytes and then a two-byte character: it does not fit, and
     // half of it must not be kept.

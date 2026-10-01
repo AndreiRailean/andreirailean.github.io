@@ -183,12 +183,7 @@ export type TextControl<K> = Shared & {
 }
 
 export type Control<K> =
-  | SliderControl<K>
-  | RangeControl<K>
-  | ChoiceControl<K>
-  | ToggleControl<K>
-  | SetControl<K>
-  | TextControl<K>
+  SliderControl<K> | RangeControl<K> | ChoiceControl<K> | ToggleControl<K> | SetControl<K> | TextControl<K>
 
 export const keysOf = <K>(control: Control<K>): K[] => (control.kind === "range" ? control.keys : [control.key])
 
@@ -555,7 +550,8 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     // Nor while somebody is typing into the panel: the chrome fading under a
     // caret reads as the field having lost what was typed.
     const focused = document.activeElement
-    if (pointerOverUi || (focused instanceof HTMLInputElement && focused.type === "text" && root.contains(focused))) return
+    if (pointerOverUi || (focused instanceof HTMLInputElement && focused.type === "text" && root.contains(focused)))
+      return
     idleTimer = window.setTimeout(() => setIdle(true), IDLE_MS)
   }
 
@@ -783,9 +779,7 @@ export function createControls<S extends object>(options: Options<S>): Controls<
       if (control.placeholder) input.placeholder = control.placeholder
       input.dataset.key = control.key
       input.setAttribute("aria-label", control.label)
-      input.addEventListener("input", () =>
-        apply(normalize({ ...current, [control.key]: input.value }, control.key)),
-      )
+      input.addEventListener("input", () => apply(normalize({ ...current, [control.key]: input.value }, control.key)))
       textInputs.set(control.key, input)
       row.append(label, input)
       return row

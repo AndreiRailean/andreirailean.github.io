@@ -82,10 +82,13 @@ export type Slot =
 const lengthBits = (bytes: number) => Math.max(1, Math.ceil(Math.log2(bytes + 1)))
 
 /**
- * A string as UTF-8, cut to at most `limit` bytes without splitting a
- * character.
+ * A string cut to at most `limit` bytes of UTF-8 without splitting a character.
+ *
+ * Exported so a piece's validator can cut what is typed to exactly what its
+ * text slot will keep — otherwise the scene on screen and the scene in its own
+ * link would differ by whatever fell off the end.
  */
-function utf8Within(value: string, limit: number): Uint8Array {
+export function withinBytes(value: string, limit: number): string {
   const encoder = new TextEncoder()
   let kept = ""
   let size = 0
@@ -95,8 +98,10 @@ function utf8Within(value: string, limit: number): Uint8Array {
     kept += character
     size += width
   }
-  return encoder.encode(kept)
+  return kept
 }
+
+const utf8Within = (value: string, limit: number): Uint8Array => new TextEncoder().encode(withinBytes(value, limit))
 
 /**
  * How many bits a slot's value occupies. Fixed by the slot, never by a control.
