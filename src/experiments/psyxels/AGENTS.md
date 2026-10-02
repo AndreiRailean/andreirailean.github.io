@@ -293,6 +293,18 @@ flatten` at first, which looks right on a letter — ink is 1 almost everywhere 
   `#05050a` ground gathered into the buffer frame after frame settles into a grey
   wash over everything. Anything that starts painting a ground on the canvas
   again brings that back.
+- **A flat fade cannot take 8-bit alpha to zero, and on a long afterglow it
+  stalls at half** (#117). `destination-out` at the ~0.004 a long afterglow on a
+  slow playback asks for leaves every alpha from 1 to 127 where it is, so the
+  buffer settles to a 50% plateau over everywhere light has been. `fade` set to
+  `dither` spends the same mean removal on a sparse shifting share of pixels at
+  0.75 each, in `fade.ts`; it changes the floor and nothing else. The test runs
+  `eraseHalo`'s own source against the browser's rasteriser — flat must still
+  stall at 127 and dither must land near `255 × (1 − a)ⁿ` — because four
+  statistics over the rendered frame failed to see this, one backwards. Do not
+  put a blur on the dithered erase: it averages the pattern back into the flat
+  fill it replaced. Presets `trail flat` and `trail dither` are the comparison,
+  identical but for the fade.
 - **`run()` draws its last twenty steps.** The glow is gathered _between_ frames,
   so a fast-forward that draws only its final one leaves the buffer holding a
   single frame — a poster with no glow on a scene that has plenty.

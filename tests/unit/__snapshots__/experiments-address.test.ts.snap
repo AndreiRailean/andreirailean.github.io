@@ -289,6 +289,7 @@ exports[`psyxels > has not edited a slot in place 1`] = `
   "subject enum text|picture",
   "text text bytes=32",
   "picture text bytes=200",
+  "dither bool",
 ]
 `;
 

@@ -29,7 +29,7 @@ describe("bounds", () => {
   it("has a bound for every numeric setting, so nothing arrives unclamped", () => {
     for (const key of Object.keys(DEFAULT_SETTINGS) as NumericKey[]) {
       // The choices and the glyph set, which have options rather than a track.
-      if ((["subject", "text", "picture", "face", "polarity", "glyphs"] as string[]).includes(key)) continue
+      if ((["subject", "text", "picture", "face", "polarity", "glyphs", "dither"] as string[]).includes(key)) continue
       expect(BOUNDS[key], key).toBeDefined()
     }
   })
@@ -93,7 +93,7 @@ describe("normalising", () => {
 
   it("decodes an address written before #263 to the same subject", () => {
     // Packed with the registry as it stood: the retired subject slot, no text.
-    const before = REGISTRY.filter((slot) => !["text", "picture"].includes(slot.key)).slice(0, -1)
+    const before = REGISTRY.slice(0, REGISTRY.findIndex((slot) => slot.key === "playback") + 1)
     expect(before.find((slot) => slot.key === "subject")?.retired).toBe(true)
     const old = encodeScene(
       before.map(({ retired: _, ...slot }) => slot as Slot),
