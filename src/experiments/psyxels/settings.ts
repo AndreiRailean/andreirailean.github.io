@@ -37,6 +37,9 @@ import {
   type GlyphName,
 } from "@/experiments/psyxels/glyphs"
 import type { Chrome } from "@/experiments/piece"
+import { levelsBetween, levelsOf, MAX_LEVELS, MIN_PX } from "@/experiments/psyxels/field"
+
+export { levelsOf }
 
 /**
  * Everything tunable, in one place, shared by the engine, the panel and the URL.
@@ -61,7 +64,12 @@ export type Settings = {
   polarity: Polarity
   fill: number
   coarse: number
-  levels: number
+  /**
+   * The smallest psyx, as a share of the frame like `coarse`. A square is one
+   * psyx or four, so the field's smallest is `coarse` halved a whole number of
+   * times — the nearest such to this, which `levelsOf` reads back.
+   */
+  finest: number
   detail: number
   variety: number
   threshold: number
@@ -260,37 +268,35 @@ export const CONTROLS: Control[] = [
     hint: "How much of the frame's shorter side the subject takes. The psyxels do not scale with it, so winding this up is not a zoom: it hands the same subject more psyxels to be made of, and the same letter becomes coarse or fine as you drag.",
   },
   {
-    kind: "slider",
+    kind: "range",
     group: "packing",
-    key: "coarse",
-    label: "biggest",
-    min: 0.015,
+    keys: ["finest", "coarse"],
+    label: "sizes",
+    min: 0.0004,
     max: 0.6,
-    step: 0.001,
+    step: 0.00001,
     scale: "log",
     /**
-     * Shown as a position on its own track rather than as what it is.
-     *
-     * It *is* a share of the frame's shorter side, and saying so — "12.0% of
-     * frame" — was both too long for the value column and more than anyone
-     * dragging it wants to know. It took the piece's author a while to find that
-     * this was the control for how big the biggest psyx is, which is a labelling
-     * failure and not a naming one: right is right, left is left, and the number
-     * is only there to be returned to.
+     * **One control for the spread, because two said less than they claimed.**
+     * This was `biggest` and `levels`, and with levels at zero every psyx was the
+     * biggest size, so `biggest` only made them all big — "biggest doesn't seem
+     * to work as it claims". Smallest and biggest on one track say what the
+     * field is made of: together, one size; apart, as many sizes as there are
+     * halvings between them.
      */
-    format: (value) => String(Math.round(100 * (Math.log(value / 0.015) / Math.log(0.6 / 0.015)))),
-    hint: "How big the biggest psyx can be, and the size of the grid everything else is subdivided out of. Measured as a share of the frame's shorter side, so what the artwork is made of stays the same in a small window and a large one. Wide with few levels gives a blocky sign; wide with many levels gives the widest spread of sizes, which is what makes the field look packed rather than gridded.",
-  },
-  {
-    kind: "slider",
-    group: "packing",
-    key: "levels",
-    label: "levels",
-    min: 0,
-    max: 5,
-    step: 1,
-    format: (value) => (value === 0 ? "none" : `${value} deep`),
-    hint: "How many times a square may be quartered. The smallest psyx is the coarse size halved this many times, so levels and coarse together set the whole range of sizes in the picture. At zero every psyx is the coarse size and the piece is an ordinary low-resolution image.",
+    /**
+     * **The sizes this window draws, not the sizes asked for.** A square never
+     * splits below `MIN_PX`, so a fine smallest on a small window is a size the
+     * field does not have — and counting it would be the fault this control
+     * was built to remove, a label claiming what the picture does not show.
+     */
+    format: (finest, coarse) => {
+      const side = Math.min(window.innerWidth, window.innerHeight)
+      const fit = Math.max(0, Math.floor(Math.log2(Math.max(MIN_PX * 2, coarse * side) / MIN_PX)))
+      const sizes = Math.min(levelsBetween(finest, coarse), fit) + 1
+      return sizes === 1 ? "one size" : `${sizes} sizes`
+    },
+    hint: "The smallest and the biggest psyx, as shares of the frame's shorter side, so what the artwork is made of stays the same in a small window and a large one. A square is one psyx or four, so the sizes in between are the biggest halved, and halved again: the smallest handle steps in those halvings, up to five. Both handles together is one size and an ordinary low-resolution image; far apart is the widest spread, which is what makes the field look packed rather than gridded.",
   },
   {
     kind: "slider",
@@ -642,7 +648,7 @@ export const DEFAULT_SETTINGS: Settings = {
   polarity: "ink",
   fill: 0.82,
   coarse: 0.125,
-  levels: 4,
+  finest: 0.00781,
   detail: 0.5,
   variety: 0.71,
   threshold: 0.36,
@@ -685,8 +691,10 @@ export const DEFAULT_SETTINGS: Settings = {
  */
 export const TRACKS: Partial<Record<NumericKey, Track>> = {
   fill: { min: 0.25, max: 1, step: 0.01 },
-  coarse: { min: 0.015, max: 0.6, step: 0.001, scale: "log" },
-  levels: { min: 0, max: 5, step: 1 },
+  // One track for both ends of the sizes range, which is what lets them share
+  // a control. The biggest still stops at `COARSEST_MIN`, in the validator.
+  coarse: { min: 0.0004, max: 0.6, step: 0.00001, scale: "log" },
+  finest: { min: 0.0004, max: 0.6, step: 0.00001, scale: "log" },
   detail: { min: 0, max: 1, step: 0.01 },
   variety: { min: 0, max: 1, step: 0.01 },
   threshold: { min: 0, max: 0.9, step: 0.01 },
@@ -783,7 +791,14 @@ function fromLegacy(patch: Partial<Settings>): Partial<Settings> {
 }
 
 /** Settings that must hold whole numbers. A psyx cannot be quartered 2.4 times. */
-const INTEGER_KEYS: NumericKey[] = ["seed", "levels"]
+const INTEGER_KEYS: NumericKey[] = ["seed"]
+
+/**
+ * The least the biggest psyx may be. It was the bottom of its own slider before
+ * the sizes shared one track; below it the coarse grid is finer than the
+ * packing can resolve into separate sizes at all.
+ */
+export const COARSEST_MIN = 0.015
 
 /**
  * Fills gaps from `base` and forces every value into legal bounds.
@@ -794,6 +809,11 @@ const INTEGER_KEYS: NumericKey[] = ["seed", "levels"]
  */
 export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEFAULT_SETTINGS): Settings {
   const merged = { ...base, ...fromLegacy(patch) }
+  // `levels` was a setting until the sizes became a range, and every address,
+  // preset link and console call written before then names it. It means the
+  // smallest size, counted in halvings of whichever biggest it arrives with.
+  const levels = Number((patch as { levels?: unknown }).levels)
+  if (!("finest" in patch) && Number.isFinite(levels)) merged.finest = Number(merged.coarse) / 2 ** Math.round(levels)
   const settings: Settings = {
     ...merged,
     subject: isSubject(merged.subject) ? merged.subject : base.subject,
@@ -812,6 +832,16 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
     if (INTEGER_KEYS.includes(key)) settings[key] = Math.round(settings[key])
     settings[key] = snap(key, settings[key])
   }
+
+  // The smallest handle stays where it is put, between the biggest and five
+  // halvings below it, and `levelsOf` reads the nearest whole halving off it.
+  // **It is not snapped to that halving**, though the field is: snapped, an
+  // arrow key's step on a log track lands back where it started every time,
+  // and the handle cannot be moved from the keyboard at all.
+  settings.coarse = Math.max(COARSEST_MIN, settings.coarse)
+  settings.finest = snap("finest", clamp(settings.finest, settings.coarse / 2 ** MAX_LEVELS, settings.coarse))
+  // And the setting it replaced does not ride along in the scene.
+  delete (settings as { levels?: unknown }).levels
 
   return settings
 }
@@ -856,6 +886,10 @@ function settingsFromNamedQuery(params: URLSearchParams): Settings {
 
   const text = params.get("text")
   if (text !== null) patch.text = text
+
+  const levels = params.get("levels")
+  if (levels !== null && levels.trim() !== "" && Number.isFinite(Number(levels)))
+    (patch as { levels?: number }).levels = Number(levels)
 
   const picture = params.get("picture")
   if (picture !== null && picture.trim() !== "") patch.picture = picture
@@ -927,8 +961,8 @@ export const REGISTRY: readonly Slot[] = [
   { key: "face", kind: "enum", options: ["grotesque", "roman", "script", "typewriter"] },
   { key: "polarity", kind: "enum", options: ["ink", "void"] },
   { key: "fill", kind: "num", grid: 0.01, origin: 0.25, bits: 7 },
-  { key: "coarse", kind: "num", grid: 0.001, origin: 0.015, bits: 10 },
-  { key: "levels", kind: "num", grid: 1, origin: 0, bits: 3 },
+  { key: "coarse", kind: "num", grid: 0.001, origin: 0.015, bits: 10, retired: true },
+  { key: "levels", kind: "num", grid: 1, origin: 0, bits: 3, retired: true },
   { key: "detail", kind: "num", grid: 0.01, origin: 0, bits: 7 },
   { key: "variety", kind: "num", grid: 0.01, origin: 0, bits: 7 },
   { key: "threshold", kind: "num", grid: 0.01, origin: 0, bits: 7 },
@@ -946,6 +980,7 @@ export const REGISTRY: readonly Slot[] = [
   {
     key: "glyphs",
     kind: "set",
+    retired: true,
     options: [
       "minus",
       "plus",
@@ -985,6 +1020,37 @@ export const REGISTRY: readonly Slot[] = [
   { key: "text", kind: "text", bytes: TEXT_BYTES },
   { key: "picture", kind: "text", bytes: PICTURE_BYTES },
   { key: "dither", kind: "bool" },
+  // #135 appended two marks. A set slot's options are its identity, so the
+  // fifteen-mark slot above is retired and still read.
+  {
+    key: "glyphs",
+    kind: "set",
+    options: [
+      "minus",
+      "plus",
+      "circled-minus",
+      "circled-plus",
+      "ring",
+      "dot",
+      "cross",
+      "circled-cross",
+      "bar",
+      "moon",
+      "star",
+      "diamond",
+      "eye",
+      "heart",
+      "leaf",
+      "sprout",
+      "spiral",
+    ],
+  },
+  // The sizes became a range: the smallest is stored and the levels between it
+  // and the biggest are read back from the two. The retired `levels` slot above
+  // is still read, and `normalizeSettings` turns it into this.
+  { key: "finest", kind: "num", grid: 0.00001, origin: 0, bits: 17 },
+  // On the sizes range's finer grid; the first `coarse` slot is retired and still read.
+  { key: "coarse", kind: "num", grid: 0.00001, origin: 0, bits: 17 },
 ]
 
 /**
@@ -1059,7 +1125,7 @@ export function needsPacking(before: Settings, after: Settings): boolean {
     before.polarity !== after.polarity ||
     before.fill !== after.fill ||
     before.coarse !== after.coarse ||
-    before.levels !== after.levels ||
+    before.finest !== after.finest ||
     before.detail !== after.detail ||
     before.variety !== after.variety ||
     // Fuzz is the one control on both sides of the line: it softens which

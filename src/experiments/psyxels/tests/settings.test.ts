@@ -8,6 +8,8 @@ import {
   needsPacking,
   needsSubject,
   isTrackedControl,
+  levelsOf,
+  COARSEST_MIN,
   normalizeSettings,
   REGISTRY,
   settingsFromQuery,
@@ -59,10 +61,34 @@ describe("bounds", () => {
 
 describe("normalising", () => {
   it("clamps out of range and rounds what must be whole", () => {
-    const settings = normalizeSettings({ wildness: 4, levels: 2.6, coarse: -30 })
+    const settings = normalizeSettings({ wildness: 4, coarse: -30 })
     expect(settings.wildness).toBe(BOUNDS.wildness.max)
-    expect(settings.levels).toBe(3)
-    expect(settings.coarse).toBe(BOUNDS.coarse.min)
+    // The sizes share one track, so the biggest has a floor of its own.
+    expect(settings.coarse).toBe(COARSEST_MIN)
+  })
+
+  /**
+   * The smallest psyx is the biggest halved a whole number of times, up to
+   * five. The handle is kept between those ends and the field takes the nearest
+   * halving — the handle itself is not snapped, or a keyboard step could never
+   * leave it.
+   */
+  it("reads the nearest halving off the smallest handle, and keeps it in range", () => {
+    expect(levelsOf(normalizeSettings({ coarse: 0.16, finest: 0.021 }))).toBe(3)
+    expect(normalizeSettings({ coarse: 0.16, finest: 0.5 }).finest).toBe(0.16)
+    expect(normalizeSettings({ coarse: 0.16, finest: 0.0001 }).finest).toBe(0.005)
+    // A step too small to change the count still moves the handle.
+    expect(normalizeSettings({ coarse: 0.16, finest: 0.159 }).finest).toBe(0.159)
+    // Moving the biggest leaves the smallest where it was.
+    const before = normalizeSettings({ coarse: 0.16, finest: 0.02 })
+    expect(normalizeSettings({ coarse: 0.32 }, before).finest).toBe(0.02)
+  })
+
+  it("reads levels, from before the sizes were a range, as the smallest size", () => {
+    const old = normalizeSettings({ coarse: 0.16, levels: 2 } as never)
+    expect(old.finest).toBe(0.04)
+    expect("levels" in old).toBe(false)
+    expect(settingsFromQuery(new URLSearchParams("coarse=0.16&levels=3")).finest).toBe(0.02)
   })
 
   it("keeps the base's subject, face and polarity when handed ones that do not exist", () => {
@@ -154,7 +180,7 @@ describe("the query string", () => {
       face: "roman",
       polarity: "void",
       hue: 41,
-      levels: 2,
+      finest: DEFAULT_SETTINGS.coarse / 4,
       churn: 22,
     })
     expect(settingsFromQuery(settingsToQuery(scene))).toEqual(scene)
@@ -268,7 +294,7 @@ describe("what a change costs", () => {
       "polarity",
       "fill",
       "coarse",
-      "levels",
+      "finest",
       "detail",
       "variety",
       "fuzz",

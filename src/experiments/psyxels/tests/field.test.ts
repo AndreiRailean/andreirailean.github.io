@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { packField, type Field } from "@/experiments/psyxels/field"
+import { levelsOf, packField, type Field } from "@/experiments/psyxels/field"
 import { GLYPH_NAMES, indexOfGlyph, type GlyphName } from "@/experiments/psyxels/glyphs"
 import type { CellStats, Mask } from "@/experiments/psyxels/mask"
 import { DEFAULT_SETTINGS, type Settings } from "@/experiments/psyxels/settings"
@@ -66,7 +66,8 @@ const PLAIN: Settings = {
   seed: 11,
   // A share of the frame's shorter side: 80px against these 640×480 masks.
   coarse: 80 / 480,
-  levels: 3,
+  // Three halvings below it: 10px.
+  finest: 80 / 480 / 2 ** 3,
   detail: 0,
   variety: 0,
   churn: 0,
@@ -85,7 +86,7 @@ describe("subdivision", () => {
 
   it("subdivides an edge down to the finest level, and only near the edge", () => {
     const field = packField(EDGE, { ...PLAIN, detail: 1 }, 0)
-    const finest = 80 / 2 ** PLAIN.levels
+    const finest = 80 / 2 ** levelsOf(PLAIN)
 
     const small = field.psyxels().filter((psyx) => psyx.size === finest)
     expect(small.length).toBeGreaterThan(0)
@@ -104,7 +105,7 @@ describe("subdivision", () => {
   })
 
   it("never packs a psyx below the legible minimum, whatever it is asked for", () => {
-    const field = packField(EDGE, { ...PLAIN, coarse: 16 / 480, levels: 5, detail: 1, variety: 1 }, 0)
+    const field = packField(EDGE, { ...PLAIN, coarse: 16 / 480, finest: 16 / 480 / 2 ** 5, detail: 1, variety: 1 }, 0)
     expect(Math.min(...sizes(field))).toBeGreaterThanOrEqual(3)
   })
 })
@@ -242,8 +243,8 @@ describe("stability", () => {
    * the same class of bug as Dangler's anchors and Flotsam's specks.
    */
   it("gives a square the same life wherever else the field changed", () => {
-    const shallow = packField(FLOOD, { ...PLAIN, levels: 1 }, 0)
-    const deep = packField(FLOOD, { ...PLAIN, levels: 3 }, 0)
+    const shallow = packField(FLOOD, { ...PLAIN, finest: PLAIN.coarse / 2 ** 1 }, 0)
+    const deep = packField(FLOOD, { ...PLAIN, finest: PLAIN.coarse / 2 ** 3 }, 0)
 
     const key = (psyx: { x: number; y: number }) => `${psyx.x},${psyx.y}`
     const byPlace = new Map(deep.psyxels().map((psyx) => [key(psyx), psyx]))
@@ -307,7 +308,7 @@ describe("lifetimes", () => {
   }
 
   it("does not let the coarse psyxels outlast the grain around them", () => {
-    const lives = livesByDepth({ ...PLAIN, levels: 3, churn: 40, variety: 0.64, detail: 0 }, 400)
+    const lives = livesByDepth({ ...PLAIN, finest: PLAIN.coarse / 2 ** 3, churn: 40, variety: 0.64, detail: 0 }, 400)
     const measured = lives.filter((life) => life > 0)
     expect(measured.length).toBeGreaterThan(2)
 
@@ -327,8 +328,8 @@ describe("lifetimes", () => {
   })
 
   it("keeps a psyx's life in proportion to the churn control at every size", () => {
-    const slow = livesByDepth({ ...PLAIN, levels: 2, churn: 15, variety: 0.64, detail: 0 }, 400)
-    const fast = livesByDepth({ ...PLAIN, levels: 2, churn: 60, variety: 0.64, detail: 0 }, 400)
+    const slow = livesByDepth({ ...PLAIN, finest: PLAIN.coarse / 2 ** 2, churn: 15, variety: 0.64, detail: 0 }, 400)
+    const fast = livesByDepth({ ...PLAIN, finest: PLAIN.coarse / 2 ** 2, churn: 60, variety: 0.64, detail: 0 }, 400)
 
     for (let depth = 0; depth < slow.length; depth++) {
       if (!(slow[depth]! > 0) || !(fast[depth]! > 0)) continue
@@ -351,7 +352,7 @@ describe("the grain under a coarse psyx", () => {
     // with — which is the only thing that tells a subtree being *resumed* from
     // one being built again. Rebuilt, its generator restarts and it comes back
     // showing its first frame.
-    const settings = { ...PLAIN, levels: 1, churn: 40, flicker: 2, variety: 0.64, detail: 0 }
+    const settings = { ...PLAIN, finest: PLAIN.coarse / 2 ** 1, churn: 40, flicker: 2, variety: 0.64, detail: 0 }
     const field = packField(FLOOD, settings, 0)
 
     const place = (psyx: { x: number; y: number; size: number }) => `${psyx.x},${psyx.y},${psyx.size}`
@@ -474,7 +475,7 @@ describe("what a psyx leaves behind", () => {
  */
 describe("the longest a psyx can stay", () => {
   it("bounds the tail while leaving the average where it was", () => {
-    const settings = { ...PLAIN, levels: 1, churn: 60, variety: 0.64, detail: 0 }
+    const settings = { ...PLAIN, finest: PLAIN.coarse / 2 ** 1, churn: 60, variety: 0.64, detail: 0 }
     const field = packField(FLOOD, settings, 0)
 
     const seen = new Map<string, number>()
@@ -509,7 +510,7 @@ describe("the longest a psyx can stay", () => {
  */
 describe("the levels above a leaf", () => {
   it("hands back every square that divided, each with a life of its own", () => {
-    const field = packField(FLOOD, { ...PLAIN, levels: 3, variety: 0.64 }, 0)
+    const field = packField(FLOOD, { ...PLAIN, finest: PLAIN.coarse / 2 ** 3, variety: 0.64 }, 0)
     const branches = field.branches()
     const leaves = field.psyxels()
 
@@ -528,14 +529,14 @@ describe("the levels above a leaf", () => {
   })
 
   it("has no divided squares at all when nothing divides", () => {
-    expect(packField(FLOOD, { ...PLAIN, levels: 0 }, 0).branches()).toHaveLength(0)
+    expect(packField(FLOOD, { ...PLAIN, finest: PLAIN.coarse / 2 ** 0 }, 0).branches()).toHaveLength(0)
   })
 
   it("covers the same picture as its leaves, one level up", () => {
     // A flooded subject, because a masked one *prunes*: squares with nothing
     // under them are never packed, so the leaves under a branch that straddles
     // the edge do not tile it and are not meant to.
-    const field = packField(FLOOD, { ...PLAIN, levels: 2, variety: 0.64 }, 0)
+    const field = packField(FLOOD, { ...PLAIN, finest: PLAIN.coarse / 2 ** 2, variety: 0.64 }, 0)
     for (const branch of field.branches()) {
       // Only the squares wholly on the picture: the root grid overhangs the
       // frame, and a child with nothing under it is pruned rather than packed —

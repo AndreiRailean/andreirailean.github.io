@@ -114,6 +114,16 @@ export const GLYPHS: Feature[] = [
   // A moon's curve on the diagonal: one step from the moon and from a circled
   // cross.
   figure(leaf, false, true, true, true), // leaf
+  // #135, the flower's slot. Open strokes rather than closed petals, so a heavy
+  // weight thickens them without closing them into one blob — which is what
+  // took the flower and the sun out of the vocabulary.
+  //
+  // A leaf that has grown a second leaf and a stem, and is solid where a leaf
+  // is open: one step from the leaf and from the heart.
+  figure(sprout, false, true, true, true, true), // sprout
+  // A ring that will not close: one step from a dot, from a circled cross and
+  // from the sprout.
+  figure(spiral, false, false, true, true, true), // spiral
 ]
 
 export const GLYPH_COUNT = GLYPHS.length
@@ -143,6 +153,8 @@ export const GLYPH_NAMES = [
   "eye",
   "heart",
   "leaf",
+  "sprout",
+  "spiral",
 ] as const
 
 /**
@@ -324,6 +336,63 @@ function leaf(ctx: CanvasRenderingContext2D, r: number): void {
 
   ctx.moveTo(-r * 0.95, r * 0.95)
   ctx.lineTo(tip * 0.45, -tip * 0.45)
+}
+
+/**
+ * A stem bending up with a leaf on either side, the lower one larger.
+ *
+ * Asked for in #135 as "a simpler shape that provides such organic
+ * sophistication": the flower was liked for how often its contour turns, and a
+ * sprout turns as often in fewer strokes — a curve, and two small lenses off
+ * it. The leaves are closed but small and apart, so at heavy weight they go
+ * solid on their own and the stem still holds them as two.
+ */
+function sprout(ctx: CanvasRenderingContext2D, r: number): void {
+  // The stem: from the root, curving a little to the right as it rises.
+  ctx.moveTo(-r * 0.1, r)
+  ctx.quadraticCurveTo(r * 0.25, r * 0.1, r * 0.05, -r * 0.95)
+
+  // A leaf as a lens between two points, bulging by `width` either side.
+  const lens = (x0: number, y0: number, x1: number, y1: number, width: number) => {
+    const mx = (x0 + x1) / 2
+    const my = (y0 + y1) / 2
+    // The normal, scaled to the bulge; a quadratic reaches half way to its
+    // control, so the control sits at twice the width.
+    const nx = -(y1 - y0) * width
+    const ny = (x1 - x0) * width
+    ctx.moveTo(x0, y0)
+    ctx.quadraticCurveTo(mx + nx, my + ny, x1, y1)
+    ctx.quadraticCurveTo(mx - nx, my - ny, x0, y0)
+    ctx.closePath()
+  }
+  lens(r * 0.12, r * 0.25, -r * 0.82, -r * 0.2, 0.36)
+  lens(r * 0.14, -r * 0.3, r * 0.78, -r * 0.72, 0.38)
+}
+
+/**
+ * An open spiral, wound out from the centre.
+ *
+ * **The gap between turns answers to the ink**, as the moon's bite does: at a
+ * fixed number of turns a heavy stroke fills the gaps and the spiral comes out
+ * a disc. So it winds fewer times as the line thickens — two turns at a
+ * hairline, under one at the heaviest weight, where it is a curl — and the
+ * spacing between turns never drops below about two and a half strokes.
+ */
+function spiral(ctx: CanvasRenderingContext2D, r: number, lineWidth: number): void {
+  const start = r * 0.08
+  // Each turn adds `(r - start) / turns` of radius, and that has to leave a
+  // gap of more than a stroke once the stroke itself is taken out of it.
+  const turns = Math.max(0.85, Math.min(2, (r - start) / (lineWidth * 2.4)))
+  const steps = Math.ceil(turns * 28)
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps
+    const angle = t * turns * TURN
+    const radius = start + (r - start) * t
+    const x = Math.cos(angle) * radius
+    const y = Math.sin(angle) * radius
+    if (i === 0) ctx.moveTo(x, y)
+    else ctx.lineTo(x, y)
+  }
 }
 
 /**

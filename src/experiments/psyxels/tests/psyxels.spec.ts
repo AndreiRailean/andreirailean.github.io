@@ -123,7 +123,7 @@ test("the packing covers the subject well enough to recognise it", async ({ page
   expect(stats.psyxels).toBeGreaterThan(200)
 })
 
-test("psyxels come in a range of sizes, and the levels control is what decides it", async ({ page }) => {
+test("psyxels come in a range of sizes, and the sizes control is what decides it", async ({ page }) => {
   const experiment = await openPsyxels(page)
 
   const mixed = await experiment.api(({ api }) => api.stats())
@@ -131,12 +131,21 @@ test("psyxels come in a range of sizes, and the levels control is what decides i
   expect(mixed.byDepth.filter((count) => count > 0).length).toBeGreaterThan(2)
 
   const flat = await experiment.api(({ api }) => {
-    api.set({ levels: 0 })
+    api.set({ finest: api.get().coarse })
     return api.stats()
   })
-  // No subdivision at all is an ordinary low-resolution image: one size.
+  // Both handles together is an ordinary low-resolution image: one size.
   expect(flat.smallest).toBe(flat.largest)
   expect(flat.byDepth.filter((count) => count > 0).length).toBe(1)
+
+  // And the reverse of the report that built this control: from one size,
+  // moving only the smallest handle gives a spread, with the biggest unmoved.
+  const spread = await experiment.api(({ api }) => {
+    api.set({ finest: api.get().coarse / 8 })
+    return api.stats()
+  })
+  expect(spread.largest).toBe(flat.largest)
+  expect(spread.byDepth.filter((count) => count > 0).length).toBeGreaterThan(1)
 })
 
 /**
@@ -210,11 +219,13 @@ test("the packing controls do repack, and say so", async ({ page }) => {
     return api.stats()
   })
   const coarser = await experiment.api(({ api }) => {
-    api.set({ coarse: 0.4 })
+    // Both ends, in the same ratio: the smallest handle is pushed up by the
+    // biggest and stays where it was pushed, as a range's handles do.
+    api.set({ coarse: 0.4, finest: 0.05 })
     return api.stats()
   })
   const finer = await experiment.api(({ api }) => {
-    api.set({ coarse: 0.06 })
+    api.set({ coarse: 0.06, finest: 0.0075 })
     return api.stats()
   })
 
@@ -311,7 +322,7 @@ test("void polarity packs the whole frame and leaves the subject as the gap", as
         face: "grotesque",
         fill: 0.82,
         coarse: 0.06,
-        levels: 3,
+        finest: 0.0075,
         threshold: 0.4,
         fuzz: 0,
         flatten: 1,
@@ -419,7 +430,7 @@ test("bloom and overlap fill the ground around a large psyx without repacking", 
     polarity: "ink",
     fill: 0.8,
     coarse: 0.125,
-    levels: 3,
+    finest: 0.015625,
     detail: 0.5,
     variety: 0.5,
     threshold: 0.4,
@@ -721,7 +732,13 @@ test("the portrait is a photograph that actually arrived", async ({ page }) => {
   await experiment.api(({ api }) => {
     // The photographic scene, by subject rather than by name: a preset's label
     // is presentation and this test is about the image arriving.
-    api.set({ subject: "picture", picture: "/experiments/psyxels/avatar.jpg", threshold: 0.4, coarse: 0.09, levels: 4 })
+    api.set({
+      subject: "picture",
+      picture: "/experiments/psyxels/avatar.jpg",
+      threshold: 0.4,
+      coarse: 0.09,
+      finest: 0.005625,
+    })
   })
 
   // The image is decoded after the piece starts, and an undecoded one
@@ -801,7 +818,7 @@ test("every setting has a control, and a scene survives its own URL", async ({ p
   }
 
   const scene = await experiment.api(({ api }) =>
-    api.set({ hue: 33, levels: 2, text: "&", face: "roman", spread: 140 }),
+    api.set({ hue: 33, finest: 0.01, text: "&", face: "roman", spread: 140 }),
   )
   const url = await experiment.api(({ api }) => api.url())
   await page.goto(url)
@@ -962,9 +979,9 @@ test("the settings panel opens with a row for every control", async ({ page }) =
 
   const rows = page.locator(".panel .row")
   const controls = await experiment.api(({ api }) => api.controls())
-  // One row per control, and a bound pair would be one row for two keys — there
-  // are none here, so the two counts agree.
-  expect(await rows.count()).toBe(controls.length)
+  // One row per control, and a bound pair is one row for two keys — `sizes`,
+  // the smallest and the biggest, is the one here.
+  expect(await rows.count()).toBe(controls.length - 1)
   expect(await page.locator(".panel .group").count()).toBe(5)
 })
 

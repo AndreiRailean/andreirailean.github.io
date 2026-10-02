@@ -727,7 +727,24 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     // The key as data, never as a class — see the namespace note at the top.
     slider.dataset.key = key
     slider.addEventListener("input", () => {
-      const value = log ? valueAtPosition(control, Number(slider.value) / LOG_STEPS) : Number(slider.value)
+      let value = log ? valueAtPosition(control, Number(slider.value) / LOG_STEPS) : Number(slider.value)
+      /*
+       * **A log track's step can be finer than its grid**, and then the
+       * keyboard stalls. An arrow key moves the position one part in
+       * `LOG_STEPS`, which on a track spanning 1500× is 0.7% of the value — and
+       * the grid keeps three significant figures, which just above a power of
+       * ten is 1%. So the step rounds back to the value it left and the handle
+       * never moves again, found on psyxels' sizes at 0.0104. When the
+       * position moved and the value did not, take one grid step the same way.
+       */
+      if (log) {
+        const held = Number(current[key as keyof S])
+        const was = Math.round(positionOf(control, held) * LOG_STEPS)
+        const now = Number(slider.value)
+        if (value === held && now !== was) {
+          value = snapToGrid(control, held + Math.sign(now - was) * gridAt(control, held * (now < was ? 0.999 : 1)))
+        }
+      }
       apply(normalize({ ...current, [key]: value }, key as string & keyof S))
     })
     sliders.set(key, slider)
