@@ -1,26 +1,11 @@
 ---
 import PiecePage from "@/experiments/gallery/PiecePage.astro"
 import type { NoteTheme } from "@/experiments/gallery/NoteOverlay.astro"
-import { getImage } from "astro:assets"
-import avatar from "@/experiments/psyxels/avatar.jpg"
 import { PRESETS } from "@/experiments/psyxels/presets"
 
-// The portrait's address is handed to the script as an attribute rather than
-// imported inside it, because only the frontmatter gets Astro's resolved,
-// hashed asset URL. The file itself lives in the experiment's own folder rather
-// than in `src/assets/`: an experiment imports nothing from the site, and a
-// picture is no more exempt from that than a stylesheet would be.
-//
-// It goes through `getImage` rather than being read off the import's `.src`,
-// because `.src` names a file the build does not promise to write. Astro emits
-// an original only for imports nothing has asked it to process, and it keys
-// that decision on the image's *contents*: this portrait is byte-identical to
-// `src/assets/avatar.jpg`, the homepage runs that one through `<Image>`, and
-// the two collapse into one asset. The homepage's request won, the original was
-// never written, and this page went on pointing at it — a 404 in production and
-// nowhere else, since `astro dev` serves every import off disk regardless.
-// Asking the image service for the file is what makes the build owe us one.
-const portrait = await getImage({ src: avatar, format: "jpeg" })
+// The portrait is not imported here any more. It is a picture at an address
+// now — `LOCAL_PORTRAIT` in `subject.ts`, served from `public/` — and the
+// address travels in the scene like any other setting (#263).
 
 // The note's furniture is the gallery's; only the paint is Psyxels'. See
 // docs/adr/20260828-the-piece-is-independent-the-gallery-is-not.
@@ -77,8 +62,9 @@ const { note = false } = Astro.props
       --ui-label-col: 6.5rem;
       --ui-value-col: 5rem;
       /* A box is this wide, border-box, so it is the widest row plus the box's
-         padding: the subject choices ran past 22.5rem. `tests/kit.spec.ts` holds it (#257). */
-      --ui-panel-min: 28rem;
+         padding. It was 28rem while the subject was a row of six choices; typed
+         text took that row away (#263), and the glyphs row is the widest now. `tests/kit.spec.ts` holds it (#257). */
+      --ui-panel-min: 24.25rem;
       --ui-row-gap: 0.26rem;
     }
 
@@ -101,7 +87,7 @@ const { note = false } = Astro.props
       height: 100%;
     }
   </style>
-  <canvas id="stage" data-avatar={portrait.src}></canvas>
+  <canvas id="stage"></canvas>
   <script>
     import { boot } from "@/experiments/gallery/boot"
     import * as settings from "@/experiments/psyxels/settings"

@@ -305,7 +305,8 @@ test("void polarity packs the whole frame and leaves the subject as the gap", as
   const at = (polarity: "ink" | "void") =>
     experiment.api(({ api, arg }) => {
       api.set({
-        subject: "A",
+        subject: "text",
+        text: "A",
         face: "grotesque",
         fill: 0.82,
         coarse: 0.06,
@@ -411,7 +412,8 @@ test("bloom and overlap fill the ground around a large psyx without repacking", 
    * now, and the test failed against a piece behaving correctly.
    */
   const PLAIN: Partial<Settings> = {
-    subject: "A",
+    subject: "text",
+    text: "A",
     face: "grotesque",
     polarity: "ink",
     fill: 0.8,
@@ -715,11 +717,10 @@ test("playback scales the clock, and pauses it", async ({ page }) => {
 test("the portrait is a photograph that actually arrived", async ({ page }) => {
   const experiment = await openPsyxels(page)
 
-  const portrait = await experiment.api(({ api }) => {
+  await experiment.api(({ api }) => {
     // The photographic scene, by subject rather than by name: a preset's label
     // is presentation and this test is about the image arriving.
-    api.set({ subject: "avatar", threshold: 0.4, coarse: 0.09, levels: 4 })
-    return api.stats()
+    api.set({ subject: "picture", picture: "/experiments/psyxels/avatar.jpg", threshold: 0.4, coarse: 0.09, levels: 4 })
   })
 
   // The image is decoded after the piece starts, and an undecoded one
@@ -728,6 +729,8 @@ test("the portrait is a photograph that actually arrived", async ({ page }) => {
   await expect
     .poll(async () => (await experiment.api(({ api }) => api.stats())).psyxels, { timeout: 5000 })
     .toBeGreaterThan(500)
+  const portrait = await experiment.api(({ api }) => api.stats())
+  expect(portrait.picture).toBe("ready")
   expect(portrait.byDepth.length).toBeGreaterThan(2)
 
   // A photograph has colour of its own, which a letter has not.
@@ -735,6 +738,54 @@ test("the portrait is a photograph that actually arrived", async ({ page }) => {
   expect(colours).toBeGreaterThan(50)
 
   await experiment.shot("portrait")
+})
+
+/**
+ * A picture that cannot be read — missing, or on a host that will not let a
+ * canvas read it — must leave an empty frame and say so, rather than throw on
+ * `getImageData` or keep showing the last picture. Paired with the test above,
+ * which is the same route arriving.
+ */
+test("a picture that does not arrive leaves the frame empty and says why", async ({ page, problems }) => {
+  const experiment = await openPsyxels(page)
+  await experiment.api(({ api }) =>
+    api.set({ subject: "picture", picture: "/experiments/psyxels/no-such-picture.jpg" }),
+  )
+  await expect
+    .poll(async () => (await experiment.api(({ api }) => api.stats())).picture, { timeout: 5000 })
+    .toBe("failed")
+  expect((await experiment.api(({ api }) => api.stats())).psyxels).toBe(0)
+
+  // And back to text, which owes the picture nothing.
+  await experiment.api(({ api }) => api.set({ subject: "text", text: "A" }))
+  expect((await experiment.api(({ api }) => api.stats())).psyxels).toBeGreaterThan(100)
+
+  // The 404 is the point of the test, so it is claimed here rather than left to
+  // fail it — and claimed by name, so any other problem still does.
+  expect(problems.filter((problem) => !problem.includes("404"))).toEqual([])
+  expect(problems.length).toBeGreaterThan(0)
+  problems.length = 0
+})
+
+/**
+ * Typing is not a shortcut. The panel's single keys — `c` closes it, a digit
+ * loads a preset — would otherwise fire on every letter typed into the subject,
+ * and the text would be replaced by preset one's under the cursor.
+ */
+test("text typed into the subject is the subject, and no key in it is a shortcut", async ({ page }) => {
+  const experiment = await openPsyxels(page)
+  await experiment.api(({ api }) => api.panel(true))
+  const field = page.locator('input.text[data-key="text"]')
+  await field.fill("")
+  await field.pressSequentially("fc1 r")
+
+  expect(await experiment.api(({ api }) => api.get().text)).toBe("fc1 r")
+  expect(await page.evaluate(() => document.querySelector<HTMLElement>(".panel")?.hidden)).toBe(false)
+  // Into the address, and out of it again.
+  const url = await experiment.api(({ api }) => api.url())
+  await page.goto(url)
+  await page.waitForFunction(() => Boolean(window.experiment))
+  expect(await experiment.api(({ api }) => api.get().text)).toBe("fc1 r")
 })
 
 test("every setting has a control, and a scene survives its own URL", async ({ page }) => {
@@ -749,7 +800,7 @@ test("every setting has a control, and a scene survives its own URL", async ({ p
   }
 
   const scene = await experiment.api(({ api }) =>
-    api.set({ hue: 33, levels: 2, subject: "&", face: "roman", spread: 140 }),
+    api.set({ hue: 33, levels: 2, text: "&", face: "roman", spread: 140 }),
   )
   const url = await experiment.api(({ api }) => api.url())
   await page.goto(url)
@@ -913,7 +964,7 @@ test("the settings panel opens with a row for every control", async ({ page }) =
   // One row per control, and a bound pair would be one row for two keys — there
   // are none here, so the two counts agree.
   expect(await rows.count()).toBe(controls.length)
-  expect(await page.locator(".panel .group").count()).toBe(4)
+  expect(await page.locator(".panel .group").count()).toBe(5)
 })
 
 test("the defaults are a baseline rather than a scene, and no preset leans on them", async () => {

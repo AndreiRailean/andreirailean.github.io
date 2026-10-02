@@ -383,40 +383,54 @@ its name and range alone.
 
 ## Shape of the code
 
-| File          | Holds                                                                         |
-| ------------- | ----------------------------------------------------------------------------- |
-| `settings.ts` | `Settings`, the `CONTROLS` spec, `CHROME`, query parsing, what a change costs |
-| `subject.ts`  | the only place that knows what the picture is, and which way round            |
-| `mask.ts`     | the subject as coverage: summed-area tables, variance, the white point        |
-| `glyphs.ts`   | the vocabulary, the walk between frames, the blend between them, the drawing  |
-| `field.ts`    | the quadtree: splitting, merging, churn, and a psyx's own life                |
-| `pulse.ts`    | how bright a psyx is, whether it is there at all, and its transition          |
-| `palette.ts`  | the argument between the subject's colour, the psyx's, and the edge's         |
-| `psyxels.ts`  | the engine: canvas, the clock, drawing, stats                                 |
-| `presets.ts`  | the named scenes; the first is the primary                                    |
-| `runner.ts`   | `start` for the page, `mount` for a frozen runner, and the verbs              |
-| `avatar.jpg`  | the second subject, copied rather than imported — see below                   |
+| File                                    | Holds                                                                         |
+| --------------------------------------- | ----------------------------------------------------------------------------- |
+| `settings.ts`                           | `Settings`, the `CONTROLS` spec, `CHROME`, query parsing, what a change costs |
+| `subject.ts`                            | the only place that knows what the picture is, and which way round            |
+| `mask.ts`                               | the subject as coverage: summed-area tables, variance, the white point        |
+| `glyphs.ts`                             | the vocabulary, the walk between frames, the blend between them, the drawing  |
+| `field.ts`                              | the quadtree: splitting, merging, churn, and a psyx's own life                |
+| `pulse.ts`                              | how bright a psyx is, whether it is there at all, and its transition          |
+| `palette.ts`                            | the argument between the subject's colour, the psyx's, and the edge's         |
+| `psyxels.ts`                            | the engine: canvas, the clock, drawing, stats                                 |
+| `presets.ts`                            | the named scenes; the first is the primary                                    |
+| `runner.ts`                             | `start` for the page, `mount` for a frozen runner, and the verbs              |
+| `public/experiments/psyxels/avatar.jpg` | the portrait, at an address a scene can name — see below                      |
 
 The chrome, its stylesheet, fullscreen, the clipboard, the wake lock and the
 seeded generators all come from `../kit/`. Nothing here is duplicated with
 another piece.
 
-**The portrait is a copy of `src/assets/avatar.jpg`, on purpose.** An experiment
-imports nothing from the site, and a picture is no more exempt from that than a
-stylesheet would be. It reaches the client script as a `data-avatar` attribute
-rather than by import, because only the page's frontmatter gets Astro's resolved
-asset URL.
+**The subject is text or a picture, and the picture is an address** (#263). It
+was a choice of five fixed words and a portrait; the words became a text setting
+and the portrait became `picture`, a URL carried in the scene like any other
+setting. Three things follow:
 
-**And the `avatar` subject is on its way out of this piece.** It is the only
-subject in the section that needs a file rather than a number, which is why
-`runner.ts` cannot publish a scene that uses it. #173 asked how a frozen runner
-should be handed an image; the answer is that it should not be — the image
-becomes an input supplied by whatever embeds the piece, and this subject leaves
-psyxels for a standalone experiment or some other form. **Do not build an asset
-channel for it**, and do not spend effort making `maker` publishable as it
-stands. What is settled, what is open, and the measurements — including that
-inlining costs 1.2x rather than the 3x `runner.ts` estimates — are in
-`../docs/adr/20260912-the-image-is-an-input-not-a-subject.md`.
+- **The portrait lives in `public/experiments/psyxels/avatar.jpg`**, a copy of
+  `src/assets/avatar.jpg`, at an unhashed address. An `_astro/` name lasts only
+  as long as the build that emitted it, and a shared link outlives that.
+- **`crossOrigin = "anonymous"` is set before `src`, always**, in
+  `wantPicture`. The mask reads the picture back with `getImageData`, and a
+  cross-origin image drawn without it taints the canvas and throws — on every
+  origin but the picture's, which is to say only where nobody tests. With it, a
+  host that sends no `access-control-allow-origin` fails the _load_, and
+  `stats().picture` reads `"failed"` with an empty frame. GitHub's image host
+  sends `*`; `github.com/<name>.png` is a redirect that does not, so use the
+  numeric `avatars.githubusercontent.com` form.
+- **Every address written before it still decodes.** The old `subject` slot is
+  retired and still read, and `fromLegacy` in `settings.ts` turns `Luna` into
+  text reading "Luna" and `avatar` into the local portrait. The console API and
+  a hand-written `?subject=Luna` take the same route.
+
+This also answers the open half of
+`../docs/adr/20260912-the-image-is-an-input-not-a-subject.md` — what the input's
+shape is: an address in the scene. A frozen runner needs no asset channel to
+carry one, so a portrait scene is publishable now on any host whose picture can
+be read across origins.
+
+**Typing into the panel is not a shortcut.** The kit's text control stands the
+single-key shortcuts down while it has the focus, or the `1` in what is typed
+loads preset one over it. `psyxels.spec.ts` has the test, seen failing.
 
 ## Verifying a change
 

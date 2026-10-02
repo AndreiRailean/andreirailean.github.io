@@ -66,10 +66,53 @@ export type Slot =
   | { key: string; kind: "bool"; retired?: true }
   | { key: string; kind: "enum"; options: readonly string[]; retired?: true }
   | { key: string; kind: "set"; options: readonly string[]; retired?: true }
+  | { key: string; kind: "text"; bytes: number; retired?: true }
 
-/** How many bits a slot's value occupies. Fixed by the slot, never by a control. */
+/**
+ * Bits a text slot spends on its length, before the bytes themselves.
+ *
+ * **A text slot is the one kind whose width is not fixed**, and `bytes` is what
+ * keeps it bounded: an address cannot grow past `bytes` octets of text however
+ * much is typed, because `encodeScene` cuts the text there — on a character
+ * boundary, so a cut never leaves half a UTF-8 sequence behind. The text is
+ * stored as UTF-8 rather than in a narrower alphabet because what is typed is a
+ * person's choice and an alphabet is a guess about it: an `Ω` or an emoji
+ * costs a few more bytes and is still the word they typed.
+ */
+const lengthBits = (bytes: number) => Math.max(1, Math.ceil(Math.log2(bytes + 1)))
+
+/**
+ * A string cut to at most `limit` bytes of UTF-8 without splitting a character.
+ *
+ * Exported so a piece's validator can cut what is typed to exactly what its
+ * text slot will keep — otherwise the scene on screen and the scene in its own
+ * link would differ by whatever fell off the end.
+ */
+export function withinBytes(value: string, limit: number): string {
+  const encoder = new TextEncoder()
+  let kept = ""
+  let size = 0
+  for (const character of value) {
+    const width = encoder.encode(character).length
+    if (size + width > limit) break
+    kept += character
+    size += width
+  }
+  return kept
+}
+
+const utf8Within = (value: string, limit: number): Uint8Array => new TextEncoder().encode(withinBytes(value, limit))
+
+/**
+ * How many bits a slot's value occupies. Fixed by the slot, never by a control.
+ *
+ * For a text slot this is the length prefix alone — the least it can cost, an
+ * empty string. Its bytes follow, eight bits each, as many as the text needs.
+ */
 export function bitsOf(slot: Slot): number {
   switch (slot.kind) {
+    case "text":
+      return lengthBits(slot.bytes)
     case "num":
       return slot.bits
     case "bool":
@@ -83,7 +126,7 @@ export function bitsOf(slot: Slot): number {
 
 type Scene = Record<string, unknown>
 
-function toBits(slot: Slot, value: unknown): number {
+function toBits(slot: Exclude<Slot, { kind: "text" }>, value: unknown): number {
   switch (slot.kind) {
     case "bool":
       return value ? 1 : 0
@@ -102,7 +145,7 @@ function toBits(slot: Slot, value: unknown): number {
   }
 }
 
-function fromBits(slot: Slot, packed: number): unknown {
+function fromBits(slot: Exclude<Slot, { kind: "text" }>, packed: number): unknown {
   switch (slot.kind) {
     case "bool":
       return packed === 1
@@ -134,11 +177,19 @@ export function encodeScene(registry: readonly Slot[], scene: Scene): string {
     for (let step = 0; step < GROUP; step++) bits.push(present[at + step] ? 1 : 0)
   }
 
+  const push = (packed: number, width: number) => {
+    for (let bit = width - 1; bit >= 0; bit--) bits.push((packed >> bit) & 1)
+  }
+
   registry.forEach((slot, index) => {
     if (!present[index]) return
-    const width = bitsOf(slot)
-    const packed = toBits(slot, scene[slot.key])
-    for (let bit = width - 1; bit >= 0; bit--) bits.push((packed >> bit) & 1)
+    if (slot.kind === "text") {
+      const bytes = utf8Within(String(scene[slot.key] ?? ""), slot.bytes)
+      push(bytes.length, lengthBits(slot.bytes))
+      for (const byte of bytes) push(byte, 8)
+      return
+    }
+    push(toBits(slot, scene[slot.key]), bitsOf(slot))
   })
 
   let text = ""
@@ -186,14 +237,32 @@ export function decodeScene(registry: readonly Slot[], text: string): Scene | nu
     if (at >= bits.length) return null
   }
 
-  const scene: Scene = {}
-  for (const [index, slot] of registry.entries()) {
-    if (!present[index]) continue
-    const width = bitsOf(slot)
+  /** The next `width` bits as a number, or null past the end. */
+  const take = (width: number): number | null => {
     if (at + width > bits.length) return null
     let packed = 0
     for (let bit = 0; bit < width; bit++) packed = (packed << 1) | bits[at + bit]!
     at += width
+    return packed
+  }
+
+  const scene: Scene = {}
+  for (const [index, slot] of registry.entries()) {
+    if (!present[index]) continue
+    if (slot.kind === "text") {
+      const length = take(lengthBits(slot.bytes))
+      if (length === null || length > slot.bytes) return null
+      const bytes = new Uint8Array(length)
+      for (let i = 0; i < length; i++) {
+        const byte = take(8)
+        if (byte === null) return null
+        bytes[i] = byte
+      }
+      scene[slot.key] = new TextDecoder().decode(bytes)
+      continue
+    }
+    const packed = take(bitsOf(slot))
+    if (packed === null) return null
     scene[slot.key] = fromBits(slot, packed)
   }
 

@@ -9,12 +9,15 @@ import {
   needsSubject,
   isTrackedControl,
   normalizeSettings,
+  REGISTRY,
   settingsFromQuery,
   settingsToQuery,
   urlForSettings,
   type NumericKey,
 } from "@/experiments/psyxels/settings"
 import { PRESETS } from "@/experiments/psyxels/presets"
+import { LOCAL_PORTRAIT, TEXT_BYTES } from "@/experiments/psyxels/subject"
+import { encodeScene, type Slot } from "@/experiments/address"
 import type { GlyphName } from "@/experiments/psyxels/glyphs"
 import * as module from "@/experiments/psyxels/settings"
 import { settingsForLanding as landing } from "@/experiments/piece"
@@ -26,7 +29,7 @@ describe("bounds", () => {
   it("has a bound for every numeric setting, so nothing arrives unclamped", () => {
     for (const key of Object.keys(DEFAULT_SETTINGS) as NumericKey[]) {
       // The choices and the glyph set, which have options rather than a track.
-      if ((["subject", "face", "polarity", "glyphs"] as string[]).includes(key)) continue
+      if ((["subject", "text", "picture", "face", "polarity", "glyphs"] as string[]).includes(key)) continue
       expect(BOUNDS[key], key).toBeDefined()
     }
   })
@@ -64,12 +67,46 @@ describe("normalising", () => {
 
   it("keeps the base's subject, face and polarity when handed ones that do not exist", () => {
     expect(normalizeSettings({ subject: "portrait" as never }).subject).toBe(DEFAULT_SETTINGS.subject)
-    expect(normalizeSettings({ subject: "avatar" }).subject).toBe("avatar")
-    expect(normalizeSettings({ subject: "Alive" }).subject).toBe("Alive")
+    expect(normalizeSettings({ subject: "picture" }).subject).toBe("picture")
+    expect(normalizeSettings({ subject: "text" }).subject).toBe("text")
     expect(normalizeSettings({ face: "comic" as never }).face).toBe(DEFAULT_SETTINGS.face)
     expect(normalizeSettings({ face: "script" }).face).toBe("script")
     expect(normalizeSettings({ polarity: "inverse" as never }).polarity).toBe(DEFAULT_SETTINGS.polarity)
     expect(normalizeSettings({ polarity: "void" }).polarity).toBe("void")
+  })
+
+  /**
+   * Every address written before #263 names one of six fixed subjects, through
+   * a slot that is retired and still read. Five were text with the string
+   * fixed; the sixth was the portrait.
+   */
+  it("reads a subject named the old way as the scene it meant", () => {
+    expect(normalizeSettings({ subject: "Luna" as never })).toMatchObject({ subject: "text", text: "Luna" })
+    expect(normalizeSettings({ subject: "&" as never })).toMatchObject({ subject: "text", text: "&" })
+    expect(normalizeSettings({ subject: "avatar" as never })).toMatchObject({
+      subject: "picture",
+      picture: LOCAL_PORTRAIT,
+    })
+    const named = settingsFromQuery(new URLSearchParams("subject=Alive&face=script"))
+    expect(named).toMatchObject({ subject: "text", text: "Alive", face: "script" })
+  })
+
+  it("decodes an address written before #263 to the same subject", () => {
+    // Packed with the registry as it stood: the retired subject slot, no text.
+    const before = REGISTRY.filter((slot) => !["text", "picture"].includes(slot.key)).slice(0, -1)
+    expect(before.find((slot) => slot.key === "subject")?.retired).toBe(true)
+    const old = encodeScene(
+      before.map(({ retired: _, ...slot }) => slot as Slot),
+      { ...DEFAULT_SETTINGS, subject: "Luna" },
+    )
+    expect(settingsFromQuery(new URLSearchParams({ s: old }))).toMatchObject({ subject: "text", text: "Luna" })
+  })
+
+  it("cuts typed text to what the address will keep", () => {
+    const long = "x".repeat(TEXT_BYTES + 10)
+    expect(normalizeSettings({ text: long }).text).toHaveLength(TEXT_BYTES)
+    const scene = normalizeSettings({ ...DEFAULT_SETTINGS, text: long })
+    expect(settingsFromQuery(settingsToQuery(scene))).toEqual(scene)
   })
 
   /**
@@ -100,10 +137,10 @@ describe("normalising", () => {
   })
 
   it("fills gaps from the base rather than from the defaults when given one", () => {
-    const base = normalizeSettings({ ...DEFAULT_SETTINGS, hue: 12, subject: "&" })
+    const base = normalizeSettings({ ...DEFAULT_SETTINGS, hue: 12, text: "&" })
     const next = normalizeSettings({ wildness: 0.2 }, base)
     expect(next.hue).toBe(12)
-    expect(next.subject).toBe("&")
+    expect(next.text).toBe("&")
   })
 })
 
@@ -111,7 +148,9 @@ describe("the query string", () => {
   it("round-trips a scene", () => {
     const scene = normalizeSettings({
       ...DEFAULT_SETTINGS,
-      subject: "avatar",
+      subject: "picture",
+      text: "Ω — any text",
+      picture: "https://avatars.githubusercontent.com/u/25991?v=4",
       face: "roman",
       polarity: "void",
       hue: 41,
@@ -178,6 +217,8 @@ describe("the query string", () => {
 
     expect(settingsForLanding(new URLSearchParams("hue=200")).featured).toBe(false)
     expect(settingsForLanding(new URLSearchParams("subject=avatar")).featured).toBe(false)
+    expect(settingsForLanding(new URLSearchParams("subject=picture")).featured).toBe(false)
+    expect(settingsForLanding(new URLSearchParams("text=hi")).featured).toBe(false)
     expect(settingsForLanding(new URLSearchParams("face=script")).featured).toBe(false)
     expect(settingsForLanding(new URLSearchParams("polarity=void")).featured).toBe(false)
     // The same rule the parser applies: a URL made only of junk carries nothing.
@@ -272,7 +313,9 @@ describe("what a change costs", () => {
   })
 
   it("rasterises the subject again only when the subject, its face, its polarity or its size changed", () => {
-    expect(needsSubject(DEFAULT_SETTINGS, { ...DEFAULT_SETTINGS, subject: "avatar" })).toBe(true)
+    expect(needsSubject(DEFAULT_SETTINGS, { ...DEFAULT_SETTINGS, subject: "picture" })).toBe(true)
+    expect(needsSubject(DEFAULT_SETTINGS, { ...DEFAULT_SETTINGS, text: "B" })).toBe(true)
+    expect(needsSubject(DEFAULT_SETTINGS, { ...DEFAULT_SETTINGS, picture: "/x.png" })).toBe(true)
     expect(needsSubject(DEFAULT_SETTINGS, { ...DEFAULT_SETTINGS, face: "script" })).toBe(true)
     expect(needsSubject(DEFAULT_SETTINGS, { ...DEFAULT_SETTINGS, polarity: "void" })).toBe(true)
     expect(needsSubject(DEFAULT_SETTINGS, { ...DEFAULT_SETTINGS, fill: 0.5 })).toBe(true)
