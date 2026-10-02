@@ -248,11 +248,19 @@ failed, one of them backwards.
 ## 5. Verify before you claim anything
 
 ```bash
-pnpm exec astro check 2>&1 | grep errors   # after every edit — seconds, not minutes
-pnpm run prettier && pnpm run lint   # what CI actually runs; `lint` alone is not
-pnpm exec vitest <name>              # milliseconds, while working
-pnpm run build                       # the full thing, including astro check
+pnpm exec astro check >/dev/null 2>&1; echo $?   # after every edit — read the exit code
+pnpm run prettier && pnpm run lint               # what CI actually runs; `lint` alone is not
+pnpm exec vitest <name>                          # milliseconds, while working
+pnpm run test:affected unit                      # before pushing: what CI runs on the PR
+pnpm run test:affected browser                   # the piece's spec and its kit slice
 ```
+
+**Never the whole suite locally.** `pnpm run test:unit`, `test:browser` and
+`pnpm test` are what every push to `main` runs; the affected selection is what
+a pull request runs, and it is the same command here, diffing against
+`origin/main` with uncommitted work included. A session on psyxels ran all of
+`kit.spec.ts` and all of vitest before each push, minutes a round, and Andrei
+called it waste — CI runs it again before and after the merge.
 
 **Read its exit code and do not pipe it at all.** `pnpm run typecheck` exits 0
 clean and 1 on errors; that is the whole read, and it is the only one that has

@@ -2,10 +2,19 @@
 
 Two runners, split by **what a check needs** rather than by how fast it is.
 
-| Runner     | Files                                                          | Command                 | For                                          |
-| ---------- | -------------------------------------------------------------- | ----------------------- | -------------------------------------------- |
-| Vitest     | `tests/unit/**/*.test.ts`, `src/experiments/*/tests/*.test.ts` | `pnpm run test:unit`    | A function and a number. No DOM.             |
-| Playwright | `tests/*.spec.ts`, `src/experiments/*/tests/*.spec.ts`         | `pnpm run test:browser` | A real page: canvas, layout, the console API |
+| Runner     | Files                                                          | Command                          | For                                          |
+| ---------- | -------------------------------------------------------------- | -------------------------------- | -------------------------------------------- |
+| Vitest     | `tests/unit/**/*.test.ts`, `src/experiments/*/tests/*.test.ts` | `pnpm run test:affected unit`    | A function and a number. No DOM.             |
+| Playwright | `tests/*.spec.ts`, `src/experiments/*/tests/*.spec.ts`         | `pnpm run test:affected browser` | A real page: canvas, layout, the console API |
+
+**Locally, run what CI runs on a pull request: the affected selection, never the
+whole suite.** The commands above are the default. `pnpm run test:unit` and
+`pnpm run test:browser` are the whole suites, which every push to `main` runs
+anyway — running them before pushing a one-piece change costs minutes and
+checks nothing CI will not check twice more, before and after the merge.
+Andrei, on a session that did exactly that: "feels wastefull to run the full
+suite of tests locally before pushing to GH only to see it run again before and
+after PR is merged."
 
 **A piece's tests live beside it**, in `src/experiments/<slug>/tests/`: its unit
 tests and its browser spec. `tests/` keeps only what spans pieces — `support/`,
@@ -29,7 +38,9 @@ fails one merge later. Run it locally with `pnpm run test:affected unit` —
 it diffs against `origin/main`, including uncommitted work — and add `--dry-run`
 to see the selection alone. `scripts/affected.ts` has the reasoning, and
 `tests/unit/affected.test.ts` holds the default, the shared-spec list in it, and
-the workflows. **A new spec in `tests/` fails that check until it is declared
+the workflows. A change that selects everything — the kit, `tests/support/`, a
+config — runs everything locally too, which is the selection being right rather
+than a reason to bypass it. **A new spec in `tests/` fails that check until it is declared
 shared**, because a shared spec only runs when everything does.
 
 Mid-change, run one module: `pnpm exec vitest rope`, `pnpm exec vitest run settings`, or
