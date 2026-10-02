@@ -100,7 +100,6 @@ const KIT_SELECTORS = [
   ".span",
   ".preset",
   ".copy",
-  ".corner",
   ".index",
   'input[type="range"]',
   'html[data-idle="true"]',
