@@ -212,3 +212,17 @@ Not asked of him in a message; written here so they outlive the session.
   toggle), or the default for new scenes?
 - **#135.** `garden` puts sprout and spiral beside moon, heart and leaf. Does
   either earn the flower's slot? Neither has been judged by eye in a field yet.
+
+## 2026-10-02 — after #268, #269 and #270
+
+> local avatar and github is the same picture. it was copied across when we
+> built the experiment or somewhere around that time, so the threshold should
+> be the same. threshold is increased in that pic to blank out the background
+> to leave the face as the only thing with the psyxels (mostly)
+>
+> flat/dither - ok
+> sprout - good
+> garden - good. rename to "life" and use this [preset URL]
+>
+> biggest doesn't seem to work as it claims - every psyxel is the same size and
+> "biggest" just makes them all big. see this [preset URL]
