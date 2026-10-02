@@ -67,9 +67,13 @@ for f in dev preview; do [ -s ".astro/$f.json" ] && echo "$f: $(cat .astro/$f.js
 
 **The discriminator is the port, and it needs no flag:**
 
-- A preview on **this worktree's derived review port** means somebody may be
-  looking at it right now. **Leave it**, or ask. `pnpm run preview` prints that
-  port; `tests/support/review-port.ts` derives it.
+- A preview on **this worktree's derived review port** is the one Andrei
+  reviews on. **If he asked for the wrap-up, stop it**: "if i ask for a wrap-up
+  it means we can stop the preview server" (2026-10-02). Asking for a wrap-up is
+  saying the review is over, so don't ask him again. If you are wrapping up on
+  your own initiative, the review may still be going: leave it, and say so.
+  `pnpm run preview` prints that port; `tests/support/review-port.ts` derives
+  it.
 - A server on **any other port** is a script's leftover — `pnpm run posters` and
   `pnpm run test:browser` both build and leave a preview running deliberately, so
   the next run skips the start. Stop it:
