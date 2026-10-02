@@ -52,7 +52,7 @@ for (const slug of PIECES) {
    * corner to itself. It used to be one bar in the bottom-right corner, where
    * sixteen presets buried everything that was not a scene.
    */
-  test(`${slug}: presets run down the left, the bar and its panel sit top right, about bottom right`, async ({
+  test(`${slug}: presets run down the left, the bar and its panel sit top right, about bottom right, all experiments bottom left`, async ({
     page,
   }) => {
     const experiment = await openHeld(page, slug, { idle: false })
@@ -67,7 +67,8 @@ for (const slug of PIECES) {
     const presets = await box("#ui .presets")
     const bar = await box("#ui .bar")
     const panel = await box("#ui .panel")
-    const about = await box("#ui > .corner")
+    const about = await box("#ui > .about")
+    const index = await box("#ui > .index")
 
     expect(presets.x, `${slug}: the presets are not on the left`).toBeLessThan(width / 4)
     expect(presets.y, `${slug}: the presets do not start at the top`).toBeLessThan(height / 8)
@@ -77,6 +78,8 @@ for (const slug of PIECES) {
     expect(about.y + about.height, `${slug}: about is not at the bottom`).toBeGreaterThan(height * 0.9)
     expect(panel.y, `${slug}: the panel is not beneath the bar`).toBeGreaterThanOrEqual(bar.y + bar.height - 1)
     expect(panel.y + panel.height, `${slug}: the panel runs over about`).toBeLessThanOrEqual(about.y + 1)
+    expect(index.x, `${slug}: all experiments is not on the left`).toBeLessThan(width / 10)
+    expect(index.y + index.height, `${slug}: all experiments is not at the bottom`).toBeGreaterThan(height * 0.9)
   })
 
   /**
@@ -98,7 +101,20 @@ for (const slug of PIECES) {
     const first = boxes[0]!
     const inFirst = boxes.filter((box) => Math.abs(box.x - first.x) < 1)
     const rest = boxes.slice(inFirst.length)
-    const floor = await page.locator("#ui").evaluate((element) => element.getBoundingClientRect().bottom)
+    // The presets stop short of `all experiments`, which has the corner beneath them.
+    const link = await page.locator("#ui > .index").evaluate((element) => element.getBoundingClientRect().top)
+    // And a column wraps only at its own limit. `max-height` is a calc() that
+    // getComputedStyle leaves unresolved, so let the column grow to it and read it.
+    const floor = await page.locator("#ui .presets").evaluate((element) => {
+      const column = element as HTMLElement
+      column.style.height = "100vh"
+      const limit = column.getBoundingClientRect().bottom
+      column.style.height = ""
+      return limit
+    })
+    // Checked on the cap rather than on where the presets happen to end, which
+    // clears the link at most heights even when the cap does not.
+    expect(floor, `${slug}: the presets can run over all experiments`).toBeLessThanOrEqual(link)
     // The first column is the leading presets, in order, with no gaps.
     expect(boxes.slice(0, inFirst.length), `${slug}: the first column is not the leading presets`).toEqual(inFirst)
     if (rest.length === 0) return
@@ -313,10 +329,11 @@ for (const slug of PIECES) {
     await experiment.api(({ api }) => api.panel(true))
     await expect(page.locator(".panel")).toBeVisible()
     await expect(page.locator(".panel .copy")).toHaveCount(0)
-    // The corner holds the way back to every piece, then the note: the only way
-    // back used to be through the note (Andrei, 2026-10-02).
-    await expect(page.locator("#ui > .corner > a")).toHaveText(["all experiments", "about"])
-    expect(await page.locator("#ui > .corner > .index").getAttribute("href")).toBe("/experiments/")
+    // The way back to every piece has a corner of its own: the only way back
+    // used to be through the note (Andrei, 2026-10-02).
+    await expect(page.locator("#ui > .about")).toHaveText("about")
+    await expect(page.locator("#ui > .index")).toHaveText("all experiments")
+    expect(await page.locator("#ui > .index").getAttribute("href")).toBe("/experiments/")
     // Numbered from one, because the digits load them.
     expect((await page.locator("#ui .presets .preset").allTextContents())[0]).toMatch(/^1 /)
   })
