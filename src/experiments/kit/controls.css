@@ -92,7 +92,8 @@ html[data-idle="true"] #ui {
 }
 
 #ui button,
-#ui .corner a {
+#ui > .index,
+#ui > .about {
   margin: 0;
   padding: 0.3rem 0.6rem;
   font: inherit;
@@ -105,7 +106,8 @@ html[data-idle="true"] #ui {
   backdrop-filter: blur(6px);
 }
 
-#ui .corner a {
+#ui > .index,
+#ui > .about {
   text-decoration: none;
 }
 
@@ -164,7 +166,9 @@ html[data-idle="true"] #ui > * {
   align-content: flex-start;
   align-items: stretch;
   gap: 0.35rem;
-  max-height: 100%;
+  /* Short of `all experiments` in the corner beneath, by the same 2.6rem the
+     panel leaves above `about`. */
+  max-height: calc(100% - 2.6rem);
 }
 
 #ui .preset {
@@ -185,11 +189,14 @@ html[data-idle="true"] #ui > * {
   max-height: calc(100vh - 2.5rem - 2.4rem - 2.6rem - 1.6rem);
 }
 
-#ui > .corner {
+#ui > .about {
   right: 0;
   bottom: 0;
-  display: flex;
-  gap: 0.35rem;
+}
+
+#ui > .index {
+  left: 0;
+  bottom: 0;
 }
 
 /* **Boxed**: each group a box of its own, stacked down the right edge and
