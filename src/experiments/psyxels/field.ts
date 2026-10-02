@@ -36,7 +36,20 @@ import type { Settings } from "@/experiments/psyxels/settings"
  */
 
 /** No psyx narrower than this many screen pixels. Below it a mark is a smudge and the count explodes. */
-const MIN_PX = 3
+export const MIN_PX = 3
+
+/** Most halvings between the biggest psyx and the smallest. */
+export const MAX_LEVELS = 5
+
+/** How many times the biggest size halves to reach the smallest, whole and in range. */
+export function levelsBetween(finest: number, coarse: number): number {
+  const halvings = Math.round(Math.log2(coarse / finest))
+  return Number.isFinite(halvings) ? Math.max(0, Math.min(MAX_LEVELS, halvings)) : 0
+}
+
+/** How many times a square may be quartered in this scene — what the packing reads. */
+export const levelsOf = (settings: Pick<Settings, "finest" | "coarse">): number =>
+  levelsBetween(settings.finest, settings.coarse)
 
 /**
  * One psyx: a square of the picture, and a small mind of its own.
@@ -303,7 +316,7 @@ function makeNode(
  * variety redundant: they act in different places.
  */
 function decideSplit(node: Node, settings: Settings): boolean {
-  if (node.depth >= settings.levels) return false
+  if (node.depth >= levelsOf(settings)) return false
   if (node.size / 2 < MIN_PX) return false
   const threshold = 0.5 * (1 - settings.detail) + 0.012
 

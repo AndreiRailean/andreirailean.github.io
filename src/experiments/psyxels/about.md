@@ -72,7 +72,7 @@ divide and does anyway is what makes the field read as populated rather than
 computed. It stops short of dividing everything, deliberately: read as a raw
 probability it reached certainty, and the control called _variety_ then produced
 a field of one size with no variety in it at all. A picture of nothing but fine
-psyxels is still reachable — that is what `coarse` and `levels` are for, because
+psyxels is still reachable — that is what the two ends of _sizes_ are for, because
 it is a statement about which sizes exist rather than about how mixed they are.
 
 Both questions are asked of every square on its own clock, which is what the
@@ -262,7 +262,7 @@ white, or hallucinating, without a psyx moving.
 Everything above divides cleanly in two, and the division is enforced rather than
 observed.
 
-The **packing** — subject, coarseness, levels, detail, variety — is a still
+The **packing** — subject, sizes, detail, variety — is a still
 question asked of a still picture. It decides where the psyxels are and how big.
 
 The **life** — colour, breathing, frames, rates, weight, the thresholds — is

@@ -170,7 +170,7 @@ flatten` at first, which looks right on a letter — ink is 1 almost everywhere 
   divided, and the setting called _variety_ produced a field of one size with no
   variety in it — reported by the piece's author, who read the description and
   then the field and found they disagreed. `splitChance` caps it; a field of
-  nothing but fine psyxels is reached with `coarse` and `levels`, which is a
+  nothing but fine psyxels is reached with the two ends of `sizes`, which is a
   statement about which sizes exist rather than about how mixed they are.
 - **A soft boundary costs psyxels, and half the control cost too many.** Letting
   an edge square decline to subdivide is the only way a _coarse_ mark ends up
@@ -305,6 +305,18 @@ flatten` at first, which looks right on a letter — ink is 1 almost everywhere 
   put a blur on the dithered erase: it averages the pattern back into the flat
   fill it replaced. Presets `trail flat` and `trail dither` are the comparison,
   identical but for the fade.
+- **`biggest` claimed a range it did not have.** It was a slider beside
+  `levels`, and at `levels: 0` — which `luna` ships with — every psyx was the
+  biggest size, so the control only made them all big: "biggest doesn't seem to
+  work as it claims". Smallest and biggest are one range now, `finest` and
+  `coarse` on one log track. `finest` is stored and `levelsOf` reads the
+  halvings back, because a square is one psyx or four and the smallest size is
+  always the biggest halved a whole number of times; the validator puts it on
+  the nearest halving. The retired `levels` slot is still read and becomes
+  `finest`, and so is `levels` from the console or a named query. Sharing a
+  track gave `coarse` the range's finer grid and a new slot; its old floor is
+  `COARSEST_MIN`, held in the validator. Note that `finest` below `MIN_PX` on
+  screen is a size the packing will not draw.
 - **`run()` draws its last twenty steps.** The glow is gathered _between_ frames,
   so a fast-forward that draws only its final one leaves the buffer holding a
   single frame — a poster with no glow on a scene that has plenty.
@@ -482,5 +494,5 @@ Headless runs without a GPU, so trust ratios rather than absolute rates. The cos
 is dominated by the number of psyxels and almost not at all by their size: about
 1.4µs a psyx — plus a second draw call for each one mid-transition — so the
 landing scene's 1,300 draw in 2.5ms and `swarm`'s 7,700 in 9ms. When a scene is
-slow, read `psyxels` before anything else; `coarse` and `levels` are what move
+slow, read `psyxels` before anything else; the two ends of `sizes` are what move
 it.
