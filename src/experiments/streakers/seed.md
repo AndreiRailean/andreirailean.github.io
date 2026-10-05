@@ -29,3 +29,24 @@ describes the work.
 > don't appear permanent in structure on close inspection.
 > A particular variant I want to see is a screen filled with many such lines, so
 > it appears full and moving.
+
+## 2026-10-06 — first round
+
+> looking good. hue, line sizes and dot sizes don't appear to be doing much. i
+> like this one.
+> http://100.117.55.104:4573/experiments/streakers/?s=__94CZR5aALAID4IDAhgO0AAH
+
+> call that one "saturn"
+
+## Questions I could not answer, and what I assumed
+
+- **Should saturn be the primary?** It is preset 2. Position one is what a
+  bare address lands on and what the poster and the note read, so promoting it
+  is his call; it is a one-line move in `presets.ts`.
+- **"Hue doesn't do much"** — it only tinted the controls. I took that as
+  wanting colour in the dots, so `tint` (0 stays white) and `hue spread` (per
+  line) were added rather than repurposing hue. Every preset but star,
+  rosette and weave keeps white dots.
+- **Ring with parallel aim wastes most emitters**: those on the downstream arc
+  point away from the screen (from all round: 23 of 160 cross). Kept as is;
+  placing parallel emitters on the upstream arc only is the alternative.

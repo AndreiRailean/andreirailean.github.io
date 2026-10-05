@@ -33,6 +33,8 @@ type Line = {
   hits: boolean
   /** This line's dot radius before per-dot variety. */
   radius: number
+  /** Degrees off the scene's hue, rounded so lines sharing a colour share a fill. */
+  hue: number
   /** Mean seconds between emissions. */
   meanGap: number
   /** Next emission time. */
@@ -152,7 +154,8 @@ function buildLines(settings: Settings, width: number, height: number): Line[] {
     const dx = Math.cos(aim)
     const dy = Math.sin(aim)
     const speed = slow * Math.pow(fast / slow, pick())
-    const radius = settings.size * Math.exp(settings.lineSizes * 0.6 * gaussian(pick))
+    const radius = settings.size * spreadFactor(settings.lineSizes, pick())
+    const hue = Math.round(((pick() * 2 - 1) * settings.hues) / 2) * 2
     const meanGap = (settings.gapBy === "distance" ? settings.gap / speed : settings.gap / reference) || 1
 
     const crossing = clip(ox, oy, dx, dy, -pad, -pad, width + pad, height + pad)
@@ -167,6 +170,7 @@ function buildLines(settings: Settings, width: number, height: number): Line[] {
       exit: crossing?.exit ?? 0,
       hits: crossing !== null,
       radius,
+      hue,
       meanGap,
       next: 0,
       times: [],
@@ -196,8 +200,18 @@ function fill(line: Line, now: number, shape: number, dotSizes: number) {
   line.next = t
 }
 
+/**
+ * A size multiplier, uniform in log between `1/sqrt(r)` and `sqrt(r)`, where `r`
+ * is the ratio between the largest and smallest: 1 at a spread of 0 and
+ * `SIZE_RATIO` at 1. Uniform rather than lognormal so the panel's end means a
+ * stated ratio — a lognormal of sigma 0.6 came out as ±19% at 0.3, which on a
+ * 0.7px dot is invisible, and was reported so. The spread at a given value is about what the lognormal gave; what changed is how far the end reaches.
+ */
+export const SIZE_RATIO = 16
+const spreadFactor = (spread: number, u: number) => (spread > 0 ? Math.pow(SIZE_RATIO, spread * (u - 0.5)) : 1)
+
 const dotRadius = (line: Line, dotSizes: number) =>
-  dotSizes > 0 ? line.radius * Math.exp(dotSizes * 0.6 * gaussian(line.rng)) : line.radius
+  dotSizes > 0 ? line.radius * spreadFactor(dotSizes, line.rng()) : line.radius
 
 export function createStreakers(canvas: HTMLCanvasElement, initial: Settings) {
   const context = canvas.getContext("2d")
@@ -229,7 +243,7 @@ export function createStreakers(canvas: HTMLCanvasElement, initial: Settings) {
 
   function rebuild(empty = false) {
     shape = 1 / gapCv(settings.evenness) ** 2
-    lines = buildLines(settings, width, height)
+    lines = buildLines(settings, width, height).sort((a, b) => a.hue - b.hue)
     for (const line of lines) {
       if (empty) {
         line.times.length = 0
@@ -280,10 +294,21 @@ export function createStreakers(canvas: HTMLCanvasElement, initial: Settings) {
       for (const line of lines) ctx.fillRect(line.ox - 3, line.oy - 3, 6, 6)
     }
 
-    ctx.fillStyle = "#fff"
-    ctx.beginPath()
     let count = 0
+    // One fill per colour: lines are sorted by hue offset at rebuild, so a run
+    // of equal offsets shares a path. Untinted, every line is one run.
+    const tinted = settings.tint > 0
+    let current = NaN
     for (const line of lines) {
+      const key = tinted ? line.hue : 0
+      if (key !== current) {
+        if (current === current) ctx.fill()
+        current = key
+        ctx.fillStyle = tinted
+          ? `hsl(${settings.hue + key} ${Math.round(settings.tint * 90)}% ${Math.round(100 - settings.tint * 40)}%)`
+          : "#fff"
+        ctx.beginPath()
+      }
       const { times, radii, speed, ox, oy, dx, dy, enter } = line
       // Oldest first, so distance falls as the index rises: everything before
       // the entry point is still off screen upstream and can be skipped whole.
@@ -299,7 +324,7 @@ export function createStreakers(canvas: HTMLCanvasElement, initial: Settings) {
         count++
       }
     }
-    ctx.fill()
+    if (current === current) ctx.fill()
     drawn = count
   }
 
@@ -339,6 +364,9 @@ export function createStreakers(canvas: HTMLCanvasElement, initial: Settings) {
     const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0)
     const rMean = avg(radii)
     const rSd = Math.sqrt(avg(radii.map((r) => (r - rMean) ** 2)))
+    const sorted = [...radii].sort((a, b) => a - b)
+    const at = (q: number) => sorted[Math.floor(q * (sorted.length - 1))] ?? 0
+    const lineRadii = live.map((line) => line.radius)
     const round = (v: number, d = 2) => Number(v.toFixed(d))
     return {
       lines: lines.length,
@@ -350,7 +378,14 @@ export function createStreakers(canvas: HTMLCanvasElement, initial: Settings) {
       spacingPx: round(avg(spacings), 1),
       intervalCv: round(avg(cvs)),
       expectedCv: round(gapCv(settings.evenness)),
-      radius: { mean: round(rMean), cv: round(rMean ? rSd / rMean : 0) },
+      radius: {
+        mean: round(rMean),
+        cv: round(rMean ? rSd / rMean : 0),
+        min: round(at(0)),
+        max: round(at(1)),
+        lineRatio: round(Math.max(...lineRadii) / Math.min(...lineRadii)),
+      },
+      colours: new Set(live.map((line) => line.hue)).size,
       frame: { width, height },
       fps: Math.round(fps),
       running,

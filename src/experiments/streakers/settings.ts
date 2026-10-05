@@ -56,7 +56,12 @@ export type Settings = {
   lineSizes: number
   /** How much dots on one line differ in size from each other. */
   dotSizes: number
+  /** Hue of the controls, and of the dots once `tint` is above 0. */
   hue: number
+  /** How strongly the dots take the hue. 0 is white. */
+  tint: number
+  /** Degrees each line's hue may stray from `hue`, at random, line by line. */
+  hues: number
   seed: number
 }
 
@@ -237,7 +242,7 @@ export const CONTROLS: Control[] = [
     max: 1,
     step: 0.05,
     format: (v) => v.toFixed(2),
-    hint: "How much lines differ from each other in dot size. 0 gives every line the same dots.",
+    hint: "How much lines differ from each other in dot size. 0 gives every line the same dots; 1 puts sixteen times the radius between the smallest line and the largest.",
   },
   {
     kind: "slider",
@@ -248,7 +253,7 @@ export const CONTROLS: Control[] = [
     max: 1,
     step: 0.05,
     format: (v) => v.toFixed(2),
-    hint: "How much dots on one line differ from each other in size. 0 keeps a line's dots identical.",
+    hint: "How much dots on one line differ from each other in size. 0 keeps a line's dots identical; 1 puts sixteen times the radius between a line's smallest dot and its largest.",
   },
   {
     kind: "slider",
@@ -259,7 +264,30 @@ export const CONTROLS: Control[] = [
     max: 360,
     step: 1,
     format: (v) => `${Math.round(v)}°`,
-    hint: "Colour of these controls. The dots stay white.",
+    hint: "Colour of these controls, and of the dots as far as tint lets it.",
+  },
+  {
+    kind: "slider",
+    key: "tint",
+    label: "tint",
+    group: "dots",
+    min: 0,
+    max: 1,
+    step: 0.05,
+    format: (v) => v.toFixed(2),
+    hint: "How strongly the dots take the hue. 0 leaves them white; 1 is the hue at full strength.",
+  },
+  {
+    kind: "slider",
+    key: "hues",
+    label: "hue spread",
+    group: "dots",
+    min: 0,
+    max: 180,
+    step: 1,
+    format: (v) => `±${Math.round(v)}°`,
+    hint: "How far each line's colour may stray from the hue, line by line. Needs some tint to show.",
+    inert: (settings: Settings) => settings.tint === 0,
   },
 ]
 
@@ -281,6 +309,8 @@ export const DEFAULT_SETTINGS: Settings = {
   lineSizes: 0,
   dotSizes: 0,
   hue: 200,
+  tint: 0,
+  hues: 0,
   seed: 1,
 }
 
@@ -299,6 +329,8 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   lineSizes: { min: 0, max: 1, step: 0.05 },
   dotSizes: { min: 0, max: 1, step: 0.05 },
   hue: { min: 0, max: 360, step: 1 },
+  tint: { min: 0, max: 1, step: 0.05 },
+  hues: { min: 0, max: 180, step: 1 },
 }
 
 export const BOUNDS: Record<NumericKey, { min: number; max: number }> = {
@@ -371,6 +403,7 @@ const GEOMETRY_KEYS = [
   "evenness",
   "lineSizes",
   "dotSizes",
+  "hues",
   "seed",
 ] as const satisfies readonly (keyof Settings)[]
 
@@ -394,10 +427,16 @@ export const REGISTRY: readonly Slot[] = [
   { key: "gapBy", kind: "enum", options: ["distance", "time"] },
   { key: "evenness", kind: "num", grid: 0.05, origin: 0, bits: 5 },
   { key: "size", kind: "num", grid: 0.1, origin: 0.3, bits: 8 },
-  { key: "lineSizes", kind: "num", grid: 0.05, origin: 0, bits: 5 },
-  { key: "dotSizes", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  // Retired 2026-10-06: 1 meant a lognormal of sigma 0.6, too weak to see on
+  // small dots. The same keys are appended below at 1 meaning a 16x ratio.
+  { key: "lineSizes", kind: "num", grid: 0.05, origin: 0, bits: 5, retired: true },
+  { key: "dotSizes", kind: "num", grid: 0.05, origin: 0, bits: 5, retired: true },
   { key: "hue", kind: "num", grid: 1, origin: 0, bits: 9 },
   { key: "seed", kind: "num", grid: 1, origin: 0, bits: 20 },
+  { key: "lineSizes", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "dotSizes", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "tint", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "hues", kind: "num", grid: 1, origin: 0, bits: 8 },
 ]
 
 export function settingsToQuery(settings: Settings): URLSearchParams {

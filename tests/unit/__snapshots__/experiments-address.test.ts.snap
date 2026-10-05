@@ -327,6 +327,40 @@ exports[`starry-night > has not edited a slot in place 1`] = `
 
 exports[`starry-night > retires a slot by appending to the retired list, never by editing one 1`] = `[]`;
 
+exports[`streakers > has not edited a slot in place 1`] = `
+[
+  "layout enum edge|ring",
+  "emitters num grid=1 origin=1 bits=10",
+  "heading num grid=1 origin=0 bits=9",
+  "placement enum even|random",
+  "aim enum centre|parallel",
+  "twist num grid=1 origin=-90 bits=8",
+  "spread num grid=1 origin=0 bits=7",
+  "ring num grid=0.05 origin=0.1 bits=6",
+  "slowest num grid=0.1 origin=0.5 bits=10",
+  "fastest num grid=0.1 origin=0.5 bits=10",
+  "gap num grid=1 origin=2 bits=10",
+  "gapBy enum distance|time",
+  "evenness num grid=0.05 origin=0 bits=5",
+  "size num grid=0.1 origin=0.3 bits=8",
+  "lineSizes num grid=0.05 origin=0 bits=5",
+  "dotSizes num grid=0.05 origin=0 bits=5",
+  "hue num grid=1 origin=0 bits=9",
+  "seed num grid=1 origin=0 bits=20",
+  "lineSizes num grid=0.05 origin=0 bits=5",
+  "dotSizes num grid=0.05 origin=0 bits=5",
+  "tint num grid=0.05 origin=0 bits=5",
+  "hues num grid=1 origin=0 bits=8",
+]
+`;
+
+exports[`streakers > retires a slot by appending to the retired list, never by editing one 1`] = `
+[
+  "14 lineSizes",
+  "15 dotSizes",
+]
+`;
+
 exports[`walkers > has not edited a slot in place 1`] = `
 [
   "flow enum through|wander|gather",
