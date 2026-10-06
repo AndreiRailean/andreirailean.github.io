@@ -40,9 +40,8 @@ describes the work.
 
 ## Questions I could not answer, and what I assumed
 
-- **Should saturn be the primary?** It is preset 2. Position one is what a
-  bare address lands on and what the poster and the note read, so promoting it
-  is his call; it is a one-line move in `presets.ts`.
+- ~~Should saturn be the primary?~~ Answered 2026-10-06: "full", renamed
+  "dimensions", is the primary; saturn stays second.
 - **"Hue doesn't do much"** — it only tinted the controls. I took that as
   wanting colour in the dots, so `tint` (0 stays white) and `hue spread` (per
   line) were added rather than repurposing hue. Every preset but star,
@@ -50,3 +49,10 @@ describes the work.
 - **Ring with parallel aim wastes most emitters**: those on the downstream arc
   point away from the screen (from all round: 23 of 160 cross). Kept as is;
   placing parallel emitters on the upstream arc only is the alternative.
+
+## 2026-10-06 — second round
+
+> make 4 "full" the first and primary preset but name it "dimensions". saturn
+> should stay number 2. "rosette" number 3.
+>
+> i don't understand the question about ring and emitters
