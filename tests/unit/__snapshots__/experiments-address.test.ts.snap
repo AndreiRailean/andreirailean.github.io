@@ -356,6 +356,7 @@ exports[`streakers > has not edited a slot in place 1`] = `
 
 exports[`streakers > retires a slot by appending to the retired list, never by editing one 1`] = `
 [
+  "4 aim",
   "14 lineSizes",
   "15 dotSizes",
 ]

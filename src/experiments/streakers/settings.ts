@@ -22,7 +22,6 @@ export { keysOf } from "@/experiments/kit/controls"
  */
 export type Layout = "edge" | "ring"
 export type Placement = "even" | "random"
-export type Aim = "centre" | "parallel"
 export type GapBy = "distance" | "time"
 
 export type Settings = {
@@ -33,9 +32,7 @@ export type Settings = {
   heading: number
   /** How the emitters share out their edge or their circle. */
   placement: Placement
-  /** On a ring: whether lines head for the middle or all share the heading. */
-  aim: Aim
-  /** On a ring aimed at the middle: degrees every line turns off it, alike. */
+  /** On a ring: degrees every line turns off the middle, alike. */
   twist: number
   /** Degrees each line's own heading may stray, at random, from what it was aimed at. */
   spread: number
@@ -65,14 +62,13 @@ export type Settings = {
   seed: number
 }
 
-export type NumericKey = Exclude<keyof Settings, "layout" | "placement" | "aim" | "gapBy">
+export type NumericKey = Exclude<keyof Settings, "layout" | "placement" | "gapBy">
 
 export type Control = KitControl<string & keyof Settings>
 export type NumericControl = SliderControl<NumericKey> | RangeControl<NumericKey>
 
 export const LAYOUTS: Layout[] = ["edge", "ring"]
 export const PLACEMENTS: Placement[] = ["even", "random"]
-export const AIMS: Aim[] = ["centre", "parallel"]
 export const GAP_BYS: GapBy[] = ["distance", "time"]
 
 const SEED_BOUNDS = { min: 0, max: 999_999 }
@@ -125,20 +121,8 @@ export const CONTROLS: Control[] = [
     max: 359,
     step: 1,
     format: (v) => `${Math.round(v)}°`,
-    hint: "Which way the lines travel. 0 is left to right, 90 top to bottom, 45 a diagonal from the top-left corner. On a ring it is used only when the lines are aimed parallel.",
-    inert: (settings: Settings) => settings.layout === "ring" && settings.aim === "centre",
-  },
-  {
-    kind: "choice",
-    key: "aim",
-    label: "aim",
-    group: "emitters",
-    options: [
-      { value: "centre", label: "middle" },
-      { value: "parallel", label: "parallel" },
-    ],
-    hint: "On a ring: whether every line heads for the middle of the circle, which makes a star, or all follow the heading, which makes one stream fed from all round.",
-    inert: onRing,
+    hint: "Which way the lines travel. 0 is left to right, 90 top to bottom, 45 a diagonal from the top-left corner. Edge only: on a ring every line is aimed at the middle, give or take twist and scatter.",
+    inert: (settings: Settings) => settings.layout === "ring",
   },
   {
     kind: "slider",
@@ -161,8 +145,8 @@ export const CONTROLS: Control[] = [
     max: 90,
     step: 1,
     format: (v) => `${Math.round(v)}°`,
-    hint: "On a ring aimed at the middle: how far every line turns off the middle, all by the same amount. 0 passes every line through the centre. A few degrees opens a hole there, and the lines' crossings draw a circle round it.",
-    inert: (settings: Settings) => settings.layout !== "ring" || settings.aim !== "centre",
+    hint: "On a ring: how far every line turns off the middle, all by the same amount. 0 passes every line through the centre. A few degrees opens a hole there, and the lines' crossings draw a circle round it.",
+    inert: onRing,
   },
   {
     kind: "slider",
@@ -296,7 +280,6 @@ export const DEFAULT_SETTINGS: Settings = {
   emitters: 10,
   heading: 0,
   placement: "random",
-  aim: "centre",
   twist: 0,
   spread: 0,
   ring: 1.2,
@@ -362,7 +345,6 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
     ...merged,
     layout: oneOf(LAYOUTS, merged.layout, base.layout),
     placement: oneOf(PLACEMENTS, merged.placement, base.placement),
-    aim: oneOf(AIMS, merged.aim, base.aim),
     gapBy: oneOf(GAP_BYS, merged.gapBy, base.gapBy),
   }
 
@@ -392,7 +374,6 @@ const GEOMETRY_KEYS = [
   "emitters",
   "heading",
   "placement",
-  "aim",
   "twist",
   "spread",
   "ring",
@@ -417,7 +398,9 @@ export const REGISTRY: readonly Slot[] = [
   { key: "emitters", kind: "num", grid: 1, origin: 1, bits: 10 },
   { key: "heading", kind: "num", grid: 1, origin: 0, bits: 9 },
   { key: "placement", kind: "enum", options: ["even", "random"] },
-  { key: "aim", kind: "enum", options: ["centre", "parallel"] },
+  // Retired 2026-10-06: a ring's "parallel" aim was the edge layout with half
+  // its emitters pointing away from the screen. Every ring now aims at the middle.
+  { key: "aim", kind: "enum", options: ["centre", "parallel"], retired: true },
   { key: "twist", kind: "num", grid: 1, origin: -90, bits: 8 },
   { key: "spread", kind: "num", grid: 1, origin: 0, bits: 7 },
   { key: "ring", kind: "num", grid: 0.05, origin: 0.1, bits: 6 },

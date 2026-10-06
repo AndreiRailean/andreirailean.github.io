@@ -147,7 +147,7 @@ function buildLines(settings: Settings, width: number, height: number): Line[] {
       const r = settings.ring * halfDiag
       ox = cx + Math.cos(phi) * r
       oy = cy + Math.sin(phi) * r
-      aim = settings.aim === "centre" ? phi + Math.PI + settings.twist * DEG : theta
+      aim = phi + Math.PI + settings.twist * DEG
     }
 
     aim += (pick() * 2 - 1) * settings.spread * DEG

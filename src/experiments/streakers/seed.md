@@ -46,9 +46,10 @@ describes the work.
   wanting colour in the dots, so `tint` (0 stays white) and `hue spread` (per
   line) were added rather than repurposing hue. Every preset but star,
   rosette and weave keeps white dots.
-- **Ring with parallel aim wastes most emitters**: those on the downstream arc
-  point away from the screen (from all round: 23 of 160 cross). Kept as is;
-  placing parallel emitters on the upstream arc only is the alternative.
+- ~~Ring with parallel aim wastes most emitters~~ Settled 2026-10-06: parallel
+  aim on a ring removed. "All follow the same angles" is read as the same
+  angle off the middle — twist — rather than one shared heading, which is the
+  edge layout.
 
 ## 2026-10-06 — second round
 
