@@ -55,5 +55,9 @@ describes the work.
 
 > make 4 "full" the first and primary preset but name it "dimensions". saturn
 > should stay number 2. "rosette" number 3.
->
-> i don't understand the question about ring and emitters
+
+## 2026-10-06 — third round
+
+> add 1,2,3,7,9 to showcase
+> add this as "club" http://100.117.55.104:4573/experiments/streakers?s=-_-fQJ3ACzWkgDEKVgJ0ugACtKUtA
+> add club to showcase as well

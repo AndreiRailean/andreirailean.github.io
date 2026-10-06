@@ -109,8 +109,10 @@ function buildLines(settings: Settings, width: number, height: number): Line[] {
   const hx = Math.cos(theta)
   const hy = Math.sin(theta)
 
-  // Room for the largest dot to be wholly off screen before it is dropped.
-  const pad = settings.size * 6 + 4
+  // Room for the largest dot the spreads can make to be wholly off screen
+  // before it is drawn and after it is dropped. A fixed multiple of `size` let
+  // club's 200px discs pop in and vanish half on screen.
+  const pad = settings.size * Math.sqrt(SIZE_RATIO ** settings.lineSizes * SIZE_RATIO ** settings.dotSizes) + 4
 
   // Speeds in px/s. Logarithmic between the ends, because the ends are a ratio
   // apart — up to two hundred — and a linear draw would make nearly every line
