@@ -63,7 +63,12 @@ export type WallEntry = {
  * crossing pieces tears one down and mounts another. Judged worth it, and the
  * order is a source edit away from any other opinion.
  *
- * **Crowd's `catch me` leads, on the rule Bubbles and Embers led on:
+ * **Streakers' `dimensions` leads, on the rule every lead has: `/showcase/`
+ * is entry zero and that is the newest published scene.** It is the piece's
+ * primary. Its other five — saturn, rosette, random star, weave and club — are
+ * woven further down. Andrei named all six; the piece has ten presets.
+ *
+ * **Crowd's `catch me` led before it, on the rule Bubbles and Embers led on:
  * `/showcase/` is entry zero and that is the newest published scene.** It is
  * also the piece's primary. `keep left` follows it, and `parade`, `teams`,
  * `runner` and `street run` are woven further down. Bubbles comes after
@@ -100,6 +105,15 @@ export type WallEntry = {
  * nothing and are here.
  */
 export const WALL: readonly WallEntry[] = [
+  {
+    id: "streakers-dimensions",
+    title: "dimensions",
+    piece: "streakers",
+    pieceTitle: "Streakers",
+    note: "A screen filled with lines of dots, all travelling one way, each line at its own speed and letting its dots go at random — plainly lines, and never a fixed structure.",
+    runner: "streakers.7286d5bcf698.js",
+    scene: "-_-fQDRhKtAFgPScGgAxpAABaAAAA",
+  },
   {
     id: "crowd-catch-me",
     title: "catch me",
@@ -144,6 +158,15 @@ export const WALL: readonly WallEntry[] = [
     note: "A busy square at eye level, walked slowly, stopping to look, with three people alongside. Everyone is a white circle and the only thing you know about them is how high their head is and where it is going.",
     runner: "crowd.55724c73cfc2.js",
     scene: "____cF8syctZLJ6ppCqihtGGgAoXoRSe7",
+  },
+  {
+    id: "streakers-saturn",
+    title: "saturn",
+    piece: "streakers",
+    pieceTitle: "Streakers",
+    note: "Seventy-seven fine lines rising slowly to the upper right, the dots a little more even than random.",
+    runner: "streakers.7286d5bcf698.js",
+    scene: "-_-fQAmUetAFgEB8EBgR2gAA5AAAA",
   },
   {
     id: "flotsam-offing",
@@ -191,6 +214,15 @@ export const WALL: readonly WallEntry[] = [
     scene: "____f0vRtmOcQjJtlcCJmt8jAYgo-EQQAsXQioQDI",
   },
   {
+    id: "streakers-rosette",
+    title: "rosette",
+    piece: "streakers",
+    pieceTitle: "Streakers",
+    note: "Lines from a ring all round the screen, each turned the same few degrees off the middle, so their crossings draw a hole.",
+    runner: "streakers.7286d5bcf698.js",
+    scene: "-_-fQI7gA0AGAjJsFAA2WAABIAMHg",
+  },
+  {
     id: "crowd-the-street",
     title: "the street",
     piece: "crowd",
@@ -216,6 +248,15 @@ export const WALL: readonly WallEntry[] = [
     note: "Walking in a parade, at the pace of everybody around me, with a crowd three deep standing on both kerbs to watch it pass. The stationary crowd is what moves.",
     runner: "crowd.9810eb51f4a2.js",
     scene: "_-__7___QDvIAQUB6pwJiyyh1fA4Aoo15wA40gBoAAkAFQ0oACgAAA4",
+  },
+  {
+    id: "streakers-random-star",
+    title: "random star",
+    piece: "streakers",
+    pieceTitle: "Streakers",
+    note: "Emitters placed at random on a circle off screen, every line through the middle.",
+    runner: "streakers.7286d5bcf698.js",
+    scene: "-_-fQIdgCtAFgtK8GABEUAAAoAAAA",
   },
   {
     id: "bubbles-foam",
@@ -290,6 +331,15 @@ export const WALL: readonly WallEntry[] = [
     scene: "_-__7___QE_IyQUJSxwJixiiPDAUApFxryAUADxoAw4UCiApQCgAAA4",
   },
   {
+    id: "streakers-weave",
+    title: "weave",
+    piece: "streakers",
+    pieceTitle: "Streakers",
+    note: "Five hundred lines at random angles in shades of one colour, crossing every which way until the screen is full.",
+    runner: "streakers.7286d5bcf698.js",
+    scene: "-_-fQL5gCtPFgPOsHAAp9AACpgLPA",
+  },
+  {
     id: "starry-night-clay",
     title: "clay",
     piece: "starry-night",
@@ -342,6 +392,15 @@ export const WALL: readonly WallEntry[] = [
     note: "A script ampersand, held still and lit from within: no frame changes at all, only breathing.",
     runner: "psyxels.3d3ba1c0d12f.js",
     scene: "______9AnD0ZGwGJitjvH5woAWmBngBcAfshQdgBaK6djtJUxyI2Q",
+  },
+  {
+    id: "streakers-club",
+    title: "club",
+    piece: "streakers",
+    pieceTitle: "Streakers",
+    note: "Huge discs in every colour, sparse and drifting across each other at random angles.",
+    runner: "streakers.7286d5bcf698.js",
+    scene: "-_-fQJ3ACzWkgDEKVgJ0ugACtKUtA",
   },
   {
     id: "crowd-street-run",
