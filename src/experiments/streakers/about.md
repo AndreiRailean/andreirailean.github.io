@@ -3,7 +3,8 @@ slug: streakers
 title: Streakers
 summary: Lines of dots streaming out of emitters at the edge of the screen, each line at its own speed, its dots let go at random intervals — lines you can plainly see that never hold still long enough to be a structure.
 started: 2026-10-05
-updated: 2026-10-05
+updated: 2026-10-06
+poster: ./poster.webp
 tags:
   - canvas
   - generative
