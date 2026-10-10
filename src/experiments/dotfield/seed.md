@@ -44,6 +44,15 @@ describes the work.
 > dangler. i like that but I'm also interested in seeing tall stalks that don't
 > curl but just bend at the springy base, like ski markers in slalom
 
+## 2026-10-10 — third round
+
+> meadow:
+> http://100.117.55.104:4624/experiments/dotfield/?s=vov___9wLjQmSXxGDcXKlh4qgUjIwAAEAAKsiEZNcDwhNVCRGAAG
+> white:
+> http://100.117.55.104:4624/experiments/dotfield/?s=vov___9wOgBcqyaCCIAKhNokkKAZAAAUAAJQOYZPANBaFGRRaApi
+>
+> add all presets to showcase. open PR and merge when green
+
 ## Questions I could not answer, and what I assumed
 
 - **Which lattice is "hex" and which is "triangle"?** A field of dots on a
