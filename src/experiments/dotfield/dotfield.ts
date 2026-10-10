@@ -12,7 +12,7 @@
  * **The wind is `wind.ts`'s**, sampled once per column per frame.
  *
  * **Seen from straight above, orthographic.** An upright column is its top, a
- * dot. A leaning one is drawn as its side in `LAYERS` bands from root to top,
+ * dot. A leaning one is drawn as its side in `segments` bands from root to top,
  * each band a stroke one diameter wide, every column's band k drawn before any
  * column's band k+1 — so a higher part of one column covers a lower part of its
  * neighbour, which is the only occlusion that matters from above. Bands darken
@@ -25,8 +25,6 @@ import { createWind } from "@/experiments/dotfield/wind"
 
 const TAU = Math.PI * 2
 
-/** Bands a side is drawn in, root to top. */
-const LAYERS = 4
 /** Hue buckets are this many degrees wide, so a field of near-alike columns shares a few fills. */
 const HUE_BUCKET = 2
 /** Tallest to shortest at `heights` 1. */
@@ -196,6 +194,8 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
 
   // Columns, structure of arrays.
   let count = 0
+  /** Bands a side is drawn in, root to top: `segments`, read at rebuild. */
+  let layers = initial.segments
   let rx = new Float32Array(0)
   let ry = new Float32Array(0)
   let px = new Float32Array(0)
@@ -225,6 +225,7 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
   }
 
   function rebuildColours() {
+    layers = settings.segments
     const noise = makeNoise(makeRng(hashSeed(settings.seed, 0xc0)))
     const buckets = new Map<number, number>()
     bucketHues = []
@@ -244,9 +245,9 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
     order = Uint32Array.from({ length: count }, (_, i) => i).sort((a, b) => bucketOf[a]! - bucketOf[b]!)
     const sat = settings.saturation
     sideFill = bucketHues.map((h) =>
-      Array.from({ length: LAYERS }, (_, k) => {
+      Array.from({ length: layers }, (_, k) => {
         // Darker toward the ground: the band's midpoint height sets its light.
-        const t = (k + 0.5) / LAYERS
+        const t = (k + 0.5) / layers
         return `hsl(${h.toFixed(1)} ${sat}% ${(14 + 40 * t).toFixed(1)}%)`
       }),
     )
@@ -378,14 +379,22 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
   }
 
   const tip = new Float32Array(2)
-  /** Projected band ends, LAYERS + 1 per column, and each top's height. */
+  /** Projected band ends, layers + 1 per column, and each top's height. */
   let tx = new Float32Array(0)
   let ty = new Float32Array(0)
   let tz = new Float32Array(0)
   let drawMs = 0
   let stepMs = 0
-  /** Fraction of the top's offset at a fraction of the height: a cantilever's bend, stiff at the root. */
-  const bend = (s: number) => (s * s * (3 - s)) / 2
+  /**
+   * Fraction of the top's offset at a fraction of the height. At `hinge` 0 it
+   * is a cantilever's curve, stiff at the root and bending along its length;
+   * at 1 a straight pole pivoting on a springy base, like a slalom gate. In
+   * between, a blend of the two.
+   */
+  const bend = (s: number) => {
+    const k = settings.hinge
+    return (1 - k) * ((s * s * (3 - s)) / 2) + k * s
+  }
 
   function draw() {
     const began = performance.now()
@@ -405,9 +414,9 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
     const cy = height / 2
     const grow = (z: number) => (camera === Infinity ? 1 : camera / (camera - z))
 
-    if (tx.length !== count * (LAYERS + 1)) {
-      tx = new Float32Array(count * (LAYERS + 1))
-      ty = new Float32Array(count * (LAYERS + 1))
+    if (tx.length !== count * (layers + 1)) {
+      tx = new Float32Array(count * (layers + 1))
+      ty = new Float32Array(count * (layers + 1))
       tz = new Float32Array(count)
     }
     for (let c = 0; c < count; c++) {
@@ -416,17 +425,17 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
       // A bent column's top comes down as it leans; the arc keeps its length.
       const top = Math.sqrt(Math.max(0, Hc * Hc - tip[0]! * tip[0]! - tip[1]! * tip[1]!))
       tz[c] = top
-      for (let k = 0; k <= LAYERS; k++) {
-        const s = k / LAYERS
+      for (let k = 0; k <= layers; k++) {
+        const s = k / layers
         const f = grow(top * s)
         const b = bend(s)
-        tx[c * (LAYERS + 1) + k] = cx + (rx[c]! + tip[0]! * b - cx) * f
-        ty[c * (LAYERS + 1) + k] = cy + (ry[c]! + tip[1]! * b - cy) * f
+        tx[c * (layers + 1) + k] = cx + (rx[c]! + tip[0]! * b - cx) * f
+        ty[c * (layers + 1) + k] = cy + (ry[c]! + tip[1]! * b - cy) * f
       }
     }
     ctx.lineCap = "round"
-    for (let k = 0; k < LAYERS; k++) {
-      ctx.lineWidth = settings.diameter * grow(H * ((k + 0.5) / LAYERS))
+    for (let k = 0; k < layers; k++) {
+      ctx.lineWidth = settings.diameter * grow(H * ((k + 0.5) / layers))
       let current = -1
       for (let n = 0; n < count; n++) {
         const c = order[n]!
@@ -437,7 +446,7 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
           ctx.strokeStyle = sideFill[b]![k]!
           ctx.beginPath()
         }
-        const i = c * (LAYERS + 1) + k
+        const i = c * (layers + 1) + k
         ctx.moveTo(tx[i]!, ty[i]!)
         ctx.lineTo(tx[i + 1]!, ty[i + 1]!)
       }
@@ -454,7 +463,7 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
         ctx.fillStyle = capFill[b]!
         ctx.beginPath()
       }
-      const i = c * (LAYERS + 1) + LAYERS
+      const i = c * (layers + 1) + layers
       const x = tx[i]!
       const y = ty[i]!
       const rc = r * grow(tz[c]!)
@@ -498,6 +507,36 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
    * hides whether the variation on top of it is local. The seed asks for
    * `near` well above `far` on the second.
    */
+  /**
+   * The share of a drawn side's length taken by the lower half of the column,
+   * averaged over columns leaning more than a tenth of their height: 0.31 for a
+   * cantilever's curl, 0.5 for a straight pole on a hinge.
+   *
+   * Not how far the side departs from straight, which was the first version
+   * and read 0 at every setting: seen from straight above, every point of a
+   * column lies on the line from its root to its top whether it curls or not.
+   * The curl shows only in where the joints and shades fall along that line.
+   */
+  function lowerHalf(columns: number[]) {
+    let sum = 0
+    let n = 0
+    const stride = layers + 1
+    for (const c of columns) {
+      const i = c * stride
+      const total = Math.hypot(tx[i + layers]! - tx[i]!, ty[i + layers]! - ty[i]!)
+      if (total < settings.height * tall[c]! * 0.1) continue
+      // Half height, on screen: interpolated between the drawn band ends.
+      const at = layers / 2
+      const k = Math.min(layers - 1, Math.floor(at))
+      const f = at - k
+      const hx = tx[i + k]! + (tx[i + k + 1]! - tx[i + k]!) * f
+      const hy = ty[i + k]! + (ty[i + k + 1]! - ty[i + k]!) * f
+      sum += Math.hypot(hx - tx[i]!, hy - ty[i]!) / total
+      n++
+    }
+    return n ? sum / n : 0
+  }
+
   function stats() {
     const H = settings.height
     const onScreen: number[] = []
@@ -558,6 +597,8 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
         nearStep: round(avg(near.map(([a, b]) => Math.abs(hue[a]! - hue[b]!))), 1),
         farStep: round(avg(far.map(([a, b]) => Math.abs(hue[a]! - hue[b]!))), 1),
       },
+      lowerHalf: round(lowerHalf(onScreen), 3),
+      segments: layers,
       wind: wind.report(),
       buckets: bucketHues.length,
       seconds: round(now, 1),

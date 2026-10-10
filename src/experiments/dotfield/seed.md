@@ -38,6 +38,12 @@ describes the work.
 > bend a lot, others appear to not bend at all.
 > http://100.117.55.104:4624/experiments/dotfield/?s=____cCsABFVkwYpQyeAghoCIAKhNokkKAZAAAVKA
 
+## 2026-10-10 — second round
+
+> i see that at certain height, stalks become segmented and sway like in
+> dangler. i like that but I'm also interested in seeing tall stalks that don't
+> curl but just bend at the springy base, like ski markers in slalom
+
 ## Questions I could not answer, and what I assumed
 
 - **Which lattice is "hex" and which is "triangle"?** A field of dots on a
@@ -73,3 +79,10 @@ describes the work.
   off another, and at a large height against spacing they overlap. A collision
   between neighbours is the obvious next mechanism if the field should read as
   crowded rather than as layered.
+- **The segmented look is the drawing, not the physics.** A side is drawn as
+  straight bands, each a shade lighter than the one below, and at a large
+  height the joints between them show. That is now the `segments` control (4
+  everywhere, as you saw it, and 6 on slalom), and `hinge` chooses between a
+  stem that curls and a pole that tips on a springy base. Seen straight down,
+  a curl shows only as short dark bands bunched near the root. If slalom
+  should read as more three-dimensional, `perspective` is the lever.

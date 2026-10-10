@@ -22,6 +22,14 @@ header of `wind.ts`.
 - **"offset" looked the same as "triangle".** Rows half a step offset at one
   spacing apart are a triangular lattice squashed by 13%, and nobody can see
   that. It is now `rows`, a crop at twice the spacing.
+- **From straight above, a curl and a straight pole lie on the same line.**
+  Every point of a leaning column projects onto the line from its root to its
+  top, whatever `hinge` is. So a "how far from straight" measure reads 0 at
+  every setting, which is how the first one turned out. What `hinge` changes
+  on screen is where the joints and shades fall along that line, and
+  `stats().lowerHalf` measures that from the drawn band ends: 0.31 curled,
+  0.50 hinged. At `segments` 1 there are no joints, so it reads 0.5 whatever
+  the hinge. Perspective is the only thing that bends the line itself.
 - **Five grid buttons need a 30rem panel.** The kit's choice row does not
   wrap, and at 23rem and 27rem `diamond` hung off the box's edge.
 - **Never sample the wind inside the spring's substeps.** The wind costs

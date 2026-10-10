@@ -34,6 +34,10 @@ export type Settings = {
   heights: number
   /** 0 looks straight down from infinitely far; toward the top of the range the camera comes down to the columns. */
   perspective: number
+  /** 0 bends along the length like a stem; 1 stays straight and pivots at a springy base. */
+  hinge: number
+  /** Straight bands a column's side is drawn in. Few shows the joints; many is a smooth curve. */
+  segments: number
   /** Degrees the breeze blows toward, 0 right and 90 down. */
   direction: number
   /** Steady lean the breeze gives, as a fraction of height. */
@@ -167,6 +171,28 @@ export const CONTROLS: Control[] = [
     step: 0.01,
     format: fixed(2),
     hint: "How close the eye is. 0 looks straight down from far away, so a standing column is only a dot. Higher brings the camera down over the middle of the field: tops grow, and columns away from the middle show their sides even standing.",
+  },
+  {
+    kind: "slider",
+    key: "hinge",
+    label: "hinge",
+    group: "field",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    format: fixed(2),
+    hint: "Where a column gives. 0 bends along its whole length like a stem, curling as it leans. 1 stays straight and tips over on a springy base, like a slalom pole.",
+  },
+  {
+    kind: "slider",
+    key: "segments",
+    label: "segments",
+    group: "field",
+    min: 1,
+    max: 16,
+    step: 1,
+    format: (v) => String(Math.round(v)),
+    hint: "How many straight pieces a column's side is drawn in, each a shade lighter than the one below. Few shows the joints, like a jointed rod; many draws a smooth curve.",
   },
   {
     kind: "slider",
@@ -435,6 +461,8 @@ export const DEFAULT_SETTINGS: Settings = {
   height: 40,
   heights: 0,
   perspective: 0,
+  hinge: 0,
+  segments: 4,
   direction: 20,
   breeze: 0.3,
   veer: 60,
@@ -468,6 +496,8 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   height: { min: 4, max: 400, step: 1, scale: "log" },
   heights: { min: 0, max: 1, step: 0.01 },
   perspective: { min: 0, max: 0.8, step: 0.01 },
+  hinge: { min: 0, max: 1, step: 0.01 },
+  segments: { min: 1, max: 16, step: 1 },
   direction: { min: 0, max: 359, step: 1 },
   breeze: { min: 0, max: 1, step: 0.01 },
   veer: { min: 0, max: 180, step: 1 },
@@ -534,6 +564,7 @@ const GEOMETRY_KEYS = [
   "spacing",
   "variety",
   "heights",
+  "segments",
   "hue",
   "hueRange",
   "colourSize",
@@ -589,6 +620,8 @@ export const REGISTRY: readonly Slot[] = [
   { key: "gustRate", kind: "num", grid: 0.5, origin: 0, bits: 7 },
   { key: "gustSpread", kind: "num", grid: 1, origin: 0, bits: 8 },
   { key: "heightSway", kind: "num", grid: 0.05, origin: 0, bits: 6 },
+  { key: "hinge", kind: "num", grid: 0.01, origin: 0, bits: 7 },
+  { key: "segments", kind: "num", grid: 1, origin: 1, bits: 4 },
 ]
 
 export function settingsToQuery(settings: Settings): URLSearchParams {

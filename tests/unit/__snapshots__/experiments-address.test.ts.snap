@@ -209,6 +209,8 @@ exports[`dotfield > has not edited a slot in place 1`] = `
   "gustRate num grid=0.5 origin=0 bits=7",
   "gustSpread num grid=1 origin=0 bits=8",
   "heightSway num grid=0.05 origin=0 bits=6",
+  "hinge num grid=0.01 origin=0 bits=7",
+  "segments num grid=1 origin=1 bits=4",
 ]
 `;
 
