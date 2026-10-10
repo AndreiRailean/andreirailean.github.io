@@ -30,6 +30,11 @@ header of `wind.ts`.
   `stats().lowerHalf` measures that from the drawn band ends: 0.31 curled,
   0.50 hinged. At `segments` 1 there are no joints, so it reads 0.5 whatever
   the hinge. Perspective is the only thing that bends the line itself.
+- **`format: fixed(2)` needs `/* @__PURE__ */`.** It is a call inside
+  `CONTROLS`, and without the annotation it pinned all 31 hints into the
+  runner (25.7KB, against 18.3KB without them). `pnpm exec vitest run
+  runner-bundle` caught it; `experiments-runner-weight` did not. A new
+  helper call in a control list needs the same annotation.
 - **Five grid buttons need a 30rem panel.** The kit's choice row does not
   wrap, and at 23rem and 27rem `diamond` hung off the box's edge.
 - **Never sample the wind inside the spring's substeps.** The wind costs
