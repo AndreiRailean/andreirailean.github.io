@@ -4,6 +4,7 @@ title: Hexgrid
 summary: A dark hexagonal grid that blooms from a few black centres, colour travelling out ring by ring, holding, and fading everywhere at once — neighbours alike in lightness and apart in hue.
 started: 2026-10-11
 updated: 2026-10-11
+poster: ./poster.webp
 tags:
   - canvas
   - generative

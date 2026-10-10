@@ -26,3 +26,30 @@ describes the work.
 > providing the "vivid" bright colours. maybe even a thin light or white edge
 > around the hexagons, but it's very faint and only serves to bring out the
 > separation without increasing the contrast.
+
+## Questions I could not answer, and what I assumed
+
+_Mine, not his. Each is a control or a preset where it could be, so it can be
+answered by dragging._
+
+- **What keeps neighbours "harmonious"?** The seed guesses "intensity or some
+  other property of colour/lightness". I read it as perceptual lightness and
+  chroma held equal while hue varies, in OKLCH. But no screen can show every
+  hue equally saturated at one lightness, so **out of gamut** chooses which
+  gives way: _keep light_ (one lightness, some hues greyer) or _keep vivid_
+  (hard hues move up to 0.2 lighter or darker). The primary keeps vivid,
+  because the seed says the colours are not muted.
+- **Tiled or scattered centres?** "a black or very dark hexagon forms a center
+  of 'flower'" reads as tiled — every seventh hex a centre, ringed by six
+  petals, fitting together. "the colour radiates out from the few dark
+  centers" reads as scattered — few centres, several rings to travel. Both
+  are there (`centres`); the primary is scattered, `flowers` is tiled.
+- **Does the colour arrive everywhere at once, or wave by wave?** Every centre
+  starts together unless **stagger** is up. The fade is always global, which
+  is the one part the seed states outright ("not done in regions").
+- **Is a settled grid still?** "the whole piece is alive" may mean the loop
+  alone, or movement inside the hold. **shimmer** adds a slow per-hex
+  breathing; the primary has a little.
+- **Where the gradient's dark sits.** The middle of each hex is darkened by a
+  round gradient, so it reads as "a gradient circle inside a hexagon". The
+  falloff shape is fixed; only its depth (**core**) is a control.

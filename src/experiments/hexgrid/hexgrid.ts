@@ -149,7 +149,8 @@ function buildGrid(settings: Settings, width: number, height: number) {
   }
 
   const rng = makeRng(hashSeed(settings.seed, 1))
-  const centres = settings.layout === "tiled" ? tiledCentres(hexes) : scatteredCentres(hexes, index, settings.spacing, rng)
+  const centres =
+    settings.layout === "tiled" ? tiledCentres(hexes) : scatteredCentres(hexes, index, settings.spacing, rng)
 
   // Multi-source breadth-first search: each hex's ring is its hex distance to
   // the nearest centre, and that centre owns it. Ties go to whichever centre's
@@ -224,10 +225,7 @@ function colour(hexes: Hex[], flowers: number, settings: Settings) {
       hex.rgb = vivid(settings.centre, Math.min(settings.chroma, settings.centre * 0.6), flower).rgb
       continue
     }
-    const offset =
-      settings.pattern === "triad"
-        ? triad[(((hex.q - hex.r) % 3) + 3) % 3]! + own * 0.15
-        : own
+    const offset = settings.pattern === "triad" ? triad[(((hex.q - hex.r) % 3) + 3) % 3]! + own * 0.15 : own
     hex.hue = wrap(flower + settings.hues * offset)
     hex.rgb = vivid(settings.lightness, settings.chroma, hex.hue, settings.gamut).rgb
   }

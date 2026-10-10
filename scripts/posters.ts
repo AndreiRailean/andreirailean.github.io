@@ -73,6 +73,7 @@ export const SLUGS = [
   "dotfield",
   "embers",
   "flotsam",
+  "hexgrid",
   "psyxels",
   "starry-night",
   "streakers",
