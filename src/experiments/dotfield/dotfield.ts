@@ -9,19 +9,7 @@
  * the wind they sample is smooth — the "proximal alignment" is the wind's
  * smoothness, not a coupling between columns.
  *
- * **The wind is a sum of travelling plane waves**, rather than a noise field,
- * because a column only ever asks for the wind at its own root and a handful
- * of cosines per column is cheaper than any noise there. Two families:
- *
- * - **gusts**: a scalar envelope whose wave fronts lie across the breeze,
- *   rectified so only its crests push — bands of extra lean that roll
- *   downwind, which is what waves through grass are;
- * - **swirl**: the curl of a stream function made of waves in every direction,
- *   so it turns across the breeze without converging anywhere — eddies.
- *
- * Both are carried downwind at `drift` and change shape at `churn`. Each wave's
- * phase is integrated rather than computed from the clock, so dragging `drift`
- * or `churn` changes how fast the pattern moves, never where it is.
+ * **The wind is `wind.ts`'s**, sampled once per column per frame.
  *
  * **Seen from straight above, orthographic.** An upright column is its top, a
  * dot. A leaning one is drawn as its side in `LAYERS` bands from root to top,
@@ -33,31 +21,18 @@
 
 import { hashSeed, makeRng, type Rng } from "@/experiments/random"
 import { needsRebuild, type Lattice, type Settings } from "@/experiments/dotfield/settings"
+import { createWind } from "@/experiments/dotfield/wind"
 
 const TAU = Math.PI * 2
-const DEG = Math.PI / 180
 
 /** Bands a side is drawn in, root to top. */
 const LAYERS = 4
-/** Waves in each family. */
-const GUST_WAVES = 5
-const SWIRL_WAVES = 7
-const WAVES = GUST_WAVES + SWIRL_WAVES
 /** Hue buckets are this many degrees wide, so a field of near-alike columns shares a few fills. */
 const HUE_BUCKET = 2
 /** Tallest to shortest at `heights` 1. */
 const HEIGHT_RATIO = 4
 /** Physics never steps further than this, so a stiff column cannot go unstable on a slow frame. */
 const MAX_STEP = 1 / 120
-
-type Wave = {
-  kx: number
-  ky: number
-  /** Turning rate from churn alone, as a fraction of `churn`'s rate. */
-  rate: number
-  amplitude: number
-  phase: number
-}
 
 /** Basis vectors per lattice, at a nearest-neighbour distance of 1. For hex, the lattice of its cells. */
 function basis(lattice: Lattice): { e1: [number, number]; e2: [number, number] } {
@@ -72,8 +47,9 @@ function basis(lattice: Lattice): { e1: [number, number]; e2: [number, number] }
     // centres √3 apart; `roots` places two corners per cell.
     case "hex":
       return { e1: [2 * h, 0], e2: [h, 1.5] }
-    case "offset":
-      return { e1: [1, 0], e2: [0.5, 1] }
+    // Close along a row, rows twice as far apart: a crop.
+    case "rows":
+      return { e1: [1, 0], e2: [0, 2] }
     case "diamond":
       return { e1: [r, r], e2: [-r, r] }
   }
@@ -201,39 +177,6 @@ function sharpen(v: number, islands: number): number {
   return Math.tanh(k * v) / Math.tanh(k)
 }
 
-function makeWaves(settings: Settings): Wave[] {
-  const rng = makeRng(hashSeed(settings.seed, 0x77))
-  const heading = settings.direction * DEG
-  const waves: Wave[] = []
-  for (let n = 0; n < GUST_WAVES; n++) {
-    // Fronts across the breeze, give or take: travelling with it, they read as
-    // bands of gust rolling downwind rather than as a checkerboard.
-    const angle = heading + (rng() - 0.5) * 70 * DEG
-    const k = TAU / (settings.gustSize * (0.7 + rng() * 0.7))
-    waves.push({
-      kx: Math.cos(angle) * k,
-      ky: Math.sin(angle) * k,
-      rate: (0.5 + rng()) * (rng() < 0.5 ? -1 : 1),
-      amplitude: Math.sqrt(2 / GUST_WAVES),
-      phase: rng() * TAU,
-    })
-  }
-  for (let n = 0; n < SWIRL_WAVES; n++) {
-    const angle = rng() * TAU
-    const k = TAU / (settings.swirlSize * (0.7 + rng() * 0.7))
-    waves.push({
-      kx: Math.cos(angle) * k,
-      ky: Math.sin(angle) * k,
-      rate: (0.5 + rng()) * (rng() < 0.5 ? -1 : 1),
-      // Divided by k so the curl, which multiplies by k again, comes out at
-      // about unit RMS whatever the eddy size.
-      amplitude: Math.sqrt(2 / SWIRL_WAVES) / k,
-      phase: rng() * TAU,
-    })
-  }
-  return waves
-}
-
 export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
   const context = canvas.getContext("2d")
   if (!context) throw new Error("dotfield: no 2d context")
@@ -264,13 +207,11 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
   let tall = new Float32Array(0)
   let hue = new Float32Array(0)
   let bucketOf = new Uint16Array(0)
-  /** Each column's k·root for every wave, so a frame adds a phase and takes a cosine. */
-  let kdot = new Float32Array(0)
   /** Column order sorted by bucket, so a run of one colour is one path. */
   let order = new Uint32Array(0)
   /** Index of a neighbour about one spacing away, or -1. */
   let neighbour = new Int32Array(0)
-  let waves: Wave[] = []
+  let wind = createWind(initial.seed)
   let bucketHues: number[] = []
   let sideFill: string[][] = []
   let capFill: string[] = []
@@ -281,14 +222,6 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
     height = canvas.clientHeight || window.innerHeight
     canvas.width = Math.round(width * dpr)
     canvas.height = Math.round(height * dpr)
-  }
-
-  function rebuildWaves() {
-    waves = makeWaves(settings)
-    kdot = new Float32Array(count * WAVES)
-    for (let c = 0; c < count; c++) {
-      for (let w = 0; w < WAVES; w++) kdot[c * WAVES + w] = waves[w]!.kx * rx[c]! + waves[w]!.ky * ry[c]!
-    }
   }
 
   function rebuildColours() {
@@ -323,32 +256,8 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
     )
   }
 
-  /** The lean the wind asks of a column, as a fraction of height, into `out`. */
   const lean = new Float32Array(2)
-  function leanAt(c: number) {
-    const heading = settings.direction * DEG
-    const ux = Math.cos(heading)
-    const uy = Math.sin(heading)
-    const base = c * WAVES
-    let gust = 0
-    for (let w = 0; w < GUST_WAVES; w++) {
-      const wave = waves[w]!
-      gust += wave.amplitude * Math.cos(kdot[base + w]! + wave.phase)
-    }
-    // Only the crests push: a gust adds to the breeze and never reverses it.
-    const along = settings.breeze + settings.gusts * Math.max(0, gust) * 0.5
-    let sx = 0
-    let sy = 0
-    for (let w = GUST_WAVES; w < WAVES; w++) {
-      const wave = waves[w]!
-      const g = wave.amplitude * Math.cos(kdot[base + w]! + wave.phase)
-      // curl of a·sin(k·x + φ): (∂ψ/∂y, -∂ψ/∂x)
-      sx += g * wave.ky
-      sy -= g * wave.kx
-    }
-    lean[0] = ux * along + settings.swirl * sx
-    lean[1] = uy * along + settings.swirl * sy
-  }
+  const leanAt = (c: number) => wind.at(rx[c]!, ry[c]!, lean)
 
   function rebuild() {
     const pad = settings.height + settings.diameter
@@ -370,10 +279,12 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
       rx[c] = pts[2 * c]!
       ry[c] = pts[2 * c + 1]!
       tall[c] = settings.heights > 0 ? Math.pow(HEIGHT_RATIO, settings.heights * (rng() - 0.5)) : 1
-      // A uniform cantilever's fundamental goes as 1/length², so a column
-      // twice as tall sways at a quarter the rate. `sway` is the rate of one
+      // A uniform cantilever's fundamental goes as 1/length², which is
+      // `heightSway` 2. It was fixed at 2 first, and at `heights` 0.37 with
+      // light damping that put neighbours 2.8x apart in rate, so they rang out
+      // of step and the field read as random. `sway` is the rate of a column
       // of the nominal height.
-      omega[c] = (1 + settings.variety * (rng() * 2 - 1)) / (tall[c]! * tall[c]!)
+      omega[c] = (1 + settings.variety * (rng() * 2 - 1)) / Math.pow(tall[c]!, settings.heightSway)
     }
     // A neighbour per column, found through a hash of cells one spacing wide.
     const cell = settings.spacing
@@ -404,7 +315,8 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
       }
       neighbour[c] = best
     }
-    rebuildWaves()
+    wind.resize(width, height)
+    wind.update(settings, 0)
     rebuildColours()
     // Start every column where the wind already has it, so the field does not
     // open bolt upright and lurch.
@@ -422,14 +334,7 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
    * that column's own stiffness needs.
    */
   function step(dt: number) {
-    const heading = settings.direction * DEG
-    const ux = Math.cos(heading)
-    const uy = Math.sin(heading)
-    const churn = (settings.churn / 60) * TAU
-    for (const wave of waves) {
-      // Carried downwind at drift: the phase falls by k·u·drift per second.
-      wave.phase += (wave.rate * churn - (wave.kx * ux + wave.ky * uy) * settings.drift) * dt
-    }
+    wind.update(settings, dt)
     const w0 = settings.sway * TAU
     const zeta = settings.damping
     const H = settings.height
@@ -653,6 +558,7 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
         nearStep: round(avg(near.map(([a, b]) => Math.abs(hue[a]! - hue[b]!))), 1),
         farStep: round(avg(far.map(([a, b]) => Math.abs(hue[a]! - hue[b]!))), 1),
       },
+      wind: wind.report(),
       buckets: bucketHues.length,
       seconds: round(now, 1),
       fps: Math.round(fps),
@@ -688,21 +594,12 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
         before.diameter !== next.diameter ||
         before.variety !== next.variety ||
         before.heights !== next.heights ||
+        before.heightSway !== next.heightSway ||
         before.seed !== next.seed
+      if (before.seed !== next.seed) wind = createWind(next.seed)
       if (latticeMoved) rebuild()
       else {
         if (needsRebuild(before, next)) rebuildColours()
-        if (
-          before.direction !== next.direction ||
-          before.gustSize !== next.gustSize ||
-          before.swirlSize !== next.swirlSize
-        ) {
-          // New waves, but carry the old phases so the pattern changes shape
-          // without jumping wholesale.
-          const phases = waves.map((w) => w.phase)
-          rebuildWaves()
-          waves.forEach((w, i) => (w.phase = phases[i]!))
-        }
       }
     },
     setPaused(on: boolean) {
