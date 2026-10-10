@@ -45,6 +45,8 @@ const SWIRL_WAVES = 7
 const WAVES = GUST_WAVES + SWIRL_WAVES
 /** Hue buckets are this many degrees wide, so a field of near-alike columns shares a few fills. */
 const HUE_BUCKET = 2
+/** Tallest to shortest at `heights` 1. */
+const HEIGHT_RATIO = 4
 /** Physics never steps further than this, so a stiff column cannot go unstable on a slow frame. */
 const MAX_STEP = 1 / 120
 
@@ -185,7 +187,10 @@ function makeNoise(rng: Rng) {
 /** The colour field's value at a point: three octaves of noise, about [-1, 1], spread fairly evenly. */
 function colourAt(noise: (x: number, y: number) => number, x: number, y: number, size: number): number {
   const s = 1 / size
-  const v = noise(x * s, y * s) * 0.62 + noise(x * s * 2.1 + 17.3, y * s * 2.1 - 4.1) * 0.28 + noise(x * s * 4.3 - 9.7, y * s * 4.3 + 31.1) * 0.1
+  const v =
+    noise(x * s, y * s) * 0.62 +
+    noise(x * s * 2.1 + 17.3, y * s * 2.1 - 4.1) * 0.28 +
+    noise(x * s * 4.3 - 9.7, y * s * 4.3 + 31.1) * 0.1
   return Math.max(-1, Math.min(1, v * 1.6))
 }
 
@@ -255,6 +260,8 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
   let vx = new Float32Array(0)
   let vy = new Float32Array(0)
   let omega = new Float32Array(0)
+  /** Each column's height as a multiple of `height`. */
+  let tall = new Float32Array(0)
   let hue = new Float32Array(0)
   let bucketOf = new Uint16Array(0)
   /** Each column's k·root for every wave, so a frame adds a phase and takes a cosine. */
@@ -354,6 +361,7 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
     vx = new Float32Array(count)
     vy = new Float32Array(count)
     omega = new Float32Array(count)
+    tall = new Float32Array(count)
     hue = new Float32Array(count)
     bucketOf = new Uint16Array(count)
     neighbour = new Int32Array(count).fill(-1)
@@ -361,7 +369,11 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
     for (let c = 0; c < count; c++) {
       rx[c] = pts[2 * c]!
       ry[c] = pts[2 * c + 1]!
-      omega[c] = 1 + settings.variety * (rng() * 2 - 1)
+      tall[c] = settings.heights > 0 ? Math.pow(HEIGHT_RATIO, settings.heights * (rng() - 0.5)) : 1
+      // A uniform cantilever's fundamental goes as 1/length², so a column
+      // twice as tall sways at a quarter the rate. `sway` is the rate of one
+      // of the nominal height.
+      omega[c] = (1 + settings.variety * (rng() * 2 - 1)) / (tall[c]! * tall[c]!)
     }
     // A neighbour per column, found through a hash of cells one spacing wide.
     const cell = settings.spacing
@@ -398,12 +410,18 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
     // open bolt upright and lurch.
     for (let c = 0; c < count; c++) {
       leanAt(c)
-      px[c] = lean[0]! * settings.height
-      py[c] = lean[1]! * settings.height
+      px[c] = lean[0]! * settings.height * tall[c]!
+      py[c] = lean[1]! * settings.height * tall[c]!
     }
   }
 
-  function advance(dt: number) {
+  /**
+   * One frame of physics. The wind is sampled once per column per frame — it
+   * changes over seconds, and sampling it was 85% of a frame's cost when it
+   * ran inside the substeps — and only the spring is substepped, as finely as
+   * that column's own stiffness needs.
+   */
+  function step(dt: number) {
     const heading = settings.direction * DEG
     const ux = Math.cos(heading)
     const uy = Math.sin(heading)
@@ -420,24 +438,32 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
       const w = w0 * omega[c]!
       const k = w * w
       const damp = 2 * zeta * w
-      const ax = k * (lean[0]! * H - px[c]!) - damp * vx[c]!
-      const ay = k * (lean[1]! * H - py[c]!) - damp * vy[c]!
-      vx[c] = vx[c]! + ax * dt
-      vy[c] = vy[c]! + ay * dt
-      px[c] = px[c]! + vx[c]! * dt
-      py[c] = py[c]! + vy[c]! * dt
+      const Hc = H * tall[c]!
+      const gx = lean[0]! * Hc
+      const gy = lean[1]! * Hc
+      const n = Math.max(1, Math.ceil(dt / Math.min(MAX_STEP, 0.3 / (w * Math.max(1, zeta)))))
+      const h = dt / n
+      let x = px[c]!
+      let y = py[c]!
+      let u = vx[c]!
+      let v = vy[c]!
+      for (let i = 0; i < n; i++) {
+        u += (k * (gx - x) - damp * u) * h
+        v += (k * (gy - y) - damp * v) * h
+        x += u * h
+        y += v * h
+      }
+      px[c] = x
+      py[c] = y
+      vx[c] = u
+      vy[c] = v
     }
     now += dt
   }
 
-  function step(dt: number) {
-    const n = Math.max(1, Math.ceil(dt / MAX_STEP))
-    for (let i = 0; i < n; i++) advance(dt / n)
-  }
-
   /** A column's top as drawn: its lean saturates at its height, because a laid-flat column reaches no further. */
   function reach(c: number, out: Float32Array) {
-    const H = settings.height
+    const H = settings.height * tall[c]!
     const x = px[c]!
     const y = py[c]!
     const m = Math.hypot(x, y)
@@ -447,27 +473,55 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
   }
 
   const tip = new Float32Array(2)
+  /** Projected band ends, LAYERS + 1 per column, and each top's height. */
+  let tx = new Float32Array(0)
+  let ty = new Float32Array(0)
+  let tz = new Float32Array(0)
+  let drawMs = 0
+  let stepMs = 0
   /** Fraction of the top's offset at a fraction of the height: a cantilever's bend, stiff at the root. */
   const bend = (s: number) => (s * s * (3 - s)) / 2
 
   function draw() {
+    const began = performance.now()
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.fillStyle = `hsl(${settings.hue} 18% 4%)`
     ctx.fillRect(0, 0, width, height)
 
-    const r = settings.diameter / 2
-    ctx.lineCap = "round"
-    ctx.lineWidth = settings.diameter
-    const tx = new Float32Array(count)
-    const ty = new Float32Array(count)
+    // A camera `camera` px above the ground over the frame's middle: a point
+    // at height z is pushed out from the middle by camera / (camera - z).
+    // Orthographic at perspective 0. Placed against the frame's half-diagonal,
+    // not the column height, because how far the eye is from the corners is
+    // what decides how much a standing column shows its side there.
+    const H = settings.height
+    const p = settings.perspective
+    const camera = p > 0 ? H * HEIGHT_RATIO + (Math.hypot(width, height) / 2) * ((1 - p) / p) : Infinity
+    const cx = width / 2
+    const cy = height / 2
+    const grow = (z: number) => (camera === Infinity ? 1 : camera / (camera - z))
+
+    if (tx.length !== count * (LAYERS + 1)) {
+      tx = new Float32Array(count * (LAYERS + 1))
+      ty = new Float32Array(count * (LAYERS + 1))
+      tz = new Float32Array(count)
+    }
     for (let c = 0; c < count; c++) {
       reach(c, tip)
-      tx[c] = tip[0]!
-      ty[c] = tip[1]!
+      const Hc = H * tall[c]!
+      // A bent column's top comes down as it leans; the arc keeps its length.
+      const top = Math.sqrt(Math.max(0, Hc * Hc - tip[0]! * tip[0]! - tip[1]! * tip[1]!))
+      tz[c] = top
+      for (let k = 0; k <= LAYERS; k++) {
+        const s = k / LAYERS
+        const f = grow(top * s)
+        const b = bend(s)
+        tx[c * (LAYERS + 1) + k] = cx + (rx[c]! + tip[0]! * b - cx) * f
+        ty[c * (LAYERS + 1) + k] = cy + (ry[c]! + tip[1]! * b - cy) * f
+      }
     }
+    ctx.lineCap = "round"
     for (let k = 0; k < LAYERS; k++) {
-      const s0 = bend(k / LAYERS)
-      const s1 = bend((k + 1) / LAYERS)
+      ctx.lineWidth = settings.diameter * grow(H * ((k + 0.5) / LAYERS))
       let current = -1
       for (let n = 0; n < count; n++) {
         const c = order[n]!
@@ -478,13 +532,13 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
           ctx.strokeStyle = sideFill[b]![k]!
           ctx.beginPath()
         }
-        const x = rx[c]!
-        const y = ry[c]!
-        ctx.moveTo(x + tx[c]! * s0, y + ty[c]! * s0)
-        ctx.lineTo(x + tx[c]! * s1, y + ty[c]! * s1)
+        const i = c * (LAYERS + 1) + k
+        ctx.moveTo(tx[i]!, ty[i]!)
+        ctx.lineTo(tx[i + 1]!, ty[i + 1]!)
       }
       if (current >= 0) ctx.stroke()
     }
+    const r = settings.diameter / 2
     let current = -1
     for (let n = 0; n < count; n++) {
       const c = order[n]!
@@ -495,12 +549,15 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
         ctx.fillStyle = capFill[b]!
         ctx.beginPath()
       }
-      const x = rx[c]! + tx[c]!
-      const y = ry[c]! + ty[c]!
-      ctx.moveTo(x + r, y)
-      ctx.arc(x, y, r, 0, TAU)
+      const i = c * (LAYERS + 1) + LAYERS
+      const x = tx[i]!
+      const y = ty[i]!
+      const rc = r * grow(tz[c]!)
+      ctx.moveTo(x + rc, y)
+      ctx.arc(x, y, rc, 0, TAU)
     }
     if (current >= 0) ctx.fill()
+    drawMs = drawMs ? drawMs * 0.9 + (performance.now() - began) * 0.1 : performance.now() - began
 
     if (debug) {
       ctx.fillStyle = "rgb(255 255 255 / 70%)"
@@ -513,7 +570,11 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
     const dt = last ? Math.min(0.1, (time - last) / 1000) : 0
     last = time
     if (dt > 0) fps = fps ? fps * 0.95 + (1 / dt) * 0.05 : 1 / dt
-    if (!held && dt > 0) step(dt)
+    if (!held && dt > 0) {
+      const began = performance.now()
+      step(dt)
+      stepMs = stepMs ? stepMs * 0.9 + (performance.now() - began) * 0.1 : performance.now() - began
+    }
     draw()
   }
 
@@ -535,8 +596,9 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
   function stats() {
     const H = settings.height
     const onScreen: number[] = []
-    for (let c = 0; c < count; c++) if (rx[c]! >= 0 && rx[c]! <= width && ry[c]! >= 0 && ry[c]! <= height) onScreen.push(c)
-    const leans = onScreen.map((c) => Math.hypot(px[c]!, py[c]!) / H).sort((a, b) => a - b)
+    for (let c = 0; c < count; c++)
+      if (rx[c]! >= 0 && rx[c]! <= width && ry[c]! >= 0 && ry[c]! <= height) onScreen.push(c)
+    const leans = onScreen.map((c) => Math.hypot(px[c]!, py[c]!) / (H * tall[c]!)).sort((a, b) => a - b)
     const speeds = onScreen.map((c) => Math.hypot(vx[c]!, vy[c]!))
     let mx = 0
     let my = 0
@@ -571,7 +633,12 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
       columns: onScreen.length,
       simulated: count,
       frame: { width, height },
-      lean: { mean: round(avg(leans)), p10: round(at(leans, 0.1)), p90: round(at(leans, 0.9)), max: round(at(leans, 1)) },
+      lean: {
+        mean: round(avg(leans)),
+        p10: round(at(leans, 0.1)),
+        p90: round(at(leans, 0.9)),
+        max: round(at(leans, 1)),
+      },
       meanLean: { x: round(mx / H), y: round(my / H) },
       tipSpeedPx: round(avg(speeds), 1),
       align: {
@@ -589,6 +656,7 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
       buckets: bucketHues.length,
       seconds: round(now, 1),
       fps: Math.round(fps),
+      ms: { step: round(stepMs, 1), draw: round(drawMs, 1) },
       running,
       held,
     }
@@ -619,6 +687,7 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
         before.height !== next.height ||
         before.diameter !== next.diameter ||
         before.variety !== next.variety ||
+        before.heights !== next.heights ||
         before.seed !== next.seed
       if (latticeMoved) rebuild()
       else {

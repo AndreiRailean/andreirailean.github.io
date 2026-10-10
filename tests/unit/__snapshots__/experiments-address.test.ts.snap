@@ -195,6 +195,8 @@ exports[`dotfield > has not edited a slot in place 1`] = `
   "saturation num grid=1 origin=0 bits=7",
   "cap num grid=0.01 origin=0 bits=7",
   "seed num grid=1 origin=0 bits=20",
+  "heights num grid=0.01 origin=0 bits=7",
+  "perspective num grid=0.01 origin=0 bits=7",
 ]
 `;
 

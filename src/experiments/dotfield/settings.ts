@@ -30,6 +30,10 @@ export type Settings = {
   diameter: number
   /** Column height, css px: how far its top travels when laid flat. */
   height: number
+  /** How much columns differ in height. 0 is all one height; 1 puts four times between shortest and tallest. */
+  heights: number
+  /** 0 looks straight down from infinitely far; toward the top of the range the camera comes down to the columns. */
+  perspective: number
   /** Degrees the breeze blows toward, 0 right and 90 down. */
   direction: number
   /** Steady lean the breeze gives, as a fraction of height. */
@@ -129,6 +133,28 @@ export const CONTROLS: Control[] = [
     scale: "log",
     format: px,
     hint: "How tall the columns are — how far a top travels when its column is laid flat. Against spacing, it decides how much neighbours overlap when they lean.",
+  },
+  {
+    kind: "slider",
+    key: "heights",
+    label: "heights",
+    group: "field",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    format: fixed(2),
+    hint: "How much columns differ in height, column by column. 0 is one height; 1 puts four times between the shortest and the tallest. A taller column also sways slower, as a real stem does.",
+  },
+  {
+    kind: "slider",
+    key: "perspective",
+    label: "perspective",
+    group: "field",
+    min: 0,
+    max: 0.8,
+    step: 0.01,
+    format: fixed(2),
+    hint: "How close the eye is. 0 looks straight down from far away, so a standing column is only a dot. Higher brings the camera down over the middle of the field: tops grow, and columns away from the middle show their sides even standing.",
   },
   {
     kind: "slider",
@@ -329,6 +355,8 @@ export const DEFAULT_SETTINGS: Settings = {
   spacing: 22,
   diameter: 7,
   height: 40,
+  heights: 0,
+  perspective: 0,
   direction: 20,
   breeze: 0.3,
   gusts: 0.5,
@@ -354,6 +382,8 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   spacing: { min: 6, max: 120, step: 1, scale: "log" },
   diameter: { min: 1, max: 60, step: 0.5, scale: "log" },
   height: { min: 4, max: 400, step: 1, scale: "log" },
+  heights: { min: 0, max: 1, step: 0.01 },
+  perspective: { min: 0, max: 0.8, step: 0.01 },
   direction: { min: 0, max: 359, step: 1 },
   breeze: { min: 0, max: 1, step: 0.01 },
   gusts: { min: 0, max: 1.5, step: 0.01 },
@@ -413,6 +443,7 @@ const GEOMETRY_KEYS = [
   "lattice",
   "spacing",
   "variety",
+  "heights",
   "hue",
   "hueRange",
   "colourSize",
@@ -450,6 +481,8 @@ export const REGISTRY: readonly Slot[] = [
   { key: "saturation", kind: "num", grid: 1, origin: 0, bits: 7 },
   { key: "cap", kind: "num", grid: 0.01, origin: 0, bits: 7 },
   { key: "seed", kind: "num", grid: 1, origin: 0, bits: 20 },
+  { key: "heights", kind: "num", grid: 0.01, origin: 0, bits: 7 },
+  { key: "perspective", kind: "num", grid: 0.01, origin: 0, bits: 7 },
 ]
 
 export function settingsToQuery(settings: Settings): URLSearchParams {
