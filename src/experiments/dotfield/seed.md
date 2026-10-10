@@ -36,8 +36,9 @@ describes the work.
   white — so either reading can be dragged to.
 - **How the view is projected.** Straight down and orthographic to begin with:
   an upright column is exactly a dot, and a bent one shows its side as a curve
-  from its root to its top. The sides darken toward the ground, which is the
-  only depth cue so far.
+  from its root to its top. The sides darken toward the ground. `perspective`
+  brings a camera down over the middle; it is 0 on every preset except
+  `wildflowers`.
 - **Height variation was in the seed as "later".** It is a `heights` control at
   0 on every preset except `wildflowers`, so it costs nothing until it is
   dragged. A taller column sways slower, as a real stem does — a quarter the
