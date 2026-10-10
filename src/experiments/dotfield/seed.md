@@ -76,7 +76,7 @@ describes the work.
   dragged. A taller column sways slower, as a real stem does — a quarter the
   rate at twice the height — so `heights` changes the motion as well as the
   look. ~~Kept as physics~~ Answered 2026-10-10 by "springing action appear
-  random": it is now `tall sway slow`, at 0 everywhere except wildflowers
+  random": it is now `height sway`, at 0 everywhere except wildflowers
   (0.5), with 2 as the real stem.
 - **How much should the wind wander?** `veer` (how far), `veer rate`, `lulls`,
   `gust rate` and `gust spread` (how far a gust strays from the prevailing

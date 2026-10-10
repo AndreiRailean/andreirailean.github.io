@@ -377,7 +377,7 @@ export const CONTROLS: Control[] = [
   {
     kind: "slider",
     key: "heightSway",
-    label: "tall sway slow",
+    label: "height sway",
     group: "spring",
     min: 0,
     max: 2,

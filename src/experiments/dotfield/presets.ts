@@ -238,7 +238,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
   },
   {
     label: "wildflowers",
-    hint: "Columns of many heights from a low camera, swaying together; tall sway slow is at 0.5.",
+    hint: "Columns of many heights from a low camera, swaying together; height sway is at 0.5.",
     settings: {
       lattice: "triangle",
       spacing: 26,
