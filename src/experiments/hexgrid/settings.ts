@@ -21,6 +21,7 @@ export { keysOf } from "@/experiments/kit/controls"
  */
 export type Layout = "tiled" | "scattered"
 export type Pattern = "random" | "triad"
+export type Gamut = "lightness" | "chroma"
 
 export type Settings = {
   /** Tiled: a dark centre in every seven, each ringed by six petals. Scattered: a few centres, spaced. */
@@ -47,6 +48,12 @@ export type Settings = {
   core: number
   /** OKLCH lightness of the dark centres. */
   centre: number
+  /** What gives way when the screen cannot show a hue at this lightness and chroma. */
+  gamut: Gamut
+  /** Seconds each centre may start late, at random, centre by centre. */
+  stagger: number
+  /** How far a lit hex's brightness wanders, slowly, hex by hex. */
+  shimmer: number
   /** Opacity of the faint white outline round every hex. */
   edge: number
   /** Seconds of outlines only, before the colour comes. */
@@ -62,13 +69,14 @@ export type Settings = {
   seed: number
 }
 
-export type NumericKey = Exclude<keyof Settings, "layout" | "pattern">
+export type NumericKey = Exclude<keyof Settings, "layout" | "pattern" | "gamut">
 
 export type Control = KitControl<string & keyof Settings>
 export type NumericControl = SliderControl<NumericKey>
 
 export const LAYOUTS: Layout[] = ["tiled", "scattered"]
 export const PATTERNS: Pattern[] = ["random", "triad"]
+export const GAMUTS: Gamut[] = ["lightness", "chroma"]
 
 const SEED_BOUNDS = { min: 0, max: 999_999 }
 
@@ -201,6 +209,17 @@ export const CONTROLS: Control[] = [
     hint: "How saturated every coloured hex is, in OKLCH. A hue the screen cannot show that saturated is pulled in until it can, keeping its lightness.",
   },
   {
+    kind: "choice",
+    key: "gamut",
+    label: "out of gamut",
+    group: "colour",
+    options: [
+      { value: "lightness", label: "keep light" },
+      { value: "chroma", label: "keep vivid" },
+    ],
+    hint: "No screen shows every hue equally saturated at one lightness. Keep light holds every hex at the same lightness and lets the hard hues go greyer. Keep vivid holds the saturation and moves those hues lighter or darker until the screen can show them.",
+  },
+  {
     kind: "slider",
     key: "core",
     label: "core",
@@ -257,6 +276,28 @@ export const CONTROLS: Control[] = [
   },
   {
     kind: "slider",
+    key: "stagger",
+    label: "stagger",
+    group: "pulse",
+    min: 0,
+    max: 6,
+    step: 0.05,
+    format: (v) => `${v.toFixed(2)}s`,
+    hint: "How late each centre may start its bloom, at random. 0 fires every centre together. The fade still happens everywhere at once.",
+  },
+  {
+    kind: "slider",
+    key: "shimmer",
+    label: "shimmer",
+    group: "pulse",
+    min: 0,
+    max: 0.6,
+    step: 0.01,
+    format: unit,
+    hint: "How much a lit hex's brightness wanders, slowly and out of step with its neighbours, so a settled grid still breathes. 0 holds it still.",
+  },
+  {
+    kind: "slider",
     key: "hold",
     label: "hold",
     group: "pulse",
@@ -293,6 +334,9 @@ export const DEFAULT_SETTINGS: Settings = {
   core: 0.7,
   centre: 0.08,
   edge: 0.1,
+  gamut: "lightness",
+  stagger: 0,
+  shimmer: 0,
   rest: 2,
   travel: 0.5,
   rise: 1.5,
@@ -314,6 +358,8 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   chroma: { min: 0, max: 0.37, step: 0.005 },
   core: { min: 0, max: 1, step: 0.05 },
   centre: { min: 0, max: 0.5, step: 0.01 },
+  stagger: { min: 0, max: 6, step: 0.05 },
+  shimmer: { min: 0, max: 0.6, step: 0.01 },
   rest: { min: 0, max: 20, step: 0.1 },
   travel: { min: 0, max: 4, step: 0.05 },
   rise: { min: 0.1, max: 10, step: 0.1 },
@@ -350,6 +396,7 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
     ...merged,
     layout: oneOf(LAYOUTS, merged.layout, base.layout),
     pattern: oneOf(PATTERNS, merged.pattern, base.pattern),
+    gamut: oneOf(GAMUTS, merged.gamut, base.gamut),
   }
 
   for (const [key, bound] of Object.entries(BOUNDS) as [NumericKey, { min: number; max: number }][]) {
@@ -371,6 +418,7 @@ const GRID_KEYS = [
   "hues",
   "drift",
   "pattern",
+  "gamut",
   "lightness",
   "chroma",
   "centre",
@@ -403,6 +451,9 @@ export const REGISTRY: readonly Slot[] = [
   { key: "hold", kind: "num", grid: 0.1, origin: 0, bits: 9 },
   { key: "fade", kind: "num", grid: 0.1, origin: 0.1, bits: 8 },
   { key: "seed", kind: "num", grid: 1, origin: 0, bits: 20 },
+  { key: "gamut", kind: "enum", options: ["lightness", "chroma"] },
+  { key: "stagger", kind: "num", grid: 0.05, origin: 0, bits: 7 },
+  { key: "shimmer", kind: "num", grid: 0.01, origin: 0, bits: 6 },
 ]
 
 export function settingsToQuery(settings: Settings): URLSearchParams {

@@ -302,6 +302,35 @@ exports[`flotsam > has not edited a slot in place 1`] = `
 
 exports[`flotsam > retires a slot by appending to the retired list, never by editing one 1`] = `[]`;
 
+exports[`hexgrid > has not edited a slot in place 1`] = `
+[
+  "layout enum tiled|scattered",
+  "spacing num grid=1 origin=2 bits=5",
+  "size num grid=1 origin=6 bits=7",
+  "gap num grid=0.5 origin=0 bits=6",
+  "edge num grid=0.01 origin=0 bits=6",
+  "hue num grid=1 origin=0 bits=9",
+  "hues num grid=1 origin=0 bits=8",
+  "drift num grid=1 origin=0 bits=8",
+  "pattern enum random|triad",
+  "lightness num grid=0.01 origin=0.2 bits=7",
+  "chroma num grid=0.005 origin=0 bits=7",
+  "core num grid=0.05 origin=0 bits=5",
+  "centre num grid=0.01 origin=0 bits=6",
+  "rest num grid=0.1 origin=0 bits=8",
+  "travel num grid=0.05 origin=0 bits=7",
+  "rise num grid=0.1 origin=0.1 bits=7",
+  "hold num grid=0.1 origin=0 bits=9",
+  "fade num grid=0.1 origin=0.1 bits=8",
+  "seed num grid=1 origin=0 bits=20",
+  "gamut enum lightness|chroma",
+  "stagger num grid=0.05 origin=0 bits=7",
+  "shimmer num grid=0.01 origin=0 bits=6",
+]
+`;
+
+exports[`hexgrid > retires a slot by appending to the retired list, never by editing one 1`] = `[]`;
+
 exports[`psyxels > has not edited a slot in place 1`] = `
 [
   "seed num grid=1 origin=0 bits=20",

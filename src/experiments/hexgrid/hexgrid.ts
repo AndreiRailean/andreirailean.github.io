@@ -7,7 +7,7 @@
  * that clock and its ring. Nothing about the colour is computed per frame.
  */
 import { hashSeed, makeRng, type Rng } from "@/experiments/random"
-import { needsRebuild, type Settings } from "@/experiments/hexgrid/settings"
+import { needsRebuild, type Gamut, type Settings } from "@/experiments/hexgrid/settings"
 
 const SQRT3 = Math.sqrt(3)
 
@@ -33,6 +33,12 @@ type Hex = {
   /** Full colour at the bright edge, sRGB 0–255. */
   rgb: [number, number, number]
   hue: number
+  /** 0–1: how late its centre starts, as a share of `stagger`. Shared by a whole flower. */
+  late: number
+  /** Radians: where its shimmer is in its cycle at time 0. */
+  phase: number
+  /** Its shimmer's rate, in cycles per second. */
+  rate: number
 }
 
 // ---------------------------------------------------------------- colour
@@ -54,6 +60,12 @@ function oklchToSrgb(l: number, c: number, hDeg: number): [number, number, numbe
   return [encode(lin[0]!), encode(lin[1]!), encode(lin[2]!)]
 }
 
+/**
+ * How far keeping chroma may move a hue's lightness. Unbounded, cyan goes to
+ * 0.9 to reach 0.22 and glares against the dark the seed asks to keep.
+ */
+const REACH = 0.2
+
 const inGamut = (rgb: [number, number, number]) => rgb.every((v) => v >= -1e-4 && v <= 1 + 1e-4)
 
 /**
@@ -61,9 +73,38 @@ const inGamut = (rgb: [number, number, number]) => rgb.every((v) => v >= -1e-4 &
  * allows. Chroma is pulled in rather than channels clipped, because clipping
  * moves lightness and lightness is the property the flowers share.
  */
-export function vivid(l: number, c: number, hue: number): { rgb: [number, number, number]; chroma: number } {
+export function vivid(
+  l: number,
+  c: number,
+  hue: number,
+  keep: Gamut = "lightness",
+): { rgb: [number, number, number]; chroma: number; lightness: number } {
   let rgb = oklchToSrgb(l, c, hue)
-  if (inGamut(rgb)) return { rgb: to255(rgb), chroma: c }
+  if (inGamut(rgb)) return { rgb: to255(rgb), chroma: c, lightness: l }
+  if (keep === "chroma") {
+    // The nearest lightness at which this hue can be this saturated, if any.
+    for (let d = 0.005; d <= REACH; d += 0.005) {
+      for (const at of [l - d, l + d]) {
+        if (at <= 0 || at >= 1) continue
+        rgb = oklchToSrgb(at, c, hue)
+        if (inGamut(rgb)) return { rgb: to255(rgb), chroma: c, lightness: at }
+      }
+    }
+    // No lightness shows it that saturated: take the one that shows it most.
+    let best = { l, c: pull(l, c, hue) }
+    for (let at = Math.max(0.05, l - REACH); at <= Math.min(0.97, l + REACH); at += 0.01) {
+      const most = pull(at, c, hue)
+      if (most > best.c + 1e-4) best = { l: at, c: most }
+    }
+    return { rgb: to255(oklchToSrgb(best.l, best.c, hue)), chroma: best.c, lightness: best.l }
+  }
+  const lo = pull(l, c, hue)
+  rgb = oklchToSrgb(l, lo, hue)
+  return { rgb: to255(rgb), chroma: lo, lightness: l }
+}
+
+/** The most chroma up to `c` this hue shows at this lightness. */
+function pull(l: number, c: number, hue: number): number {
   let lo = 0
   let hi = c
   for (let i = 0; i < 18; i++) {
@@ -71,8 +112,7 @@ export function vivid(l: number, c: number, hue: number): { rgb: [number, number
     if (inGamut(oklchToSrgb(l, mid, hue))) lo = mid
     else hi = mid
   }
-  rgb = oklchToSrgb(l, lo, hue)
-  return { rgb: to255(rgb), chroma: lo }
+  return lo
 }
 
 function to255(rgb: [number, number, number]): [number, number, number] {
@@ -104,7 +144,7 @@ function buildGrid(settings: Settings, width: number, height: number) {
       const x = ox + w * (q + r / 2)
       const y = oy + 1.5 * R * r
       index.set(key(q, r), hexes.length)
-      hexes.push({ q, r, x, y, ring: -1, owner: -1, rgb: [0, 0, 0], hue: 0 })
+      hexes.push({ q, r, x, y, ring: -1, owner: -1, rgb: [0, 0, 0], hue: 0, late: 0, phase: 0, rate: 0 })
     }
   }
 
@@ -171,10 +211,14 @@ function scatteredCentres(hexes: Hex[], index: Map<string, number>, spacing: num
 function colour(hexes: Hex[], flowers: number, settings: Settings) {
   const rng = makeRng(hashSeed(settings.seed, 2))
   const base = Array.from({ length: flowers }, () => wrap(settings.hue + settings.drift * (rng() * 2 - 1)))
+  const late = Array.from({ length: flowers }, () => rng())
   const triad = [-1, 0, 1]
   for (const hex of hexes) {
     const flower = base[hex.owner] ?? settings.hue
     const own = rng() * 2 - 1
+    hex.late = late[hex.owner] ?? 0
+    hex.phase = rng() * Math.PI * 2
+    hex.rate = 0.08 + rng() * 0.17
     if (hex.ring === 0) {
       hex.hue = flower
       hex.rgb = vivid(settings.centre, Math.min(settings.chroma, settings.centre * 0.6), flower).rgb
@@ -185,7 +229,7 @@ function colour(hexes: Hex[], flowers: number, settings: Settings) {
         ? triad[(((hex.q - hex.r) % 3) + 3) % 3]! + own * 0.15
         : own
     hex.hue = wrap(flower + settings.hues * offset)
-    hex.rgb = vivid(settings.lightness, settings.chroma, hex.hue).rgb
+    hex.rgb = vivid(settings.lightness, settings.chroma, hex.hue, settings.gamut).rgb
   }
 }
 
@@ -196,15 +240,15 @@ const smooth = (t: number) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t))
 /** Where each phase of one loop starts and how long the loop is, for a grid this many rings deep. */
 export function timeline(settings: Settings, maxRing: number) {
   const bloom = settings.rest
-  const full = bloom + maxRing * settings.travel + settings.rise
+  const full = bloom + settings.stagger + maxRing * settings.travel + settings.rise
   const fade = full + settings.hold
   const period = fade + settings.fade
   return { bloom, full, fade, period }
 }
 
-/** How lit a hex this many rings out is, this far into the loop. */
-export function intensity(settings: Settings, line: ReturnType<typeof timeline>, ring: number, t: number): number {
-  const arrive = smooth((t - line.bloom - ring * settings.travel) / settings.rise)
+/** How lit a hex is this far into the loop, when the colour reaches it `delay` seconds into the bloom. */
+export function intensity(settings: Settings, line: ReturnType<typeof timeline>, delay: number, t: number): number {
+  const arrive = smooth((t - line.bloom - delay) / settings.rise)
   const leave = 1 - smooth((t - line.fade) / settings.fade)
   return arrive * leave
 }
@@ -295,7 +339,10 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
     let sum = 0
 
     for (const hex of hexes) {
-      const a = intensity(settings, line, hex.ring, t)
+      const lift = intensity(settings, line, hex.late * settings.stagger + hex.ring * settings.travel, t)
+      // Shimmer dims a lit hex by up to `shimmer`, slowly and out of step with
+      // its neighbours, so a held grid is still moving.
+      const a = lift * (1 - settings.shimmer * (0.5 + 0.5 * Math.sin(hex.phase + clock * hex.rate * Math.PI * 2)))
       sum += a
       if (a <= 0.002) continue
       const [cr, cg, cb] = hex.rgb
@@ -347,7 +394,8 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
     const t = clock % line.period
     const phase = t < line.bloom ? "rest" : t < line.full ? "bloom" : t < line.fade ? "hold" : "fade"
     const byRing: number[] = []
-    for (let k = 0; k <= maxRing; k++) byRing.push(round(intensity(settings, line, k, t)))
+    // Ignoring stagger: how far the wave has come out from a centre that started on time.
+    for (let k = 0; k <= maxRing; k++) byRing.push(round(intensity(settings, line, k * settings.travel, t)))
     // How different a centre's six neighbours are from each other in hue, on
     // average: the "same feel, not the same colour" property, as a number.
     const index = new Map(hexes.map((h, i) => [key(h.q, h.r), i]))
@@ -358,10 +406,16 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
         .filter((n): n is number => n !== undefined)
         .map((n) => hexes[n]!.hue)
       if (petals.length < 2) continue
-      petalSpread.push(Math.max(...petals) - Math.min(...petals))
+      // The narrowest arc holding every petal's hue: 360 less the widest gap between them.
+      const sorted = [...petals].sort((a, b) => a - b)
+      let widest = 360 - sorted[sorted.length - 1]! + sorted[0]!
+      for (let i = 1; i < sorted.length; i++) widest = Math.max(widest, sorted[i]! - sorted[i - 1]!)
+      petalSpread.push(360 - widest)
     }
     const coloured = hexes.filter((h) => h.ring > 0)
-    const chromas = coloured.map((h) => vivid(settings.lightness, settings.chroma, h.hue).chroma)
+    const shown = coloured.map((h) => vivid(settings.lightness, settings.chroma, h.hue, settings.gamut))
+    const chromas = shown.map((v) => v.chroma)
+    const lights = shown.map((v) => v.lightness)
     return {
       hexes: hexes.length,
       centres: centres.length,
@@ -382,6 +436,7 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
         min: round(Math.min(...chromas), 3),
         mean: round(chromas.reduce((a, b) => a + b, 0) / (chromas.length || 1), 3),
       },
+      lightness: { asked: settings.lightness, min: round(Math.min(...lights)), max: round(Math.max(...lights)) },
       frame: { width, height },
       fps: Math.round(fps),
       running,
