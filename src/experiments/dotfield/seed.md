@@ -38,3 +38,13 @@ describes the work.
   an upright column is exactly a dot, and a bent one shows its side as a curve
   from its root to its top. The sides darken toward the ground, which is the
   only depth cue so far.
+- **Height variation was in the seed as "later".** It is a `heights` control at
+  0 on every preset except `wildflowers`, so it costs nothing until it is
+  dragged. A taller column sways slower, as a real stem does — a quarter the
+  rate at twice the height — so `heights` changes the motion as well as the
+  look. If that confounds what you want to judge, `sway` and `variety` are
+  separate.
+- **Do neighbours touch?** Columns pass through each other. Nothing pushes one
+  off another, and at a large height against spacing they overlap. A collision
+  between neighbours is the obvious next mechanism if the field should read as
+  crowded rather than as layered.
