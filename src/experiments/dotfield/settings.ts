@@ -158,7 +158,7 @@ export const CONTROLS: Control[] = [
     min: 0,
     max: 1,
     step: 0.01,
-    format: fixed(2),
+    format: /* @__PURE__ */ fixed(2),
     hint: "How much columns differ in height, column by column. 0 is one height; 1 puts four times between the shortest and the tallest. A taller column also sways slower, as a real stem does.",
   },
   {
@@ -169,7 +169,7 @@ export const CONTROLS: Control[] = [
     min: 0,
     max: 0.8,
     step: 0.01,
-    format: fixed(2),
+    format: /* @__PURE__ */ fixed(2),
     hint: "How close the eye is. 0 looks straight down from far away, so a standing column is only a dot. Higher brings the camera down over the middle of the field: tops grow, and columns away from the middle show their sides even standing.",
   },
   {
@@ -180,7 +180,7 @@ export const CONTROLS: Control[] = [
     min: 0,
     max: 1,
     step: 0.01,
-    format: fixed(2),
+    format: /* @__PURE__ */ fixed(2),
     hint: "Where a column gives. 0 bends along its whole length like a stem, curling as it leans. 1 stays straight and tips over on a springy base, like a slalom pole.",
   },
   {
@@ -213,7 +213,7 @@ export const CONTROLS: Control[] = [
     min: 0,
     max: 1,
     step: 0.01,
-    format: fixed(2),
+    format: /* @__PURE__ */ fixed(2),
     hint: "The steady lean everything shares, as a fraction of height. 0 stands the field up between gusts.",
   },
   {
@@ -246,7 +246,7 @@ export const CONTROLS: Control[] = [
     min: 0,
     max: 1,
     step: 0.01,
-    format: fixed(2),
+    format: /* @__PURE__ */ fixed(2),
     hint: "How far the breeze drops between its strong spells. 1 lets it die away entirely now and then.",
   },
   {
@@ -257,7 +257,7 @@ export const CONTROLS: Control[] = [
     min: 0,
     max: 1.5,
     step: 0.01,
-    format: fixed(2),
+    format: /* @__PURE__ */ fixed(2),
     hint: "How hard a gust leans the columns at its peak. A gust is an event: a patch of wind that sweeps across the field from its own direction, rising fast and dying slowly behind its front.",
   },
   {
@@ -302,7 +302,7 @@ export const CONTROLS: Control[] = [
     min: 0,
     max: 1,
     step: 0.01,
-    format: fixed(2),
+    format: /* @__PURE__ */ fixed(2),
     hint: "Lean from eddies — wind that turns across the breeze rather than along it. Above the breeze, the field breaks into swirls.",
   },
   {
@@ -360,7 +360,7 @@ export const CONTROLS: Control[] = [
     max: 2,
     step: 0.01,
     scale: "log",
-    format: fixed(2),
+    format: /* @__PURE__ */ fixed(2),
     hint: "How quickly a swing dies away. Below 1 a column overshoots and rings; 1 returns it without overshoot; above, it creeps back.",
   },
   {
@@ -382,7 +382,7 @@ export const CONTROLS: Control[] = [
     min: 0,
     max: 2,
     step: 0.05,
-    format: fixed(2),
+    format: /* @__PURE__ */ fixed(2),
     hint: "How much slower a taller column sways, when heights differ. 0 gives every column the same rate, so the field moves together; 2 is a real stem, a quarter the rate at twice the height, and neighbours fall out of step.",
   },
   {
@@ -427,7 +427,7 @@ export const CONTROLS: Control[] = [
     min: 0,
     max: 1,
     step: 0.01,
-    format: fixed(2),
+    format: /* @__PURE__ */ fixed(2),
     hint: "0 is a smooth gradient. Higher sharpens it, so colour pools into islands with quick borders between them.",
   },
   {
@@ -449,7 +449,7 @@ export const CONTROLS: Control[] = [
     min: 0,
     max: 1,
     step: 0.01,
-    format: fixed(2),
+    format: /* @__PURE__ */ fixed(2),
     hint: "How far the top of each column is lifted toward white. 0 gives it the stalk's colour, 1 makes every dot white.",
   },
 ]
