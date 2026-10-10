@@ -171,6 +171,35 @@ exports[`dangler > has not edited a slot in place 1`] = `
 
 exports[`dangler > retires a slot by appending to the retired list, never by editing one 1`] = `[]`;
 
+exports[`dotfield > has not edited a slot in place 1`] = `
+[
+  "lattice enum square|triangle|hex|offset|diamond",
+  "spacing num grid=1 origin=6 bits=7",
+  "diameter num grid=0.5 origin=1 bits=7",
+  "height num grid=1 origin=4 bits=9",
+  "direction num grid=1 origin=0 bits=9",
+  "breeze num grid=0.01 origin=0 bits=7",
+  "gusts num grid=0.01 origin=0 bits=8",
+  "gustSize num grid=1 origin=40 bits=12",
+  "swirl num grid=0.01 origin=0 bits=7",
+  "swirlSize num grid=1 origin=40 bits=12",
+  "drift num grid=1 origin=0 bits=10",
+  "churn num grid=0.1 origin=0 bits=10",
+  "sway num grid=0.01 origin=0.05 bits=9",
+  "damping num grid=0.01 origin=0.02 bits=8",
+  "variety num grid=0.01 origin=0 bits=6",
+  "hue num grid=1 origin=0 bits=9",
+  "hueRange num grid=1 origin=0 bits=8",
+  "colourSize num grid=1 origin=40 bits=12",
+  "islands num grid=0.01 origin=0 bits=7",
+  "saturation num grid=1 origin=0 bits=7",
+  "cap num grid=0.01 origin=0 bits=7",
+  "seed num grid=1 origin=0 bits=20",
+]
+`;
+
+exports[`dotfield > retires a slot by appending to the retired list, never by editing one 1`] = `[]`;
+
 exports[`embers > has not edited a slot in place 1`] = `
 [
   "count num grid=10 origin=100 bits=10",
