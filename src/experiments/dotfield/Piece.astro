@@ -1,0 +1,85 @@
+---
+import PiecePage from "@/experiments/gallery/PiecePage.astro"
+import type { NoteTheme } from "@/experiments/gallery/NoteOverlay.astro"
+import { PRESETS } from "@/experiments/dotfield/presets"
+
+// The note's furniture is the gallery's; only the paint is this piece's.
+// Read off the primary rather than written down, so promoting a preset moves
+// the note's accent with it. `bg` is the canvas's own ground, which is tinted
+// from the same hue in `dotfield.ts`.
+const primary = PRESETS[0]!.settings
+const { hue } = primary
+const theme = {
+  bg: `hsl(${hue} 18% 4%)`,
+  sheet: `hsl(${hue} 30% 4% / 78%)`,
+  fg: `hsl(${hue} 12% 86%)`,
+  bright: `hsl(${hue} 18% 97%)`,
+  muted: `hsl(${hue} 10% 58%)`,
+  edge: `hsl(${hue} 24% 82% / 12%)`,
+  accent: `hsl(${hue} 70% 64%)`,
+} satisfies NoteTheme
+
+interface Props {
+  /** Render with the note already open, for the note's own address. */
+  note?: boolean
+}
+
+const { note = false } = Astro.props
+---
+
+<PiecePage slug="dotfield" note={note} theme={theme} backdrop={0.5}>
+  <style is:global>
+    html {
+      /* Overridden from JS on every change; the fallback keeps the page sane
+           before the first paint and without script. */
+      --hue: 280;
+
+      --accent: hsl(var(--hue) 72% 62%);
+      --ui-text: rgb(255 255 255 / 74%);
+      --ui-label: rgb(255 255 255 / 50%);
+      --ui-heading: hsl(var(--hue) 36% 68%);
+      --ui-panel: rgb(4 6 8 / 86%);
+      --ui-chip: rgb(6 9 12 / 76%);
+      --ui-edge: rgb(225 235 255 / 14%);
+      --ui-edge-hover: rgb(225 235 255 / 34%);
+      --ui-on-bg: hsl(var(--hue) 58% 32%);
+      --ui-on-text: hsl(var(--hue) 70% 94%);
+      --ui-on-edge: rgb(210 225 255 / 42%);
+      --track: rgb(225 235 255 / 16%);
+      --ui-fade: 0.35s;
+
+      --ui-label-col: 6.5rem;
+      --ui-value-col: 5.5rem;
+      --ui-panel-min: 30rem;
+      --ui-row-gap: 0.38rem;
+    }
+
+    html,
+    body {
+      margin: 0;
+      height: 100%;
+      background: #000;
+    }
+
+    body {
+      overflow: hidden;
+    }
+
+    canvas {
+      position: fixed;
+      inset: 0;
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+  <canvas id="field"></canvas>
+  <script>
+    import { boot } from "@/experiments/gallery/boot"
+    import * as settings from "@/experiments/dotfield/settings"
+    import { PRESETS } from "@/experiments/dotfield/presets"
+    import { start } from "@/experiments/dotfield/runner"
+
+    boot({ settings, presets: PRESETS, start })
+  </script>
+</PiecePage>

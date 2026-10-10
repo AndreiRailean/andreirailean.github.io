@@ -13,7 +13,18 @@ import { expect, openExperiment, test } from "./support/experiment.ts"
  * piece had its own copy of the keyboard handling to drift next.
  */
 
-const PIECES = ["bubbles", "crowd", "dangler", "embers", "flotsam", "psyxels", "starry-night", "streakers", "walkers"]
+const PIECES = [
+  "bubbles",
+  "crowd",
+  "dangler",
+  "dotfield",
+  "embers",
+  "flotsam",
+  "psyxels",
+  "starry-night",
+  "streakers",
+  "walkers",
+]
 
 /**
  * Pieces whose `GROUPS` declare governed groups — #242. **A piece that adopts
@@ -23,7 +34,17 @@ const PIECES = ["bubbles", "crowd", "dangler", "embers", "flotsam", "psyxels", "
 const GOVERNED = new Set<string>(["crowd"])
 
 /** Pieces whose panel is boxed (`boxes` in their CHROME), so the box test holds them to it. */
-const BOXED = new Set<string>(["bubbles", "crowd", "dangler", "embers", "flotsam", "psyxels", "streakers", "walkers"])
+const BOXED = new Set<string>([
+  "bubbles",
+  "crowd",
+  "dangler",
+  "dotfield",
+  "embers",
+  "flotsam",
+  "psyxels",
+  "streakers",
+  "walkers",
+])
 
 /**
  * **Every test here is about the chrome, so every one holds the piece.** A
