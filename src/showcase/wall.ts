@@ -63,8 +63,13 @@ export type WallEntry = {
  * crossing pieces tears one down and mounts another. Judged worth it, and the
  * order is a source edit away from any other opinion.
  *
- * **Streakers' `dimensions` leads, on the rule every lead has: `/showcase/`
- * is entry zero and that is the newest published scene.** It is the piece's
+ * **Dotfield's `meadow` leads, on the rule every lead has: `/showcase/` is
+ * entry zero and that is the newest published scene.** It is the piece's
+ * primary. Its other seven — white, still, squall, eddies, islands,
+ * wildflowers and slalom — are woven further down. Andrei asked for all of
+ * its presets; meadow and white are scenes he found by dragging.
+ *
+ * **Streakers' `dimensions` led before it, on the same rule.** It is the piece's
  * primary. Its other five — saturn, rosette, random star, weave and club — are
  * woven further down. Andrei named all six; the piece has ten presets.
  *
@@ -105,6 +110,15 @@ export type WallEntry = {
  * nothing and are here.
  */
 export const WALL: readonly WallEntry[] = [
+  {
+    id: "dotfield-meadow",
+    title: "meadow",
+    piece: "dotfield",
+    pieceTitle: "Dotfield",
+    note: "A field of columns seen from above, purple running into red, leaning together in a quick, veering wind as wide gusts sweep across.",
+    runner: "dotfield.fddb64ab9259.js",
+    scene: "vov___9wLjQmSXxGDcXKlh4qgUjIwAAEAAKsiEZNcDwhNVCRGAAG",
+  },
   {
     id: "streakers-dimensions",
     title: "dimensions",
@@ -160,6 +174,15 @@ export const WALL: readonly WallEntry[] = [
     scene: "____cF8syctZLJ6ppCqihtGGgAoXoRSe7",
   },
   {
+    id: "dotfield-white",
+    title: "white",
+    piece: "dotfield",
+    pieceTitle: "Dotfield",
+    note: "Thin white dots on stiff stalks set wide apart, each tipping on its base and ringing long after the wind has passed.",
+    runner: "dotfield.fddb64ab9259.js",
+    scene: "vov___9wOgBcqyaCCIAKhNokkKAZAAAUAAJQOYZPANBaFGRRaApi",
+  },
+  {
     id: "streakers-saturn",
     title: "saturn",
     piece: "streakers",
@@ -194,6 +217,15 @@ export const WALL: readonly WallEntry[] = [
     note: "One axis, half of it coming at me, and me walking faster than most of it. This is where the files form — nothing in the code knows what a lane is.",
     runner: "crowd.55724c73cfc2.js",
     scene: "____cHe4yOQRr5kYJixyxRQGIAoGfBwD4",
+  },
+  {
+    id: "dotfield-still",
+    title: "still",
+    piece: "dotfield",
+    pieceTitle: "Dotfield",
+    note: "Almost no wind: a square grid of dots, kept alive by a breath of swirl.",
+    runner: "dotfield.fddb64ab9259.js",
+    scene: "vov___9wKEg0AAAUEsmFaRk3AAgsgAAMAAAeRgMSIB60CgAa0AAG",
   },
   {
     id: "walkers-chalky",
@@ -248,6 +280,15 @@ export const WALL: readonly WallEntry[] = [
     note: "Walking in a parade, at the pace of everybody around me, with a crowd three deep standing on both kerbs to watch it pass. The stationary crowd is what moves.",
     runner: "crowd.9810eb51f4a2.js",
     scene: "_-__7___QDvIAQUB6pwJiyyh1fA4Aoo15wA40gBoAAkAFQ0oACgAAA4",
+  },
+  {
+    id: "dotfield-squall",
+    title: "squall",
+    piece: "dotfield",
+    pieceTitle: "Dotfield",
+    note: "Tall soft stems in crop rows, thrown about by strong gusts from every side, overshooting and ringing.",
+    runner: "dotfield.fddb64ab9259.js",
+    scene: "vov___9wFCCFVDy-CgKUChQeAeoHgAAcAAbwIIUKUGR4KHjCWAAG",
   },
   {
     id: "streakers-random-star",
@@ -331,6 +372,15 @@ export const WALL: readonly WallEntry[] = [
     scene: "_-__7___QE_IyQUJSxwJixiiPDAUApFxryAUADxoAw4UCiApQCgAAA4",
   },
   {
+    id: "dotfield-eddies",
+    title: "eddies",
+    piece: "dotfield",
+    pieceTitle: "Dotfield",
+    note: "No steady breeze, only eddies: the field turns in slow whorls.",
+    runner: "dotfield.fddb64ab9259.js",
+    scene: "vov___9wFChAWgAPEEcKVS0a4ojGQAAwAAQURhGHMFAAAAAi0AAG",
+  },
+  {
     id: "streakers-weave",
     title: "weave",
     piece: "streakers",
@@ -374,6 +424,15 @@ export const WALL: readonly WallEntry[] = [
     note: "The parade thinned out into teams — blocks of ten walking together, spaced along the way with empty road between, and me at the back of one of them.",
     runner: "crowd.9810eb51f4a2.js",
     scene: "_-__7___QAnIAoACCZwKCyyh1rkYAo602EBI0gBooAkAlQyoACgAAA4",
+  },
+  {
+    id: "dotfield-islands",
+    title: "islands",
+    piece: "dotfield",
+    pieceTitle: "Dotfield",
+    note: "Fine stems in patches of sharply different colour, every colour somewhere in the field.",
+    runner: "dotfield.fddb64ab9259.js",
+    scene: "vov___9wDBgsyDJQFUcKeFoOZVlqAABUAAh4RgeQkDI8D1BA8AAG",
   },
   {
     id: "bubbles-ring-breathing",
@@ -439,6 +498,15 @@ export const WALL: readonly WallEntry[] = [
     scene: "__9AEazEZQXRYsBwhSY",
   },
   {
+    id: "dotfield-wildflowers",
+    title: "wildflowers",
+    piece: "dotfield",
+    pieceTitle: "Dotfield",
+    note: "Columns of many heights seen from a low camera, tall ones swaying slower, their sides showing toward the edges.",
+    runner: "dotfield.fddb64ab9259.js",
+    scene: "vov___9wKDhUHjJQEESKpSMkQejLQAAWgyJ4RgZPADxQFFBRQKAG",
+  },
+  {
     id: "flotsam-riptide",
     title: "riptide",
     piece: "flotsam",
@@ -473,6 +541,15 @@ export const WALL: readonly WallEntry[] = [
     note: "Four metres of water with dust on it, lit from almost overhead. Small water is quick, which is the surprise.",
     runner: "flotsam.b2c2cc0608a3.js",
     scene: "_____2AAKUJ7AAAWZCwIVGAFAoKnj6WDQBlgCAPBkZLR4jPiQAB9Hg",
+  },
+  {
+    id: "dotfield-slalom",
+    title: "slalom",
+    piece: "dotfield",
+    pieceTitle: "Dotfield",
+    note: "Tall straight poles on springy bases, tipping and snapping back without curling, like gates on a slalom course.",
+    runner: "dotfield.fddb64ab9259.js",
+    scene: "vov___9wdCkkCiiCHMNKAo8toUl0AAAkAAB4LQPNcFBaFGRh4AyK",
   },
   {
     id: "psyxels-maybe",
