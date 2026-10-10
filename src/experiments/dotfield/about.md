@@ -4,6 +4,7 @@ title: Dotfield
 summary: A field of columns seen from straight above, each a dot while it stands, bending in one wind that rolls gusts and swirls across it — neighbours leaning alike, the whole field never the same twice.
 started: 2026-10-10
 updated: 2026-10-10
+poster: ./poster.webp
 tags:
   - canvas
   - generative
