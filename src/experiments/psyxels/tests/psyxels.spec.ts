@@ -1080,7 +1080,17 @@ test("a dithered afterglow fades to the ground where the flat one stalls at half
         const tileCanvas = document.createElement("canvas")
         tileCanvas.width = 64
         tileCanvas.height = 64
-        const thresholds = new Uint8Array(64 * 64).map(() => Math.floor(Math.random() * 256))
+        // Every threshold exactly 16 times, shuffled. At this rate only the
+        // thresholds 0 and 1 ever erase, and drawn at random their count is
+        // binomial, 16 ± 4: the fade rate moved ±25% from tile to tile, which
+        // over 600 frames is 15–46 against a band of 13–39 (#277).
+        const thresholds = new Uint8Array(64 * 64).map((_, i) => i % 256)
+        for (let i = thresholds.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1))
+          const t = thresholds[i]!
+          thresholds[i] = thresholds[j]!
+          thresholds[j] = t
+        }
         const tile = { canvas: tileCanvas, thresholds, data: null }
         for (let frame = 0; frame < frames; frame++) erase(ctx, side, side, amount, dither, tile)
         const alpha = ctx.getImageData(0, 0, side, side).data
