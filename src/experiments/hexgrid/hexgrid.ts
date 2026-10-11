@@ -126,7 +126,11 @@ const key = (q: number, r: number) => `${q},${r}`
 /** Wraps a hue into 0–360. */
 const wrap = (h: number) => ((h % 360) + 360) % 360
 
-function buildGrid(settings: Settings, width: number, height: number) {
+/**
+ * One pattern. Cycle 0 is the seed's own, so an address always opens on the same
+ * picture; every cycle after draws fresh centres and hues from the seed and its number.
+ */
+function buildGrid(settings: Settings, width: number, height: number, cycle: number) {
   const R = settings.size
   const w = SQRT3 * R
   const rows = Math.ceil(height / (1.5 * R)) + 2
@@ -148,9 +152,14 @@ function buildGrid(settings: Settings, width: number, height: number) {
     }
   }
 
-  const rng = makeRng(hashSeed(settings.seed, 1))
+  const salt = (n: number) => (cycle === 0 ? hashSeed(settings.seed, n) : hashSeed(settings.seed, n, cycle))
+  const rng = makeRng(salt(1))
   const centres =
-    settings.layout === "tiled" ? tiledCentres(hexes) : scatteredCentres(hexes, index, settings.spacing, rng)
+    settings.layout === "tiled"
+      ? tiledCentres(hexes, cycle)
+      : settings.layout === "random"
+        ? randomCentres(hexes, settings.density, rng)
+        : scatteredCentres(hexes, index, settings.spacing, rng)
 
   // Multi-source breadth-first search: each hex's ring is its hex distance to
   // the nearest centre, and that centre owns it. Ties go to whichever centre's
@@ -172,17 +181,32 @@ function buildGrid(settings: Settings, width: number, height: number) {
     }
   }
 
-  colour(hexes, centres.length, settings)
+  colour(hexes, centres.length, settings, makeRng(salt(2)), cycle)
   return { hexes, centres }
 }
 
-/** Every seventh hex, so each is ringed by six petals and the flowers tile exactly. */
-function tiledCentres(hexes: Hex[]): number[] {
+/**
+ * Every seventh hex, so each is ringed by six petals and the flowers tile
+ * exactly. A new cycle shifts which residue is the centre, so it moves.
+ */
+function tiledCentres(hexes: Hex[], cycle: number): number[] {
   const out: number[] = []
+  const shift = (cycle * 3) % 7
   hexes.forEach((hex, i) => {
-    if ((((hex.q + 3 * hex.r) % 7) + 7) % 7 === 0) out.push(i)
+    if ((((hex.q + 3 * hex.r - shift) % 7) + 7) % 7 === 0) out.push(i)
   })
   return out
+}
+
+/** This share of the hexes, in per cent, chosen at random with no spacing at all: centres may touch. */
+function randomCentres(hexes: Hex[], density: number, rng: Rng): number[] {
+  const count = Math.max(1, Math.round((hexes.length * density) / 100))
+  const order = hexes.map((_, i) => i)
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1))
+    ;[order[i], order[j]] = [order[j]!, order[i]!]
+  }
+  return order.slice(0, count)
 }
 
 /** Hexes in random order, each kept if it is at least `spacing` from every one kept so far. */
@@ -209,13 +233,14 @@ function scatteredCentres(hexes: Hex[], index: Map<string, number>, spacing: num
   return kept
 }
 
-function colour(hexes: Hex[], flowers: number, settings: Settings) {
-  const rng = makeRng(hashSeed(settings.seed, 2))
-  const base = Array.from({ length: flowers }, () => wrap(settings.hue + settings.drift * (rng() * 2 - 1)))
+function colour(hexes: Hex[], flowers: number, settings: Settings, rng: Rng, cycle: number) {
+  // Each cycle after the first moves the whole pattern's hue by up to `wander`.
+  const hue = cycle === 0 ? settings.hue : wrap(settings.hue + settings.wander * (rng() * 2 - 1))
+  const base = Array.from({ length: flowers }, () => wrap(hue + settings.drift * (rng() * 2 - 1)))
   const late = Array.from({ length: flowers }, () => rng())
   const triad = [-1, 0, 1]
   for (const hex of hexes) {
-    const flower = base[hex.owner] ?? settings.hue
+    const flower = base[hex.owner] ?? hue
     const own = rng() * 2 - 1
     hex.late = late[hex.owner] ?? 0
     hex.phase = rng() * Math.PI * 2
@@ -235,20 +260,41 @@ function colour(hexes: Hex[], flowers: number, settings: Settings) {
 
 const smooth = (t: number) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t))
 
-/** Where each phase of one loop starts and how long the loop is, for a grid this many rings deep. */
+/**
+ * Where each phase of one cycle starts and how long the cycle is, for a grid
+ * this many rings deep. `full` is when the last hex has its colour and `fade`
+ * when the first starts to lose it; the two orders agree on the period.
+ */
 export function timeline(settings: Settings, maxRing: number) {
   const bloom = settings.rest
-  const full = bloom + settings.stagger + maxRing * settings.travel + settings.rise
-  const fade = full + settings.hold
-  const period = fade + settings.fade
+  const spread = settings.stagger + maxRing * settings.travel
+  const full = bloom + spread + settings.rise
+  const fade = settings.fadeBy === "wave" ? bloom + settings.rise + settings.hold : full + settings.hold
+  const period = full + settings.hold + settings.fade
   return { bloom, full, fade, period }
 }
 
-/** How lit a hex is this far into the loop, when the colour reaches it `delay` seconds into the bloom. */
-export function intensity(settings: Settings, line: ReturnType<typeof timeline>, delay: number, t: number): number {
+/**
+ * How lit a hex is this far into the cycle, when the colour reaches it `delay`
+ * seconds into the bloom: `[colour, outline]`. The outline comes up through the
+ * rest, before any colour, and leaves with the hex's colour.
+ *
+ * A wave fade takes each hex out in the order it came in, `hold` seconds after
+ * it reached full colour, so every hex is lit for as long as every other and
+ * the fade's spread is the bloom's: a quick bloom fades quickly. Together takes
+ * every hex out at once, once the last is full.
+ */
+export function intensity(
+  settings: Settings,
+  line: ReturnType<typeof timeline>,
+  delay: number,
+  t: number,
+): [number, number] {
   const arrive = smooth((t - line.bloom - delay) / settings.rise)
-  const leave = 1 - smooth((t - line.fade) / settings.fade)
-  return arrive * leave
+  const leaving = settings.fadeBy === "wave" ? line.fade + delay : line.fade
+  const leave = 1 - smooth((t - leaving) / settings.fade)
+  const appear = smooth(t / Math.max(0.05, settings.rest))
+  return [arrive * leave, appear * leave]
 }
 
 // ---------------------------------------------------------------- scene
@@ -275,6 +321,20 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
   let fps = 0
   let vignette: HTMLCanvasElement | null = null
   let lit = 0
+  /** Which pattern this is, and the clock reading it began at. */
+  let cycle = 0
+  let begun = 0
+  const outlines: number[] = []
+
+  /** Moves the clock on, drawing a new pattern each time a cycle ends. */
+  function advance(seconds: number) {
+    clock += seconds
+    while (clock - begun >= line.period) {
+      begun += line.period
+      cycle++
+      rebuild()
+    }
+  }
 
   function size() {
     dpr = Math.min(2, window.devicePixelRatio || 1)
@@ -309,7 +369,7 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
   }
 
   function rebuild() {
-    const grid = buildGrid(settings, width, height)
+    const grid = buildGrid(settings, width, height, cycle)
     hexes = grid.hexes
     centres = grid.centres
     maxRing = hexes.reduce((m, h) => Math.max(m, h.ring), 0)
@@ -333,11 +393,13 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
     ctx.fillStyle = "#000"
     ctx.fillRect(0, 0, width, height)
     const r = drawn()
-    const t = clock % line.period
+    const t = clock - begun
     let sum = 0
+    outlines.length = 0
 
     for (const hex of hexes) {
-      const lift = intensity(settings, line, hex.late * settings.stagger + hex.ring * settings.travel, t)
+      const [lift, outline] = intensity(settings, line, hex.late * settings.stagger + hex.ring * settings.travel, t)
+      outlines.push(outline)
       // Shimmer dims a lit hex by up to `shimmer`, slowly and out of step with
       // its neighbours, so a held grid is still moving.
       const a = lift * (1 - settings.shimmer * (0.5 + 0.5 * Math.sin(hex.phase + clock * hex.rate * Math.PI * 2)))
@@ -356,11 +418,15 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
     }
 
     if (settings.edge > 0) {
-      ctx.strokeStyle = `rgba(255,255,255,${settings.edge})`
       ctx.lineWidth = 1
-      ctx.beginPath()
-      for (const hex of hexes) hexPath(hex.x, hex.y, r)
-      ctx.stroke()
+      hexes.forEach((hex, i) => {
+        const o = outlines[i]! * settings.edge
+        if (o <= 0.002) return
+        ctx.strokeStyle = `rgba(255,255,255,${o})`
+        ctx.beginPath()
+        hexPath(hex.x, hex.y, r)
+        ctx.stroke()
+      })
     }
 
     if (debug) {
@@ -377,7 +443,7 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
     const dt = last ? Math.min(0.1, (time - last) / 1000) : 0
     last = time
     if (dt > 0) fps = fps ? fps * 0.95 + (1 / dt) * 0.05 : 1 / dt
-    if (!held) clock += dt
+    if (!held) advance(dt)
     draw()
   }
 
@@ -389,11 +455,11 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
   /** What the mechanisms did, measured off the built grid and the live clock. */
   function stats() {
     const round = (v: number, d = 2) => Number(v.toFixed(d))
-    const t = clock % line.period
+    const t = clock - begun
     const phase = t < line.bloom ? "rest" : t < line.full ? "bloom" : t < line.fade ? "hold" : "fade"
     const byRing: number[] = []
     // Ignoring stagger: how far the wave has come out from a centre that started on time.
-    for (let k = 0; k <= maxRing; k++) byRing.push(round(intensity(settings, line, k * settings.travel, t)))
+    for (let k = 0; k <= maxRing; k++) byRing.push(round(intensity(settings, line, k * settings.travel, t)[0]))
     // How different a centre's six neighbours are from each other in hue, on
     // average: the "same feel, not the same colour" property, as a number.
     const index = new Map(hexes.map((h, i) => [key(h.q, h.r), i]))
@@ -419,6 +485,8 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
       centres: centres.length,
       rings: maxRing,
       loop: {
+        cycle,
+        hue: centres.length ? round(hexes[centres[0]!]!.hue, 0) : 0,
         period: round(line.period, 1),
         at: round(t, 1),
         phase,
@@ -468,11 +536,14 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
       held = on
     },
     settle(seconds: number) {
-      clock += seconds
+      advance(seconds)
       draw()
     },
     clear() {
       clock = 0
+      begun = 0
+      cycle = 0
+      rebuild()
       draw()
     },
     debug(on?: boolean) {

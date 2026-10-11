@@ -44,6 +44,13 @@ answered by dragging._
   petals, fitting together. "the colour radiates out from the few dark
   centers" reads as scattered — few centres, several rings to travel. Both
   are there (`centres`); the primary is scattered, `flowers` is tiled.
+- **Wave fade against "not done in regions".** The seed asked that the fade not
+  leave one region faded and another not; the first round asked that the fade
+  "follow the same rhythm as the growth". I read the second as superseding:
+  the default fade is now a wave, each hex leaving in the order it came, every
+  hex lit for the same time. The global fade is still there as
+  **fade: together**, with its length now set by the bloom's, not the other
+  way round.
 - **Does the colour arrive everywhere at once, or wave by wave?** Every centre
   starts together unless **stagger** is up. The fade is always global, which
   is the one part the seed states outright ("not done in regions").
@@ -53,3 +60,17 @@ answered by dragging._
 - **Where the gradient's dark sits.** The middle of each hex is darkened by a
   round gradient, so it reads as "a gradient circle inside a hexagon". The
   falloff shape is fixed; only its depth (**core**) is a control.
+
+## 2026-10-11 — first round
+
+> when it fades, we want the outlines to fade as well.
+> i feel that fade needs to follow the same rhythm as the growth - currently
+> it stays dark for longer. so if stagger of travel is low, fade is low.
+> after fading, we need to draw a completely new pattern, not the same one. so
+> it doesn't loop and colours are not the same.
+>
+> i'm playing with this.
+> http://100.117.55.104:4574/experiments/hexgrid/?s=____QMD0dilhHcgPRECxAYEAgAAPAYA
+>
+> i'm playing with spacing, but i don't think i want to have a grid. black
+> centers can be placed randomly

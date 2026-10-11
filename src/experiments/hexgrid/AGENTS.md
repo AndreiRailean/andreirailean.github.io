@@ -19,6 +19,18 @@ build could not answer. This file holds the traps.
   It is round and reaches past the flat sides into the gap, which is black
   anyway, so it needs no clip. A gap that is not black would show it.
 
+- **A cycle is one pattern.** When it ends, `advance` bumps `cycle` and
+  rebuilds: new centres, new hues. Cycle 0 is salted exactly as the seed alone,
+  so an address always opens on the same first pattern; later cycles add the
+  cycle number to the salt, and `wander` moves their base hue. `clear()` goes
+  back to cycle 0. A cycle's period depends on its own ring depth, so the clock
+  is kept as `clock - begun`, never `clock % period`.
+- **The two fades share one period.** `timeline` makes `full + hold + fade` the
+  period for both; a wave fade takes each hex out `hold` after it reached full,
+  so every hex is lit for the same time (measured: 1.45s on every ring of the
+  primary), and a together fade waits for the last hex. Outlines rise through
+  `rest` and leave with their own hex's colour.
+
 ## Traps
 
 - **Fixed lightness and fixed chroma cannot both hold in sRGB.** At L 0.56 and
@@ -32,9 +44,11 @@ build could not answer. This file holds the traps.
 - **The poster needs a dwell even with the clock held.** At `dwellMs: 0` the
   chrome was still fading (`--ui-fade`) and the preset labels were ghosted into
   the capture.
-- **The loop starts from outlines.** Anything that captures a still — poster,
-  note backdrop, a showcase host — sees a black grid unless it settles into the
-  hold first. `poster.ts` does that from `stats().loop`.
+- **A cycle starts from outlines, and a wave fade is never all lit.** Anything
+  that captures a still — poster, note backdrop, a showcase host — sees a
+  black grid unless it settles first, and "the middle of the hold" is not a
+  full grid when colour travels as a band. `poster.ts` walks the first cycle
+  and goes back to the moment with the most colour on screen.
 
 ## Measuring
 

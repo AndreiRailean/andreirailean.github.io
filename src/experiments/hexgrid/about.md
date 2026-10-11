@@ -12,7 +12,8 @@ tags:
 
 Hexagons stand apart on black, each lit from its edge inward so its middle stays
 dark. A few hexes are darker still: centres, and every other hex belongs to the
-nearest one and sits some number of rings out from it. The colour starts at the
-centres and travels outward a ring at a time, settles, then leaves the whole grid
-together, and the outlines wait for it to come back. Every coloured hex shares
+nearest one and sits some number of rings out from it. The outlines come up
+first, then the colour starts at the centres and travels outward a ring at a
+time, and leaves the way it came, taking the outlines with it. Each time it
+goes, a new pattern is drawn: new centres, new hues. Every coloured hex shares
 one lightness and one saturation and differs from its neighbours only in hue.

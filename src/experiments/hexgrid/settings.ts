@@ -19,15 +19,18 @@ export { keysOf } from "@/experiments/kit/controls"
  * at once. The colours share one OKLCH lightness and chroma and differ only in
  * hue, which is the "same feel, not the same colour" the seed asks for.
  */
-export type Layout = "tiled" | "scattered"
+export type Layout = "tiled" | "scattered" | "random"
 export type Pattern = "random" | "triad"
 export type Gamut = "lightness" | "chroma"
+export type FadeBy = "wave" | "together"
 
 export type Settings = {
   /** Tiled: a dark centre in every seven, each ringed by six petals. Scattered: a few centres, spaced. */
   layout: Layout
   /** Scattered only: the least number of hexes between two dark centres. */
   spacing: number
+  /** Random only: the share of hexes that are dark centres, in per cent. */
+  density: number
   /** Hex radius, centre to corner, in css px — gap included. */
   size: number
   /** Dark gap between neighbouring hexes, in css px. */
@@ -38,6 +41,8 @@ export type Settings = {
   hues: number
   /** Degrees a flower's own hue may stray from `hue`. */
   drift: number
+  /** Degrees each new pattern's hue may stray from `hue`, pattern by pattern. */
+  wander: number
   /** How neighbours share out `hues`: at random, or three hues no two neighbours share. */
   pattern: Pattern
   /** OKLCH lightness of a hex at its bright edge. */
@@ -62,21 +67,24 @@ export type Settings = {
   travel: number
   /** Seconds one hex takes to come up to full colour. */
   rise: number
-  /** Seconds the colour holds once every hex has it. */
+  /** Seconds a hex holds its colour (wave), or the grid holds once every hex has it (together). */
   hold: number
-  /** Seconds the colour takes to leave, everywhere at once. */
+  /** Seconds one hex takes to lose its colour. */
   fade: number
+  /** Whether hexes lose their colour in the order they got it, or all at once. */
+  fadeBy: FadeBy
   seed: number
 }
 
-export type NumericKey = Exclude<keyof Settings, "layout" | "pattern" | "gamut">
+export type NumericKey = Exclude<keyof Settings, "layout" | "pattern" | "gamut" | "fadeBy">
 
 export type Control = KitControl<string & keyof Settings>
 export type NumericControl = SliderControl<NumericKey>
 
-export const LAYOUTS: Layout[] = ["tiled", "scattered"]
+export const LAYOUTS: Layout[] = ["tiled", "scattered", "random"]
 export const PATTERNS: Pattern[] = ["random", "triad"]
 export const GAMUTS: Gamut[] = ["lightness", "chroma"]
+export const FADE_BYS: FadeBy[] = ["wave", "together"]
 
 const SEED_BOUNDS = { min: 0, max: 999_999 }
 
@@ -92,10 +100,11 @@ export const CONTROLS: Control[] = [
     label: "centres",
     group: "grid",
     options: [
-      { value: "scattered", label: "scattered" },
+      { value: "random", label: "random" },
+      { value: "scattered", label: "spaced" },
       { value: "tiled", label: "tiled" },
     ],
-    hint: "Scattered puts a few dark centres about the grid, spaced apart, and colour travels several rings out from each. Tiled makes every seventh hex a centre, so the whole grid is flowers of seven that fit together exactly.",
+    hint: "Random drops dark centres anywhere, as many as density asks for: they clump, leave wide gaps, and sometimes touch. Spaced keeps every two centres at least spacing apart, which at small spacing reads as a grid of its own. Tiled makes every seventh hex a centre, so the whole grid is flowers of seven that fit together exactly.",
   },
   {
     kind: "slider",
@@ -106,8 +115,20 @@ export const CONTROLS: Control[] = [
     max: 30,
     step: 1,
     format: (v) => `${Math.round(v)} hex`,
-    hint: "Scattered only: the least distance between two dark centres, in hexes. Larger means fewer centres and further for the colour to travel.",
-    inert: (settings: Settings) => settings.layout === "tiled",
+    hint: "Spaced only: the least distance between two dark centres, in hexes. Larger means fewer centres and further for the colour to travel.",
+    inert: (settings: Settings) => settings.layout !== "scattered",
+  },
+  {
+    kind: "slider",
+    key: "density",
+    label: "density",
+    group: "grid",
+    min: 0.1,
+    max: 20,
+    step: 0.1,
+    format: (v) => `${v.toFixed(1)}%`,
+    hint: "Random only: what share of the hexes are dark centres. Lower means fewer centres and further for the colour to travel.",
+    inert: (settings: Settings) => settings.layout !== "random",
   },
   {
     kind: "slider",
@@ -174,6 +195,17 @@ export const CONTROLS: Control[] = [
     step: 1,
     format: (v) => `±${Math.round(v)}°`,
     hint: "How far each flower's own hue may stray from the hue, flower by flower.",
+  },
+  {
+    kind: "slider",
+    key: "wander",
+    label: "wander",
+    group: "colour",
+    min: 0,
+    max: 180,
+    step: 1,
+    format: (v) => `±${Math.round(v)}°`,
+    hint: "Every fade brings a new pattern with new centres and new hues. This is how far each new pattern's hue may stray from the hue. The first pattern is always at the hue.",
   },
   {
     kind: "choice",
@@ -305,7 +337,7 @@ export const CONTROLS: Control[] = [
     max: 30,
     step: 0.1,
     format: seconds,
-    hint: "How long the colour stays once every hex has it.",
+    hint: "How long a hex keeps its full colour before it starts to fade. With fade together, how long the whole grid keeps it once every hex is lit.",
   },
   {
     kind: "slider",
@@ -316,18 +348,31 @@ export const CONTROLS: Control[] = [
     max: 20,
     step: 0.1,
     format: seconds,
-    hint: "How long the colour takes to leave. It leaves everywhere at once.",
+    hint: "How long one hex takes to lose its colour, and its outline with it.",
+  },
+  {
+    kind: "choice",
+    key: "fadeBy",
+    label: "fade",
+    group: "pulse",
+    options: [
+      { value: "wave", label: "wave" },
+      { value: "together", label: "together" },
+    ],
+    hint: "Wave takes the colour out the way it came in, centre first and ring by ring at the same pace, so every hex is lit for the same time and a quick bloom fades quickly. Together takes it out of every hex at once, once the last hex is lit.",
   },
 ]
 
 export const DEFAULT_SETTINGS: Settings = {
-  layout: "scattered",
+  layout: "random",
   spacing: 6,
+  density: 1,
   size: 34,
   gap: 4,
   hue: 280,
   hues: 50,
   drift: 60,
+  wander: 60,
   pattern: "random",
   lightness: 0.62,
   chroma: 0.2,
@@ -342,12 +387,15 @@ export const DEFAULT_SETTINGS: Settings = {
   rise: 1.5,
   hold: 4,
   fade: 3,
+  fadeBy: "wave",
   seed: 1,
 }
 
 /** Written out rather than derived from `CONTROLS`; see `src/experiments/AGENTS.md` under Presets. */
 export const TRACKS: Partial<Record<NumericKey, Track>> = {
   spacing: { min: 2, max: 30, step: 1 },
+  density: { min: 0.1, max: 20, step: 0.1 },
+  wander: { min: 0, max: 180, step: 1 },
   size: { min: 6, max: 120, step: 1 },
   gap: { min: 0, max: 24, step: 0.5 },
   edge: { min: 0, max: 0.6, step: 0.01 },
@@ -397,6 +445,7 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
     layout: oneOf(LAYOUTS, merged.layout, base.layout),
     pattern: oneOf(PATTERNS, merged.pattern, base.pattern),
     gamut: oneOf(GAMUTS, merged.gamut, base.gamut),
+    fadeBy: oneOf(FADE_BYS, merged.fadeBy, base.fadeBy),
   }
 
   for (const [key, bound] of Object.entries(BOUNDS) as [NumericKey, { min: number; max: number }][]) {
@@ -412,6 +461,7 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
 const GRID_KEYS = [
   "layout",
   "spacing",
+  "density",
   "size",
   "gap",
   "hue",
@@ -432,7 +482,8 @@ export function needsRebuild(before: Settings, after: Settings): boolean {
 
 /** Append-only. Read `@/experiments/address` before touching this. */
 export const REGISTRY: readonly Slot[] = [
-  { key: "layout", kind: "enum", options: ["tiled", "scattered"] },
+  // Retired 2026-10-11: random joined the options. Appended below with three.
+  { key: "layout", kind: "enum", options: ["tiled", "scattered"], retired: true },
   { key: "spacing", kind: "num", grid: 1, origin: 2, bits: 5 },
   { key: "size", kind: "num", grid: 1, origin: 6, bits: 7 },
   { key: "gap", kind: "num", grid: 0.5, origin: 0, bits: 6 },
@@ -454,6 +505,10 @@ export const REGISTRY: readonly Slot[] = [
   { key: "gamut", kind: "enum", options: ["lightness", "chroma"] },
   { key: "stagger", kind: "num", grid: 0.05, origin: 0, bits: 7 },
   { key: "shimmer", kind: "num", grid: 0.01, origin: 0, bits: 6 },
+  { key: "layout", kind: "enum", options: ["tiled", "scattered", "random"] },
+  { key: "density", kind: "num", grid: 0.1, origin: 0.1, bits: 8 },
+  { key: "wander", kind: "num", grid: 1, origin: 0, bits: 8 },
+  { key: "fadeBy", kind: "enum", options: ["wave", "together"] },
 ]
 
 export function settingsToQuery(settings: Settings): URLSearchParams {

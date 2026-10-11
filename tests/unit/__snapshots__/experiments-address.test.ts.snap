@@ -326,10 +326,18 @@ exports[`hexgrid > has not edited a slot in place 1`] = `
   "gamut enum lightness|chroma",
   "stagger num grid=0.05 origin=0 bits=7",
   "shimmer num grid=0.01 origin=0 bits=6",
+  "layout enum tiled|scattered|random",
+  "density num grid=0.1 origin=0.1 bits=8",
+  "wander num grid=1 origin=0 bits=8",
+  "fadeBy enum wave|together",
 ]
 `;
 
-exports[`hexgrid > retires a slot by appending to the retired list, never by editing one 1`] = `[]`;
+exports[`hexgrid > retires a slot by appending to the retired list, never by editing one 1`] = `
+[
+  "0 layout",
+]
+`;
 
 exports[`psyxels > has not edited a slot in place 1`] = `
 [
