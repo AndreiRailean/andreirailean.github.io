@@ -34,6 +34,18 @@ traps.
   `OPENINGS` sprites from rest to swallowed. On exit the colour holds while the
   hole grows and fades only in the last `SWALLOW_LEAD`; on entry the reverse.
   Where patterns overlap, the strongest pattern's hole is drawn.
+- **Two dark layers, not one.** Sixth round asked for the way in reversed:
+  light coming _out_ of the hole, or colour blooming from the middle before the
+  hole forms. Neither is a hole size, so `open` runs from -1 (no hole yet:
+  radius and darkness both 0) through 0 (rest) to 1 (swallowed), and a second
+  value, `reach`, is how far the colour shows from the middle — an outer mask
+  from `beyond`, clear inside its edge and black outside, with the hole's
+  softness. `openings` holds `2 * OPENINGS - 1` sprites with rest at `REST`;
+  `edges` holds `REACHES - 1`, none drawn at full reach. Entry `glow` starts the
+  edge at the hole; `bloom` grows the edge from nothing, then forms the hole.
+  Exit `sink` and `shrink` are those two run backwards. An entry's and an
+  exit's `open` add and their `reach` takes the smaller, which only works
+  because a hex's way in is over before its way out begins.
 - **Patterns overlap.** A new one starts `next = period * (1 - overlap)` after
   the newest began, so several can be live, and a pattern is dropped when its
   own period is over. Every pattern is built on the same hexes in the same
@@ -53,6 +65,12 @@ traps.
   arriving first "get in the way".
 
 ## Traps
+
+- **A dark sprite must reach past its hex, into the gap.** The colour and a
+  sprite cut to the same hex edge are both antialiased there, so a fully masked
+  hex still showed its colour as a faint outline: visible on every hex in a
+  bloom's first frames, invisible in every number. `covered()` takes the sprite
+  out by up to 1.5px, never more than half the gap.
 
 - **A hole sprite must be clipped to its hex.** The resting hole fades to clear
   well inside the hex, so a square sprite with no clip looked fine for four
@@ -86,7 +104,8 @@ traps.
 boundaries, `byStep` (mean colour by whole steps out), `petalArrivalSpread`
 (how far apart, in steps, the colour reaches the six round a centre — 0 means
 they light at once), `petalHueSpread`; and across everything, `patterns` (how
-many are live), `lit` (mean colour over every hex) and chroma and lightness as
+many are live), `openHoles`/`widestHole`, `formingHoles`/`leastHole` and
+`shortOfEdge`/`shortestReach` (each way in and out, seen firing), `lit` (mean colour over every hex) and chroma and lightness as
 shown. Checking timing: `experiment.pause(true); experiment.clear();
 experiment.settle(t)`. Dark time: settle in 0.1s steps and count frames with
 `lit` under 0.05 — overlap 0 measured 38% dark, 0.4 measured 3%.

@@ -68,6 +68,16 @@ describes the work.
 > i wonder if it's possible to fade out the hexagon by growing it's inner hole
 > and when it reaches the boundaary we fade it out completely.
 
+## 2026-10-11 — sixth round
+
+> nice. thanks for adding the fading in, though I think we'd need to reverse.
+> the idea there is more of a hole being always there but the light is now
+> starting to come out of it and the gradient grows to the edges. or maybe we
+> have colour appearing in the middle and then it grows and forms a hole in
+> the middle. so the hex is cycling through the gradient from colour to
+> darkness. i'm looking at this:
+> http://100.117.55.104:4574/experiments/hexgrid/?s=v____P9gGeXGUsI7kB6IQUTMgEpAAB4DBCTwlhABtCM
+
 ## Questions I could not answer, and what I assumed
 
 _Mine, not his. Each is a control or a preset where it could be, so it can be
@@ -111,6 +121,14 @@ answered by dragging._
   last 15%. I added the mirror unasked, **fade in by: hole closing** (a bright
   rim whose hole shrinks to rest), since it costs nothing and breath may want
   it. Presets: _swallow_ (even, hole out) and _swallow breath_ (both).
+- **"we'd need to reverse" — which of his two readings?** He offered two: the
+  hole always there with the light coming out of it (**fade in by: light from
+  the hole**, preset _glow_), or colour appearing in the middle, growing, then
+  a hole forming (**bloom, then hole**, preset _bloom_, which with the hole
+  growing out is the full cycle "from colour to darkness"). Both are built on
+  his scene; hole closing is kept as an option rather than removed. Unasked,
+  their mirrors on the way out: **light into the hole** (preset _ebb_, in and
+  out through the hole) and **hole, then shrink**.
 - **Is a settled grid still?** "the whole piece is alive" may mean the loop
   alone, or movement inside the hold. **shimmer** adds a slow per-hex
   breathing; the primary has a little.

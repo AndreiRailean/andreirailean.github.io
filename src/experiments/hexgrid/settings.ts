@@ -24,7 +24,8 @@ export type Pattern = "random" | "triad"
 export type Gamut = "lightness" | "chroma"
 export type FadeBy = "wave" | "together"
 export type Curve = "s" | "eased" | "linear"
-export type Change = "dim" | "hole"
+export type Entry = "dim" | "hole" | "glow" | "bloom"
+export type Exit = "dim" | "hole" | "sink" | "shrink"
 
 export type Settings = {
   /** Tiled: a dark centre in every seven, each ringed by six petals. Scattered: a few centres, spaced. */
@@ -89,10 +90,10 @@ export type Settings = {
   fade: number
   /** Whether hexes lose their colour in the order they got it, or all at once. */
   fadeBy: FadeBy
-  /** How a hex comes in: its colour brightening, or its hole closing from a bright rim. */
-  entry: Change
-  /** How a hex goes: its colour dimming, or its hole growing until it swallows the hex. */
-  exit: Change
+  /** How a hex comes in: brightening, its hole closing from a bright rim, light rising out of its hole, or colour blooming from its middle until a hole forms. */
+  entry: Entry
+  /** How a hex goes: dimming, its hole growing until it swallows the hex, its light sinking back into the hole, or its colour shrinking to the middle. */
+  exit: Exit
   seed: number
 }
 
@@ -106,7 +107,8 @@ export const PATTERNS: Pattern[] = ["random", "triad"]
 export const GAMUTS: Gamut[] = ["lightness", "chroma"]
 export const FADE_BYS: FadeBy[] = ["wave", "together"]
 export const CURVES: Curve[] = ["s", "eased", "linear"]
-export const CHANGES: Change[] = ["dim", "hole"]
+export const ENTRIES: Entry[] = ["dim", "hole", "glow", "bloom"]
+export const EXITS: Exit[] = ["dim", "hole", "sink", "shrink"]
 
 const SEED_BOUNDS = { min: 0, max: 999_999 }
 
@@ -472,9 +474,11 @@ export const CONTROLS: Control[] = [
     group: "pulse",
     options: [
       { value: "dim", label: "brightening" },
+      { value: "glow", label: "light from the hole" },
+      { value: "bloom", label: "bloom, then hole" },
       { value: "hole", label: "hole closing" },
     ],
-    hint: "How each hex comes in. Brightening raises its colour from black. Hole closing has it appear almost at once as a thin bright rim round a hole the size of the hex, and the hole shrinks to its resting size.",
+    hint: "How each hex comes in. Brightening raises its colour from black. Light from the hole keeps the hole where it is and lets the colour spread out of it to the edges. Bloom, then hole starts as colour in the middle that grows to fill the hex, and then the dark opens in its middle. Hole closing has it appear as a thin bright rim round a hole the size of the hex, which shrinks to rest.",
   },
   {
     kind: "choice",
@@ -484,8 +488,10 @@ export const CONTROLS: Control[] = [
     options: [
       { value: "dim", label: "dimming" },
       { value: "hole", label: "hole growing" },
+      { value: "sink", label: "light into the hole" },
+      { value: "shrink", label: "hole, then shrink" },
     ],
-    hint: "How each hex goes. Dimming lowers its colour to black. Hole growing keeps the colour bright while the dark middle widens until it reaches the edge, and only then fades what is left.",
+    hint: "How each hex goes. Dimming lowers its colour to black. Hole growing keeps the colour bright while the dark middle widens until it reaches the edge, and only then fades what is left. Light into the hole draws the colour in from the edges until it is gone into the hole. Hole, then shrink closes the hole and shrinks the colour to a point in the middle: bloom run backwards.",
   },
 ]
 
@@ -588,8 +594,8 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
     gamut: oneOf(GAMUTS, merged.gamut, base.gamut),
     fadeBy: oneOf(FADE_BYS, merged.fadeBy, base.fadeBy),
     curve: oneOf(CURVES, merged.curve, base.curve),
-    entry: oneOf(CHANGES, merged.entry, base.entry),
-    exit: oneOf(CHANGES, merged.exit, base.exit),
+    entry: oneOf(ENTRIES, merged.entry, base.entry),
+    exit: oneOf(EXITS, merged.exit, base.exit),
   }
 
   for (const [key, bound] of Object.entries(BOUNDS) as [NumericKey, { min: number; max: number }][]) {
@@ -668,8 +674,12 @@ export const REGISTRY: readonly Slot[] = [
   { key: "hole", kind: "num", grid: 0.01, origin: 0, bits: 7 },
   { key: "soft", kind: "num", grid: 0.01, origin: 0.01, bits: 8 },
   { key: "curve", kind: "enum", options: ["s", "eased", "linear"] },
-  { key: "entry", kind: "enum", options: ["dim", "hole"] },
-  { key: "exit", kind: "enum", options: ["dim", "hole"] },
+  // Retired 2026-10-11: two more ways in and out each, which need a second bit.
+  // Appended below with four options.
+  { key: "entry", kind: "enum", options: ["dim", "hole"], retired: true },
+  { key: "exit", kind: "enum", options: ["dim", "hole"], retired: true },
+  { key: "entry", kind: "enum", options: ["dim", "hole", "glow", "bloom"] },
+  { key: "exit", kind: "enum", options: ["dim", "hole", "sink", "shrink"] },
 ]
 
 export function settingsToQuery(settings: Settings): URLSearchParams {

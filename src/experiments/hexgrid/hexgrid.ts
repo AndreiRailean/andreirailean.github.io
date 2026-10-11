@@ -366,7 +366,7 @@ export function timeline(settings: Settings, maxSteps: number) {
 
 /**
  * How lit a hex is this far into its pattern, when the colour reaches it
- * `delay` seconds into the bloom: `[colour, outline]`.
+ * `delay` seconds into the bloom: `[colour, outline, open, reach]`.
  *
  * The outline is the finishing touch: it comes up `trail` seconds after the
  * hex's own colour is full, and leaves with the colour.
@@ -375,37 +375,70 @@ export function timeline(settings: Settings, maxSteps: number) {
  * it reached full colour, so every hex is lit for as long as every other and
  * the fade's spread is the bloom's: a quick bloom fades quickly. Together takes
  * every hex out at once, once the last is full.
+ *
+ * `open` is where the hole is: 0 at rest, 1 when it has swallowed the hex, -1
+ * when there is none yet. `reach` is how far out from the middle the colour
+ * shows: 1 to the corners, 0 nowhere. Dimming leaves both at rest and moves the
+ * colour alone.
  */
 export function intensity(
   settings: Settings,
   line: ReturnType<typeof timeline>,
   delay: number,
   t: number,
-): [number, number, number] {
+): [number, number, number, number] {
   const arrived = line.bloom + delay
   const arrive = smooth((t - arrived) / settings.rise)
   const outline = smooth((t - arrived - settings.rise - settings.trail) / settings.rise)
   const leaving = settings.fadeBy === "wave" ? line.fade + delay : line.fade
   const leave = 1 - smooth((t - leaving) / settings.fade)
-  // How far the hole has opened past its resting size: 0 at rest, 1 when it
-  // has swallowed the whole hex. Dimming leaves it at 0 and fades the colour.
+  // Linear progress through the way in and the way out, for the modes that run
+  // two motions one after the other and shape each themselves.
+  const u = clamp01((t - arrived) / settings.rise)
+  const g = clamp01((t - leaving) / settings.fade)
+  // Where the light starts from when it comes out of the hole, as a reach.
+  const fromHole = reachOf(settings, settings.hole)
   let open = 0
+  let reach = 1
   let coming = arrive
   let going = leave
   if (settings.entry === "hole") {
     // The hex arrives as a bright rim almost at once, and its hole closes in.
-    open = Math.max(open, 1 - arrive)
+    open += 1 - arrive
     coming = smooth(arrive / SWALLOW_LEAD)
+  } else if (settings.entry === "glow") {
+    // The hole is there from the start; the colour comes out of it and its
+    // edge travels out to the corners.
+    reach = Math.min(reach, fromHole + (1 - fromHole) * arrive)
+    coming = smooth(u / 0.25)
+  } else if (settings.entry === "bloom") {
+    // Colour from a point in the middle, filling the hex; as it nears the
+    // edge, the dark opens in its middle and settles at the resting hole.
+    reach = Math.min(reach, smooth(u / 0.65))
+    open += smooth((u - 0.45) / 0.55) - 1
+    coming = smooth(u / 0.1)
   }
   if (settings.exit === "hole") {
     // The hole grows at full colour; only once it has reached the boundary
     // does what is left fade out completely.
-    const g = 1 - leave
-    open = Math.max(open, g)
-    going = 1 - smooth((g - (1 - SWALLOW_LEAD)) / SWALLOW_LEAD)
+    const gone = 1 - leave
+    open += gone
+    going = 1 - smooth((gone - (1 - SWALLOW_LEAD)) / SWALLOW_LEAD)
+  } else if (settings.exit === "sink") {
+    // The light's edge draws in from the corners until it is gone into the hole.
+    const gone = 1 - leave
+    reach = Math.min(reach, 1 - (1 - fromHole) * gone)
+    going = 1 - smooth((gone - (1 - SWALLOW_LEAD)) / SWALLOW_LEAD)
+  } else if (settings.exit === "shrink") {
+    // Bloom backwards: the hole closes, then the colour shrinks to a point.
+    open -= smooth(g / 0.55)
+    reach = Math.min(reach, 1 - smooth((g - 0.35) / 0.65))
+    going = 1 - smooth((g - 0.9) / 0.1)
   }
-  return [coming * going, outline * going, open]
+  return [coming * going, outline * going, open, reach]
 }
+
+const clamp01 = (x: number) => Math.min(1, Math.max(0, x))
 
 /**
  * The last share of a hole-out (or first of a hole-in) in which the colour
@@ -414,21 +447,54 @@ export function intensity(
  */
 const SWALLOW_LEAD = 0.15
 
-/** How many sizes of hole are drawn ahead, from resting to swallowed. */
+/** How many sizes of hole are drawn ahead, from resting to swallowed; as many again from none to resting. */
 const OPENINGS = 32
+/** Where the resting hole sits in `openings`; below it the hole is forming. */
+const REST = OPENINGS - 1
+
+/** How many edges of the colour are drawn ahead, from the middle to the corners. */
+const REACHES = 32
 
 /**
- * The hole at `open` of the way from resting to swallowed: its half-dark radius
+ * The hole at `open`. From 0 to 1, resting to swallowed: its half-dark radius
  * grows from `hole` until the hex's corners are dark, and its middle deepens
- * from `core` to black, so a swallowed hex is gone rather than tinted.
+ * from `core` to black, so a swallowed hex is gone rather than tinted. From -1
+ * to 0, none to resting: it forms from a point, its radius and its darkness
+ * both growing to rest.
  */
 export function opened(settings: Settings, open: number): Settings {
+  if (open < 0) {
+    const f = 1 + open
+    return { ...settings, hole: settings.hole * f, core: settings.core * f }
+  }
   const swallowed = 1.16 + settings.soft * 0.6
   return {
     ...settings,
     hole: settings.hole + open * (swallowed - settings.hole),
     core: settings.core + open * (1 - settings.core),
   }
+}
+
+/** The colour's edge runs from just inside the middle to past the corners, with the hole's softness. */
+const edgeWidth = (settings: Settings) => Math.max(0.02, settings.soft)
+const edgeAt = (settings: Settings, reach: number) => {
+  const w = edgeWidth(settings)
+  return -w + reach * (1.16 + 2 * w)
+}
+/** The reach whose edge sits at `radius`, a share of the inner radius. */
+const reachOf = (settings: Settings, radius: number) => {
+  const w = edgeWidth(settings)
+  return clamp01((radius + w) / (1.16 + 2 * w))
+}
+
+/**
+ * How dark the hex is outside the colour's edge, at `at` of the inner radius,
+ * when the colour reaches `reach`: clear inside, black outside, falling over
+ * the same S as the hole so light coming out of the hole reads as one gradient.
+ */
+export function beyond(settings: Settings, reach: number, at: number): number {
+  const scale = edgeWidth(settings) / 4.39
+  return 1 / (1 + Math.exp(-(at - edgeAt(settings, reach)) / scale))
 }
 
 /** Seconds into the bloom the colour reaches this hex. */
@@ -493,12 +559,16 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
   let last = 0
   let debug = false
   let fps = 0
-  /** The dark middle at each size from resting to swallowed; `openings[0]` is at rest. */
+  /** The dark middle at each size from none to swallowed; `openings[REST]` is at rest. */
   let openings: HTMLCanvasElement[] = []
+  /** The dark beyond the colour's edge, from the middle to just short of the corners. */
+  let edges: HTMLCanvasElement[] = []
   let lit = 0
   const outlines: number[] = []
   /** Per hex, which of `openings` to lay over it this frame, or -1 for none. */
   const holes: number[] = []
+  /** Per hex, which of `edges` to lay over it this frame, or -1 for none. */
+  const reaches: number[] = []
 
   function pattern(cycle: number, begun: number): Pattern {
     const built = buildPattern(settings, width, height, cycle)
@@ -529,6 +599,13 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
     canvas.height = Math.round(height * dpr)
   }
 
+  /**
+   * The radius a dark sprite covers: a little past the hex, into the gap. A
+   * sprite cut to exactly the hex leaves the colour's antialiased edge showing
+   * as a faint outline round a hex that should be black.
+   */
+  const covered = () => drawn() + Math.min(1.5, settings.gap / SQRT3)
+
   /** Drawn radius, centre to corner, once the gap is taken out. */
   const drawn = () => Math.max(0.5, settings.size - settings.gap / SQRT3)
 
@@ -542,22 +619,21 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
    */
   function buildVignette() {
     const r = drawn()
-    const px = Math.max(2, Math.ceil(2 * r * dpr))
-    // Stops are shares of the corner radius; `darkness` takes shares of the
-    // inner radius, which is 0.866 of it.
-    const inner = SQRT3 / 2
+    const reach = covered()
+    const px = Math.max(2, Math.ceil(2 * reach * dpr))
+    // Stops are shares of the sprite's corner radius; `darkness` takes shares
+    // of the hex's inner radius, which is 0.866 of the hex's corner radius.
+    const inner = ((SQRT3 / 2) * r) / reach
     const STOPS = 48
-    openings = []
-    for (let k = 0; k < OPENINGS; k++) {
-      const at = opened(settings, k / (OPENINGS - 1))
-      const sprite = document.createElement("canvas")
-      sprite.width = px
-      sprite.height = px
-      const s = sprite.getContext("2d")!
+    const sprite = (alpha: (x: number) => number) => {
+      const canvas = document.createElement("canvas")
+      canvas.width = px
+      canvas.height = px
+      const s = canvas.getContext("2d")!
       const g = s.createRadialGradient(px / 2, px / 2, 0, px / 2, px / 2, px / 2)
       for (let j = 0; j <= STOPS; j++) {
         const x = j / STOPS
-        g.addColorStop(x, `rgba(0,0,0,${darkness(at, x / inner)})`)
+        g.addColorStop(x, `rgba(0,0,0,${alpha(x / inner)})`)
       }
       s.fillStyle = g
       s.fillRect(0, 0, px, px)
@@ -568,8 +644,15 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
       s.beginPath()
       hexPath(px / 2, px / 2, px / 2, s)
       s.fill()
-      openings.push(sprite)
+      return canvas
     }
+    openings = []
+    for (let k = 0; k < 2 * OPENINGS - 1; k++) {
+      const at = opened(settings, (k - REST) / (OPENINGS - 1))
+      openings.push(sprite((x) => darkness(at, x)))
+    }
+    edges = []
+    for (let k = 0; k < REACHES - 1; k++) edges.push(sprite((x) => beyond(settings, k / (REACHES - 1), x)))
   }
 
   /** Rebuilds every live pattern at the current settings, keeping which cycle each is and when it began. */
@@ -623,14 +706,16 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
       // The hole is the strongest pattern's: two patterns cannot share a hole.
       let strongest = 0
       let open = 0
+      let reach = 1
       for (const p of patterns) {
         const hex = p.hexes[i]!
-        const [lift, edge, hole] = intensity(settings, p.line, delayOf(settings, hex), clock - p.begun)
+        const [lift, edge, hole, out] = intensity(settings, p.line, delayOf(settings, hex), clock - p.begun)
         outline = Math.max(outline, edge)
         if (lift <= 0) continue
         if (lift > strongest) {
           strongest = lift
           open = hole
+          reach = out
         }
         // Shimmer dims a lit hex by up to `shimmer`, slowly and out of step with
         // its neighbours, so a held grid is still moving.
@@ -641,7 +726,9 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
         level += a
       }
       outlines.push(outline)
-      holes[i] = level <= 0.002 ? -1 : Math.round(open * (OPENINGS - 1))
+      holes[i] = level <= 0.002 ? -1 : REST + Math.round(open * (OPENINGS - 1))
+      const edge = Math.round(reach * (REACHES - 1))
+      reaches[i] = level <= 0.002 || edge >= REACHES - 1 ? -1 : edge
       sum += Math.min(1, level)
       if (level <= 0.002) continue
       const hex = base[i]!
@@ -653,10 +740,13 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
     lit = base.length ? sum / base.length : 0
 
     // An unlit hex is black already; a resting hole at no core is nothing.
+    const c = covered()
     base.forEach((hex, i) => {
       const k = holes[i]!
-      if (k < 0 || (k === 0 && settings.core === 0)) return
-      ctx.drawImage(openings[k]!, hex.x - r, hex.y - r, 2 * r, 2 * r)
+      // At 0 the hole has not begun forming; at a core of 0 nothing up to rest is dark.
+      if (k > 0 && (k > REST || settings.core > 0)) ctx.drawImage(openings[k]!, hex.x - c, hex.y - c, 2 * c, 2 * c)
+      const e = reaches[i]!
+      if (e >= 0) ctx.drawImage(edges[e]!, hex.x - c, hex.y - c, 2 * c, 2 * c)
     })
 
     if (settings.edge > 0) {
@@ -759,8 +849,16 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
       petalArrivalSpread: round(mean(petalArrival)),
       // Lit hexes in the last frame drawn whose hole was opening or closing, and
       // the furthest any had opened: the hole entry and exit, seen firing.
-      openHoles: holes.filter((k) => k > 0).length,
-      widestHole: round(Math.max(0, ...holes) / (OPENINGS - 1)),
+      openHoles: holes.filter((k) => k > REST).length,
+      widestHole: round(Math.max(0, ...holes.map((k) => k - REST)) / (OPENINGS - 1)),
+      // Lit hexes whose hole is still forming, and the least formed of them:
+      // bloom and shrink, seen firing. -1 is no hole at all, 0 at rest.
+      formingHoles: holes.filter((k) => k >= 0 && k < REST).length,
+      leastHole: round(Math.min(0, ...holes.filter((k) => k >= 0).map((k) => k - REST)) / (OPENINGS - 1)),
+      // Lit hexes whose colour stops short of the corners, and the shortest:
+      // light from the hole, bloom, sink and shrink, seen firing.
+      shortOfEdge: reaches.filter((e) => e >= 0).length,
+      shortestReach: round(Math.min(REACHES - 1, ...reaches.filter((e) => e >= 0)) / (REACHES - 1)),
       chroma: {
         asked: settings.chroma,
         min: round(Math.min(...chromas), 3),
