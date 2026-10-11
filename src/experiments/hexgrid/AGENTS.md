@@ -20,8 +20,13 @@ traps.
   gives the six neighbours of a centre the six other residues, so every hex is
   a centre or a petal of exactly one. Change the 3 and that stops being true.
 - **Triad** is `(q - r) mod 3`, which no two neighbours share.
-- The dark middle is **one sprite** laid over every hex, not a gradient per hex:
-  flat at `core` out to `hole`, then eased to clear over `soft`. It is round and
+- The dark middle is **one sprite** laid over every hex, not a gradient per hex,
+  sampled at 48 stops from `darkness`: `core` at the middle, half dark at
+  `hole`, falling over `soft` in the shape `curve` names — a logistic by
+  default, at Andrei's third round ("not a linear gradient, but an s-curve").
+  Each curve is renormalised to exactly `core` at 0 and 0 at the corner, so the
+  S-curve's 10–90% fall comes out a little under `soft` (0.237 for 0.25);
+  `stats().hole` measures it. It is round and
   may reach past the flat sides into the gap, which is black anyway, so it needs
   no clip. A gap that is not black would show it.
 - **Patterns overlap.** A new one starts `next = period * (1 - overlap)` after

@@ -48,6 +48,12 @@ describes the work.
 >
 > additionally if we could make the corners of the hexagons a little smoother
 
+## 2026-10-11 — third round
+
+> smaller centers of each hex. perhaps we need a slider for center size and
+> gradient function. i don't think it's a linear (circular) gradient, but is an
+> s-curve
+
 ## Questions I could not answer, and what I assumed
 
 _Mine, not his. Each is a control or a preset where it could be, so it can be
@@ -88,9 +94,12 @@ answered by dragging._
 - **Is a settled grid still?** "the whole piece is alive" may mean the loop
   alone, or movement inside the hold. **shimmer** adds a slow per-hex
   breathing; the primary has a little.
-- **Where the gradient's dark sits.** The middle of each hex is darkened by a
-  round gradient, so it reads as "a gradient circle inside a hexagon". The
-  falloff shape is fixed; only its depth (**core**) is a control.
+- **Where the gradient's dark sits, and its shape.** The middle of each hex is
+  darkened by a round gradient, so it reads as "a gradient circle inside a
+  hexagon". Since the third round its size (**hole size**, the half-dark
+  radius), its width (**softness**) and its shape (**gradient**: S-curve,
+  eased, linear) are all controls; the S-curve is the default because he
+  named it. "smaller centers" I took as the hole: 0.35 became 0.2.
 
 ## 2026-10-11 — first round
 

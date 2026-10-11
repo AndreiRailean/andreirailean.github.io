@@ -23,6 +23,7 @@ export type Layout = "tiled" | "scattered" | "random"
 export type Pattern = "random" | "triad"
 export type Gamut = "lightness" | "chroma"
 export type FadeBy = "wave" | "together"
+export type Curve = "s" | "eased" | "linear"
 
 export type Settings = {
   /** Tiled: a dark centre in every seven, each ringed by six petals. Scattered: a few centres, spaced. */
@@ -51,10 +52,12 @@ export type Settings = {
   chroma: number
   /** How dark a hex's middle is against its edge. 0 is flat, 1 black. */
   core: number
-  /** Radius of the dark hole in each hex, as a share of the hex's inner radius. */
+  /** Radius at which each hex's dark hole is half dark, as a share of the hex's inner radius. */
   hole: number
-  /** How far the hole takes to give way to colour, as a share of the inner radius. */
+  /** Width of the hole's fall from dark to colour, as a share of the inner radius. */
   soft: number
+  /** Shape of that fall: an S-curve, smoothstep, or a straight ramp. */
+  curve: Curve
   /** How round the corners are: 0 sharp, 1 as round as the sides allow. */
   round: number
   /** OKLCH lightness of the dark centres. */
@@ -88,7 +91,7 @@ export type Settings = {
   seed: number
 }
 
-export type NumericKey = Exclude<keyof Settings, "layout" | "pattern" | "gamut" | "fadeBy">
+export type NumericKey = Exclude<keyof Settings, "layout" | "pattern" | "gamut" | "fadeBy" | "curve">
 
 export type Control = KitControl<string & keyof Settings>
 export type NumericControl = SliderControl<NumericKey>
@@ -97,6 +100,7 @@ export const LAYOUTS: Layout[] = ["tiled", "scattered", "random"]
 export const PATTERNS: Pattern[] = ["random", "triad"]
 export const GAMUTS: Gamut[] = ["lightness", "chroma"]
 export const FADE_BYS: FadeBy[] = ["wave", "together"]
+export const CURVES: Curve[] = ["s", "eased", "linear"]
 
 const SEED_BOUNDS = { min: 0, max: 999_999 }
 
@@ -288,13 +292,13 @@ export const CONTROLS: Control[] = [
   {
     kind: "slider",
     key: "hole",
-    label: "hole",
+    label: "hole size",
     group: "colour",
-    min: 0.05,
+    min: 0,
     max: 0.9,
     step: 0.01,
     format: unit,
-    hint: "How wide the dark middle of each hex is, as a share of the hex. Small is a pinhole the colour pours into; large leaves only a bright rim.",
+    hint: "How wide the dark middle of each hex is: the radius where it is half dark, as a share of the hex. Small is a pinhole the colour pours into; large leaves only a bright rim.",
     inert: (settings: Settings) => settings.core === 0,
   },
   {
@@ -302,17 +306,30 @@ export const CONTROLS: Control[] = [
     key: "soft",
     label: "softness",
     group: "colour",
-    min: 0.02,
-    max: 1,
+    min: 0.01,
+    max: 1.5,
     step: 0.01,
     format: unit,
-    hint: "How long the dark middle takes to give way to colour. Low is a sharp-edged hole; high is a long glow.",
+    hint: "How wide the fall from dark to colour is, as a share of the hex. Low is a sharp-edged hole; high is a long glow.",
+    inert: (settings: Settings) => settings.core === 0,
+  },
+  {
+    kind: "choice",
+    key: "curve",
+    label: "gradient",
+    group: "colour",
+    options: [
+      { value: "s", label: "s-curve" },
+      { value: "eased", label: "eased" },
+      { value: "linear", label: "linear" },
+    ],
+    hint: "The shape of the fall from dark to colour. S-curve holds the middle dark, drops quickly, and trails off into the colour. Eased is smoothstep: steeper through the middle than the S-curve and with no tail, so its edge reads crisper. Linear is a straight ramp, a plain radial gradient.",
     inert: (settings: Settings) => settings.core === 0,
   },
   {
     kind: "slider",
     key: "centre",
-    label: "centres",
+    label: "black hexes",
     group: "colour",
     min: 0,
     max: 0.5,
@@ -458,8 +475,9 @@ export const DEFAULT_SETTINGS: Settings = {
   lightness: 0.62,
   chroma: 0.2,
   core: 0.95,
-  hole: 0.35,
-  soft: 0.3,
+  hole: 0.2,
+  soft: 0.25,
+  curve: "s",
   round: 0.25,
   centre: 0.08,
   edge: 0.1,
@@ -492,8 +510,8 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   lightness: { min: 0.2, max: 0.95, step: 0.01 },
   chroma: { min: 0, max: 0.37, step: 0.005 },
   core: { min: 0, max: 1, step: 0.05 },
-  hole: { min: 0.05, max: 0.9, step: 0.01 },
-  soft: { min: 0.02, max: 1, step: 0.01 },
+  hole: { min: 0, max: 0.9, step: 0.01 },
+  soft: { min: 0.01, max: 1.5, step: 0.01 },
   round: { min: 0, max: 1, step: 0.05 },
   ragged: { min: 0, max: 1, step: 0.05 },
   trail: { min: 0, max: 5, step: 0.05 },
@@ -539,6 +557,7 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
     pattern: oneOf(PATTERNS, merged.pattern, base.pattern),
     gamut: oneOf(GAMUTS, merged.gamut, base.gamut),
     fadeBy: oneOf(FADE_BYS, merged.fadeBy, base.fadeBy),
+    curve: oneOf(CURVES, merged.curve, base.curve),
   }
 
   for (const [key, bound] of Object.entries(BOUNDS) as [NumericKey, { min: number; max: number }][]) {
@@ -568,6 +587,7 @@ const GRID_KEYS = [
   "core",
   "hole",
   "soft",
+  "curve",
   "ragged",
   "seed",
 ] as const satisfies readonly (keyof Settings)[]
@@ -605,12 +625,17 @@ export const REGISTRY: readonly Slot[] = [
   { key: "density", kind: "num", grid: 0.1, origin: 0.1, bits: 8 },
   { key: "wander", kind: "num", grid: 1, origin: 0, bits: 8 },
   { key: "fadeBy", kind: "enum", options: ["wave", "together"] },
-  { key: "hole", kind: "num", grid: 0.01, origin: 0.05, bits: 7 },
-  { key: "soft", kind: "num", grid: 0.01, origin: 0.02, bits: 7 },
+  // Retired 2026-10-11: hole was a flat disc's radius and soft an eased edge
+  // beyond it; both now describe a curve centred on hole. Appended below.
+  { key: "hole", kind: "num", grid: 0.01, origin: 0.05, bits: 7, retired: true },
+  { key: "soft", kind: "num", grid: 0.01, origin: 0.02, bits: 7, retired: true },
   { key: "round", kind: "num", grid: 0.05, origin: 0, bits: 5 },
   { key: "ragged", kind: "num", grid: 0.05, origin: 0, bits: 5 },
   { key: "trail", kind: "num", grid: 0.05, origin: 0, bits: 7 },
   { key: "overlap", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "hole", kind: "num", grid: 0.01, origin: 0, bits: 7 },
+  { key: "soft", kind: "num", grid: 0.01, origin: 0.01, bits: 8 },
+  { key: "curve", kind: "enum", options: ["s", "eased", "linear"] },
 ]
 
 export function settingsToQuery(settings: Settings): URLSearchParams {

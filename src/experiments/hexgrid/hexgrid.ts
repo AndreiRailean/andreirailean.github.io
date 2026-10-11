@@ -393,6 +393,36 @@ export function intensity(
 /** Seconds into the bloom the colour reaches this hex. */
 const delayOf = (settings: Settings, hex: Hex) => hex.late * settings.stagger + hex.steps * settings.travel
 
+// ---------------------------------------------------------------- the hole
+
+/**
+ * How dark a hex is this far from its middle, as a share of its inner radius:
+ * `core` at the middle, falling to 0 through `hole`, the radius at which it is
+ * half as dark, over a transition `soft` wide.
+ *
+ * The shape of that fall is `curve`. Linear is a straight ramp — the plain
+ * radial gradient. Eased is smoothstep over the same width. S-curve is a
+ * logistic, which is what Andrei asked for: a dark centre that stays dark,
+ * a quick fall through the middle, and a long tail into the colour. Each is
+ * renormalised so the middle is exactly `core` and the far edge exactly 0.
+ */
+export function darkness(settings: Settings, at: number): number {
+  const { hole, soft, core, curve } = settings
+  const w = Math.max(0.005, soft)
+  let fall: (x: number) => number
+  if (curve === "linear") fall = (x) => Math.min(1, Math.max(0, (x - hole) / w + 0.5))
+  else if (curve === "eased") fall = (x) => smooth((x - hole) / w + 0.5)
+  else {
+    // A logistic whose 10%–90% span is `soft` wide: that span is 4.39 scales.
+    const scale = w / 4.39
+    fall = (x) => 1 / (1 + Math.exp(-(x - hole) / scale))
+  }
+  const a = fall(0)
+  const b = fall(1.16)
+  const f = b - a > 1e-6 ? (fall(at) - a) / (b - a) : at < hole ? 0 : 1
+  return core * (1 - Math.min(1, Math.max(0, f)))
+}
+
 // ---------------------------------------------------------------- scene
 
 type Pattern = ReturnType<typeof buildPattern> & {
@@ -457,11 +487,10 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
   const drawn = () => Math.max(0.5, settings.size - settings.gap / SQRT3)
 
   /**
-   * The dark middle, as one sprite laid over every hex: a hole of radius `hole`
-   * (a share of the hex's inner radius) held at `core` opacity, falling to clear
-   * over `soft` of that radius again, eased so the edge is quick rather than a
-   * long ramp. The sprite is round and may reach past the flat sides into the
-   * gap, which is black already, so it needs no clip.
+   * The dark middle, as one sprite laid over every hex, its opacity at each
+   * radius read off `darkness`. Sampled densely because the canvas only
+   * interpolates linearly between stops. The sprite is round and may reach past
+   * the flat sides into the gap, which is black already, so it needs no clip.
    */
   function buildVignette() {
     const r = drawn()
@@ -471,17 +500,14 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
     sprite.height = px
     const s = sprite.getContext("2d")!
     const g = s.createRadialGradient(px / 2, px / 2, 0, px / 2, px / 2, px / 2)
-    // Stops are shares of the corner radius; the inner radius is 0.866 of it.
+    // Stops are shares of the corner radius; `darkness` takes shares of the
+    // inner radius, which is 0.866 of it.
     const inner = SQRT3 / 2
-    const hole = Math.min(0.98, settings.hole * inner)
-    const edge = Math.min(1, hole + settings.soft * inner)
-    g.addColorStop(0, `rgba(0,0,0,${settings.core})`)
-    g.addColorStop(hole, `rgba(0,0,0,${settings.core})`)
-    for (let k = 1; k <= 6; k++) {
-      const f = k / 6
-      g.addColorStop(hole + (edge - hole) * f, `rgba(0,0,0,${settings.core * (1 - smooth(f))})`)
+    const STOPS = 48
+    for (let k = 0; k <= STOPS; k++) {
+      const at = k / STOPS
+      g.addColorStop(at, `rgba(0,0,0,${darkness(settings, at / inner)})`)
     }
-    if (edge < 1) g.addColorStop(1, "rgba(0,0,0,0)")
     s.fillStyle = g
     s.fillRect(0, 0, px, px)
     vignette = sprite
@@ -667,6 +693,22 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
         mean: round(mean(chromas), 3),
       },
       lightness: { asked: settings.lightness, min: round(Math.min(...lights)), max: round(Math.max(...lights)) },
+      // The hole's profile, measured off the function the sprite is drawn from:
+      // where it is half dark and how wide its 10%–90% fall is, in shares of the
+      // inner radius, and how dark it is at the middle and at the flat side.
+      hole: (() => {
+        const at = (x: number) => darkness(settings, x) / (settings.core || 1)
+        const cross = (level: number) => {
+          for (let x = 0; x <= 1.16; x += 0.001) if (at(x) <= level) return x
+          return 1.16
+        }
+        return {
+          half: round(cross(0.5), 3),
+          fall: round(cross(0.1) - cross(0.9), 3),
+          middle: round(darkness(settings, 0)),
+          side: round(darkness(settings, 1)),
+        }
+      })(),
       frame: { width, height },
       fps: Math.round(fps),
       running,

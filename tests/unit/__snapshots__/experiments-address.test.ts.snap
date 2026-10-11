@@ -336,12 +336,17 @@ exports[`hexgrid > has not edited a slot in place 1`] = `
   "ragged num grid=0.05 origin=0 bits=5",
   "trail num grid=0.05 origin=0 bits=7",
   "overlap num grid=0.05 origin=0 bits=5",
+  "hole num grid=0.01 origin=0 bits=7",
+  "soft num grid=0.01 origin=0.01 bits=8",
+  "curve enum s|eased|linear",
 ]
 `;
 
 exports[`hexgrid > retires a slot by appending to the retired list, never by editing one 1`] = `
 [
   "0 layout",
+  "26 hole",
+  "27 soft",
 ]
 `;
 
