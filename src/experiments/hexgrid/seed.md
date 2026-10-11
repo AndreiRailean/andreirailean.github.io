@@ -27,6 +27,27 @@ describes the work.
 > around the hexagons, but it's very faint and only serves to bring out the
 > separation without increasing the contrast.
 
+## 2026-10-11 — second round
+
+> hm, the white outline gets in the way. it's the first thing that appears out
+> of the darkness. i feel it should be one of the last. it should add a
+> finishing touch to a pattern that already emerged. there pulsing of the
+> whole sceene appears with a stagger: white outlines fade in. nothing happens
+> for a little bit. colours start appearing. it sits for a tiny bit, then it
+> fades out into darkness. then outlines appear. fading out appears to be the
+> most pleasant part because it's the most random. fading in appears to
+> radiate equally from the centers and it would be better if not all the
+> hexes around the black appeared at the same time, but grew. if outline is
+> turned off, the dark stays too long.
+>
+> gradients in each hex also need a bit more tightening. the center should be
+> darker and a little sharper - as if we're looking into a small hole with
+> coloured water falling in from a great height. so the brigh region takes up
+> more space and the darker center is darker and the transition between them
+> is "faster"
+>
+> additionally if we could make the corners of the hexagons a little smoother
+
 ## Questions I could not answer, and what I assumed
 
 _Mine, not his. Each is a control or a preset where it could be, so it can be
@@ -54,6 +75,16 @@ answered by dragging._
 - **Does the colour arrive everywhere at once, or wave by wave?** Every centre
   starts together unless **stagger** is up. The fade is always global, which
   is the one part the seed states outright ("not done in regions").
+- **"grew" rather than radiated.** I read it as first-passage growth: each hex
+  is slower or quicker to cross at random, and the colour takes the cheapest
+  way out, so the six round a centre light at different times and the front
+  reaches out unevenly. **ragged** sets how much; 0 is the old clean rings.
+  Another reading would be per-hex jitter on clean rings, which leaves the
+  front round — not built.
+- **"the dark stays too long".** I took it as the gap between patterns, and
+  made the next pattern start while the last is still fading (**overlap**).
+  Where two meet, their colours cross-fade. At 0 the screen was nearly dark
+  38% of the time; at 0.4, 3%.
 - **Is a settled grid still?** "the whole piece is alive" may mean the loop
   alone, or movement inside the hold. **shimmer** adds a slow per-hex
   breathing; the primary has a little.

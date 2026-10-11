@@ -330,6 +330,12 @@ exports[`hexgrid > has not edited a slot in place 1`] = `
   "density num grid=0.1 origin=0.1 bits=8",
   "wander num grid=1 origin=0 bits=8",
   "fadeBy enum wave|together",
+  "hole num grid=0.01 origin=0.05 bits=7",
+  "soft num grid=0.01 origin=0.02 bits=7",
+  "round num grid=0.05 origin=0 bits=5",
+  "ragged num grid=0.05 origin=0 bits=5",
+  "trail num grid=0.05 origin=0 bits=7",
+  "overlap num grid=0.05 origin=0 bits=5",
 ]
 `;
 

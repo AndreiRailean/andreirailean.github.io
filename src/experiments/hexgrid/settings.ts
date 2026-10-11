@@ -51,6 +51,12 @@ export type Settings = {
   chroma: number
   /** How dark a hex's middle is against its edge. 0 is flat, 1 black. */
   core: number
+  /** Radius of the dark hole in each hex, as a share of the hex's inner radius. */
+  hole: number
+  /** How far the hole takes to give way to colour, as a share of the inner radius. */
+  soft: number
+  /** How round the corners are: 0 sharp, 1 as round as the sides allow. */
+  round: number
   /** OKLCH lightness of the dark centres. */
   centre: number
   /** What gives way when the screen cannot show a hue at this lightness and chroma. */
@@ -65,6 +71,12 @@ export type Settings = {
   rest: number
   /** Seconds the colour takes to travel one ring out from a centre. */
   travel: number
+  /** How unevenly the colour grows: 0 in clean rings, 1 reaching out in fingers. */
+  ragged: number
+  /** Seconds after a hex's colour is full before its outline comes. */
+  trail: number
+  /** How far into a pattern's life the next one starts growing, as a share of it. */
+  overlap: number
   /** Seconds one hex takes to come up to full colour. */
   rise: number
   /** Seconds a hex holds its colour (wave), or the grid holds once every hex has it (together). */
@@ -154,6 +166,17 @@ export const CONTROLS: Control[] = [
   },
   {
     kind: "slider",
+    key: "round",
+    label: "rounding",
+    group: "grid",
+    min: 0,
+    max: 1,
+    step: 0.05,
+    format: unit,
+    hint: "How round each hex's corners are. 0 is sharp; 1 is as round as the sides allow, close to a circle.",
+  },
+  {
+    kind: "slider",
     key: "edge",
     label: "outline",
     group: "grid",
@@ -161,7 +184,7 @@ export const CONTROLS: Control[] = [
     max: 0.6,
     step: 0.01,
     format: unit,
-    hint: "Opacity of a thin white line round every hex. It is all there is between pulses.",
+    hint: "Opacity of a thin white line round every hex. It comes last, once the hex's colour is full, and leaves with it.",
   },
   {
     kind: "slider",
@@ -264,6 +287,30 @@ export const CONTROLS: Control[] = [
   },
   {
     kind: "slider",
+    key: "hole",
+    label: "hole",
+    group: "colour",
+    min: 0.05,
+    max: 0.9,
+    step: 0.01,
+    format: unit,
+    hint: "How wide the dark middle of each hex is, as a share of the hex. Small is a pinhole the colour pours into; large leaves only a bright rim.",
+    inert: (settings: Settings) => settings.core === 0,
+  },
+  {
+    kind: "slider",
+    key: "soft",
+    label: "softness",
+    group: "colour",
+    min: 0.02,
+    max: 1,
+    step: 0.01,
+    format: unit,
+    hint: "How long the dark middle takes to give way to colour. Low is a sharp-edged hole; high is a long glow.",
+    inert: (settings: Settings) => settings.core === 0,
+  },
+  {
+    kind: "slider",
     key: "centre",
     label: "centres",
     group: "colour",
@@ -282,7 +329,7 @@ export const CONTROLS: Control[] = [
     max: 20,
     step: 0.1,
     format: seconds,
-    hint: "How long only the outlines show before the colour comes.",
+    hint: "How long a new pattern waits, dark, before its colour starts.",
   },
   {
     kind: "slider",
@@ -294,6 +341,17 @@ export const CONTROLS: Control[] = [
     step: 0.05,
     format: (v) => `${v.toFixed(2)}s`,
     hint: "Seconds for the colour to move one ring out from a centre. 0 lights everything at once.",
+  },
+  {
+    kind: "slider",
+    key: "ragged",
+    label: "ragged",
+    group: "pulse",
+    min: 0,
+    max: 1,
+    step: 0.05,
+    format: unit,
+    hint: "How unevenly the colour grows out of the dark centres. 0 spreads in clean rings, every hex round a centre at once. Higher, each hex is slower or quicker to cross at random, so the colour reaches out in fingers and grows rather than radiates.",
   },
   {
     kind: "slider",
@@ -351,6 +409,29 @@ export const CONTROLS: Control[] = [
     hint: "How long one hex takes to lose its colour, and its outline with it.",
   },
   {
+    kind: "slider",
+    key: "trail",
+    label: "outline after",
+    group: "pulse",
+    min: 0,
+    max: 5,
+    step: 0.05,
+    format: (v) => `${v.toFixed(2)}s`,
+    hint: "How long after a hex's colour is full its outline comes, as a finishing touch. Longer than hold and the outline never shows.",
+    inert: (settings: Settings) => settings.edge === 0,
+  },
+  {
+    kind: "slider",
+    key: "overlap",
+    label: "overlap",
+    group: "pulse",
+    min: 0,
+    max: 0.9,
+    step: 0.05,
+    format: (v) => `${Math.round(v * 100)}%`,
+    hint: "How soon the next pattern starts growing, while this one is still going. 0 waits for this one to be gone; higher cuts the dark between them, and where two meet their colours cross-fade.",
+  },
+  {
     kind: "choice",
     key: "fadeBy",
     label: "fade",
@@ -376,7 +457,10 @@ export const DEFAULT_SETTINGS: Settings = {
   pattern: "random",
   lightness: 0.62,
   chroma: 0.2,
-  core: 0.7,
+  core: 0.95,
+  hole: 0.35,
+  soft: 0.3,
+  round: 0.25,
   centre: 0.08,
   edge: 0.1,
   gamut: "lightness",
@@ -384,6 +468,9 @@ export const DEFAULT_SETTINGS: Settings = {
   shimmer: 0,
   rest: 2,
   travel: 0.5,
+  ragged: 0.6,
+  trail: 0.3,
+  overlap: 0.4,
   rise: 1.5,
   hold: 4,
   fade: 3,
@@ -405,6 +492,12 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   lightness: { min: 0.2, max: 0.95, step: 0.01 },
   chroma: { min: 0, max: 0.37, step: 0.005 },
   core: { min: 0, max: 1, step: 0.05 },
+  hole: { min: 0.05, max: 0.9, step: 0.01 },
+  soft: { min: 0.02, max: 1, step: 0.01 },
+  round: { min: 0, max: 1, step: 0.05 },
+  ragged: { min: 0, max: 1, step: 0.05 },
+  trail: { min: 0, max: 5, step: 0.05 },
+  overlap: { min: 0, max: 0.9, step: 0.05 },
   centre: { min: 0, max: 0.5, step: 0.01 },
   stagger: { min: 0, max: 6, step: 0.05 },
   shimmer: { min: 0, max: 0.6, step: 0.01 },
@@ -473,6 +566,9 @@ const GRID_KEYS = [
   "chroma",
   "centre",
   "core",
+  "hole",
+  "soft",
+  "ragged",
   "seed",
 ] as const satisfies readonly (keyof Settings)[]
 
@@ -509,6 +605,12 @@ export const REGISTRY: readonly Slot[] = [
   { key: "density", kind: "num", grid: 0.1, origin: 0.1, bits: 8 },
   { key: "wander", kind: "num", grid: 1, origin: 0, bits: 8 },
   { key: "fadeBy", kind: "enum", options: ["wave", "together"] },
+  { key: "hole", kind: "num", grid: 0.01, origin: 0.05, bits: 7 },
+  { key: "soft", kind: "num", grid: 0.01, origin: 0.02, bits: 7 },
+  { key: "round", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "ragged", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "trail", kind: "num", grid: 0.05, origin: 0, bits: 7 },
+  { key: "overlap", kind: "num", grid: 0.05, origin: 0, bits: 5 },
 ]
 
 export function settingsToQuery(settings: Settings): URLSearchParams {
