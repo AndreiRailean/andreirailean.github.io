@@ -302,6 +302,60 @@ exports[`flotsam > has not edited a slot in place 1`] = `
 
 exports[`flotsam > retires a slot by appending to the retired list, never by editing one 1`] = `[]`;
 
+exports[`hexgrid > has not edited a slot in place 1`] = `
+[
+  "layout enum tiled|scattered",
+  "spacing num grid=1 origin=2 bits=5",
+  "size num grid=1 origin=6 bits=7",
+  "gap num grid=0.5 origin=0 bits=6",
+  "edge num grid=0.01 origin=0 bits=6",
+  "hue num grid=1 origin=0 bits=9",
+  "hues num grid=1 origin=0 bits=8",
+  "drift num grid=1 origin=0 bits=8",
+  "pattern enum random|triad",
+  "lightness num grid=0.01 origin=0.2 bits=7",
+  "chroma num grid=0.005 origin=0 bits=7",
+  "core num grid=0.05 origin=0 bits=5",
+  "centre num grid=0.01 origin=0 bits=6",
+  "rest num grid=0.1 origin=0 bits=8",
+  "travel num grid=0.05 origin=0 bits=7",
+  "rise num grid=0.1 origin=0.1 bits=7",
+  "hold num grid=0.1 origin=0 bits=9",
+  "fade num grid=0.1 origin=0.1 bits=8",
+  "seed num grid=1 origin=0 bits=20",
+  "gamut enum lightness|chroma",
+  "stagger num grid=0.05 origin=0 bits=7",
+  "shimmer num grid=0.01 origin=0 bits=6",
+  "layout enum tiled|scattered|random",
+  "density num grid=0.1 origin=0.1 bits=8",
+  "wander num grid=1 origin=0 bits=8",
+  "fadeBy enum wave|together",
+  "hole num grid=0.01 origin=0.05 bits=7",
+  "soft num grid=0.01 origin=0.02 bits=7",
+  "round num grid=0.05 origin=0 bits=5",
+  "ragged num grid=0.05 origin=0 bits=5",
+  "trail num grid=0.05 origin=0 bits=7",
+  "overlap num grid=0.05 origin=0 bits=5",
+  "hole num grid=0.01 origin=0 bits=7",
+  "soft num grid=0.01 origin=0.01 bits=8",
+  "curve enum s|eased|linear",
+  "entry enum dim|hole",
+  "exit enum dim|hole",
+  "entry enum dim|hole|glow|bloom",
+  "exit enum dim|hole|sink|shrink",
+]
+`;
+
+exports[`hexgrid > retires a slot by appending to the retired list, never by editing one 1`] = `
+[
+  "0 layout",
+  "26 hole",
+  "27 soft",
+  "35 entry",
+  "36 exit",
+]
+`;
+
 exports[`psyxels > has not edited a slot in place 1`] = `
 [
   "seed num grid=1 origin=0 bits=20",

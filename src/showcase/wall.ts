@@ -63,8 +63,13 @@ export type WallEntry = {
  * crossing pieces tears one down and mounts another. Judged worth it, and the
  * order is a source edit away from any other opinion.
  *
- * **Dotfield's `meadow` leads, on the rule every lead has: `/showcase/` is
+ * **Hexgrid's `embers` leads, on the rule every lead has: `/showcase/` is
  * entry zero and that is the newest published scene.** It is the piece's
+ * primary, a scene Andrei found by dragging. Its other eleven presets are
+ * woven further down, one after every fifth entry. Andrei asked for all of
+ * them.
+ *
+ * **Dotfield's `meadow` led before it, on the same rule.** It is the piece's
  * primary. Its other seven — white, still, squall, eddies, islands,
  * wildflowers and slalom — are woven further down. Andrei asked for all of
  * its presets; meadow and white are scenes he found by dragging.
@@ -111,6 +116,15 @@ export type WallEntry = {
  */
 export const WALL: readonly WallEntry[] = [
   {
+    id: "hexgrid-embers",
+    title: "embers",
+    piece: "hexgrid",
+    pieceTitle: "Hexgrid",
+    note: "Small warm hexes, each blooming from a point of colour in its middle until a soft dark hole opens there and swallows it.",
+    runner: "hexgrid.a3f75667cc77.js",
+    scene: "v____P8YSMFHCg8MlCiAweHFh4nAABR5SCTwVgZFqVd",
+  },
+  {
     id: "dotfield-meadow",
     title: "meadow",
     piece: "dotfield",
@@ -154,6 +168,15 @@ export const WALL: readonly WallEntry[] = [
     note: "Water from directly above, with four jets turning the same way somewhere underneath it. Nothing holds together for long at this depth — the boil shreds a bubble almost as fast as it arrives — so what you are watching is not really the bubbles. It is the flow they are written in, several thousand specks each dragging its own wake.",
     runner: "bubbles.b1f1e25e4c22.js",
     scene: "_4_177vX_0BiMTEjANGtCgUSTRIAZybEKnQA0aIK6CADLZzA-4gfiAQA",
+  },
+  {
+    id: "hexgrid-drift",
+    title: "drift",
+    piece: "hexgrid",
+    pieceTitle: "Hexgrid",
+    note: "Wide gaps, bright outlines and hues from all round the wheel, colour drifting slowly out of a few dark centres dropped at random.",
+    runner: "hexgrid.a3f75667cc77.js",
+    scene: "v____P8YgejsUsI7kB6YgWIDAgGAAB4DCBVoVgZBQYA",
   },
   {
     id: "embers-winter-blues",
@@ -201,6 +224,15 @@ export const WALL: readonly WallEntry[] = [
     scene: "_____2AAApg-AAhWZMoefOEiIhWqrJNnYMfAUFyA8ZKB8UJgwADrig",
   },
   {
+    id: "hexgrid-even",
+    title: "even",
+    piece: "hexgrid",
+    pieceTitle: "Hexgrid",
+    note: "Each hex comes in and goes out at the same pace, the fading retracing the bloom across the grid.",
+    runner: "hexgrid.a3f75667cc77.js",
+    scene: "v____P8YGeXdUsI7kB6IQWEDAgGAAB4DBCTwlgMptCA",
+  },
+  {
     id: "psyxels-alive",
     title: "alive",
     piece: "psyxels",
@@ -244,6 +276,15 @@ export const WALL: readonly WallEntry[] = [
     note: "Six arms of long, all but limp strands in cold blue, falling past you, everything barely moving.",
     runner: "dangler.24e68564770d.js",
     scene: "____f0vRtmOcQjJtlcCJmt8jAYgo-EQQAsXQioQDI",
+  },
+  {
+    id: "hexgrid-breath",
+    title: "breath",
+    piece: "hexgrid",
+    pieceTitle: "Hexgrid",
+    note: "Colour breathes across the grid: a slow inhale, a short pause full, a longer exhale, a moment of dark.",
+    runner: "hexgrid.a3f75667cc77.js",
+    scene: "v____P8YGeXdUsI7kB6IQUEMgEpAAB4DBCTwlgYBtCA",
   },
   {
     id: "streakers-rosette",
@@ -291,6 +332,15 @@ export const WALL: readonly WallEntry[] = [
     scene: "vov___9wFCCFVDy-CgKUChQeAeoHgAAcAAbwIIUKUGR4KHjCWAAG",
   },
   {
+    id: "hexgrid-swallow",
+    title: "swallow",
+    piece: "hexgrid",
+    pieceTitle: "Hexgrid",
+    note: "Each hex leaves by its dark middle widening until it swallows the hex, the colour bright to the last.",
+    runner: "hexgrid.a3f75667cc77.js",
+    scene: "v____P8YGeXdUsI7kB6IQWEDAgNAAB4DBCTwlgMptCB",
+  },
+  {
     id: "streakers-random-star",
     title: "random star",
     piece: "streakers",
@@ -334,6 +384,15 @@ export const WALL: readonly WallEntry[] = [
     note: "Fine grain at a high threshold, half-solid, spread across the whole wheel: tube light rather than ink.",
     runner: "psyxels.3d3ba1c0d12f.js",
     scene: "______9AnD0QnIGJitjvD5wolWo1HgBcAD0xQdcjIwEdjtBkxe5Bo",
+  },
+  {
+    id: "hexgrid-swallow-breath",
+    title: "swallow breath",
+    piece: "hexgrid",
+    pieceTitle: "Hexgrid",
+    note: "The breath by the hole: each hex arrives as a bright rim whose hole closes in, and leaves as the hole widens to swallow it.",
+    runner: "hexgrid.a3f75667cc77.js",
+    scene: "v____P8YGeXdUsI7kB6IQUEMgEpAAB4DBCTwlgYBtCF",
   },
   {
     id: "walkers-bacteria",
@@ -381,6 +440,15 @@ export const WALL: readonly WallEntry[] = [
     scene: "vov___9wFChAWgAPEEcKVS0a4ojGQAAwAAQURhGHMFAAAAAi0AAG",
   },
   {
+    id: "hexgrid-glow",
+    title: "glow",
+    piece: "hexgrid",
+    pieceTitle: "Hexgrid",
+    note: "The dark middle is always there; colour comes out of it and spreads to the edges, then the hole grows until it swallows the hex.",
+    runner: "hexgrid.a3f75667cc77.js",
+    scene: "v____P8YGeXGUsI7kB6IQUTMgEpAAB4DBCTwlhABtCJ",
+  },
+  {
     id: "streakers-weave",
     title: "weave",
     piece: "streakers",
@@ -424,6 +492,15 @@ export const WALL: readonly WallEntry[] = [
     note: "The parade thinned out into teams — blocks of ten walking together, spaced along the way with empty road between, and me at the back of one of them.",
     runner: "crowd.9810eb51f4a2.js",
     scene: "_-__7___QAnIAoACCZwKCyyh1rkYAo602EBI0gBooAkAlQyoACgAAA4",
+  },
+  {
+    id: "hexgrid-bloom",
+    title: "bloom",
+    piece: "hexgrid",
+    pieceTitle: "Hexgrid",
+    note: "Each hex runs through its gradient: a point of colour grows to fill it, a hole forms in its middle, and widens into darkness.",
+    runner: "hexgrid.a3f75667cc77.js",
+    scene: "v____P8YGeXGUsI7kB6IQUTMgEpAAB4DBCTwlhABtCN",
   },
   {
     id: "dotfield-islands",
@@ -471,6 +548,15 @@ export const WALL: readonly WallEntry[] = [
     scene: "_-__7___QADIAAACCZwKCySh2RBQApYMmsAg0FBQAAkANR4oACgAAA4",
   },
   {
+    id: "hexgrid-ebb",
+    title: "ebb",
+    piece: "hexgrid",
+    pieceTitle: "Hexgrid",
+    note: "Light rises out of each hex's dark middle to its edges, then draws back in until it is gone into the hole.",
+    runner: "hexgrid.a3f75667cc77.js",
+    scene: "v____P8YGeXGUsI7kB6IQUTMgEpAAB4DBCTwlhABtCK",
+  },
+  {
     id: "walkers-busy",
     title: "busy",
     piece: "walkers",
@@ -514,6 +600,15 @@ export const WALL: readonly WallEntry[] = [
     note: "Chop over a hard swirling current: the lines the waves gather are torn apart as fast as they form.",
     runner: "flotsam.b2c2cc0608a3.js",
     scene: "_____2ACRgi7AAAuZKgwoKAtBzVo0gWFwyBigAbhkZKr6QngoAFFCg",
+  },
+  {
+    id: "hexgrid-vivid-dark",
+    title: "vivid dark",
+    piece: "hexgrid",
+    pieceTitle: "Hexgrid",
+    note: "A few dark centres, colour travelling several rings out from each, neighbours apart in hue and alike in lightness.",
+    runner: "hexgrid.a3f75667cc77.js",
+    scene: "v____P8YIcKKjBkeEix4woKHCgdAAAYA9CTwVgZBQYA",
   },
   {
     id: "psyxels-mono",
@@ -561,6 +656,15 @@ export const WALL: readonly WallEntry[] = [
     scene: "______9AADA4m5aONAQLbDQoAWo1F4BgAB0xQIAdaCLScYBkxq0GQ",
   },
   {
+    id: "hexgrid-flowers",
+    title: "flowers",
+    piece: "hexgrid",
+    pieceTitle: "Hexgrid",
+    note: "Every seventh hex a dark centre, each ringed by six petals of different hues, the flowers fitting together exactly.",
+    runner: "hexgrid.a3f75667cc77.js",
+    scene: "v____P8YIYGIZBQ8VCZ4ooYHCgdAAA5AACTwVgZBQYA",
+  },
+  {
     id: "flotsam-migration",
     title: "migration",
     piece: "flotsam",
@@ -604,6 +708,15 @@ export const WALL: readonly WallEntry[] = [
     note: "Every jet surging on its own clock, a few seconds long and never in step with its neighbours, so the surface never settles into anything and stays there.",
     runner: "bubbles.b1f1e25e4c22.js",
     scene: "_4_177vX_0BgYEGR4gyXHiCCMo9IIBS6GPLWwcIA6XwyXLWIPMgd1B8g",
+  },
+  {
+    id: "hexgrid-deep-sea",
+    title: "deep sea",
+    piece: "hexgrid",
+    pieceTitle: "Hexgrid",
+    note: "Large hexes, wide gaps, blues and greens, darker edges and a slow breath.",
+    runner: "hexgrid.a3f75667cc77.js",
+    scene: "v____P8YE2QMaRaPUB6Ig8UMDIxAAB4BlCTwVgZBQYA",
   },
 ]
 

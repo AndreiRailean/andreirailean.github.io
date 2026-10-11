@@ -352,6 +352,19 @@ html[data-idle="true"] #ui > * {
   gap: 0.3rem;
 }
 
+/* A choice whose options are phrases: one per line, each as wide as the
+   widest, read from the left like the list it is. Never wrapped, so a phrase
+   stays on one line and the panel widens to it instead. */
+#ui .modes.stacked {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+#ui .modes.stacked .mode {
+  text-align: left;
+  white-space: nowrap;
+}
+
 /* A set can hold more options than a choice ever does — a vocabulary rather
    than a mode — so it lays out on a fixed number of columns instead of taking
    whatever width one line would need. The panel has no width of its own; it is
