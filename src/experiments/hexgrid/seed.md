@@ -54,6 +54,15 @@ describes the work.
 > gradient function. i don't think it's a linear (circular) gradient, but is an
 > s-curve
 
+## 2026-10-11 — fourth round
+
+> i'm looking at this. can you give me a preset where fading in takes the same
+> amount of time as fading out.
+> http://100.117.55.104:4574/experiments/hexgrid/?s=v____H8Z5d1SwjuQHohBYQMCAQAAHgMEJPCWAym0I
+>
+> and another where fading in and out feels like a breath with fading in being
+> the inhale and fading out being the exhale
+
 ## Questions I could not answer, and what I assumed
 
 _Mine, not his. Each is a control or a preset where it could be, so it can be
