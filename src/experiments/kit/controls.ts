@@ -110,6 +110,12 @@ export type ChoiceControl<K> = Shared & {
   kind: "choice"
   key: K
   options: { value: string; label: string }[]
+  /**
+   * Lay the options one per line instead of in a row. For options described in
+   * a phrase rather than named in a word: four phrases in a row wrapped each
+   * button to four lines and ran off the panel (hexgrid's fade in and out).
+   */
+  stacked?: true
 }
 
 /**
@@ -821,7 +827,7 @@ export function createControls<S extends object>(options: Options<S>): Controls<
 
     if (control.kind === "choice" || control.kind === "toggle") {
       const group = document.createElement("div")
-      group.className = "modes"
+      group.className = control.kind === "choice" && control.stacked ? "modes stacked" : "modes"
 
       if (control.kind === "choice") {
         const byValue = new Map<string, HTMLButtonElement>()

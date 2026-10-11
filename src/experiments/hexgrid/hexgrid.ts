@@ -467,7 +467,8 @@ export function opened(settings: Settings, open: number): Settings {
     const f = 1 + open
     return { ...settings, hole: settings.hole * f, core: settings.core * f }
   }
-  const swallowed = 1.16 + settings.soft * 0.6
+  // Past the corners, or past a resting hole already that wide.
+  const swallowed = Math.max(1.16, settings.hole) + settings.soft * 0.6
   return {
     ...settings,
     hole: settings.hole + open * (swallowed - settings.hole),

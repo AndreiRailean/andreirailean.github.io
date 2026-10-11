@@ -78,6 +78,28 @@ describes the work.
 > darkness. i'm looking at this:
 > http://100.117.55.104:4574/experiments/hexgrid/?s=v____P9gGeXGUsI7kB6IQUTMgEpAAB4DBCTwlhABtCM
 
+## 2026-10-11 — seventh round
+
+> [screenshot: the fade in by and fade out by rows, their buttons wrapping to
+> four lines and running off the panel's right edge]
+>
+> fade and out controls are somewhat broken. we need to find another way to
+> allow selection from descriptive options
+>
+> change embers to this and move it to first place/primary
+> http://100.117.55.104:4574/experiments/hexgrid/?s=v____P8YSMFHCg8MlCiAweHFh4nAABR5SCTwVgZFqVd
+>
+> explain the difference between eased and s-curve. both appear to be doing the
+> same just with a slight growth parameter difference
+
+## 2026-10-11 — eighth round
+
+> hard to tell where fade-in options end and fade-out options begin. file a
+> ticket with steward to find a general solution. [screenshot: the stacked
+> fade in by and fade out by lists, one running straight into the other]
+>
+> get ready to merge into main. we're publishing all presets to showcase
+
 ## Questions I could not answer, and what I assumed
 
 _Mine, not his. Each is a control or a preset where it could be, so it can be
@@ -129,6 +151,17 @@ answered by dragging._
   his scene; hole closing is kept as an option rather than removed. Unasked,
   their mirrors on the way out: **light into the hole** (preset _ebb_, in and
   out through the hole) and **hole, then shrink**.
+- **Eased and S-curve look alike — they are.** Both are S-shapes. S-curve is a
+  logistic: at a given softness its 10–90% fall is the softness wide, with long
+  tails at both ends. Eased is smoothstep: the same S drawn as a polynomial that
+  starts and stops exactly, and about 1.6× steeper at the same softness
+  (measured 0.15 against 0.25 wide at hole 0.27, softness 0.25). Once softness
+  is wider than the hex, as in his embers (1.5), each shows only the gentle
+  middle of its S and the two differ by a few hundredths. Answered rather than
+  changed: he asked for the difference, not for a third shape.
+- **Fade in and out as a stacked list.** Four phrases in a row of buttons
+  wrapped and ran off the panel. The kit's choice took an opt-in `stacked`, one
+  option per line, rather than a dropdown, so every option stays visible.
 - **Is a settled grid still?** "the whole piece is alive" may mean the loop
   alone, or movement inside the hold. **shimmer** adds a slow per-hex
   breathing; the primary has a little.
