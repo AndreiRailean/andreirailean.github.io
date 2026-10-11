@@ -26,9 +26,14 @@ traps.
   default, at Andrei's third round ("not a linear gradient, but an s-curve").
   Each curve is renormalised to exactly `core` at 0 and 0 at the corner, so the
   S-curve's 10–90% fall comes out a little under `soft` (0.237 for 0.25);
-  `stats().hole` measures it. It is round and
-  may reach past the flat sides into the gap, which is black anyway, so it needs
-  no clip. A gap that is not black would show it.
+  `stats().hole` measures it. It is clipped
+  to the hex — see the trap below.
+- **Fading by the hole.** `intensity` returns a third value, `open`: 0 at the
+  resting hole, 1 when the hole has swallowed the hex. `opened` maps it to a
+  bigger `hole` and a `core` deepening to black, and `buildVignette` draws
+  `OPENINGS` sprites from rest to swallowed. On exit the colour holds while the
+  hole grows and fades only in the last `SWALLOW_LEAD`; on entry the reverse.
+  Where patterns overlap, the strongest pattern's hole is drawn.
 - **Patterns overlap.** A new one starts `next = period * (1 - overlap)` after
   the newest began, so several can be live, and a pattern is dropped when its
   own period is over. Every pattern is built on the same hexes in the same
@@ -48,6 +53,12 @@ traps.
   arriving first "get in the way".
 
 ## Traps
+
+- **A hole sprite must be clipped to its hex.** The resting hole fades to clear
+  well inside the hex, so a square sprite with no clip looked fine for four
+  rounds. A growing hole (`exit: "hole"`) is dark out to the square's corners,
+  and those landed on the neighbours as dark rectangles. Seen in a close-up,
+  not in any number; `buildVignette` now cuts each sprite to the hex path.
 
 - **Fixed lightness and fixed chroma cannot both hold in sRGB.** At L 0.56 and
   C 0.22 cyans top out near 0.1. `vivid` therefore takes `gamut`: pull chroma

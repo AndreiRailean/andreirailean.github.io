@@ -339,6 +339,8 @@ exports[`hexgrid > has not edited a slot in place 1`] = `
   "hole num grid=0.01 origin=0 bits=7",
   "soft num grid=0.01 origin=0.01 bits=8",
   "curve enum s|eased|linear",
+  "entry enum dim|hole",
+  "exit enum dim|hole",
 ]
 `;
 

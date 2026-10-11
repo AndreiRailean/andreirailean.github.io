@@ -63,6 +63,11 @@ describes the work.
 > and another where fading in and out feels like a breath with fading in being
 > the inhale and fading out being the exhale
 
+## 2026-10-11 — fifth round
+
+> i wonder if it's possible to fade out the hexagon by growing it's inner hole
+> and when it reaches the boundaary we fade it out completely.
+
 ## Questions I could not answer, and what I assumed
 
 _Mine, not his. Each is a control or a preset where it could be, so it can be
@@ -100,6 +105,12 @@ answered by dragging._
   made the next pattern start while the last is still fading (**overlap**).
   Where two meet, their colours cross-fade. At 0 the screen was nearly dark
   38% of the time; at 0.4, 3%.
+- **The hole as the way out, and in.** Fifth round asked for a fade by the hole
+  growing until it reaches the edge, then a full fade. That is **fade out by:
+  hole growing**; the colour holds while the hole widens and fades only in the
+  last 15%. I added the mirror unasked, **fade in by: hole closing** (a bright
+  rim whose hole shrinks to rest), since it costs nothing and breath may want
+  it. Presets: _swallow_ (even, hole out) and _swallow breath_ (both).
 - **Is a settled grid still?** "the whole piece is alive" may mean the loop
   alone, or movement inside the hold. **shimmer** adds a slow per-hex
   breathing; the primary has a little.

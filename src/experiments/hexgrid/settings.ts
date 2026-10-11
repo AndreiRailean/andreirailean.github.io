@@ -24,6 +24,7 @@ export type Pattern = "random" | "triad"
 export type Gamut = "lightness" | "chroma"
 export type FadeBy = "wave" | "together"
 export type Curve = "s" | "eased" | "linear"
+export type Change = "dim" | "hole"
 
 export type Settings = {
   /** Tiled: a dark centre in every seven, each ringed by six petals. Scattered: a few centres, spaced. */
@@ -88,10 +89,14 @@ export type Settings = {
   fade: number
   /** Whether hexes lose their colour in the order they got it, or all at once. */
   fadeBy: FadeBy
+  /** How a hex comes in: its colour brightening, or its hole closing from a bright rim. */
+  entry: Change
+  /** How a hex goes: its colour dimming, or its hole growing until it swallows the hex. */
+  exit: Change
   seed: number
 }
 
-export type NumericKey = Exclude<keyof Settings, "layout" | "pattern" | "gamut" | "fadeBy" | "curve">
+export type NumericKey = Exclude<keyof Settings, "layout" | "pattern" | "gamut" | "fadeBy" | "curve" | "entry" | "exit">
 
 export type Control = KitControl<string & keyof Settings>
 export type NumericControl = SliderControl<NumericKey>
@@ -101,6 +106,7 @@ export const PATTERNS: Pattern[] = ["random", "triad"]
 export const GAMUTS: Gamut[] = ["lightness", "chroma"]
 export const FADE_BYS: FadeBy[] = ["wave", "together"]
 export const CURVES: Curve[] = ["s", "eased", "linear"]
+export const CHANGES: Change[] = ["dim", "hole"]
 
 const SEED_BOUNDS = { min: 0, max: 999_999 }
 
@@ -459,6 +465,28 @@ export const CONTROLS: Control[] = [
     ],
     hint: "Wave takes the colour out the way it came in, centre first and ring by ring at the same pace, so every hex is lit for the same time and a quick bloom fades quickly. Together takes it out of every hex at once, once the last hex is lit.",
   },
+  {
+    kind: "choice",
+    key: "entry",
+    label: "fade in by",
+    group: "pulse",
+    options: [
+      { value: "dim", label: "brightening" },
+      { value: "hole", label: "hole closing" },
+    ],
+    hint: "How each hex comes in. Brightening raises its colour from black. Hole closing has it appear almost at once as a thin bright rim round a hole the size of the hex, and the hole shrinks to its resting size.",
+  },
+  {
+    kind: "choice",
+    key: "exit",
+    label: "fade out by",
+    group: "pulse",
+    options: [
+      { value: "dim", label: "dimming" },
+      { value: "hole", label: "hole growing" },
+    ],
+    hint: "How each hex goes. Dimming lowers its colour to black. Hole growing keeps the colour bright while the dark middle widens until it reaches the edge, and only then fades what is left.",
+  },
 ]
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -493,6 +521,8 @@ export const DEFAULT_SETTINGS: Settings = {
   hold: 4,
   fade: 3,
   fadeBy: "wave",
+  entry: "dim",
+  exit: "dim",
   seed: 1,
 }
 
@@ -558,6 +588,8 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
     gamut: oneOf(GAMUTS, merged.gamut, base.gamut),
     fadeBy: oneOf(FADE_BYS, merged.fadeBy, base.fadeBy),
     curve: oneOf(CURVES, merged.curve, base.curve),
+    entry: oneOf(CHANGES, merged.entry, base.entry),
+    exit: oneOf(CHANGES, merged.exit, base.exit),
   }
 
   for (const [key, bound] of Object.entries(BOUNDS) as [NumericKey, { min: number; max: number }][]) {
@@ -636,6 +668,8 @@ export const REGISTRY: readonly Slot[] = [
   { key: "hole", kind: "num", grid: 0.01, origin: 0, bits: 7 },
   { key: "soft", kind: "num", grid: 0.01, origin: 0.01, bits: 8 },
   { key: "curve", kind: "enum", options: ["s", "eased", "linear"] },
+  { key: "entry", kind: "enum", options: ["dim", "hole"] },
+  { key: "exit", kind: "enum", options: ["dim", "hole"] },
 ]
 
 export function settingsToQuery(settings: Settings): URLSearchParams {

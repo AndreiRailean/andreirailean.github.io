@@ -381,13 +381,54 @@ export function intensity(
   line: ReturnType<typeof timeline>,
   delay: number,
   t: number,
-): [number, number] {
+): [number, number, number] {
   const arrived = line.bloom + delay
   const arrive = smooth((t - arrived) / settings.rise)
   const outline = smooth((t - arrived - settings.rise - settings.trail) / settings.rise)
   const leaving = settings.fadeBy === "wave" ? line.fade + delay : line.fade
   const leave = 1 - smooth((t - leaving) / settings.fade)
-  return [arrive * leave, outline * leave]
+  // How far the hole has opened past its resting size: 0 at rest, 1 when it
+  // has swallowed the whole hex. Dimming leaves it at 0 and fades the colour.
+  let open = 0
+  let coming = arrive
+  let going = leave
+  if (settings.entry === "hole") {
+    // The hex arrives as a bright rim almost at once, and its hole closes in.
+    open = Math.max(open, 1 - arrive)
+    coming = smooth(arrive / SWALLOW_LEAD)
+  }
+  if (settings.exit === "hole") {
+    // The hole grows at full colour; only once it has reached the boundary
+    // does what is left fade out completely.
+    const g = 1 - leave
+    open = Math.max(open, g)
+    going = 1 - smooth((g - (1 - SWALLOW_LEAD)) / SWALLOW_LEAD)
+  }
+  return [coming * going, outline * going, open]
+}
+
+/**
+ * The last share of a hole-out (or first of a hole-in) in which the colour
+ * itself fades: by then the hole has reached the boundary and only a thin
+ * rim is left, which would otherwise wink out.
+ */
+const SWALLOW_LEAD = 0.15
+
+/** How many sizes of hole are drawn ahead, from resting to swallowed. */
+const OPENINGS = 32
+
+/**
+ * The hole at `open` of the way from resting to swallowed: its half-dark radius
+ * grows from `hole` until the hex's corners are dark, and its middle deepens
+ * from `core` to black, so a swallowed hex is gone rather than tinted.
+ */
+export function opened(settings: Settings, open: number): Settings {
+  const swallowed = 1.16 + settings.soft * 0.6
+  return {
+    ...settings,
+    hole: settings.hole + open * (swallowed - settings.hole),
+    core: settings.core + open * (1 - settings.core),
+  }
 }
 
 /** Seconds into the bloom the colour reaches this hex. */
@@ -418,7 +459,9 @@ export function darkness(settings: Settings, at: number): number {
     fall = (x) => 1 / (1 + Math.exp(-(x - hole) / scale))
   }
   const a = fall(0)
-  const b = fall(1.16)
+  // Once the hole has grown past the corners, renormalising at the corner would
+  // divide by almost nothing; normalise at the end of the fall instead.
+  const b = fall(Math.max(1.16, hole + w))
   const f = b - a > 1e-6 ? (fall(at) - a) / (b - a) : at < hole ? 0 : 1
   return core * (1 - Math.min(1, Math.max(0, f)))
 }
@@ -450,9 +493,12 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
   let last = 0
   let debug = false
   let fps = 0
-  let vignette: HTMLCanvasElement | null = null
+  /** The dark middle at each size from resting to swallowed; `openings[0]` is at rest. */
+  let openings: HTMLCanvasElement[] = []
   let lit = 0
   const outlines: number[] = []
+  /** Per hex, which of `openings` to lay over it this frame, or -1 for none. */
+  const holes: number[] = []
 
   function pattern(cycle: number, begun: number): Pattern {
     const built = buildPattern(settings, width, height, cycle)
@@ -487,30 +533,43 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
   const drawn = () => Math.max(0.5, settings.size - settings.gap / SQRT3)
 
   /**
-   * The dark middle, as one sprite laid over every hex, its opacity at each
-   * radius read off `darkness`. Sampled densely because the canvas only
-   * interpolates linearly between stops. The sprite is round and may reach past
-   * the flat sides into the gap, which is black already, so it needs no clip.
+   * The dark middle, as sprites laid over the hexes, their opacity at each
+   * radius read off `darkness`: one at rest, and one per size the hole passes
+   * through as it swallows a hex. Sampled densely because the canvas only
+   * interpolates linearly between stops. Each sprite is clipped to the hex:
+   * a grown hole is dark out to the sprite's square corners, which would
+   * otherwise lie over the neighbours.
    */
   function buildVignette() {
     const r = drawn()
     const px = Math.max(2, Math.ceil(2 * r * dpr))
-    const sprite = document.createElement("canvas")
-    sprite.width = px
-    sprite.height = px
-    const s = sprite.getContext("2d")!
-    const g = s.createRadialGradient(px / 2, px / 2, 0, px / 2, px / 2, px / 2)
     // Stops are shares of the corner radius; `darkness` takes shares of the
     // inner radius, which is 0.866 of it.
     const inner = SQRT3 / 2
     const STOPS = 48
-    for (let k = 0; k <= STOPS; k++) {
-      const at = k / STOPS
-      g.addColorStop(at, `rgba(0,0,0,${darkness(settings, at / inner)})`)
+    openings = []
+    for (let k = 0; k < OPENINGS; k++) {
+      const at = opened(settings, k / (OPENINGS - 1))
+      const sprite = document.createElement("canvas")
+      sprite.width = px
+      sprite.height = px
+      const s = sprite.getContext("2d")!
+      const g = s.createRadialGradient(px / 2, px / 2, 0, px / 2, px / 2, px / 2)
+      for (let j = 0; j <= STOPS; j++) {
+        const x = j / STOPS
+        g.addColorStop(x, `rgba(0,0,0,${darkness(at, x / inner)})`)
+      }
+      s.fillStyle = g
+      s.fillRect(0, 0, px, px)
+      // Clip to the hex. A resting hole is clear by the sprite's corners, but a
+      // growing one is not, and the square's dark corners land on neighbours.
+      s.globalCompositeOperation = "destination-in"
+      s.fillStyle = "#000"
+      s.beginPath()
+      hexPath(px / 2, px / 2, px / 2, s)
+      s.fill()
+      openings.push(sprite)
     }
-    s.fillStyle = g
-    s.fillRect(0, 0, px, px)
-    vignette = sprite
   }
 
   /** Rebuilds every live pattern at the current settings, keeping which cycle each is and when it began. */
@@ -520,7 +579,7 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
   }
 
   /** A hexagon with its corners rounded by `round`: 0 sharp, 1 as round as the sides allow. */
-  function hexPath(x: number, y: number, r: number) {
+  function hexPath(x: number, y: number, r: number, c: CanvasRenderingContext2D = ctx) {
     const corners: [number, number][] = []
     for (let k = 0; k < 6; k++) {
       const a = (Math.PI / 3) * k + Math.PI / 6
@@ -528,20 +587,20 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
     }
     const rr = settings.round * r * (SQRT3 / 2) * 0.999
     if (rr <= 0.01) {
-      ctx.moveTo(corners[0]![0], corners[0]![1])
-      for (let k = 1; k < 6; k++) ctx.lineTo(corners[k]![0], corners[k]![1])
-      ctx.closePath()
+      c.moveTo(corners[0]![0], corners[0]![1])
+      for (let k = 1; k < 6; k++) c.lineTo(corners[k]![0], corners[k]![1])
+      c.closePath()
       return
     }
     const [ax, ay] = corners[5]!
     const [bx, by] = corners[0]!
-    ctx.moveTo((ax + bx) / 2, (ay + by) / 2)
+    c.moveTo((ax + bx) / 2, (ay + by) / 2)
     for (let k = 0; k < 6; k++) {
       const [cx, cy] = corners[k]!
       const [nx, ny] = corners[(k + 1) % 6]!
-      ctx.arcTo(cx, cy, nx, ny, rr)
+      c.arcTo(cx, cy, nx, ny, rr)
     }
-    ctx.closePath()
+    c.closePath()
   }
 
   function draw() {
@@ -561,11 +620,18 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
       let blue = 0
       let level = 0
       let outline = 0
+      // The hole is the strongest pattern's: two patterns cannot share a hole.
+      let strongest = 0
+      let open = 0
       for (const p of patterns) {
         const hex = p.hexes[i]!
-        const [lift, edge] = intensity(settings, p.line, delayOf(settings, hex), clock - p.begun)
+        const [lift, edge, hole] = intensity(settings, p.line, delayOf(settings, hex), clock - p.begun)
         outline = Math.max(outline, edge)
         if (lift <= 0) continue
+        if (lift > strongest) {
+          strongest = lift
+          open = hole
+        }
         // Shimmer dims a lit hex by up to `shimmer`, slowly and out of step with
         // its neighbours, so a held grid is still moving.
         const a = lift * (1 - settings.shimmer * (0.5 + 0.5 * Math.sin(hex.phase + clock * hex.rate * Math.PI * 2)))
@@ -575,6 +641,7 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
         level += a
       }
       outlines.push(outline)
+      holes[i] = level <= 0.002 ? -1 : Math.round(open * (OPENINGS - 1))
       sum += Math.min(1, level)
       if (level <= 0.002) continue
       const hex = base[i]!
@@ -585,9 +652,12 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
     }
     lit = base.length ? sum / base.length : 0
 
-    if (vignette && settings.core > 0) {
-      for (const hex of base) ctx.drawImage(vignette, hex.x - r, hex.y - r, 2 * r, 2 * r)
-    }
+    // An unlit hex is black already; a resting hole at no core is nothing.
+    base.forEach((hex, i) => {
+      const k = holes[i]!
+      if (k < 0 || (k === 0 && settings.core === 0)) return
+      ctx.drawImage(openings[k]!, hex.x - r, hex.y - r, 2 * r, 2 * r)
+    })
 
     if (settings.edge > 0) {
       ctx.lineWidth = 1
@@ -687,6 +757,10 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
       byStep,
       petalHueSpread: round(mean(petalSpread), 1),
       petalArrivalSpread: round(mean(petalArrival)),
+      // Lit hexes in the last frame drawn whose hole was opening or closing, and
+      // the furthest any had opened: the hole entry and exit, seen firing.
+      openHoles: holes.filter((k) => k > 0).length,
+      widestHole: round(Math.max(0, ...holes) / (OPENINGS - 1)),
       chroma: {
         asked: settings.chroma,
         min: round(Math.min(...chromas), 3),
