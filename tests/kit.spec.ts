@@ -460,9 +460,13 @@ for (const slug of PIECES) {
     const experiment = await openHeld(page, slug, { idle: false })
     await experiment.api(({ api }) => api.panel(true))
 
-    const slider = page.locator(".panel input[type=range]").first()
+    // The first slider the primary leaves enabled: a disabled one refuses focus,
+    // the arrow then reaches the page, and the presets step for a reason that
+    // has nothing to do with sliders. Hexgrid's primary greys out its first.
+    const slider = page.locator(".panel input[type=range]:not(:disabled)").first()
     await expect(slider).toBeVisible()
     await slider.focus()
+    await expect(slider, `${slug}: the slider never took focus`).toBeFocused()
 
     await page.keyboard.press("ArrowRight")
     const shown = await page.evaluate(() => document.documentElement.dataset.preset)
