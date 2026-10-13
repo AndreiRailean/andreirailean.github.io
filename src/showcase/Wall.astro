@@ -15,8 +15,9 @@
  */
 import { WALL } from "@/showcase/wall"
 
-type Props = { start: number }
-const { start } = Astro.props
+/** `front` is `/showcase/` itself, which names no entry — see `ViewerOptions` in viewer.ts. */
+type Props = { start: number; front?: boolean }
+const { start, front = false } = Astro.props
 const entry = WALL[start]!
 ---
 
@@ -389,7 +390,7 @@ const entry = WALL[start]!
         inert, needs no declaration merged into `Window`, and is the same shape
         whether the page was prerendered or served. */
     }
-    <script type="application/json" id="showcase-data" set:html={JSON.stringify({ wall: WALL, start })} />
+    <script type="application/json" id="showcase-data" set:html={JSON.stringify({ wall: WALL, start, front })} />
 
     <script>
       import { mountViewer } from "@/showcase/viewer"

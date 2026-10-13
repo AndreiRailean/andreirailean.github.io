@@ -203,6 +203,48 @@ export function lap(length: number, rng: Rng, after = -1): number[] {
   return order
 }
 
+/**
+ * A shuffled wall as a walk that goes on forever in both directions: laps laid
+ * end to end, read by position.
+ *
+ * **One walk for the arrows and the timer**, which is what `?shuffle` meaning
+ * the same thing to a person and to a kiosk comes down to. Two orders — a lap
+ * for the timer, the curated one for the arrows — is how it began, and it made
+ * stepping by hand land on the neighbour in a group added together: the same
+ * piece again, which is the repetition the shuffle was asked for to relieve.
+ *
+ * **Positions, not a cursor**, so going back retraces what was shown rather
+ * than drawing something new, and an entry in `history.state` can name where
+ * it was. Laps are dealt lazily at either end as the walk reaches them; once
+ * dealt a position never changes. Every seam is guarded by `lap()`'s `after`,
+ * so no scene follows itself in either direction.
+ *
+ * `start`, when given, is position 0 — a shared link to one entry still opens
+ * on that entry, and the shuffle takes over from there.
+ */
+export function trail(length: number, rng: Rng, start?: number): (position: number) => number {
+  const dealt = new Map<number, number>()
+  const first = lap(length, rng)
+  if (start !== undefined && length > 0) {
+    const from = first.indexOf(start)
+    ;[first[0], first[from]] = [first[from]!, first[0]!]
+  }
+  first.forEach((index, position) => dealt.set(position, index))
+  let low = 0
+  let high = length - 1
+  return (position) => {
+    if (length === 0) return -1
+    while (position > high) {
+      for (const index of lap(length, rng, dealt.get(high))) dealt.set(++high, index)
+    }
+    while (position < low) {
+      // Laid backwards, so the lap's guarded first entry lands beside `low`.
+      for (const index of lap(length, rng, dealt.get(low))) dealt.set(--low, index)
+    }
+    return dealt.get(position)!
+  }
+}
+
 /** Runner modules already fetched, by URL. The browser caches the bytes; this caches the evaluation. */
 const modules = new Map<string, Promise<RunnerModule>>()
 
@@ -219,6 +261,8 @@ export type ViewerOptions = {
   wall: readonly WallEntry[]
   /** Which entry the document was served for. */
   start: number
+  /** Served as `/showcase/` rather than for a named entry, so `?shuffle` may choose where to open. */
+  front?: boolean
 }
 
 /**
@@ -243,7 +287,7 @@ function boot(): ViewerOptions | null {
 
 export function mountViewer(options: ViewerOptions | null = boot()): void {
   if (!options) return
-  const { wall, start } = options
+  const { wall, start, front = false } = options
   const found = document.getElementById("showcase")
   const foundStage = found?.querySelector<HTMLElement>(".stage")
   if (!(found instanceof HTMLElement) || !foundStage) return
@@ -280,9 +324,9 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
    * run that looked good be run again.
    */
   let rng: Rng = makeRng(hashSeed(Date.now()))
-  /** The lap in progress when shuffling, and how far into it the wall has got. */
-  let order: number[] = []
-  let orderAt = 0
+  /** The shuffled walk, and where on it the wall is. Unused in the curated order. */
+  let walk: (position: number) => number = () => at
+  let position = 0
   /** Bumped on every move, so a slow mount that lost the race cannot install itself. */
   let generation = 0
 
@@ -503,14 +547,14 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
    * shuffling is on. Warming `at + 1` while playing a lap would prefetch a
    * runner nobody is about to want and leave the one that plays next cold — the
    * stutter between pieces that the prefetch exists to remove, restored by a
-   * feature that never mentioned it. `peekNext()` is the same thing the timer
+   * feature that never mentioned it. `neighbour()` is the same thing the timer
    * will use, so the two cannot drift.
    */
   async function prefetchNeighbours() {
-    // A set, because the three overlap whenever the wall is in its plain order.
-    for (const index of new Set([peekNext(), at + 1, at - 1])) {
-      const neighbour = wall[index]
-      if (neighbour) void load(runnerUrl(neighbour)).catch(() => {})
+    // A set, because on a wall of two both directions are the same entry.
+    for (const index of new Set([neighbour(1), neighbour(-1)])) {
+      const next = wall[index]
+      if (next) void load(runnerUrl(next)).catch(() => {})
     }
   }
 
@@ -543,15 +587,48 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
    * `"none"` is also the `popstate` case, where the history has already moved
    * and writing to it again would fight the browser.
    */
-  function go(to: number, how: "push" | "none" = "push") {
+  function go(to: number, how: "push" | "none" = "push", onWalk = false) {
     const clamped = Math.min(wall.length - 1, Math.max(0, to))
     if (clamped === at && showing) return
     at = clamped
+    // A jump to a named entry — Home, End, a back button the walk cannot
+    // vouch for — starts a fresh walk from there, so the next step is still a
+    // shuffled one and never the curated neighbour.
+    if (shuffling && !onWalk) {
+      walk = trail(wall.length, rng, at)
+      position = 0
+    }
     // The query is the wall's configuration and survives a move: `?play`,
     // `?shuffle`, `?seed` and `?idle` all have to outlive an arrow key.
-    if (how === "push") history.pushState({ at }, "", `/showcase/${entry().id}/${location.search}`)
+    if (how === "push") history.pushState({ at, position }, "", `/showcase/${entry().id}/${location.search}`)
     document.title = `${entry().title} — Showcase`
     void show(entry())
+  }
+
+  /**
+   * Where one step from here lands, without going there.
+   *
+   * **Both ends wrap**, for a person as well as for the timer. It used to be
+   * the timer alone, on the argument that ↓ on the last entry asks for a next
+   * one that does not exist. Andrei asked for the wrap: the wall is a loop to
+   * be looked round, not a list to reach the end of, and an arrow that goes
+   * dead at either end is the one place the loop shows a seam.
+   *
+   * The prefetch and the timer both need this and must agree with the arrows,
+   * so there is one of it. Dealing a new lap here rather than at the moment of
+   * moving means the first entry of the next lap is warmed a whole interval
+   * before it plays, exactly like any other.
+   */
+  function neighbour(step: 1 | -1): number {
+    if (!shuffling) return (at + step + wall.length) % wall.length
+    return walk(position + step)
+  }
+
+  /** A step along the wall: the curated order, or the shuffled walk. */
+  function move(step: 1 | -1, how: "push" | "none" = "push") {
+    const to = neighbour(step)
+    if (shuffling) position += step
+    go(to, how, true)
   }
 
   function setPaused(next: boolean) {
@@ -572,11 +649,9 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
   /**
    * Stepping through the wall on a timer, for a kiosk.
    *
-   * **The wrap belongs here and not to `go()`.** A person pressing ↓ on the
-   * last entry should stop, because they asked for the next one and there is
-   * not one; a wall left running should come round, because the alternative is
-   * a screen showing the final scene until somebody walks over to it — which is
-   * the bug this exists to fix, one entry later than the original.
+   * **It wraps**, because the alternative is a screen showing the final scene
+   * until somebody walks over to it — the bug this exists to fix, one entry
+   * later than the original. The arrows wrap too now; see `neighbour()`.
    *
    * **The clock is per scene, not a metronome.** Every arrival reschedules, so
    * an entry that took two seconds to fetch still gets its full turn, and
@@ -589,44 +664,6 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
    */
   let playTimer = 0
 
-  /**
-   * Where the wall goes next, without going there.
-   *
-   * The prefetch and the timer both need this and must agree, so there is one
-   * of it. Refilling an exhausted lap here rather than at the moment of moving
-   * is deliberate: it means the first entry of the next lap is warmed a whole
-   * interval before it plays, exactly like any other.
-   */
-  function peekNext(): number {
-    if (!shuffling) return (at + 1) % wall.length
-    if (orderAt >= order.length) {
-      order = lap(wall.length, rng, at)
-      orderAt = 0
-    }
-    return order[orderAt]!
-  }
-
-  /**
-   * The same, consumed.
-   *
-   * **The skip is not paranoia.** A person can navigate by hand into an entry
-   * that is still ahead in the current lap, and that position then comes round
-   * naming the scene already on screen. `go()` returns early on a move to where
-   * it already is, so nothing would call `say()`, nothing would reschedule, and
-   * the wall would stop for good — a hang rather than a glitch. One skip is
-   * enough because a lap holds each index once; the fallback is there so this
-   * can never be the thing that stops a kiosk.
-   */
-  function takeNext(): number {
-    if (!shuffling) return (at + 1) % wall.length
-    for (let tries = 0; tries < 2; tries++) {
-      const next = peekNext()
-      orderAt += 1
-      if (next !== at) return next
-    }
-    return (at + 1) % wall.length
-  }
-
   function schedulePlay() {
     window.clearTimeout(playTimer)
     // A held piece, a hidden tab and a wall of one all mean there is nothing to
@@ -634,7 +671,7 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
     // paused there, and advancing invisibly would burn the wall for nobody.
     if (!span.max || paused || document.hidden || wall.length < 2) return
     // Drawn per scene rather than once, which is the whole of `?play=20-45`.
-    playTimer = window.setTimeout(() => go(takeNext(), "none"), pickInterval(span, rng))
+    playTimer = window.setTimeout(() => move(1, "none"), pickInterval(span, rng))
   }
 
   // --- the gesture ---------------------------------------------------------
@@ -742,7 +779,7 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
       return
     }
     const travel = settled === "y" ? dy : dx
-    if (commits(travel, elapsed)) go(at + (travel < 0 ? 1 : -1))
+    if (commits(travel, elapsed)) move(travel < 0 ? 1 : -1)
   }
 
   window.addEventListener("pointerdown", onPointerDown, { passive: true })
@@ -790,14 +827,14 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
       case "j":
       case "PageDown":
         event.preventDefault()
-        go(at + 1)
+        move(1)
         break
       case "ArrowUp":
       case "ArrowLeft":
       case "k":
       case "PageUp":
         event.preventDefault()
-        go(at - 1)
+        move(-1)
         break
       case " ":
       case "Spacebar":
@@ -835,7 +872,7 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
       }, 220)
       if (!wheelIdle) return
       wheelIdle = false
-      go(at + (event.deltaY > 0 ? 1 : -1))
+      move(event.deltaY > 0 ? 1 : -1)
     },
     { passive: true },
   )
@@ -843,7 +880,7 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
   for (const button of root.querySelectorAll<HTMLElement>("[data-go]")) {
     button.addEventListener("click", () => {
       const step = Number(button.dataset.go)
-      if (Number.isFinite(step)) go(at + step)
+      if (step === 1 || step === -1) move(step)
     })
   }
 
@@ -899,8 +936,14 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
   })
 
   window.addEventListener("popstate", (event) => {
-    const state = event.state as { at?: number } | null
-    if (typeof state?.at === "number") go(state.at, "none")
+    const state = event.state as { at?: number; position?: number } | null
+    if (typeof state?.at !== "number") return
+    // Back to a place on the walk this page dealt, so ↓ from there retraces
+    // rather than reshuffles. A state from before a fresh walk was dealt names
+    // a position that now holds something else, and is treated as a jump.
+    const onWalk = shuffling && typeof state.position === "number" && walk(state.position) === state.at
+    if (onWalk) position = state.position!
+    go(state.at, "none", onWalk)
   })
 
   // --- boot ----------------------------------------------------------------
@@ -932,6 +975,27 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
   rng = makeRng(hashSeed(Number.isFinite(seedAsked) && params.get("seed") !== null ? seedAsked : Date.now()))
 
   /*
+   * **`/showcase/?shuffle` opens anywhere**; `/showcase/<id>/?shuffle` opens on
+   * `<id>`. The front door names no entry, so where it opens is the shuffle's
+   * to choose — and without that, every visit starts on the newest group, which
+   * is the repetition being escaped. A named entry is a link somebody shared,
+   * and it lands where it says.
+   *
+   * The address is left alone either way, so a reload of the front door is a
+   * fresh draw rather than the entry the last one happened to land on.
+   */
+  if (shuffling) {
+    walk = trail(wall.length, rng, front ? undefined : start)
+    at = walk(0)
+    if (at !== start) {
+      document.title = `${entry().title} — Showcase`
+      // Before the runner arrives, or the placard spends the load naming the
+      // entry the document was rendered for rather than the one coming.
+      say(entry())
+    }
+  }
+
+  /*
    * Seeds `history.state` so `popstate` has an index to read, and **leaves the
    * address exactly as it was given**.
    *
@@ -946,7 +1010,7 @@ export function mountViewer(options: ViewerOptions | null = boot()): void {
    * without touching the address, and it is the only form that leaves a kiosk's
    * configured URL intact.
    */
-  history.replaceState({ at }, "")
+  history.replaceState({ at, position }, "")
   goActive()
   void show(entry())
 

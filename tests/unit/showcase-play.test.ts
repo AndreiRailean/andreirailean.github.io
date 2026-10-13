@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import { makeRng } from "@/experiments/random"
-import { lap, pickInterval, playSpan } from "@/showcase/viewer"
+import { lap, pickInterval, playSpan, trail } from "@/showcase/viewer"
 
 /**
  * What `?play` asks for, and the order a shuffled wall plays in.
@@ -125,5 +125,55 @@ describe("lap", () => {
     // depend on that being true somewhere else.
     expect(lap(1, rng, 0)).toEqual([0])
     expect(lap(0, rng)).toEqual([])
+  })
+})
+
+describe("trail", () => {
+  const sorted = (indices: number[]) => [...indices].sort((a, b) => a - b)
+  const every = Array.from({ length: 24 }, (_, index) => index)
+  const read = (walk: (position: number) => number, from: number, to: number) =>
+    Array.from({ length: to - from }, (_, offset) => walk(from + offset))
+
+  it("deals whole laps in both directions, so a run of a lap shows everything once", () => {
+    // Backwards matters as much as forwards: ↑ on a shuffled wall walks into
+    // laps dealt the other way, and a repeat there is the same repeat.
+    const walk = trail(24, makeRng(3))
+    expect(sorted(read(walk, 0, 24))).toEqual(every)
+    expect(sorted(read(walk, 24, 48))).toEqual(every)
+    expect(sorted(read(walk, -24, 0))).toEqual(every)
+    expect(sorted(read(walk, -48, -24))).toEqual(every)
+  })
+
+  it("never shows a scene twice running, at a seam or anywhere else", () => {
+    for (let seed = 0; seed < 100; seed++) {
+      const walk = trail(24, makeRng(seed))
+      const run = read(walk, -72, 72)
+      for (let step = 1; step < run.length; step++) expect(run[step]).not.toBe(run[step - 1])
+    }
+  })
+
+  it("keeps what it dealt, so going back retraces rather than redraws", () => {
+    const walk = trail(24, makeRng(5))
+    const ahead = read(walk, 0, 30)
+    read(walk, -60, 0)
+    read(walk, 30, 90)
+    expect(read(walk, 0, 30)).toEqual(ahead)
+  })
+
+  it("opens on the entry asked for, and anywhere when none is", () => {
+    for (const start of [0, 7, 23]) expect(trail(24, makeRng(1), start)(0)).toBe(start)
+    // The presence the line above needs: unasked, it does not just open on
+    // the newest entry, which is the repetition the front door escapes.
+    const openings = new Set(Array.from({ length: 50 }, (_, seed) => trail(24, makeRng(seed))(0)))
+    expect(openings.size).toBeGreaterThan(10)
+  })
+
+  it("is not the curated order going forward", () => {
+    expect(read(trail(24, makeRng(9), 0), 0, 24)).not.toEqual(every)
+  })
+
+  it("survives a wall too short to shuffle", () => {
+    expect(read(trail(1, makeRng(1), 0), -2, 3)).toEqual([0, 0, 0, 0, 0])
+    expect(trail(0, makeRng(1))(4)).toBe(-1)
   })
 })

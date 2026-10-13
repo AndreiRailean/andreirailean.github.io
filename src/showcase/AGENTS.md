@@ -22,9 +22,9 @@ src/showcase/viewer.ts        mounts one scene, swaps in place, owns the room's 
 src/showcase/Wall.astro       the document and all of its chrome.
 src/pages/showcase/           /showcase/ and a page per entry. Both render Wall.astro.
 tests/unit/showcase-wall.test.ts   every pin names a committed runner of the right piece.
-tests/unit/showcase-play.test.ts   what `?play` asks for, and the order a shuffled wall plays in.
+tests/unit/showcase-play.test.ts   what `?play` asks for, and the order a shuffled wall walks in.
 tests/showcase-wall.spec.ts   the furniture: up while somebody is moving, gone when nobody is.
-tests/showcase-autoplay.spec.ts   the wall stepping through itself: wrapping, shuffling, holding when held.
+tests/showcase-autoplay.spec.ts   the wall stepping, by itself and by hand: wrapping, shuffling, holding when held.
 ```
 
 **The furniture is hidden by default.** The placard, the counter, the arrows and
@@ -46,10 +46,11 @@ be furniture on the surface whose whole recent history is having less of it.
 | `?idle=0` / `?idle=1` | Pin the furniture on, or away. Absent by default — the timer decides.                            |
 | `?play` / `?play=45`  | Step through the wall, at `PLAY_MS` or at the seconds given. `?play=0` is off, and so is absent. |
 | `?play=20-45`         | The same, drawing a fresh interval per scene. A range, not a jitter percentage.                  |
-| `?shuffle`            | Play a shuffled lap rather than the curated order. Off by default.                               |
+| `?shuffle`            | Shuffle the wall, for the arrows and autoplay alike. On `/showcase/` it also opens anywhere.     |
 | `?seed=7`             | Pin the randomness. The clock otherwise, so two kiosks do not play in step.                      |
 
-The kiosk address, for the record: `/showcase/?play=20-45&shuffle`.
+The kiosk address, for the record: `/showcase/?play=20-45&shuffle`. And the
+one for a person who wants a different scene every visit: `/showcase/?shuffle`.
 
 **Shuffling is opt-in and `wall.ts`'s order is the default.** The wall is
 hand-curated and nothing regenerates it, and a `?play` address somebody already
@@ -64,11 +65,24 @@ relieve, in the one way a viewer notices. So `lap()` deals the whole wall,
 plays it out, and reshuffles — and it will not open a new lap on the entry
 already showing, because the seam is where a repeat would be most visible.
 
-**Autoplay wraps, and `go()` still does not.** A person pressing ↓ on the last
-entry has asked for a next one that does not exist and should stop; a wall left
-running has to come round, or a kiosk shows the last scene until somebody walks
-over to it — the bug the feature exists to fix, one entry later. Keeping the
-wrap in the timer is what lets both be true.
+**One shuffled walk for the arrows and the timer.** `trail()` lays laps end to
+end in both directions and is read by position, so ↓ under `?shuffle` is the
+next scene on the walk, ↑ retraces it, and autoplay takes the same steps. The
+shuffle began as autoplay's alone, and the arrows kept the curated order — which
+walks a person through a group published together, the same piece again and
+again, the repetition the shuffle was for. A jump to a named entry (Home, End, a
+back button the walk cannot vouch for) deals a fresh walk from there.
+
+**`/showcase/?shuffle` opens anywhere; `/showcase/<id>/?shuffle` opens on
+`<id>`.** The front door names no entry, so where it opens is the shuffle's to
+choose; a named entry is a link somebody shared. That is why the page tells the
+viewer which it is (`front`) — both render the same document.
+
+**Every step wraps, by a person or by the timer.** It used to be the timer
+alone, on the argument that ↓ on the last entry asks for a next one that does
+not exist. Andrei asked for the wrap: the wall is a loop to look round, and an
+arrow that goes dead at either end is the one place the loop shows a seam. A
+jump to an index — `go()`, Home, End — still clamps.
 
 **A wall playing itself writes no history at all, and the address is left
 exactly as it was given.** This is the third answer to one question and the
@@ -106,9 +120,9 @@ instead of lasting until somebody notices**.
 which stops being where the wall goes the moment a lap is running — a cold
 runner at every piece boundary, which is the stutter the prefetch exists to
 remove, reintroduced by a feature that never mentioned it. It and the timer both
-call `peekNext()` so they cannot drift.
+call `neighbour()` so they cannot drift.
 
-`playSpan`, `pickInterval` and `lap` are exported and unit-tested, because all
+`playSpan`, `pickInterval`, `lap` and `trail` are exported and unit-tested, because all
 of it is numbers in and numbers out and needs no page: what `?play=thirty` means,
 that a lap is a permutation, that an interval varies across its range. The
 browser suite keeps only what a page can answer — that the wall steps, wraps,

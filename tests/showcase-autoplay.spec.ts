@@ -95,8 +95,8 @@ test("it wraps at the end rather than parking on the last entry", async ({ page 
 
   /*
    * The whole bug this feature exists to fix, one entry later: a kiosk that
-   * clamps at the end shows the last scene forever. `go()` still clamps for a
-   * person pressing the arrow — the wrap belongs to the timer alone.
+   * clamps at the end shows the last scene forever. `go()` still clamps a jump
+   * to an index; the wrap belongs to a step, by the timer or by a person.
    *
    * **It walks to the end from inside the page rather than loading the last
    * entry's address**, which is not a shortcut. Landing on `/showcase/<last>/`
@@ -255,4 +255,69 @@ test("a reload comes back to the playlist, not to whichever scene was up", async
    */
   const resumed = await page.evaluate(index)
   await page.waitForFunction((from) => (window as unknown as WallWindow).showcaseWall!.at() !== from, resumed)
+})
+
+test("the arrows wrap at both ends, so the wall is a loop to look round", async ({ page }) => {
+  await openWall(page, FIRST, "?idle=0")
+
+  // ↑ from the top lands on the bottom — whatever the wall's length, read off
+  // `go(10_000)`'s clamp rather than written down.
+  const last = await page.evaluate(() => {
+    const wall = (window as unknown as WallWindow).showcaseWall!
+    wall.go(10_000)
+    const end = wall.at()
+    wall.go(0)
+    return end
+  })
+  expect(last).toBeGreaterThan(0)
+
+  await page.keyboard.press("ArrowUp")
+  await page.waitForFunction((end) => (window as unknown as WallWindow).showcaseWall!.at() === end, last)
+  await page.keyboard.press("ArrowDown")
+  await page.waitForFunction(() => (window as unknown as WallWindow).showcaseWall!.at() === 0)
+})
+
+test("`/showcase/?shuffle` opens anywhere, and a named entry still opens on itself", async ({ page }) => {
+  // Four seeds, any one of which opening away from the top is the presence.
+  // `trail`'s spread of openings over fifty seeds is the unit suite's; a page
+  // only adds that the front door takes up the walk's first entry at all.
+  const opened = new Set<number>()
+  for (const seed of [1, 2, 3, 4]) {
+    await page.goto(`/showcase/?shuffle&seed=${seed}&idle=0`)
+    await expect(page.locator("#showcase")).toHaveAttribute("data-state", "running")
+    await page.waitForFunction(() => Boolean((window as unknown as WallWindow).showcaseWall))
+    opened.add(await page.evaluate(index))
+    // The address is the configuration and is left as given, so a reload is a
+    // fresh draw rather than whichever entry this one happened to land on.
+    expect(new URL(page.url()).pathname).toBe("/showcase/")
+  }
+  expect([...opened].some((at) => at !== 0)).toBe(true)
+
+  // The absence, paired: a link to one entry is a link to that entry.
+  const named = WALL[3]!.id
+  await openWall(page, named, "?shuffle&seed=1&idle=0")
+  expect(await page.evaluate(index)).toBe(3)
+})
+
+test("with `?shuffle` the arrows walk the shuffle, and ↑ retraces it", async ({ page }) => {
+  await openWall(page, FIRST, "?shuffle&seed=7&idle=0")
+
+  const forward = [await page.evaluate(index)]
+  for (let step = 0; step < 4; step++) {
+    await page.keyboard.press("ArrowDown")
+    await page.waitForFunction((from) => (window as unknown as WallWindow).showcaseWall!.at() !== from, forward.at(-1)!)
+    forward.push(await page.evaluate(index))
+  }
+  // Not the curated neighbours — which put the same piece up again when a group
+  // was added together — and no repeats.
+  expect(forward).not.toEqual([0, 1, 2, 3, 4])
+  expect(new Set(forward).size).toBe(forward.length)
+
+  const back = [forward.at(-1)!]
+  for (let step = 0; step < 4; step++) {
+    await page.keyboard.press("ArrowUp")
+    await page.waitForFunction((from) => (window as unknown as WallWindow).showcaseWall!.at() !== from, back.at(-1)!)
+    back.push(await page.evaluate(index))
+  }
+  expect(back).toEqual([...forward].reverse())
 })
