@@ -23,7 +23,9 @@ export { keysOf } from "@/experiments/kit/controls"
  */
 export type Angle = "15" | "30" | "45" | "60" | "90"
 export type Unison = "family" | "all"
-export type Meet = "stop" | "cross" | "rebound"
+export type CornerAt = "turns" | "splits" | "both"
+export type Mark = "ring" | "solid" | "cutout"
+export type HaloMeets = "pass" | "meet"
 export type Cycle = "hold" | "flow"
 export type Vary = "new" | "same"
 
@@ -53,8 +55,30 @@ export type Settings = {
   pitch: number
   /** Whether each family decides for itself, or the whole drawing decides as one. */
   unison: Unison
-  /** What a tip does when it meets a line already drawn. */
-  meet: Meet
+  /** Relative odds of what a tip does when it meets a line already drawn; the line decides each time. */
+  onStop: number
+  onCross: number
+  onRebound: number
+  /** Odds a corner gets a circle centred on it. */
+  corner: number
+  /** Which corners can: where a line turns or rebounds, where it splits, or both. */
+  cornerAt: CornerAt
+  /** Odds a stretch between decisions gets a circle somewhere along it. */
+  along: number
+  /** Radius of a small circle, in per cent of the frame's height. */
+  radius: number
+  /** How far a small circle's radius strays from `radius`, as a share of it. */
+  jitter: number
+  /** How a small circle is drawn. */
+  mark: Mark
+  /** Radius of one big circle on the centre line, in per cent of the height; 0 for none. */
+  halo: number
+  /** Height of the big circle's centre above the bottom, in per cent of the height. */
+  haloAt: number
+  /** Whether lines pass the big circle or meet it as they meet a line. */
+  haloMeets: HaloMeets
+  /** How the big circle is drawn. */
+  haloMark: Mark
   /** Line width of a stem, in css px. */
   width: number
   /** Share of width lost per generation of branching. */
@@ -82,7 +106,7 @@ export type Settings = {
   seed: number
 }
 
-type EnumKey = "angle" | "unison" | "meet" | "cycle" | "vary"
+type EnumKey = "angle" | "unison" | "cornerAt" | "mark" | "haloMeets" | "haloMark" | "cycle" | "vary"
 export type NumericKey = Exclude<keyof Settings, EnumKey>
 
 export type Control = KitControl<string & keyof Settings>
@@ -90,23 +114,25 @@ export type NumericControl = SliderControl<NumericKey>
 
 export const ANGLES: Angle[] = ["15", "30", "45", "60", "90"]
 export const UNISONS: Unison[] = ["family", "all"]
-export const MEETS: Meet[] = ["stop", "cross", "rebound"]
+export const CORNER_ATS: CornerAt[] = ["turns", "splits", "both"]
+export const MARKS: Mark[] = ["ring", "solid", "cutout"]
+export const HALO_MEETS: HaloMeets[] = ["pass", "meet"]
 export const CYCLES: Cycle[] = ["hold", "flow"]
 export const VARIES: Vary[] = ["new", "same"]
 
 const SEED_BOUNDS = { min: 0, max: 999_999 }
 
-export const GROUP_ORDER = ["growth", "decisions", "line", "cycle"] as const
+export const GROUP_ORDER = ["growth", "decisions", "meeting", "circles", "line", "cycle"] as const
 
 const seconds = (v: number) => `${v.toFixed(1)}s`
 const unit = (v: number) => v.toFixed(2)
 const share = (v: number) => `${v.toFixed(1)}%`
 
-const odds = (key: NumericKey, label: string, hint: string): Control => ({
+const odds = (key: NumericKey, label: string, hint: string, group = "decisions"): Control => ({
   kind: "slider",
   key,
   label,
-  group: "decisions",
+  group,
   min: 0,
   max: 1,
   step: 0.05,
@@ -271,17 +297,123 @@ export const CONTROLS: Control[] = [
     ],
     hint: "By family: the lines a split makes start deciding for themselves, together with their mirror image, while the offshoots of one echo decide together. All as one: every line's n-th decision is the same, everywhere in the drawing.",
   },
+  /* @__PURE__ */ odds(
+    "onStop",
+    "stops",
+    "Odds a tip stops where it meets a line already drawn, its own mirror image included. The line decides at every meeting, and lines that decide together decide this together too.",
+    "meeting",
+  ),
+  /* @__PURE__ */ odds("onCross", "crosses", "Odds a tip carries straight on through the line it meets.", "meeting"),
+  /* @__PURE__ */ odds(
+    "onRebound",
+    "rebounds",
+    "Odds a tip reflects off the line it meets, which keeps it on the angle. Off the big circle it reflects to the nearest angle.",
+    "meeting",
+  ),
+  /* @__PURE__ */ odds("corner", "at corners", "Odds a corner gets a circle centred on it.", "circles"),
   {
     kind: "choice",
-    key: "meet",
-    label: "on meeting",
-    group: "decisions",
+    key: "cornerAt",
+    label: "corners",
+    group: "circles",
     options: [
-      { value: "stop", label: "stop" },
-      { value: "cross", label: "cross" },
-      { value: "rebound", label: "rebound" },
+      { value: "turns", label: "turns" },
+      { value: "splits", label: "splits" },
+      { value: "both", label: "both" },
     ],
-    hint: "What a tip does when it meets a line already drawn, its own mirror image included. Stop ends it there. Cross ignores the line. Rebound reflects it off the line, which keeps it on the angle.",
+    hint: "Which corners can get a circle: where a line turns or rebounds, where it splits, or both.",
+    inert: (settings: Settings) => settings.corner === 0,
+  },
+  /* @__PURE__ */ odds(
+    "along",
+    "along lines",
+    "Odds a stretch of line between two decisions gets a circle centred somewhere along it.",
+    "circles",
+  ),
+  {
+    kind: "slider",
+    key: "radius",
+    label: "radius",
+    group: "circles",
+    min: 0.5,
+    max: 15,
+    step: 0.5,
+    format: share,
+    hint: "Radius of a small circle, as a share of the frame's height.",
+    inert: (settings: Settings) => settings.corner === 0 && settings.along === 0,
+  },
+  {
+    kind: "slider",
+    key: "jitter",
+    label: "jitter",
+    group: "circles",
+    min: 0,
+    max: 1,
+    step: 0.05,
+    format: unit,
+    hint: "How far each small circle's radius strays from the radius, as a share of it. Lines that decide together get circles of one size.",
+    inert: (settings: Settings) => settings.corner === 0 && settings.along === 0,
+  },
+  {
+    kind: "choice",
+    key: "mark",
+    label: "small",
+    group: "circles",
+    options: [
+      { value: "ring", label: "ring" },
+      { value: "solid", label: "solid" },
+      { value: "cutout", label: "cutout" },
+    ],
+    hint: "Ring: an outline the lines show through. Solid: a filled disc. Cutout: an outline that hides the lines behind it.",
+    inert: (settings: Settings) => settings.corner === 0 && settings.along === 0,
+  },
+  {
+    kind: "slider",
+    key: "halo",
+    label: "big circle",
+    group: "circles",
+    min: 0,
+    max: 45,
+    step: 0.5,
+    format: (v) => (v === 0 ? "none" : share(v)),
+    hint: "Radius of one big circle on the centre line, as a share of the frame's height. It draws itself up from its lowest point at the speed the lines grow.",
+  },
+  {
+    kind: "slider",
+    key: "haloAt",
+    label: "big circle at",
+    group: "circles",
+    min: 0,
+    max: 100,
+    step: 1,
+    format: (v) => `${Math.round(v)}%`,
+    hint: "Height of the big circle's centre above the bottom of the frame.",
+    inert: (settings: Settings) => settings.halo === 0,
+  },
+  {
+    kind: "choice",
+    key: "haloMeets",
+    label: "lines",
+    group: "circles",
+    options: [
+      { value: "pass", label: "pass it" },
+      { value: "meet", label: "meet it" },
+    ],
+    hint: "Pass it: lines ignore the big circle. Meet it: a line reaching the big circle stops, crosses or rebounds, by the same odds as meeting a line.",
+    inert: (settings: Settings) => settings.halo === 0,
+  },
+  {
+    kind: "choice",
+    key: "haloMark",
+    label: "big",
+    group: "circles",
+    options: [
+      { value: "ring", label: "ring" },
+      { value: "solid", label: "solid" },
+      { value: "cutout", label: "cutout" },
+    ],
+    hint: "Ring: an outline the lines show through. Solid: a filled disc. Cutout: an outline that hides the lines behind it.",
+    inert: (settings: Settings) => settings.halo === 0,
   },
   {
     kind: "slider",
@@ -403,7 +535,19 @@ export const DEFAULT_SETTINGS: Settings = {
   echoes: 4,
   pitch: 0.2,
   unison: "family",
-  meet: "stop",
+  onStop: 1,
+  onCross: 0,
+  onRebound: 0,
+  corner: 0,
+  cornerAt: "turns",
+  along: 0,
+  radius: 3,
+  jitter: 0,
+  mark: "ring",
+  halo: 0,
+  haloAt: 50,
+  haloMeets: "pass",
+  haloMark: "ring",
   width: 1.5,
   taper: 0.1,
   strands: 1,
@@ -434,6 +578,15 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   stop: { min: 0, max: 1, step: 0.05 },
   echoes: { min: 1, max: 12, step: 1 },
   pitch: { min: 0.05, max: 1, step: 0.05 },
+  onStop: { min: 0, max: 1, step: 0.05 },
+  onCross: { min: 0, max: 1, step: 0.05 },
+  onRebound: { min: 0, max: 1, step: 0.05 },
+  corner: { min: 0, max: 1, step: 0.05 },
+  along: { min: 0, max: 1, step: 0.05 },
+  radius: { min: 0.5, max: 15, step: 0.5 },
+  jitter: { min: 0, max: 1, step: 0.05 },
+  halo: { min: 0, max: 45, step: 0.5 },
+  haloAt: { min: 0, max: 100, step: 1 },
   width: { min: 0.5, max: 8, step: 0.25 },
   taper: { min: 0, max: 0.5, step: 0.05 },
   strands: { min: 1, max: 4, step: 1 },
@@ -469,13 +622,31 @@ const clamp = (value: number, min: number, max: number) => Math.min(max, Math.ma
 const oneOf = <T extends string>(options: readonly T[], value: unknown, fallback: T): T =>
   options.includes(value as T) ? (value as T) : fallback
 
+/**
+ * An address from before the line chose at each meeting carries one `meet`;
+ * it becomes odds of 1 for that choice and 0 for the others.
+ */
+function fromMeet(patch: Partial<Settings> & { meet?: unknown }): Partial<Settings> {
+  const { meet, ...rest } = patch
+  if (meet !== "stop" && meet !== "cross" && meet !== "rebound") return rest
+  return {
+    onStop: meet === "stop" ? 1 : 0,
+    onCross: meet === "cross" ? 1 : 0,
+    onRebound: meet === "rebound" ? 1 : 0,
+    ...rest,
+  }
+}
+
 export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEFAULT_SETTINGS): Settings {
-  const merged = { ...base, ...patch }
+  const merged = { ...base, ...fromMeet(patch) }
   const settings: Settings = {
     ...merged,
     angle: oneOf(ANGLES, String(merged.angle), base.angle),
     unison: oneOf(UNISONS, merged.unison, base.unison),
-    meet: oneOf(MEETS, merged.meet, base.meet),
+    cornerAt: oneOf(CORNER_ATS, merged.cornerAt, base.cornerAt),
+    mark: oneOf(MARKS, merged.mark, base.mark),
+    haloMeets: oneOf(HALO_MEETS, merged.haloMeets, base.haloMeets),
+    haloMark: oneOf(MARKS, merged.haloMark, base.haloMark),
     cycle: oneOf(CYCLES, merged.cycle, base.cycle),
     vary: oneOf(VARIES, merged.vary, base.vary),
   }
@@ -505,7 +676,15 @@ const GROWTH_KEYS = [
   "echoes",
   "pitch",
   "unison",
-  "meet",
+  "onStop",
+  "onCross",
+  "onRebound",
+  "corner",
+  "cornerAt",
+  "along",
+  "halo",
+  "haloAt",
+  "haloMeets",
   "cycle",
   "vary",
   "shrink",
@@ -535,7 +714,7 @@ export const REGISTRY: readonly Slot[] = [
   { key: "echoes", kind: "num", grid: 1, origin: 1, bits: 4 },
   { key: "pitch", kind: "num", grid: 0.05, origin: 0.05, bits: 5 },
   { key: "unison", kind: "enum", options: ["family", "all"] },
-  { key: "meet", kind: "enum", options: ["stop", "cross", "rebound"] },
+  { key: "meet", kind: "enum", options: ["stop", "cross", "rebound"], retired: true },
   { key: "width", kind: "num", grid: 0.25, origin: 0.5, bits: 5 },
   { key: "taper", kind: "num", grid: 0.05, origin: 0, bits: 4 },
   { key: "cycle", kind: "enum", options: ["hold", "flow"] },
@@ -549,6 +728,19 @@ export const REGISTRY: readonly Slot[] = [
   { key: "shrink", kind: "num", grid: 0.05, origin: 0.5, bits: 4 },
   { key: "spread", kind: "num", grid: 1, origin: 1, bits: 2 },
   { key: "margin", kind: "num", grid: 0.5, origin: 0, bits: 6 },
+  { key: "onStop", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "onCross", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "onRebound", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "corner", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "cornerAt", kind: "enum", options: ["turns", "splits", "both"] },
+  { key: "along", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "radius", kind: "num", grid: 0.5, origin: 0.5, bits: 5 },
+  { key: "jitter", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "mark", kind: "enum", options: ["ring", "solid", "cutout"] },
+  { key: "halo", kind: "num", grid: 0.5, origin: 0, bits: 7 },
+  { key: "haloAt", kind: "num", grid: 1, origin: 0, bits: 7 },
+  { key: "haloMeets", kind: "enum", options: ["pass", "meet"] },
+  { key: "haloMark", kind: "enum", options: ["ring", "solid", "cutout"] },
 ]
 
 export function settingsToQuery(settings: Settings): URLSearchParams {

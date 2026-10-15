@@ -24,17 +24,35 @@
  * which its first pixel appeared. A tail erasing the drawing is then just a
  * second clock running `delay` behind the first, and changing the speed
  * mid-drawing moves both together.
+ *
+ * **Circles keep the same clock.** One draws itself up both sides from its
+ * lowest point, as far round as the clock has run since it was placed, so a
+ * circle of radius r takes πr to close — the distance a tip covers in that
+ * time — and the tail erases it in the same order.
  */
 
 import { hashSeed, makeRng, type Rng } from "@/experiments/random"
-import { needsRebuild, type Settings } from "@/experiments/artdeco/settings"
+import { needsRebuild, type Mark, type Settings } from "@/experiments/artdeco/settings"
 
 type Kind = "straight" | "branch" | "fork" | "turn" | "echo" | "stop"
 const KINDS: Kind[] = ["straight", "branch", "fork", "turn", "echo", "stop"]
 
-type Token = { kind: Kind; sign: 1 | -1 }
+/**
+ * One decision, and the uniforms everything else about that stretch is read
+ * from. `meet` chooses what the line does at a meeting before the decision,
+ * `corner` whether the decision's corner gets a circle, `along` and `at`
+ * whether and where a circle lands on the stretch, `size` its radius. They come
+ * from their own stream, so adding them moved no drawing an older seed made.
+ */
+type Token = { kind: Kind; sign: 1 | -1; meet: number; corner: number; along: number; at: number; size: number }
 
-type Family = { rng: Rng; tokens: Token[]; first: boolean }
+type Family = { rng: Rng; marks: Rng; tokens: Token[]; first: boolean }
+
+type Choice = "stop" | "cross" | "rebound"
+
+type Circle = { x: number; y: number; size: number; born: number; gen: number; axis: boolean }
+
+type Halo = { x: number; y: number; r: number }
 
 type Seg = {
   id: number
@@ -60,16 +78,23 @@ type Head = {
   /** Distance between this line's decisions; shrinks a generation at a time. */
   stepLen: number
   echo: Echo | null
+  /** Distance to the circle this stretch drops, or Infinity. */
+  bead: number
+  /** The segment last crossed, so it is not met again from the point of crossing; mirrored ones as `-(id + 1)`. */
+  past: number
   budget: number
 }
 
-type Hit = { t: number; kind: "line" | "mirror" | "axis"; s: number }
+/** `out` is the direction a rebound leaves in, or null when there is none on the angle. */
+type Hit = { t: number; kind: "line" | "mirror" | "axis" | "halo"; out: number | null; id: number }
 
 type Tree = {
   cycle: number
   segs: Seg[]
   heads: Head[]
   cells: Map<number, number[]>
+  circles: Circle[]
+  halo: Halo | null
   D: number
   /** `D` the tail runs behind by; Infinity until something starts erasing. */
   delay: number
@@ -89,9 +114,12 @@ export type Stats = {
   segments: number
   families: number
   decisions: Record<Kind, number>
-  meetings: { line: number; mirror: number; axis: number; edge: number; depth: number; cap: number }
+  meetings: { line: number; mirror: number; axis: number; halo: number; edge: number; depth: number; cap: number }
+  /** What the lines chose at those meetings. */
+  chose: Record<Choice, number>
   rebounds: number
   offshoots: number
+  circles: { corner: number; along: number }
   dropped: number
   fps: number
 }
@@ -105,6 +133,8 @@ const ORIGIN = 0.75
 const REST = 1
 
 const emptyDecisions = (): Record<Kind, number> => ({ straight: 0, branch: 0, fork: 0, turn: 0, echo: 0, stop: 0 })
+const emptyMeetings = () => ({ line: 0, mirror: 0, axis: 0, halo: 0, edge: 0, depth: 0, cap: 0 })
+const emptyChoices = (): Record<Choice, number> => ({ stop: 0, cross: 0, rebound: 0 })
 
 export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
   const context = canvas.getContext("2d")
@@ -125,9 +155,11 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
   let debug = false
   let fps = 0
   let decisions = emptyDecisions()
-  let meetings = { line: 0, mirror: 0, axis: 0, edge: 0, depth: 0, cap: 0 }
+  let meetings = emptyMeetings()
+  let chose = emptyChoices()
   let rebounds = 0
   let offshoots = 0
+  let circles = { corner: 0, along: 0 }
   let dropped = 0
   let stamp = 0
   let seen = new Uint32Array(MAX_SEGS + 1)
@@ -147,7 +179,12 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     if (settings.unison === "all" && tree.families > 0) return tree.root
     const salt = settings.vary === "new" ? tree.cycle : 0
     tree.families += 1
-    return { rng: makeRng(hashSeed(settings.seed, salt, tree.families)), tokens: [], first: tree.families === 1 }
+    return {
+      rng: makeRng(hashSeed(settings.seed, salt, tree.families)),
+      marks: makeRng(hashSeed(settings.seed, salt, tree.families, 7)),
+      tokens: [],
+      first: tree.families === 1,
+    }
   }
 
   function token(f: Family, n: number): Token {
@@ -169,7 +206,8 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
           }
         }
       } else f.rng()
-      f.tokens.push({ kind, sign: f.rng() < 0.5 ? -1 : 1 })
+      const m = f.marks
+      f.tokens.push({ kind, sign: f.rng() < 0.5 ? -1 : 1, meet: m(), corner: m(), along: m(), at: m(), size: m() })
     }
     return f.tokens[n]!
   }
@@ -209,7 +247,6 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
 
   /** Earliest meeting along A→B, as a share of it, or null. */
   function firstHit(tree: Tree, head: Head, ax: number, ay: number, bx: number, by: number): Hit | null {
-    if (settings.meet === "cross") return null
     const seg = head.seg
     const cx = centre()
     let best: Hit | null = null
@@ -237,7 +274,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
             for (const id of list) {
               if (seen[id] === stamp) continue
               seen[id] = stamp
-              if (id === seg.id) continue
+              if (id === seg.id || head.past === (mirrored ? -(id + 1) : id)) continue
               const other = tree.segs[id]!
               if (other.len <= EPS) continue
               const sxv = dx(other.d) * other.len
@@ -254,7 +291,8 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
               const hx = ax + (bx - ax) * t
               const hy = ay + (by - ay) * t
               if (Math.hypot(hx - seg.x0, hy - seg.y0) < ORIGIN) continue
-              consider({ t, kind: mirrored ? "mirror" : "line", s: mirrored ? -other.d : other.d })
+              const s = mirrored ? -other.d : other.d
+              consider({ t, kind: mirrored ? "mirror" : "line", out: 2 * s - seg.d, id: mirrored ? -(id + 1) : id })
             }
           }
       }
@@ -265,9 +303,50 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
       test(2 * cx - ax, ay, 2 * cx - bx, by, true)
       const a = ax - cx
       const b = bx - cx
-      if (Math.abs(a) > ORIGIN && (a * b < 0 || b === 0)) consider({ t: a / (a - b), kind: "axis", s: 0 })
+      if (Math.abs(a) > ORIGIN && (a * b < 0 || b === 0))
+        consider({ t: a / (a - b), kind: "axis", out: -seg.d, id: -1 })
+    }
+    const halo = tree.halo
+    if (halo && settings.haloMeets === "meet") {
+      const rx = bx - ax
+      const ry = by - ay
+      const fx = ax - halo.x
+      const fy = ay - halo.y
+      const a = rx * rx + ry * ry
+      const b = 2 * (fx * rx + fy * ry)
+      const disc = b * b - 4 * a * (fx * fx + fy * fy - halo.r * halo.r)
+      if (a > 0 && disc >= 0) {
+        for (const sign of [-1, 1]) {
+          const t = (-b + sign * Math.sqrt(disc)) / (2 * a)
+          if (t <= EPS || t > 1) continue
+          const hx = ax + rx * t
+          const hy = ay + ry * t
+          if (Math.hypot(rx * t, ry * t) < 0.01 || Math.hypot(hx - seg.x0, hy - seg.y0) < ORIGIN) continue
+          // Only where the circle has been drawn and not yet erased.
+          const arc = halo.r * Math.acos(Math.max(-1, Math.min(1, (hy - halo.y) / halo.r)))
+          if (arc > tree.D || arc < tree.D - tree.delay) continue
+          consider({ t, kind: "halo", out: offCircle(seg.d, (hx - halo.x) / halo.r, (hy - halo.y) / halo.r), id: -1 })
+        }
+      }
     }
     return best
+  }
+
+  /**
+   * The direction on the angle nearest to a reflection off a circle whose
+   * outward normal at the meeting is (nx, ny), or null if none of the nearest
+   * three leaves on the side the reflection does.
+   */
+  function offCircle(d: number, nx: number, ny: number): number | null {
+    const vx = dx(d)
+    const vy = dy(d)
+    const dot = vx * nx + vy * ny
+    const rx = vx - 2 * dot * nx
+    const ry = vy - 2 * dot * ny
+    const k = Math.round(Math.atan2(rx, -ry) / ((unit() * Math.PI) / 180))
+    const side = dot < 0 ? 1 : -1
+    for (const c of [k, k + 1, k - 1]) if ((dx(c) * nx + dy(c) * ny) * side > 0.05) return c
+    return null
   }
 
   function grow(tree: Tree, head: Head, distance: number) {
@@ -275,6 +354,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     head.seg.len += distance
     register(tree, head.seg, from, head.seg.len)
     head.toDecision -= distance
+    head.bead -= distance
     if (head.echo) head.echo.toNext -= distance
     head.budget -= distance
   }
@@ -287,7 +367,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     const seg = newSeg(tree, x, y, d, parent.seg.gen + 1, at, false)
     if (!seg) return
     const stepLen = Math.max(4, parent.stepLen * settings.shrink)
-    tree.heads.push({
+    const head: Head = {
       seg,
       family: f,
       n: 0,
@@ -296,8 +376,37 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
       toDecision: stepLen,
       stepLen,
       echo: null,
+      bead: Infinity,
+      past: -1,
       budget: parent.budget,
-    })
+    }
+    arm(head)
+    tree.heads.push(head)
+  }
+
+  /** Decides whether the stretch the tip is starting drops a circle, and where. */
+  function arm(head: Head) {
+    const tk = token(head.family, head.n)
+    head.bead = tk.along < settings.along ? tk.at * head.stepLen : Infinity
+  }
+
+  /** A circle centred on the tip, if the token says this corner gets one. */
+  function mark(tree: Tree, head: Head, tk: Token, where: "turns" | "splits", at: number) {
+    if (tk.corner >= settings.corner) return
+    if (settings.cornerAt !== "both" && settings.cornerAt !== where) return
+    const [x, y] = headPoint(head.seg)
+    tree.circles.push({ x, y, size: tk.size, born: at, gen: head.seg.gen, axis: head.seg.axis })
+    circles.corner += 1
+  }
+
+  /** What the line does at a meeting, by the odds, read off the stretch's token. */
+  function choose(head: Head): Choice {
+    const total = settings.onStop + settings.onCross + settings.onRebound
+    if (total <= 0) return "stop"
+    const r = token(head.family, head.n).meet * total
+    if (r < settings.onStop) return "stop"
+    if (r < settings.onStop + settings.onCross) return "cross"
+    return "rebound"
   }
 
   /** On the centre line the right-hand one of a pair is grown, and the left is its reflection. */
@@ -312,6 +421,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     if (!seg) return false
     head.seg = seg
     head.echo = null
+    head.past = -1
     return true
   }
 
@@ -325,10 +435,12 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     head.n += 1
     head.depth += 1
     head.toDecision = head.stepLen
+    arm(head)
     decisions[tk.kind] += 1
     const [x, y] = headPoint(head.seg)
     const d = head.seg.d
     const split = () => {
+      mark(tree, head, tk, "splits", at)
       const f = family(tree)
       const k = Math.round(settings.spread)
       if (head.seg.axis) spawn(tree, head, d + k * rightward(d), 1, f, x, y, at)
@@ -351,6 +463,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
           split()
           return false
         }
+        mark(tree, head, tk, "turns", at)
         return bend(tree, head, d + tk.sign * head.hand, at)
       case "echo": {
         const side = head.seg.axis ? rightward(d) : ((tk.sign * head.hand) as 1 | -1)
@@ -362,24 +475,33 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     }
   }
 
+  /** Returns false when the tip stops. */
   function meet(tree: Tree, head: Head, hit: Hit, at: number): boolean {
     meetings[hit.kind] += 1
-    if (settings.meet !== "rebound") return false
+    const choice = choose(head)
+    chose[choice] += 1
+    if (choice === "cross") {
+      head.past = hit.id
+      return true
+    }
+    if (choice === "stop" || hit.out === null) return false
     if (head.depth >= settings.depth) {
       meetings.depth += 1
       return false
     }
     head.depth += 1
     rebounds += 1
-    const reflected = 2 * hit.s - head.seg.d
+    mark(tree, head, token(head.family, head.n), "turns", at)
     if (head.seg.axis) {
-      // A line on the centre line cannot leave it alone; it rebounds as a pair.
+      // A line on the centre line cannot leave it alone; it rebounds as a pair,
+      // grown on the right. Straight back along the axis, it leaves at one angle.
       const [x, y] = headPoint(head.seg)
-      const d = dx(reflected) > EPS ? reflected : 2 * -hit.s - head.seg.d
-      if (dx(d) > EPS) spawn(tree, head, d, 1, family(tree), x, y, at)
+      const out = hit.out
+      const d = dx(out) > EPS ? out : dx(out) < -EPS ? -out : out + rightward(out)
+      spawn(tree, head, d, 1, family(tree), x, y, at)
       return false
     }
-    return bend(tree, head, reflected, at)
+    return bend(tree, head, hit.out, at)
   }
 
   function offscreen(x: number, y: number) {
@@ -394,7 +516,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
       if (++guard > 512) break
       const at = () => frameStart + (frameLength - head.budget)
       const echoAt = head.echo ? Math.max(0, head.echo.toNext) : Infinity
-      const ev = Math.min(Math.max(0, head.toDecision), echoAt, head.budget)
+      const ev = Math.min(Math.max(0, head.toDecision), echoAt, Math.max(0, head.bead), head.budget)
       const [ax, ay] = headPoint(head.seg)
       const bx = ax + dx(head.seg.d) * ev
       const by = ay + dy(head.seg.d) * ev
@@ -435,6 +557,13 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
         echo.toNext = settings.pitch * head.stepLen
         if (echo.left <= 0) head.echo = null
       }
+      if (head.bead <= EPS) {
+        const [x, y] = headPoint(head.seg)
+        const tk = token(head.family, head.n)
+        tree.circles.push({ x, y, size: tk.size, born: at(), gen: head.seg.gen, axis: head.seg.axis })
+        circles.along += 1
+        head.bead = Infinity
+      }
       if (head.toDecision <= EPS && !decide(tree, head, at())) return false
     }
     return true
@@ -446,6 +575,8 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
       segs: [],
       heads: [],
       cells: new Map(),
+      circles: [],
+      halo: settings.halo > 0 ? { x: centre(), y: height - px(settings.haloAt), r: px(settings.halo) } : null,
       D: 0,
       delay: Infinity,
       grown: -1,
@@ -464,7 +595,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     for (const x of xs) {
       const seg = newSeg(tree, x, height - inset(), 0, 0, 0, x === cx)
       if (!seg) continue
-      tree.heads.push({
+      const head: Head = {
         seg,
         family: tree.root,
         n: 0,
@@ -473,8 +604,12 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
         toDecision: stepPx(),
         stepLen: stepPx(),
         echo: null,
+        bead: Infinity,
+        past: -1,
         budget: 0,
-      })
+      }
+      arm(head)
+      tree.heads.push(head)
     }
     return tree
   }
@@ -484,9 +619,11 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     cycle = 0
     restLeft = 0
     decisions = emptyDecisions()
-    meetings = { line: 0, mirror: 0, axis: 0, edge: 0, depth: 0, cap: 0 }
+    meetings = emptyMeetings()
+    chose = emptyChoices()
     rebounds = 0
     offshoots = 0
+    circles = { corner: 0, along: 0 }
     dropped = 0
     trees.push(plant())
   }
@@ -593,6 +730,14 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
       }
       ctx.stroke()
     }
+    for (const tree of trees) {
+      if (tree.halo) ring(tree, tree.halo.x, tree.halo.y, tree.halo.r, 0, 0, true, settings.haloMark)
+      const base = px(settings.radius)
+      for (const c of tree.circles) {
+        const r = base * (1 + settings.jitter * (2 * c.size - 1))
+        ring(tree, c.x, c.y, r, c.born, c.gen, c.axis, settings.mark)
+      }
+    }
     if (debug) {
       ctx.setLineDash([4, 6])
       ctx.lineWidth = 1
@@ -609,6 +754,48 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
           ctx.fillRect(x - 2, y - 2, 4, 4)
         }
     }
+  }
+
+  /**
+   * One circle, and its reflection unless it sits on the centre line, drawn up
+   * both sides from its lowest point as far as the clock has run since `born`
+   * and erased from there by the tail. A solid one grows out from its centre
+   * instead; a cutout fills with the background first, hiding what is behind.
+   */
+  function ring(tree: Tree, x: number, y: number, r: number, born: number, gen: number, axis: boolean, how: Mark) {
+    if (r <= 0.25) return
+    const drawn = tree.D - born
+    const tail = tree.D - tree.delay - born
+    const to = Math.min(Math.PI, drawn / r)
+    const from = Math.max(0, tail / r)
+    if (to <= from) return
+    const cx = centre()
+    const xs = axis ? [x] : [x, 2 * cx - x]
+    const strands = Math.round(settings.strands)
+    ctx.lineWidth = Math.max(0.35, settings.width * (1 - settings.taper) ** gen)
+    if (how !== "ring") {
+      // A disc is there whole or not at all, so it grows and shrinks with the outline instead.
+      const share = Math.min(to, Math.PI - from) / Math.PI
+      ctx.fillStyle = how === "solid" ? `hsl(${settings.hue} 62% 64%)` : `hsl(${settings.hue} 22% 4%)`
+      ctx.beginPath()
+      for (const ox of xs) {
+        ctx.moveTo(ox + r * share, y)
+        ctx.arc(ox, y, r * share, 0, 2 * Math.PI)
+      }
+      ctx.fill()
+    }
+    ctx.beginPath()
+    for (const ox of xs)
+      for (let k = 0; k < strands; k++) {
+        const rr = r + (k - (strands - 1) / 2) * settings.spacing
+        if (rr <= 0.25) continue
+        const bottom = Math.PI / 2
+        ctx.moveTo(ox + rr * Math.cos(bottom - from), y + rr * Math.sin(bottom - from))
+        ctx.arc(ox, y, rr, bottom - from, bottom - to, true)
+        ctx.moveTo(ox + rr * Math.cos(bottom + from), y + rr * Math.sin(bottom + from))
+        ctx.arc(ox, y, rr, bottom + from, bottom + to)
+      }
+    ctx.stroke()
   }
 
   function tick(now: number) {
@@ -685,8 +872,10 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
         families: trees.reduce((n, t) => n + t.families, 0),
         decisions: { ...decisions },
         meetings: { ...meetings },
+        chose: { ...chose },
         rebounds,
         offshoots,
+        circles: { ...circles },
         dropped,
         fps: Math.round(fps),
       }

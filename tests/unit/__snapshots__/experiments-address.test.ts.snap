@@ -31,10 +31,27 @@ exports[`artdeco > has not edited a slot in place 1`] = `
   "shrink num grid=0.05 origin=0.5 bits=4",
   "spread num grid=1 origin=1 bits=2",
   "margin num grid=0.5 origin=0 bits=6",
+  "onStop num grid=0.05 origin=0 bits=5",
+  "onCross num grid=0.05 origin=0 bits=5",
+  "onRebound num grid=0.05 origin=0 bits=5",
+  "corner num grid=0.05 origin=0 bits=5",
+  "cornerAt enum turns|splits|both",
+  "along num grid=0.05 origin=0 bits=5",
+  "radius num grid=0.5 origin=0.5 bits=5",
+  "jitter num grid=0.05 origin=0 bits=5",
+  "mark enum ring|solid|cutout",
+  "halo num grid=0.5 origin=0 bits=7",
+  "haloAt num grid=1 origin=0 bits=7",
+  "haloMeets enum pass|meet",
+  "haloMark enum ring|solid|cutout",
 ]
 `;
 
-exports[`artdeco > retires a slot by appending to the retired list, never by editing one 1`] = `[]`;
+exports[`artdeco > retires a slot by appending to the retired list, never by editing one 1`] = `
+[
+  "15 meet",
+]
+`;
 
 exports[`bubbles > has not edited a slot in place 1`] = `
 [
