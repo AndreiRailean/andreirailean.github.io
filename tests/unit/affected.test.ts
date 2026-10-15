@@ -133,6 +133,29 @@ it("places every browser spec in a piece or on the shared list", () => {
 })
 
 /**
+ * **Every shard the suite is cut into is one somebody runs.** `--shard i/N` with
+ * a matrix that lists fewer than N values leaves whole shards unrun, and an
+ * empty or unrun shard reports nothing, so the tests in it go quietly unchecked
+ * — the vacuous shape, at the scale of half a suite. So the matrix must be
+ * exactly 1..N, and both the pull-request run and `main`'s run must pass the
+ * same N.
+ */
+it("runs every browser shard it cuts", () => {
+  const source = readFileSync(".github/workflows/test-browser.yml", "utf8")
+  const listed = /shard:\s*\[([^\]]*)\]/.exec(source)
+  expect(listed, "test-browser.yml has no `shard: [...]` matrix").not.toBeNull()
+  const shards = listed![1]!.split(",").map((value) => Number(value.trim()))
+  const totals = [...source.matchAll(/--shard \$\{\{ matrix\.shard \}\}\/(\d+)/g)].map((match) => Number(match[1]))
+  // Both runs, the pull request's and main's, so neither can drift alone.
+  expect(totals, "expected `--shard ${{ matrix.shard }}/N` on both the affected and the full run").toHaveLength(2)
+  for (const total of totals) {
+    expect(shards, `the matrix must list every shard 1..${total}`).toEqual(
+      Array.from({ length: total }, (_, i) => i + 1),
+    )
+  }
+})
+
+/**
  * **No bypass of the everything default.** Each test workflow runs the affected
  * set on a pull request and the full suite on a push to `main`, and nothing
  * else decides what runs.
