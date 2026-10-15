@@ -296,15 +296,16 @@ flatten` at first, which looks right on a letter — ink is 1 almost everywhere 
 - **A flat fade cannot take 8-bit alpha to zero, and on a long afterglow it
   stalls at half** (#117). `destination-out` at the ~0.004 a long afterglow on a
   slow playback asks for leaves every alpha from 1 to 127 where it is, so the
-  buffer settles to a 50% plateau over everywhere light has been. `fade` set to
-  `dither` spends the same mean removal on a sparse shifting share of pixels at
-  0.75 each, in `fade.ts`; it changes the floor and nothing else. The test runs
-  `eraseHalo`'s own source against the browser's rasteriser — flat must still
-  stall at 127 and dither must land near `255 × (1 − a)ⁿ` — because four
-  statistics over the rendered frame failed to see this, one backwards. Do not
-  put a blur on the dithered erase: it averages the pattern back into the flat
-  fill it replaced. Presets `trail flat` and `trail dither` are the comparison,
-  identical but for the fade.
+  buffer settles to a 50% plateau over everywhere light has been. **This is
+  known and kept.** A dithered fade, the same mean removal spent on a sparse,
+  shifting share of pixels at 0.75 each, was built beside it in #269. Against
+  the browser's rasteriser it did reach the ground: 26.6 from 255 over 600
+  frames, where flat stalls at 127. Andrei compared the two on several presets
+  on 2026-10-15 and kept flat, because the dither's grain is noise nothing else
+  in the piece makes. So the plateau is the look, and a fade that reaches zero
+  by adding grain is the answer already tried. The `dither` address slot is
+  retired; `git log --diff-filter=D -- src/experiments/psyxels/fade.ts` finds
+  the code if a fade that reaches zero without grain is ever wanted.
 - **`biggest` claimed a range it did not have.** It was a slider beside
   `levels`, and at `levels: 0` — which `luna` ships with — every psyx was the
   biggest size, so the control only made them all big: "biggest doesn't seem to

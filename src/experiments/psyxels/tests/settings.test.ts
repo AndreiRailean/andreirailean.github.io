@@ -31,7 +31,7 @@ describe("bounds", () => {
   it("has a bound for every numeric setting, so nothing arrives unclamped", () => {
     for (const key of Object.keys(DEFAULT_SETTINGS) as NumericKey[]) {
       // The choices and the glyph set, which have options rather than a track.
-      if ((["subject", "text", "picture", "face", "polarity", "glyphs", "dither"] as string[]).includes(key)) continue
+      if ((["subject", "text", "picture", "face", "polarity", "glyphs"] as string[]).includes(key)) continue
       expect(BOUNDS[key], key).toBeDefined()
     }
   })
