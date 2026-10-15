@@ -4,6 +4,7 @@ title: Art Deco
 summary: A gold line grows up from the bottom of the frame and decides as it goes — split, turn, carry on, or throw off parallel offshoots — with every decision mirrored about the centre line.
 started: 2026-10-15
 updated: 2026-10-15
+poster: ./poster.webp
 tags:
   - canvas
   - generative
