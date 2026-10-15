@@ -147,7 +147,7 @@ function main(argv: string[]): number {
   const at = argv.indexOf("--base")
   const base = at >= 0 ? argv[at + 1]! : defaultBase()
   const dry = argv.includes("--dry-run")
-  // Passed through to Playwright, so CI can split one selection across runners.
+  // Passed through to vitest or Playwright, so CI can split one selection across runners.
   // The selection check below lists the whole selection, unsharded: a shard
   // holding none of a piece's kit tests is normal, and must not read as a miss.
   const shardAt = argv.indexOf("--shard")
@@ -161,7 +161,7 @@ function main(argv: string[]): number {
       : `affected: ${selection.pieces.join(", ") || "no piece"} (${paths.length} paths changed since ${base})`,
   )
 
-  if (suite === "unit") return dry ? 0 : run("pnpm", ["exec", "vitest", ...unitArgs(selection)])
+  if (suite === "unit") return dry ? 0 : run("pnpm", ["exec", "vitest", ...unitArgs(selection), ...shard])
 
   if (selection.everything) return dry ? 0 : run("pnpm", ["exec", "playwright", "test", ...shard])
   const grep = browserGrep(selection)
