@@ -45,8 +45,12 @@ jobs:
       - name: Lint all code
         run: pnpm run prettier && pnpm run lint
 
-      - name: Typecheck all code
-        run: pnpm run typecheck
-
-      - name: Test build
+      # **This is also the typecheck.** `pnpm run build` runs `pnpm run typecheck`
+      # before `astro build`, so a step of its own ran `astro check` twice on
+      # every pull request — about 15 seconds of the only required check, bought
+      # nothing, because a failing step stops the job either way. The step went
+      # in #273; `tests/unit/typecheck-script.test.ts` holds the chain from here
+      # to `astro check`, so dropping the typecheck from `build` fails a test
+      # rather than quietly blinding CI.
+      - name: Typecheck and build
         run: pnpm run build
