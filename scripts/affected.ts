@@ -5,6 +5,7 @@
  * pnpm run test:affected unit       # vitest over what the change touched
  * pnpm run test:affected browser    # playwright over what the change touched
  * pnpm run test:affected unit --base HEAD^1 --dry-run
+ * pnpm run test:affected browser --base HEAD^1 --shard 1/2
  * ```
  *
  * **A piece is a library behind three files, and its folder is the unit of
@@ -146,6 +147,11 @@ function main(argv: string[]): number {
   const at = argv.indexOf("--base")
   const base = at >= 0 ? argv[at + 1]! : defaultBase()
   const dry = argv.includes("--dry-run")
+  // Passed through to vitest or Playwright, so CI can split one selection across runners.
+  // The selection check below lists the whole selection, unsharded: a shard
+  // holding none of a piece's kit tests is normal, and must not read as a miss.
+  const shardAt = argv.indexOf("--shard")
+  const shard = shardAt >= 0 ? ["--shard", argv[shardAt + 1]!] : []
 
   const paths = changedSince(base)
   const selection = select(paths, piecesOnDisk())
@@ -155,16 +161,16 @@ function main(argv: string[]): number {
       : `affected: ${selection.pieces.join(", ") || "no piece"} (${paths.length} paths changed since ${base})`,
   )
 
-  if (suite === "unit") return dry ? 0 : run("pnpm", ["exec", "vitest", ...unitArgs(selection)])
+  if (suite === "unit") return dry ? 0 : run("pnpm", ["exec", "vitest", ...unitArgs(selection), ...shard])
 
-  if (selection.everything) return dry ? 0 : run("pnpm", ["exec", "playwright", "test"])
+  if (selection.everything) return dry ? 0 : run("pnpm", ["exec", "playwright", "test", ...shard])
   const grep = browserGrep(selection)
   if (grep === null) {
     console.log("affected: nothing a browser test covers")
     return 0
   }
   checkBrowserSelection(grep, selection.pieces)
-  return dry ? 0 : run("pnpm", ["exec", "playwright", "test", "--grep", grep])
+  return dry ? 0 : run("pnpm", ["exec", "playwright", "test", "--grep", grep, ...shard])
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) process.exit(main(process.argv.slice(2)))

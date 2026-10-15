@@ -333,6 +333,15 @@ with `fullyParallel` were measured against the default two and bought nothing,
 while a CPU-heavy test timed out under the contention —
 `docs/adr/20260927-more-browser-workers-buy-nothing-on-ci.md`.
 
+**More runners are, once no single file is the floor.** Both test jobs run as
+two shards on two runners, each runner keeping its two workers. That is more
+cores rather than more workers per core, and it is the case that ADR left open.
+It only paid once `kit.spec.ts` ran in `mode: "parallel"`, because a file goes to
+one worker whole. So **a spec file that grows past a few minutes wants
+`test.describe.configure({ mode: "parallel" })`**, or it becomes the job's wall
+clock however many shards there are —
+`docs/adr/20261015-test-jobs-shard-across-two-runners.md`.
+
 **And a drag is one settings change per step.** `page.mouse.move(x, y, { steps:
 8 })` is eight of them, and a settings change can be expensive: flotsam's size
 pair is in `needsScatter`, so eight steps rebuilt 8,500 specks eight times per

@@ -61,6 +61,17 @@ const BOXED = new Set<string>([
  * alternated so both met the same load: 3.2 and 3.3 minutes held, 4.5 and 4.4
  * running. It was 40% of the browser suite's test time before this (#133).
  */
+/**
+ * **Spread across workers rather than given to one.** Playwright hands a file to
+ * a single worker unless told otherwise, and this file is the suite's largest by
+ * far: 522 of 1233 seconds of test time, measured 2026-10-15, all of it on
+ * worker 0 while the others ran everything else. So it set the browser job's
+ * floor alone, and no runner or shard added could get under it. Every test
+ * here opens its own page and shares nothing — no hooks, no module state — so
+ * nothing orders them. #274.
+ */
+test.describe.configure({ mode: "parallel" })
+
 const openHeld = async (...args: Parameters<typeof openExperiment<BaseApi>>) => {
   const experiment = await openExperiment<BaseApi>(...args)
   await experiment.api(({ api }) => api.pause(true))

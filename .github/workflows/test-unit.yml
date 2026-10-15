@@ -47,9 +47,22 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # **Two shards on two runners**, for the same reason as test-browser.yml. The
+  # suite is CPU-bound simulation, nearly all of it crowd's long checks, so one
+  # four-core runner is bound by the sum of their time divided by its cores. A
+  # second runner halves the sum. The floor that remains is the heaviest single
+  # file, which no shard can split; see "Why the crowd's checks are split across
+  # files" in tests/AGENTS.md. vitest shards by file, and every selection keeps
+  # the forty-odd shared files in `tests/unit/`, so neither shard is ever empty.
+  # `tests/unit/affected.test.ts` holds the matrix and the `--shard` count
+  # together. #274.
   unit:
-    name: Unit tests
+    name: Unit tests (${{ matrix.shard }}/2)
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -84,7 +97,7 @@ jobs:
       - name: Unit tests
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            pnpm run test:affected unit --base HEAD^1
+            pnpm run test:affected unit --base HEAD^1 --shard ${{ matrix.shard }}/2
           else
-            pnpm run test:unit
+            pnpm run test:unit --shard ${{ matrix.shard }}/2
           fi

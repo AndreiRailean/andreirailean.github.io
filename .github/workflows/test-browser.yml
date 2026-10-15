@@ -124,10 +124,28 @@ concurrency:
 # CPU-heavy test timed out twice in four: the tests are CPU-bound, so extra
 # workers take cores from each other. See
 # docs/adr/20260927-more-browser-workers-buy-nothing-on-ci.md.
+#
+# **Two runners, each with two workers — which is not the rejected "more
+# workers".** That ADR added workers to one four-core runner, where CPU-bound
+# tests take cores from each other. A second runner brings its own four cores.
+# It became worth having once `kit.spec.ts` stopped being one worker's whole
+# job (`mode: "parallel"` in that file): before that, the file was a 522-second
+# floor that a second runner could not get under. Each shard builds the site for
+# itself, which is about 30 seconds paid twice. The repo is public, so the
+# second runner costs no money. #274.
+#
+# The shard count is written twice, in `matrix.shard` and after `--shard`, and
+# they must agree. A count that is too high leaves shards nobody runs, and an
+# empty shard passes, so every test in it would go untested and stay green.
+# `tests/unit/affected.test.ts` holds the two together.
 jobs:
   browser:
-    name: Browser tests
+    name: Browser tests (${{ matrix.shard }}/2)
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -174,9 +192,9 @@ jobs:
       - name: Browser tests
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            pnpm run test:affected browser --base HEAD^1
+            pnpm run test:affected browser --base HEAD^1 --shard ${{ matrix.shard }}/2
           else
-            pnpm run test:browser
+            pnpm run test:browser --shard ${{ matrix.shard }}/2
           fi
         env:
           PW_USE_BUNDLED_CHROMIUM: "1"
@@ -187,7 +205,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v5
         with:
-          name: test-artifacts
+          name: test-artifacts-${{ matrix.shard }}
           path: |
             .scratch/shots/
             .scratch/playwright/
