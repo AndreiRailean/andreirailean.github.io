@@ -48,9 +48,34 @@ being found.
   It reads as inline lettering at the spacings tried; at large `spacing` with
   `angle: "15"` it will not.
 
+- **Crossing needs `head.past`.** A tip that crosses a line is left standing
+  on it, and the next search from that point finds the same line at `t ≈ 0`.
+  `EPS` usually hides that and floating error sometimes does not, so the
+  crossed segment is skipped by id until the tip bends. A crossed axis is
+  skipped by the `ORIGIN` guard on `a`, and a crossed big circle by the 0.01px
+  floor on a root.
+- **The meeting choice and the circles read their own stream.** Each family has
+  a second rng, `marks`, and every token draws `meet`, `corner`, `along`, `at`
+  and `size` from it. Drawing them from `rng` would have moved every decision
+  of every seed, including the measured ziggurat. A meeting reads the token of
+  the decision the tip is heading for, so lines that decide together also stop,
+  cross or rebound together, and their circles match.
+- **The big circle can only be met where it has been drawn.** It draws up from
+  its lowest point at the line speed, so the arc length from the bottom to a
+  hit is compared with `tree.D` and the tail. Without that, a tip stops against
+  thin air above an arc still drawing.
+- **Rebounding off the big circle snaps to the angle.** `offCircle` reflects
+  exactly, then takes the nearest multiple of `angle` that still leaves on the
+  outgoing side, or stops the tip if none of the nearest three does. At 90° a
+  glancing hit often has none.
+- **A circle is born where the tip was, and is mirrored by its line's `axis`
+  flag**, not by its centre's distance from the axis, so a corner circle on a
+  mirrored line near the centre line is still drawn twice.
+
 ## Checking a mechanism fired
 
 `experiment.stats()` counts every decision by kind, every meeting by kind
-(`line`, `mirror`, `axis`, `edge`, `depth`, `cap`), rebounds, offshoots, and
-segments dropped at the caps (`MAX_SEGS`, `MAX_HEADS`). A setting whose
+(`line`, `mirror`, `axis`, `halo`, `edge`, `depth`, `cap`), what the lines
+`chose` at them, rebounds, offshoots, circles by placement (`corner`,
+`along`), and segments dropped at the caps (`MAX_SEGS`, `MAX_HEADS`). A setting whose
 counter stays at zero is not doing anything, however the picture looks.

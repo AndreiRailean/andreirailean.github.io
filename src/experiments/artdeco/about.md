@@ -3,7 +3,7 @@ slug: artdeco
 title: Art Deco
 summary: A gold line grows up from the bottom of the frame and decides as it goes — split, turn, carry on, or throw off parallel offshoots — with every decision mirrored about the centre line.
 started: 2026-10-15
-updated: 2026-10-15
+updated: 2026-10-16
 poster: ./poster.webp
 tags:
   - canvas
@@ -18,3 +18,8 @@ symmetric about its centre line. Every line is a whole number of turns off
 vertical, so lines from opposite ends of the drawing come out parallel too.
 When it has finished growing it holds, then undraws in the order it was drawn,
 and the next drawing begins.
+
+When a line meets another it decides that too: stop there, cross, or rebound
+off it. Circles can land on its corners or along its stretches, drawing
+themselves round from their lowest point as the lines grow, and one big circle
+can sit on the centre line for the lines to meet.

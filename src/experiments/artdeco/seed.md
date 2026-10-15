@@ -49,6 +49,17 @@ describes the work.
 > consistent piece rendering. here, it's hard for me to imagine how a piece
 > can stay consistent while also being allowed to evolve freely
 
+## 2026-10-16 — first look
+
+> oooh. i love it. i like how the parallelism occurs naturally. feels like
+> stop/cross/rebound is a decision to be made by the line. we only need to
+> provide it as an option, so a piece can have all 3 enabled or only one.
+>
+> seeing this now makes me want to see some circles. i see them both placed
+> randomly on a line and in a way where the center of the circle falls on the
+> turning point of the line. am seeing a big circle in the middle of the piece
+> with smaller circles all around
+
 ## Open questions
 
 _Mine, not his — what I assumed and what would settle it._
@@ -63,8 +74,11 @@ _Mine, not his — what I assumed and what would settle it._
   the order it was drawn), and _flow_ (a tail follows every tip `life` seconds
   behind, and a new drawing starts as soon as the last tip stops). Neither is
   chosen; the primary uses the first.
-- **Lines meeting lines.** Built: stop, cross, rebound (rebound reflects off
-  the line, which keeps it on the angle). Not built: a meeting that _causes_ new
+- **Lines meeting lines.** Built: stop, cross, rebound, each with its own odds
+  since 2026-10-16, so a piece can enable any of them. I read "a decision made
+  by the line" as: the line chooses at each meeting, and lines that decide
+  together (a family) choose together, as they do for turns. If you meant each
+  line picks one temperament for its whole life, that is not built. Not built: a meeting that _causes_ new
   symmetric lines, and a meeting that erases segments — both in the seed, both
   need a decision about which line the new lines belong to.
 - **Parallelism** is the `echo` decision plus families: an echo's offshoots,
@@ -76,3 +90,12 @@ _Mine, not his — what I assumed and what would settle it._
   floods the frame. Measured, not guessed — see `AGENTS.md`.
 - **Not thin lines.** Only `strands` (double rules, bands) and `taper` so far.
   Filled shapes between parallels, and the rounded flavour, are not started.
+- **Circles** (2026-10-16). Built: a circle centred on a corner (turns and
+  rebounds, splits, or both), a circle somewhere along a stretch, and one big
+  circle on the centre line at a chosen height. Each draws itself round from
+  its lowest point. Lines can meet the big circle; they never meet the small
+  ones, since a corner circle is centred on its own line. Whether small circles
+  should stop other lines, and whether a line could grow along a circle (an
+  arc) rather than only past it, are both open. Presets 8–10 (medallion,
+  sunrise, beads) are three readings of "a big circle in the middle with
+  smaller circles all around".
