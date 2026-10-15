@@ -218,20 +218,24 @@ export const CONTROLS: Control[] = [
     format: (v) => String(Math.round(v)),
     hint: "How many decisions a line makes, counting its parents', before it stops of its own accord.",
   },
-  odds("straight", "straight", "Odds of carrying straight on to the next decision."),
-  odds("branch", "branch", "Odds of splitting into two lines at opposite angles while the line itself carries on."),
-  odds("fork", "fork", "Odds of splitting into two lines at opposite angles and stopping there."),
-  odds(
+  /* @__PURE__ */ odds("straight", "straight", "Odds of carrying straight on to the next decision."),
+  /* @__PURE__ */ odds(
+    "branch",
+    "branch",
+    "Odds of splitting into two lines at opposite angles while the line itself carries on.",
+  ),
+  /* @__PURE__ */ odds("fork", "fork", "Odds of splitting into two lines at opposite angles and stopping there."),
+  /* @__PURE__ */ odds(
     "turn",
     "turn",
     "Odds of turning by the angle. Its mirror image turns the other way. A line on the centre line cannot turn alone, so it forks.",
   ),
-  odds(
+  /* @__PURE__ */ odds(
     "echo",
     "echo",
     "Odds of carrying on while growing offshoots, one after another at the same angle — parallel lines that then make the same decisions as each other.",
   ),
-  odds("stop", "stop", "Odds of stopping."),
+  /* @__PURE__ */ odds("stop", "stop", "Odds of stopping."),
   {
     kind: "slider",
     key: "echoes",

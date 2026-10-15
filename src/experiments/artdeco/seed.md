@@ -52,3 +52,27 @@ describes the work.
 ## Open questions
 
 _Mine, not his — what I assumed and what would settle it._
+
+- **Consistent versus free.** My reading: the settings are the grammar (angle,
+  odds, rhythm, weight) and the seed is one sentence in it. Every drawing after
+  the first follows from the seed too, so an address replays the same sequence
+  forever while no two drawings in it repeat. `next drawing` makes the choice a
+  control — _new_ (assumed default) or _same again_. If what you meant is that a
+  drawing should keep evolving rather than be replaced, that is not built.
+- **When does it stop?** Two answers built as `cycle`: _draw, hold, undraw_ (in
+  the order it was drawn), and _flow_ (a tail follows every tip `life` seconds
+  behind, and a new drawing starts as soon as the last tip stops). Neither is
+  chosen; the primary uses the first.
+- **Lines meeting lines.** Built: stop, cross, rebound (rebound reflects off
+  the line, which keeps it on the angle). Not built: a meeting that _causes_ new
+  symmetric lines, and a meeting that erases segments — both in the seed, both
+  need a decision about which line the new lines belong to.
+- **Parallelism** is the `echo` decision plus families: an echo's offshoots,
+  and the stems on one side, share one sequence of decisions, so they turn
+  together and stay parallel. Is that the parallelism you were seeing, or did
+  you mean parallels drawn alongside a line (that is what `strands` does)?
+- **"All as one"** (every line's n-th decision the same) gives the strongest
+  order and is all-or-nothing: an early fork kills everything, an early branch
+  floods the frame. Measured, not guessed — see `AGENTS.md`.
+- **Not thin lines.** Only `strands` (double rules, bands) and `taper` so far.
+  Filled shapes between parallels, and the rounded flavour, are not started.

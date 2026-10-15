@@ -14,6 +14,7 @@ import { expect, openExperiment, test } from "./support/experiment.ts"
  */
 
 const PIECES = [
+  "artdeco",
   "bubbles",
   "crowd",
   "dangler",
@@ -36,6 +37,7 @@ const GOVERNED = new Set<string>(["crowd"])
 
 /** Pieces whose panel is boxed (`boxes` in their CHROME), so the box test holds them to it. */
 const BOXED = new Set<string>([
+  "artdeco",
   "bubbles",
   "crowd",
   "dangler",
