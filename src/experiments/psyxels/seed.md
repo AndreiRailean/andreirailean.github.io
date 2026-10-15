@@ -209,7 +209,7 @@ Not asked of him in a message; written here so they outlive the session.
   controls if any ever arrive?
 - **#117.** `trail flat` and `trail dither` are the same scene except for the
   fade. If dither looks cleaner, should it become the only fade (drop the
-  toggle), or the default for new scenes?
+  toggle), or the default for new scenes? _Answered 2026-10-15, below: neither._
 - **#135.** `garden` puts sprout and spiral beside moon, heart and leaf. Does
   either earn the flower's slot? Neither has been judged by eye in a field yet.
 
@@ -226,3 +226,12 @@ Not asked of him in a message; written here so they outlive the session.
 >
 > biggest doesn't seem to work as it claims - every psyxel is the same size and
 > "biggest" just makes them all big. see this [preset URL]
+
+## 2026-10-15 — #117, flat against dither
+
+> flat is cleaner than dither. tried on a few presets. the dithered effect
+> breaks down the piece by introducing noise that nothing else provides and
+> feels foreign
+
+The `fade` toggle and the `trail dither` preset went; `trail flat` became
+`trail`.

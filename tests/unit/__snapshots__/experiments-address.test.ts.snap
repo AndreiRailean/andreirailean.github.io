@@ -410,6 +410,7 @@ exports[`psyxels > retires a slot by appending to the retired list, never by edi
   "5 coarse",
   "6 levels",
   "21 glyphs",
+  "39 dither",
 ]
 `;
 
