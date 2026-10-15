@@ -29,7 +29,7 @@ bounds — no shared file between them, no conflict markers, a clean merge and a
 `main` that could not compile. **All 545 unit tests passed.** They typecheck
 nothing, so nothing said a word.
 
-CI does run `pnpm run typecheck`, as its own step in `lint.yml`, so this is not a
+CI does run `pnpm run typecheck`, as the first half of `pnpm run build` in `lint.yml`, so this is not a
 hole in the tick — it is the difference between finding out here and finding out
 in a published PR. `pnpm run typecheck` takes seconds and is the one check that
 speaks to this failure at all.

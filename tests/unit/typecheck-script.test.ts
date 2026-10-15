@@ -41,15 +41,26 @@ describe("the typecheck script types what its name claims", () => {
     ).toContain("astro check")
   })
 
-  it("is what CI's typecheck step runs, so the two cannot drift apart", () => {
+  // CI reaches the script through `build` rather than a step of its own, which
+  // ran `astro check` a second time on every pull request (#273). So the chain
+  // is two links, and each is asserted: a link nobody checks is where the
+  // typecheck would quietly fall out of CI.
+  it("is what the build runs, so the build and the script cannot drift apart", () => {
+    expect(
+      scripts().build,
+      "`pnpm run build` no longer runs `pnpm run typecheck`, so CI and the deploy no longer typecheck",
+    ).toMatch(/(^|&& )pnpm run typecheck( &&|$)/)
+  })
+
+  it("reaches CI through lint.yml's build step", () => {
     const workflow = readFileSync(".github/workflows/lint.yml", "utf8")
 
     // Guard the guard: if the step is renamed or removed, matching nothing
     // would leave this file asserting a property of a workflow that no longer
     // has it — the vacuous case, not a pass.
     expect(
-      workflow.includes("pnpm run typecheck"),
-      "lint.yml no longer runs `pnpm run typecheck`, so fixing that script no longer fixes CI",
+      /^\s*run: pnpm run build\s*$/m.test(workflow),
+      "lint.yml no longer runs `pnpm run build`, so fixing the typecheck script no longer fixes CI",
     ).toBe(true)
   })
 })
