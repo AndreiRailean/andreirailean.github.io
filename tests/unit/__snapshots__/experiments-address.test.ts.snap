@@ -1,5 +1,41 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`artdeco > has not edited a slot in place 1`] = `
+[
+  "stems num grid=1 origin=1 bits=3",
+  "gap num grid=0.5 origin=1 bits=7",
+  "angle enum 15|30|45|60|90",
+  "step num grid=0.5 origin=2 bits=7",
+  "speed num grid=1 origin=2 bits=7",
+  "depth num grid=1 origin=1 bits=6",
+  "straight num grid=0.05 origin=0 bits=5",
+  "branch num grid=0.05 origin=0 bits=5",
+  "fork num grid=0.05 origin=0 bits=5",
+  "turn num grid=0.05 origin=0 bits=5",
+  "echo num grid=0.05 origin=0 bits=5",
+  "stop num grid=0.05 origin=0 bits=5",
+  "echoes num grid=1 origin=1 bits=4",
+  "pitch num grid=0.05 origin=0.05 bits=5",
+  "unison enum family|all",
+  "meet enum stop|cross|rebound",
+  "width num grid=0.25 origin=0.5 bits=5",
+  "taper num grid=0.05 origin=0 bits=4",
+  "cycle enum hold|flow",
+  "life num grid=0.5 origin=1 bits=8",
+  "hold num grid=0.5 origin=0 bits=7",
+  "vary enum new|same",
+  "hue num grid=1 origin=0 bits=9",
+  "seed num grid=1 origin=0 bits=20",
+  "strands num grid=1 origin=1 bits=2",
+  "spacing num grid=0.5 origin=1 bits=5",
+  "shrink num grid=0.05 origin=0.5 bits=4",
+  "spread num grid=1 origin=1 bits=2",
+  "margin num grid=0.5 origin=0 bits=6",
+]
+`;
+
+exports[`artdeco > retires a slot by appending to the retired list, never by editing one 1`] = `[]`;
+
 exports[`bubbles > has not edited a slot in place 1`] = `
 [
   "jets num grid=1 origin=1 bits=3",

@@ -57,6 +57,8 @@ type Head = {
   hand: 1 | -1
   depth: number
   toDecision: number
+  /** Distance between this line's decisions; shrinks a generation at a time. */
+  stepLen: number
   echo: Echo | null
   budget: number
 }
@@ -139,6 +141,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
   const speed = () => px(settings.speed)
   const stepPx = () => px(settings.step)
   const centre = () => width / 2
+  const inset = () => px(settings.margin)
 
   function family(tree: Tree): Family {
     if (settings.unison === "all" && tree.families > 0) return tree.root
@@ -283,13 +286,15 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     }
     const seg = newSeg(tree, x, y, d, parent.seg.gen + 1, at, false)
     if (!seg) return
+    const stepLen = Math.max(4, parent.stepLen * settings.shrink)
     tree.heads.push({
       seg,
       family: f,
       n: 0,
       hand,
       depth: parent.depth,
-      toDecision: stepPx(),
+      toDecision: stepLen,
+      stepLen,
       echo: null,
       budget: parent.budget,
     })
@@ -319,16 +324,17 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     const tk = token(head.family, head.n)
     head.n += 1
     head.depth += 1
-    head.toDecision = stepPx()
+    head.toDecision = head.stepLen
     decisions[tk.kind] += 1
     const [x, y] = headPoint(head.seg)
     const d = head.seg.d
     const split = () => {
       const f = family(tree)
-      if (head.seg.axis) spawn(tree, head, d + rightward(d), 1, f, x, y, at)
+      const k = Math.round(settings.spread)
+      if (head.seg.axis) spawn(tree, head, d + k * rightward(d), 1, f, x, y, at)
       else {
-        spawn(tree, head, d + head.hand, head.hand, f, x, y, at)
-        spawn(tree, head, d - head.hand, -head.hand as 1 | -1, f, x, y, at)
+        spawn(tree, head, d + k * head.hand, head.hand, f, x, y, at)
+        spawn(tree, head, d - k * head.hand, -head.hand as 1 | -1, f, x, y, at)
       }
     }
     switch (tk.kind) {
@@ -377,8 +383,8 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
   }
 
   function offscreen(x: number, y: number) {
-    const m = 2
-    return x < -m || x > width + m || y < -m || y > height + m
+    const m = inset()
+    return x < m - 2 || x > width - m + 2 || y < m - 2 || y > height - m + 2
   }
 
   /** Grows one tip through its budget, handling every event inside it in order. */
@@ -398,10 +404,10 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
           const tx = dx(head.seg.d)
           const ty = dy(head.seg.d)
           let reach = ev
-          if (tx > EPS) reach = Math.min(reach, (width + 2 - ax) / tx)
-          if (tx < -EPS) reach = Math.min(reach, (-2 - ax) / tx)
-          if (ty > EPS) reach = Math.min(reach, (height + 2 - ay) / ty)
-          if (ty < -EPS) reach = Math.min(reach, (-2 - ay) / ty)
+          if (tx > EPS) reach = Math.min(reach, (width - inset() + 2 - ax) / tx)
+          if (tx < -EPS) reach = Math.min(reach, (inset() - 2 - ax) / tx)
+          if (ty > EPS) reach = Math.min(reach, (height - inset() + 2 - ay) / ty)
+          if (ty < -EPS) reach = Math.min(reach, (inset() - 2 - ay) / ty)
           const hit = firstHit(tree, head, ax, ay, ax + tx * reach, ay + ty * reach)
           if (hit) {
             grow(tree, head, hit.t * reach)
@@ -426,7 +432,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
         spawn(tree, head, head.seg.d + echo.side, head.hand, echo.family, x, y, at())
         offshoots += 1
         echo.left -= 1
-        echo.toNext = settings.pitch * stepPx()
+        echo.toNext = settings.pitch * head.stepLen
         if (echo.left <= 0) head.echo = null
       }
       if (head.toDecision <= EPS && !decide(tree, head, at())) return false
@@ -456,7 +462,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     if (stems % 2 === 1) xs.push(cx)
     for (let k = 1; k <= Math.floor(stems / 2); k++) xs.push(cx + (stems % 2 === 1 ? k : k - 0.5) * gap)
     for (const x of xs) {
-      const seg = newSeg(tree, x, height, 0, 0, 0, x === cx)
+      const seg = newSeg(tree, x, height - inset(), 0, 0, 0, x === cx)
       if (!seg) continue
       tree.heads.push({
         seg,
@@ -465,6 +471,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
         hand: 1,
         depth: 0,
         toDecision: stepPx(),
+        stepLen: stepPx(),
         echo: null,
         budget: 0,
       })
@@ -565,14 +572,23 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     for (const [gen, list] of byGen) {
       ctx.lineWidth = Math.max(0.35, settings.width * (1 - settings.taper) ** gen)
       ctx.beginPath()
+      const strands = Math.round(settings.strands)
       for (const seg of list) {
-        const x1 = seg.x0 + dx(seg.d) * seg.len
-        const y1 = seg.y0 + dy(seg.d) * seg.len
-        ctx.moveTo(seg.x0, seg.y0)
-        ctx.lineTo(x1, y1)
-        if (!seg.axis) {
-          ctx.moveTo(2 * cx - seg.x0, seg.y0)
-          ctx.lineTo(2 * cx - x1, y1)
+        const ux = dx(seg.d)
+        const uy = dy(seg.d)
+        for (let k = 0; k < strands; k++) {
+          // Strands sit side by side across the line, centred on it.
+          const o = (k - (strands - 1) / 2) * settings.spacing
+          const x0 = seg.x0 - uy * o
+          const y0 = seg.y0 + ux * o
+          const x1 = x0 + ux * seg.len
+          const y1 = y0 + uy * seg.len
+          ctx.moveTo(x0, y0)
+          ctx.lineTo(x1, y1)
+          if (!seg.axis) {
+            ctx.moveTo(2 * cx - x0, y0)
+            ctx.lineTo(2 * cx - x1, y1)
+          }
         }
       }
       ctx.stroke()

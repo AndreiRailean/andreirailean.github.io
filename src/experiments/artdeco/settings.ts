@@ -59,6 +59,16 @@ export type Settings = {
   width: number
   /** Share of width lost per generation of branching. */
   taper: number
+  /** Lines drawn side by side for each line grown. */
+  strands: number
+  /** Distance between strands, in css px. */
+  spacing: number
+  /** Step multiplier for each generation of lines. */
+  shrink: number
+  /** Angles apart a split's lines are from their parent. */
+  spread: number
+  /** Frame inset, in per cent of the height. */
+  margin: number
   /** Hold: draw, hold, undraw in the order it was drawn. Flow: a tail follows every tip `life` seconds behind. */
   cycle: Cycle
   /** Flow only: seconds a piece of line lasts before the tail that follows it erases it. */
@@ -152,6 +162,39 @@ export const CONTROLS: Control[] = [
     step: 0.5,
     format: share,
     hint: "How far a line grows between decisions, as a share of the frame's height.",
+  },
+  {
+    kind: "slider",
+    key: "shrink",
+    label: "shrink",
+    group: "growth",
+    min: 0.5,
+    max: 1,
+    step: 0.05,
+    format: unit,
+    hint: "What the step is multiplied by for the lines a split or an echo makes, so detail gets finer towards the tips. 1 keeps every step the same.",
+  },
+  {
+    kind: "slider",
+    key: "spread",
+    label: "spread",
+    group: "growth",
+    min: 1,
+    max: 4,
+    step: 1,
+    format: (v) => `×${Math.round(v)}`,
+    hint: "How many angles apart a split's two lines are from their parent. Turns are always one angle.",
+  },
+  {
+    kind: "slider",
+    key: "margin",
+    label: "margin",
+    group: "growth",
+    min: 0,
+    max: 25,
+    step: 0.5,
+    format: share,
+    hint: "A frame inset from the edges, as a share of the height. Lines stop at it, and the stems start from its bottom.",
   },
   {
     kind: "slider",
@@ -260,6 +303,29 @@ export const CONTROLS: Control[] = [
   },
   {
     kind: "slider",
+    key: "strands",
+    label: "strands",
+    group: "line",
+    min: 1,
+    max: 4,
+    step: 1,
+    format: (v) => String(Math.round(v)),
+    hint: "Lines drawn side by side for every line grown, like an inline letter: two makes every line a double rule, three a band.",
+  },
+  {
+    kind: "slider",
+    key: "spacing",
+    label: "strand gap",
+    group: "line",
+    min: 1,
+    max: 16,
+    step: 0.5,
+    format: (v) => `${v.toFixed(1)}px`,
+    hint: "Distance between neighbouring strands.",
+    inert: (settings: Settings) => settings.strands === 1,
+  },
+  {
+    kind: "slider",
     key: "hue",
     label: "hue",
     group: "line",
@@ -336,6 +402,11 @@ export const DEFAULT_SETTINGS: Settings = {
   meet: "stop",
   width: 1.5,
   taper: 0.1,
+  strands: 1,
+  spacing: 3,
+  shrink: 1,
+  spread: 1,
+  margin: 0,
   cycle: "hold",
   life: 12,
   hold: 6,
@@ -361,6 +432,11 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   pitch: { min: 0.05, max: 1, step: 0.05 },
   width: { min: 0.5, max: 8, step: 0.25 },
   taper: { min: 0, max: 0.5, step: 0.05 },
+  strands: { min: 1, max: 4, step: 1 },
+  spacing: { min: 1, max: 16, step: 0.5 },
+  shrink: { min: 0.5, max: 1, step: 0.05 },
+  spread: { min: 1, max: 4, step: 1 },
+  margin: { min: 0, max: 25, step: 0.5 },
   life: { min: 1, max: 120, step: 0.5 },
   hold: { min: 0, max: 60, step: 0.5 },
   hue: { min: 0, max: 360, step: 1 },
@@ -428,6 +504,9 @@ const GROWTH_KEYS = [
   "meet",
   "cycle",
   "vary",
+  "shrink",
+  "spread",
+  "margin",
   "seed",
 ] as const satisfies readonly (keyof Settings)[]
 
@@ -461,6 +540,11 @@ export const REGISTRY: readonly Slot[] = [
   { key: "vary", kind: "enum", options: ["new", "same"] },
   { key: "hue", kind: "num", grid: 1, origin: 0, bits: 9 },
   { key: "seed", kind: "num", grid: 1, origin: 0, bits: 20 },
+  { key: "strands", kind: "num", grid: 1, origin: 1, bits: 2 },
+  { key: "spacing", kind: "num", grid: 0.5, origin: 1, bits: 5 },
+  { key: "shrink", kind: "num", grid: 0.05, origin: 0.5, bits: 4 },
+  { key: "spread", kind: "num", grid: 1, origin: 1, bits: 2 },
+  { key: "margin", kind: "num", grid: 0.5, origin: 0, bits: 6 },
 ]
 
 export function settingsToQuery(settings: Settings): URLSearchParams {
