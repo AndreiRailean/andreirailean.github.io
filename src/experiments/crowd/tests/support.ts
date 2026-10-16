@@ -4,13 +4,14 @@ import { normalizeSettings, type Settings } from "@/experiments/crowd/settings"
 import { PRESETS } from "@/experiments/crowd/presets"
 
 /**
- * What the crowd's long unit checks share, so they can live in several files.
+ * What the crowd's walking checks share: a scene by name, and a walk of it.
  *
- * **Several files because vitest runs one file on one worker, start to finish.**
- * `stroll.test.ts` and `throng.test.ts` were a single file each and between
- * them took most of the unit job's wall clock, however many workers the runner
- * had — see "Why the crowd's checks are split" in `tests/AGENTS.md`. Not a
- * `.test.ts`, so neither runner collects it.
+ * **Walks here are short and small.** The crowd's checks used to walk the market
+ * — nine thousand people — for minutes, and took most of the unit job (#287).
+ * Each decision is now checked on its own function, and what is left walking
+ * is wiring, in a world sized by `reach` to what the check needs. A new walk
+ * that wants the whole market for minutes is a decision that has not been
+ * found yet. Not a `.test.ts`, so neither runner collects it.
  */
 
 /**
@@ -75,18 +76,6 @@ export function watch(patch: Partial<Settings>, seconds: number) {
   }
 }
 
-/**
- * Milliseconds, on every test here that simulates.
- *
- * **Not because they are slow — because this box is shared.** Each of these runs
- * in ten to twenty-five seconds alone and the suite's default allowance is
- * thirty, so under a full run against other sessions' work they sit either side
- * of the line and fail on whichever one happens to be unlucky. That is
- * flakiness, and it read as a failing check twice before it read as a slow one.
- * `tests/AGENTS.md` has the numbers on how far a single timing moves here.
- */
-export const PATIENT = 180_000
-
 export function walk(patch: Partial<Settings>, seconds: number) {
   const settings = normalizeSettings({ ...MARKET.settings, ...patch })
   const me = createStroll(settings, settings.seed)
@@ -99,15 +88,4 @@ export function walk(patch: Partial<Settings>, seconds: number) {
   }
   run(seconds)
   return { me, crowd, run, settings }
-}
-
-/** Where everybody is relative to the observer's own line of travel. */
-export function relative(crowd: ReturnType<typeof createThrong>, me: ReturnType<typeof createStroll>) {
-  const cos = Math.cos(me.course)
-  const sin = Math.sin(me.course)
-  return crowd.people.map((person) => {
-    const dx = person.x - me.x
-    const dy = person.y - me.y
-    return { ahead: dx * cos + dy * sin, beside: dx * sin - dy * cos, person }
-  })
 }

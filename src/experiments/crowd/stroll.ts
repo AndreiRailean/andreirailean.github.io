@@ -78,7 +78,7 @@ import type { Settings } from "@/experiments/crowd/settings"
  * of the velocity profile, which is precisely the bang-bang shape the spring was
  * brought in to remove — and at 2.1 it clipped on 7% of frames while standing.
  */
-const NECK = 3.5
+export const NECK = 3.5
 
 /**
  * Natural frequency of the neck, in radians per second.
@@ -96,10 +96,10 @@ const NECK = 3.5
  * target, and never overshoots. 8 rad/s settles a glance in about half a second,
  * which is what a head actually takes.
  */
-const NECK_OMEGA = 8
+export const NECK_OMEGA = 8
 
 /** How far off the line of travel the head will go at all. Past this a person turns their shoulders. */
-const NECK_LIMIT = 1.15
+export const NECK_LIMIT = 1.15
 
 /**
  * How far the head swings on one glance, in radians, before `looking` scales it.
@@ -144,7 +144,7 @@ const GAP_STOPPED = [0.5, 2.2]
  * settling time, not intuition about how long a glance feels. This is a *follow*
  * rather than a check: you look at the stall as you go past it.
  */
-const HOLD_GROUND = [0.9, 2.2]
+export const HOLD_GROUND = [0.9, 2.2]
 
 /** Seconds between glances while there is somebody to talk to. Shorter: a conversation is a rhythm. */
 const GAP_TALKING = [0.35, 1.6]
@@ -156,9 +156,9 @@ const GAP_TALKING = [0.35, 1.6]
  * version hid its own weights: a "20% of the time" that was really 20% of
  * whatever fell past the branch above it.
  */
-const SHARE_COMPANION = 0.5
-const SHARE_UP = 0.09
-const SHARE_SPOT = 0.3
+export const SHARE_COMPANION = 0.5
+export const SHARE_UP = 0.09
+export const SHARE_SPOT = 0.3
 
 /**
  * Radians per second the body pivots at when standing.
@@ -168,7 +168,7 @@ const SHARE_SPOT = 0.3
  * stopped observer pivots toward a new line and then sets off along it, which is
  * how the walk changes direction at all.
  */
-const PIVOT = 1.1
+export const PIVOT = 1.1
 
 /**
  * The chance that a look taken while standing becomes where you go next.
@@ -193,7 +193,7 @@ const PIVOT = 1.1
  * already is, and the head comes back to centre as it arrives, which is one
  * movement rather than two.
  */
-const TURN_ON_LOOK = 0.38
+export const TURN_ON_LOOK = 0.38
 
 /**
  * Radians per second the body will turn at while walking.
@@ -210,7 +210,7 @@ const TURN_ON_LOOK = 0.38
  * velocity, which is also why this is the honest model rather than a clamp — you
  * can step sideways while still facing forward, and this is what lets it.
  */
-const TURN_WALKING = 2
+export const TURN_WALKING = 2
 
 /**
  * Natural frequency of the body's facing, in radians per second.
@@ -251,7 +251,7 @@ const PIVOT_OMEGA = 2.6
  * facing is pulled back to within this of the actual travel, which makes the
  * turn a consequence of a large or sustained deviation rather than a rule.
  */
-const STRAFE_LIMIT = 0.61
+export const STRAFE_LIMIT = 0.61
 
 /**
  * How far the gaze will go below and above its resting line, in radians.
@@ -268,8 +268,8 @@ const STRAFE_LIMIT = 0.61
  * nothing here — a vertical drift of a few degrees either side of the bias, which
  * never rose far enough above level to read as looking up at all.
  */
-const PITCH_DOWN = 0.58
-const PITCH_UP = 0.55
+export const PITCH_DOWN = 0.58
+export const PITCH_UP = 0.55
 
 /**
  * How far ahead and how far to the side a thing worth looking at is, in metres.
@@ -287,7 +287,7 @@ const PITCH_UP = 0.55
  * the 10th percentile of the gaze went back to sitting on the bias. Further
  * ahead and less to the side gives the sweep a few seconds to run.
  */
-const SPOT_AHEAD = [3.2, 8]
+export const SPOT_AHEAD = [3.2, 8]
 
 /**
  * How far round from the line of travel a thing worth looking at can be.
@@ -353,9 +353,9 @@ const SPOT_FAR = [18, 45]
  * something that does not exist** — the birds here, and the rocks, dogs and
  * stalls in `SPOT_AHEAD`.
  */
-const HOLD_UP = [1.5, 3.4]
-const UP_HEIGHT = [5, 19]
-const UP_RANGE = [14, 40]
+export const HOLD_UP = [1.5, 3.4]
+export const UP_HEIGHT = [5, 19]
+export const UP_RANGE = [14, 40]
 const UP_SPEED = [1, 4]
 
 /** Seconds a start or a stop is ramped over. */
@@ -387,6 +387,140 @@ export type Neighbourhood = {
   boulders: Boulders
   /** Whether I have just caught the one in red, and we are standing together. */
   caught: boolean
+}
+
+/**
+ * **The decisions the walk is made of, one function each**, so each can be
+ * checked on its own rather than by walking a market until it happens (#287).
+ * `createStroll` calls these and nothing else decides the same things; the
+ * arithmetic and the order of the random draws are exactly what the step loop
+ * did inline, which a seeded trace across every preset confirmed unchanged.
+ */
+
+/**
+ * Seconds the next stretch of walking, or of standing, should last.
+ *
+ * Two independent timescales whose ratio is `pausing`, which is why it behaves
+ * like a share of the walk rather than like a frequency. Exponential, so the
+ * lengths have no characteristic value and the walk does not develop a rhythm
+ * anybody can anticipate. `roll` is drawn only when there is a choice to make.
+ */
+export function spellLength(pausing: number, going: boolean, roll: () => number): number {
+  if (pausing <= 0) return going ? Infinity : 0
+  if (pausing >= 1) return going ? 0 : Infinity
+  const scale = 9 * (going ? 1 - pausing : pausing)
+  return Math.max(0.4, -Math.log(Math.max(1e-6, roll())) * scale)
+}
+
+export type GlanceKind = "companion" | "up" | "spot" | "passer"
+
+/**
+ * What one glance is about, from one roll.
+ *
+ * **The boundaries are built from the shares, and the companion's share is
+ * zero when there is nobody to talk to.** Writing the later ones with a
+ * constant first term is the chained-roll fault: the companion's half falls
+ * through to the next branch and looking up went from 9% of glances to 59%,
+ * walking alone. Running takes nine tenths of the sky's share away, and the
+ * boundaries after it move down with it rather than the sky keeping it.
+ */
+export function glanceKind(roll: number, mates: number, run: number): GlanceKind {
+  const pCompanion = mates > 0 ? SHARE_COMPANION : 0
+  if (mates > 0 && roll < pCompanion) return "companion"
+  const pUp = SHARE_UP * (1 - 0.9 * run)
+  if (roll < pCompanion + pUp) return "up"
+  if (roll < pCompanion + pUp + SHARE_SPOT) return "spot"
+  return "passer"
+}
+
+/**
+ * One step of the neck: a critically damped spring toward `target`, with `NECK`
+ * as a ceiling on its speed. Returns the new offset and velocity.
+ *
+ * See `NECK_OMEGA` for why a spring and not a rate limit: the first version
+ * was bang-bang, motionless 73% of the time and at its cap for 18%.
+ */
+export function neckStep(offset: number, vel: number, target: number, omega: number, dt: number): [number, number] {
+  const pull = -2 * omega * vel - omega * omega * (offset - target)
+  const next = Math.max(-NECK, Math.min(NECK, vel + pull * dt))
+  return [offset + next * dt, next]
+}
+
+/**
+ * One step of the body's turn rate toward a heading `toward` radians away:
+ * sprung, so it has mass, with a ceiling for the rare genuine turn. Moving, it
+ * follows the walk; standing, it is a slower, deliberate pivot.
+ */
+export function courseStep(vel: number, toward: number, moving: boolean, dt: number): number {
+  const omega = moving ? COURSE_OMEGA : PIVOT_OMEGA
+  const next = vel + (omega * omega * toward - 2 * omega * vel) * dt
+  const cap = moving ? TURN_WALKING : PIVOT
+  return Math.max(-cap, Math.min(cap, next))
+}
+
+/**
+ * Which way the body faces while moving: the line it means to walk, unless the
+ * crowd has pushed it further off that line than a sidestep goes. See
+ * `STRAFE_LIMIT` — the difference between this and `travel` *is* the sidestep.
+ */
+export function facingTarget(travel: number, aim: number): number {
+  let drift = travel - aim
+  while (drift > Math.PI) drift -= Math.PI * 2
+  while (drift < -Math.PI) drift += Math.PI * 2
+  return Math.abs(drift) <= STRAFE_LIMIT ? aim : travel - Math.sign(drift) * STRAFE_LIMIT
+}
+
+/**
+ * Whether a look that has just ended becomes where the walk goes next.
+ *
+ * Only standing, and then `TURN_ON_LOOK` of the time. This replaced a guard
+ * that could not fire — `|yawOffset| > NECK_LIMIT` on an offset springing,
+ * without overshoot, toward a target already clamped to `NECK_LIMIT` — which
+ * left the walk a straight line. The roll is drawn only when standing.
+ */
+export function turnsToLook(stopped: boolean, roll: () => number): boolean {
+  return stopped && roll() < TURN_ON_LOOK
+}
+
+/**
+ * How much the walls hold the line being walked to the way, 0 to 1: nothing on
+ * open ground, more as the corridor narrows. It is the room running out.
+ */
+export function confinement(halfWidth: number): number {
+  return Math.max(0, Math.min(1, 1 - halfWidth / 25))
+}
+
+/** Where the eye is, for `aimAt`. */
+export type Viewpoint = { x: number; y: number; course: number; eye: number; bias: number }
+
+/**
+ * Where a point in the world puts the head, as offsets from the course and from
+ * the resting pitch, and whether it is still worth following: not round
+ * further than `wide`, and not on top of you.
+ */
+export function aimAt(
+  tx: number,
+  ty: number,
+  tz: number,
+  from: Viewpoint,
+  wide: number,
+): { yaw: number; up: number; worth: boolean } {
+  const dx = tx - from.x
+  const dy = ty - from.y
+  const flat = Math.sqrt(dx * dx + dy * dy)
+  let yaw = Math.atan2(dy, dx) - from.course
+  while (yaw > Math.PI) yaw -= Math.PI * 2
+  while (yaw < -Math.PI) yaw += Math.PI * 2
+  // Absolute, then taken back to an offset from the resting line, so a face at
+  // eye level cancels the bias rather than adding to it.
+  const up = Math.atan2(tz - from.eye, Math.max(0.4, flat)) - from.bias
+  return {
+    yaw: Math.max(-wide, Math.min(wide, yaw)),
+    up: Math.max(-PITCH_DOWN, Math.min(PITCH_UP, up)),
+    // When it stops being worth it the glance ends, which is the glance ending
+    // because the world moved: the right reason.
+    worth: Math.abs(yaw) <= wide && flat > 0.35,
+  }
 }
 
 export type Stroll = ReturnType<typeof createStroll>
@@ -475,21 +609,8 @@ export function createStroll(settings: Settings, seed: number) {
   const frame: Frame = { lateral: 0, cos: 1, sin: 0 }
   const hint: PathHint = { pathAt: -1 }
 
-  /**
-   * Seconds the next stretch of walking, or of standing, should last.
-   *
-   * Two independent timescales whose ratio is `pausing`, which is why it behaves
-   * like a share of the walk rather than like a frequency. Exponential, so the
-   * lengths have no characteristic value and the walk does not develop a rhythm
-   * anybody can anticipate.
-   */
-  function spell(going: boolean): number {
-    const share = current.pausing
-    if (share <= 0) return going ? Infinity : 0
-    if (share >= 1) return going ? 0 : Infinity
-    const scale = 9 * (going ? 1 - share : share)
-    return Math.max(0.4, -Math.log(Math.max(1e-6, rng())) * scale)
-  }
+  /** Seconds the next stretch of walking, or of standing: `spellLength`. */
+  const spell = (going: boolean): number => spellLength(current.pausing, going, rng)
 
   const between = ([low, high]: number[], r: number) => low! + r * (high! - low!)
 
@@ -542,31 +663,12 @@ export function createStroll(settings: Settings, seed: number) {
     | { kind: "spot"; x: number; y: number; z: number; vx: number; vy: number; vz: number; wide: number }
 
   /** Where a look points now, as offsets from the course and from the resting pitch. */
-  function aimAt(look: Look): { yaw: number; up: number; worth: boolean } {
+  function aimLook(look: Look): { yaw: number; up: number; worth: boolean } {
     if (look.kind === "ahead") return { yaw: 0, up: 0, worth: true }
-    const eye = eyeHeight(stature)
     const tx = look.kind === "person" ? look.person.x : look.x
     const ty = look.kind === "person" ? look.person.y : look.y
     const tz = look.kind === "person" ? look.person.head : look.z
-
-    const dx = tx - x
-    const dy = ty - y
-    const flat = Math.sqrt(dx * dx + dy * dy)
-    let yaw = Math.atan2(dy, dx) - course
-    while (yaw > Math.PI) yaw -= Math.PI * 2
-    while (yaw < -Math.PI) yaw += Math.PI * 2
-    // Absolute, then taken back to an offset from the resting line, so a face at
-    // eye level cancels the bias rather than adding to it.
-    const up = Math.atan2(tz - eye, Math.max(0.4, flat)) - bias()
-
-    return {
-      yaw: Math.max(-look.wide, Math.min(look.wide, yaw)),
-      up: Math.max(-PITCH_DOWN, Math.min(PITCH_UP, up)),
-      // Still worth following: not round further than the neck reaches, and not
-      // on top of you. When it stops being worth it the glance ends, which is
-      // the glance ending because the world moved — the right reason.
-      worth: Math.abs(yaw) <= look.wide && flat > 0.35,
-    }
+    return aimAt(tx, ty, tz, { x, y, course, eye: eyeHeight(stature), bias: bias() }, look.wide)
   }
 
   /** Move whatever is being watched. Only the things that move on their own have a velocity. */
@@ -623,8 +725,8 @@ export function createStroll(settings: Settings, seed: number) {
       }
     }
 
-    const pCompanion = mates.length > 0 ? SHARE_COMPANION : 0
-    if (mates.length > 0 && roll < pCompanion) {
+    const kind = glanceKind(roll, mates.length, run)
+    if (kind === "companion") {
       const mate = mates[Math.floor(rng() * mates.length)]!
       return { look: { kind: "person", person: mate, wide: NECK_LIMIT }, hold: between(HOLD_STOPPED, rng()) * brief }
     }
@@ -633,8 +735,7 @@ export function createStroll(settings: Settings, seed: number) {
     // The sky's share goes almost entirely when running; its probability falls
     // through to the spots below rather than to the sky, which is the chained
     // roll done the safe way — the boundaries are built from the shares.
-    const pUp = SHARE_UP * (1 - 0.9 * run)
-    if (roll < pCompanion + pUp) {
+    if (kind === "up") {
       const range = between(UP_RANGE, rng())
       const bearing = course + (rng() - 0.5) * 1.4
       const heading = rng() * Math.PI * 2
@@ -657,7 +758,7 @@ export function createStroll(settings: Settings, seed: number) {
     // Something on the ground, or on it: a stall, a dog, a stone, the paving two
     // metres in front of your feet. All the same thing — a point that does not
     // move — and half of them are the ground itself.
-    if (roll < pCompanion + pUp + SHARE_SPOT) {
+    if (kind === "spot") {
       // Walking, a spot is a stone at your feet or a stall beside you. Running,
       // it is something far down the way: at head height, tens of metres off,
       // and near the line you are running on.
@@ -737,7 +838,7 @@ export function createStroll(settings: Settings, seed: number) {
     // reason — it is the room running out, not a rail.
     // Where I am on the way, once a step, for the line, the walls and my lane.
     const here = crowd.path.frame(x, y, frame, hint)
-    const confine = Math.max(0, Math.min(1, 1 - crowd.halfWidth / 25))
+    const confine = confinement(crowd.halfWidth)
     if (confine > 0) {
       // Along the way *here*: on a trail the line to hold is the one the path
       // runs in at my feet, which is what walking a bend is.
@@ -891,7 +992,7 @@ export function createStroll(settings: Settings, seed: number) {
     if (runaway && current.chase > 0 && (crowd.caught || chasing(dt))) {
       const target: Look =
         crowd.caught || onThem ? { kind: "person", person: runaway, wide: NECK_LIMIT } : { kind: "ahead" }
-      const aim = target.kind === "ahead" ? { yaw: 0, up: 0, worth: true } : aimAt(target)
+      const aim = target.kind === "ahead" ? { yaw: 0, up: 0, worth: true } : aimLook(target)
       look = target
       glanceTo = aim.worth ? aim.yaw : 0
       glanceUp = aim.worth ? aim.up : 0
@@ -902,7 +1003,7 @@ export function createStroll(settings: Settings, seed: number) {
       // world, so walking past it sweeps the gaze round and down by itself, a
       // bird crosses the sky, and a face is followed as it passes.
       driftLook(look, dt)
-      const aim = aimAt(look)
+      const aim = aimLook(look)
       glanceTo = aim.yaw
       glanceUp = aim.up
       // It went round further than the neck reaches, or you are on top of it.
@@ -912,7 +1013,7 @@ export function createStroll(settings: Settings, seed: number) {
         // is whatever was just being looked at. See `TURN_ON_LOOK`: the body
         // pivots round to where the head already is, and the head returns to
         // centre as it arrives, so it reads as one movement.
-        if (stopped && rng() < TURN_ON_LOOK) aimTarget = course + yawOffset
+        if (turnsToLook(stopped, rng)) aimTarget = course + yawOffset
         look = { kind: "ahead" }
         glanceTo = 0
         glanceUp = 0
@@ -922,7 +1023,7 @@ export function createStroll(settings: Settings, seed: number) {
       if (untilGlance <= 0) {
         const pick = pickGlance(crowd, Math.min(sweep, NECK_LIMIT))
         look = pick.look
-        const aim = aimAt(look)
+        const aim = aimLook(look)
         glanceTo = aim.yaw
         glanceUp = aim.up
         holdLeft = pick.hold
@@ -951,14 +1052,12 @@ export function createStroll(settings: Settings, seed: number) {
     // way is not a stroller looking about, and at the stroller's neck the head
     // spent most of a short spell on the way between the two.
     const neck = runaway && current.chase > 0 ? NECK_CHASE : NECK_OMEGA
-    const pull = -2 * neck * yawVel - neck * neck * (yawOffset - glanceTo)
-    yawVel = Math.max(-NECK, Math.min(NECK, yawVel + pull * dt))
-    yawOffset += yawVel * dt
+    ;[yawOffset, yawVel] = neckStep(yawOffset, yawVel, glanceTo, neck, dt)
 
     // The vertical, on the same spring. Nodding is the same neck.
-    const lift = -2 * neck * pitchVel - neck * neck * (pitchOffset - glanceUp)
-    pitchVel = Math.max(-NECK, Math.min(NECK, pitchVel + lift * dt))
-    pitchOffset = Math.max(-PITCH_DOWN, Math.min(PITCH_UP, pitchOffset + pitchVel * dt))
+    const [lifted, lift] = neckStep(pitchOffset, pitchVel, glanceUp, neck, dt)
+    pitchVel = lift
+    pitchOffset = Math.max(-PITCH_DOWN, Math.min(PITCH_UP, lifted))
 
     // A head parked past its limit is not something people do. Unreachable in
     // practice — the glance target is clamped to the same limit and the spring
@@ -977,11 +1076,7 @@ export function createStroll(settings: Settings, seed: number) {
       // **Face the line you mean to walk, not the one the crowd is shoving you
       // along.** The difference between the two *is* the sidestep. See
       // `STRAFE_LIMIT`, which is the point at which it stops being one.
-      const travel = Math.atan2(vy, vx)
-      let drift = travel - aim
-      while (drift > Math.PI) drift -= Math.PI * 2
-      while (drift < -Math.PI) drift += Math.PI * 2
-      aimTarget = Math.abs(drift) <= STRAFE_LIMIT ? aim : travel - Math.sign(drift) * STRAFE_LIMIT
+      aimTarget = facingTarget(Math.atan2(vy, vx), aim)
     }
     let toward = aimTarget - course
     while (toward > Math.PI) toward -= Math.PI * 2
@@ -991,10 +1086,7 @@ export function createStroll(settings: Settings, seed: number) {
     // instantaneous velocity direction and it jitters far faster than a body
     // turns, so what is needed is a filter with mass, not a clip. The ceiling is
     // kept for the rare genuine turn.
-    const omega = moving ? COURSE_OMEGA : PIVOT_OMEGA
-    courseVel += (omega * omega * toward - 2 * omega * courseVel) * dt
-    const cap = moving ? TURN_WALKING : PIVOT
-    courseVel = Math.max(-cap, Math.min(cap, courseVel))
+    courseVel = courseStep(courseVel, toward, moving, dt)
     const pivot = courseVel * dt
     course += pivot
     // The line being walked comes round with the body, so setting off again goes
