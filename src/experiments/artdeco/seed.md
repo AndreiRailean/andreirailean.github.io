@@ -201,8 +201,9 @@ _Mine, not his — what I assumed and what would settle it._
   drawing should keep evolving rather than be replaced, that is not built.
 - **When does it stop?** Two answers built as `cycle`: _draw, hold, undraw_ (in
   the order it was drawn), and _flow_ (a tail follows every tip `life` seconds
-  behind, and a new drawing starts as soon as the last tip stops). Neither is
-  chosen; the primary uses the first.
+  behind, and a new drawing starts as soon as the last tip stops). The
+  primary was on the first until 2026-10-17, when Andrei made the construct
+  primary, which flows.
 - **Lines meeting lines.** Built: stop, cross, rebound, each with its own odds
   since 2026-10-16, so a piece can enable any of them. I read "a decision made
   by the line" as: the line chooses at each meeting, and lines that decide
