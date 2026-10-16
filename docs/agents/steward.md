@@ -159,7 +159,7 @@ above, which is the whole of it and is stated once there on purpose.
 What belongs here is why the **cautious** misreading is the expensive one, and
 it has happened. A steward declined three tickets in one session as "a piece's
 work" on the strength of their file paths: a `controls()` report shape, which is
-a section contract enforced across every piece by `tests/kit.spec.ts`, and two
+a section contract every piece is held to, and two
 headless test harnesses, which the same role doc claims outright two bullets
 below. None of the three changes a pixel. Meanwhile the kit work they blocked
 sat waiting for a human to say a word that was never needed.

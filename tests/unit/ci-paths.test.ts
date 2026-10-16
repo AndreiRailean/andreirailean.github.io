@@ -132,6 +132,11 @@ const TESTED = [
   "src/content.config.ts",
   "package.json",
   "tests/kit.spec.ts",
+  // The kit's synthetic piece and what serves it, which the site never imports:
+  // only the browser suite reads them (#287).
+  "tests/kit/fixture.ts",
+  "tests/kit/entry.ts",
+  "tests/support/kit-fixture.ts",
   ".github/workflows/test-browser.yml",
   // The site's own home page and the components it is built from. Not
   // experiments, and that is the point: the filter was written when every spec
