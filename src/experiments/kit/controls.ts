@@ -1011,6 +1011,23 @@ export function createControls<S extends object>(options: Options<S>): Controls<
 
   const onActivity = () => goActive()
 
+  /**
+   * **Whether the pointer is over the chrome is read off every move**, not only
+   * kept by `pointerenter` and `pointerleave`. Kept, it was a fact one missed
+   * event could leave wrong for good, and leaving the window and coming back
+   * missed one: the panel faded under a resting pointer 2.5 s after it stopped,
+   * which is the moment somebody reaches for a slider. Andrei: "i move the mouse
+   * over controls and just before I can click to drag a slider they fade away."
+   *
+   * While idle the chrome takes no pointer, so the move that wakes it lands on
+   * the piece and reads as outside; the next one lands on the chrome. The pair
+   * of boundary events stay for touch, which has no moves to read.
+   */
+  const onMouseMove = (event: MouseEvent) => {
+    pointerOverUi = event.target instanceof Node && root.contains(event.target)
+    goActive()
+  }
+
   const onKeyDown = (event: KeyboardEvent) => {
     goActive()
 
@@ -1106,7 +1123,7 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     goActive()
   }
 
-  window.addEventListener("mousemove", onActivity)
+  window.addEventListener("mousemove", onMouseMove)
   window.addEventListener("mousedown", onActivity)
   window.addEventListener("wheel", onActivity, { passive: true })
   window.addEventListener("touchstart", onActivity, { passive: true })
@@ -1126,7 +1143,7 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     },
     destroy() {
       window.clearTimeout(idleTimer)
-      window.removeEventListener("mousemove", onActivity)
+      window.removeEventListener("mousemove", onMouseMove)
       window.removeEventListener("mousedown", onActivity)
       window.removeEventListener("wheel", onActivity)
       window.removeEventListener("touchstart", onActivity)
