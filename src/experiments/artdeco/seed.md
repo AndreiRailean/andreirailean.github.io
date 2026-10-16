@@ -120,6 +120,11 @@ describes the work.
 > a life of its own? i'm looking at this
 > http://100.117.55.104:4627/experiments/artdeco/?s=___f_____2BQGcJEkaUiAKMIIMMC0AAHPUgUKYAAQBIyz0ERIq
 
+## 2026-10-16 — clockwork
+
+> save this as clockwork
+> http://100.117.55.104:4627/experiments/artdeco/?s=___f_____3AwGoJEkOUhREMIIMMC0AAHPUgCEIAAQAmyzqCRJT
+
 ## Open questions
 
 _Mine, not his — what I assumed and what would settle it._
