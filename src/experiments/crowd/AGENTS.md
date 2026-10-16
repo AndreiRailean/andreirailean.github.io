@@ -86,6 +86,46 @@ you look at something and then go to it. The corridor is the control — in a
 seven-metre street the pull toward its line beats the glance and the heading
 stays inside a few degrees, which is what walls are.
 
+## How the crowd is tested: the decision, not a world that produces it
+
+Andrei, on #287: "we don't need a 100s of walking to test stopping. testing a
+random number generator doesn't require a world built on that. if we're testing
+collision detection - limit to that. if we're testing turning - do that."
+
+The checks used to walk the market — nine thousand people — for one to five
+minutes and read statistics off the result: 880 s of the unit job, one test
+alone 271 s. So each of the walk's decisions is now **a pure export of
+`stroll.ts`** that `createStroll` calls: `spellLength` (walking or stopped),
+`glanceKind` (what a glance is about), `aimAt` (where a look puts the head),
+`neckStep` and `courseStep` (the two springs), `facingTarget` (the sidestep),
+`turnsToLook` (a stop becoming a turn) and `confinement` (a corridor holding the
+line). They were lifted out with the arithmetic and the order of the random
+draws untouched, which a seeded twelve-second trace of every preset confirmed
+byte for byte. `tests/stroll.test.ts` checks each one with the inputs that
+matter, and every historical fault in this file was put back and seen red there.
+
+**What still walks is wiring, in a world sized for the check.** `reach` sizes
+the world, so a walk that needs a stop to happen walks a world of reach 12 with
+almost nobody in it (0.1 s), and the overlap check walks a crowd of reach 30, just
+wider than the detail radius, for four seconds. Before adding a long walk, find
+the decision it is waiting for and call that instead. `tests/draw.test.ts` does
+the same for the frame: it puts somebody two metres away rather than walking
+forty seconds until somebody happens to come close.
+
+**The files claim is not tested, and the old test did not test it either.** It
+read how often a walker's nearest neighbours go the same way, before and after
+two minutes. Measured 2026-10-16: the market as shipped went 0.485 → 0.597, and
+with `spacing` at its floor of 0.3 — a tenth of the avoidance — 0.501 → 0.565,
+both past its `+0.05`. In a small world the weakened crowd scored _higher_, on
+that statistic and on a lateral-only version. So the statistic mostly sees
+where re-entered walkers land. It was removed rather than kept as coverage; see
+"What is not here".
+
+**`structure.test.ts` still walks long** — the chase, the boulders and the stalls,
+three to four minutes each in a thinned world. They wait on decisions inside
+`throng.ts` (`flee`, `pickHide`, `keepCover`) that have not been lifted out the
+way the stroll's were, which is the next piece of this.
+
 ## The gaze has two axes and a subject
 
 - **`pitch` is a bias, not a lock**, and holding the vertical fixed while the
@@ -194,8 +234,9 @@ stays inside a few degrees, which is what walls are.
   itself.
 
 - **A statistic over the crowd has to say what it does with people who are
-  standing still.** The counterflow test measures how often neighbours agree on a
-  direction, and its control failed at 0.38 against an expected 0.5 — which sent
+  standing still.** The counterflow test (since removed, see "How the crowd is
+  tested") measured how often neighbours agree on a direction, and its control
+  failed at 0.38 against an expected 0.5 — which sent
   this session after the random number generator. The primary has 22% of the
   crowd standing, `Math.sign(0)` matches no walker, and `0.22² + 0.78²/2` is
   0.353. **The control was working and the expectation was wrong.**
@@ -687,6 +728,12 @@ the control in its heading.
 
 ## What is not here, and would be worth having
 
+- **A check that files form.** "The crowd sorts itself into files" is the
+  strongest claim the note makes and nothing tests it (see "How the crowd is
+  tested"). A real one needs a statistic that responds to the avoidance — the
+  control is the same crowd at `spacing: 0.3` — and probably a world with no
+  boundary to re-enter through, since re-entry by direction sorts the crowd on
+  its own.
 - **Nobody is going anywhere in particular.** People carry a heading, not a
   destination, so nothing walks up to something, waits, and leaves. The standing
   people are standing where they happened to be.
