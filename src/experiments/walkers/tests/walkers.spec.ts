@@ -142,8 +142,13 @@ test("a crowd, on a ground", async ({ page }) => {
  */
 test("heads lean out over their own feet, and lean further from a lower camera", async ({ page }) => {
   const experiment = await openWalkers(page, { settings: { ...MODEST, camera: 120 }, idle: true })
-  // A cold landing already fills the frame; what is under test is the lens.
-  await experiment.api(({ api }) => api.settle(2))
+  // **Forty-five, and not shorter.** The other canvas tests here settle two
+  // seconds, and this one was cut to two with them (#287): it failed 4 runs in
+  // 6, with the plan-view reading at about 0.38 — the whole canvas's mean
+  // radius, the grass-counting fault the docblock on `spread` below describes.
+  // Why a younger park trips the ground threshold was not chased. At 45 it
+  // passed 6 in 6.
+  await experiment.api(({ api }) => api.settle(45))
 
   // Nearly frozen for the rest of the test. The two readings below are of the
   // same crowd at two camera heights, and a crowd that walks between them is a
