@@ -103,38 +103,47 @@ test("the frame is a band around the eye line, because heads are all near one he
   expect(bottom).toBeGreaterThan(0.45)
 })
 
-test("a head passing close is large and a head at the back is a speck", async ({ page }) => {
+/**
+ * The projection and the batching are `draw.test.ts`, on a frame built with
+ * somebody two metres away. This used to walk forty seconds here so somebody
+ * would happen to come close (#287). What stays is the one thing only a browser
+ * has: how long the paint takes.
+ */
+test("the draw is a small part of the frame", async ({ page }) => {
   const experiment = await openCrowd(page, { idle: false })
   await experiment.api(({ api, arg }) => api.set(arg), { ...MODEST, density: 45, fade: 15 })
-  // Long enough that somebody has actually come past. The claim is about the
-  // projection, and a crowd that has not moved has nobody near the camera.
-  await experiment.api(({ api }) => api.settle(40))
+  await experiment.api(({ api }) => api.settle(6))
   await painted(page)
 
   const stats = await experiment.api(({ api }) => api.stats())
-  // Somebody within a few metres, drawn tens of pixels across.
-  expect(stats.largest).toBeGreaterThan(12)
-  // And far more heads than that reaching the glass, which are the far ones.
+  // A market's worth of heads reaching the glass, so the time is for a real draw.
   expect(stats.drawn).toBeGreaterThan(120)
-  // The batching holds: one fill per brightness rather than one per head. Worth
-  // 1.50ms to 1.09 at this head count, which is real and is not what makes the
-  // piece affordable — see the measurement in `draw.ts`.
-  //
-  // **Against a ratio a per-head fill cannot reach, not against a third.** How
-  // many heads reach the glass depends on when the frame is read: twelve runs
-  // here measured `drawn` from 1,372 to 1,864 with `fills` between 160 and 176,
-  // and a loaded CI runner read `fills` 111 against under 333 heads, failing
-  // `drawn / 3`. `fills` hardly moves — it counts brightness bands and rocks —
-  // so the old bound was a bound on the head count. Unbatched, `fills` is at
-  // least `drawn`, which this still fails by a wide margin.
-  expect(stats.fills).toBeLessThan(stats.drawn * 0.6)
 
   // **The draw is a small part of the frame, and `fps` cannot say so.** A loop
   // capped by the display reports 60 whether a frame paints in 1ms or 10, so a
   // regression that doubled the paint would be invisible to every other
   // assertion here. Generous, because this runs headless without a GPU.
-  expect(stats.drawMs).toBeGreaterThan(0)
-  expect(stats.drawMs).toBeLessThan(8)
+  //
+  // **The fastest of thirty frames, not the rolling mean.** The mean read 12 ms
+  // in a fifteen-minute affected run on a shared box and passed alone straight
+  // after (#290): a stall elsewhere lands in it and stays for the frames after.
+  // A slower paint slows every frame, the fastest included, so a regression
+  // still shows; a busy neighbour only slows some of them.
+  const fastest = await experiment.api(
+    ({ api }) =>
+      new Promise<number>((done) => {
+        let best = Infinity
+        let left = 30
+        const sample = () => {
+          best = Math.min(best, api.stats().lastDrawMs)
+          if (--left > 0) requestAnimationFrame(sample)
+          else done(best)
+        }
+        requestAnimationFrame(sample)
+      }),
+  )
+  expect(fastest).toBeGreaterThan(0)
+  expect(fastest).toBeLessThan(8)
 })
 
 test("how tall the observer is decides who is above the horizon", async ({ page }) => {
@@ -204,16 +213,20 @@ test("reduced motion gets a crowd, and no loop", async ({ page }) => {
   expect(stats.drawn).toBeGreaterThan(50)
 })
 
-test("a re-roll is a different crowd at the same settings", async ({ page }) => {
+/**
+ * **Named for what it checks.** It was "a re-roll is a different crowd", and it
+ * read a stat before the re-roll and then discarded it (`void before`), so it
+ * could not fail for that. Whether a seed gives a different crowd is the
+ * crowd's own arithmetic and nothing a page adds; this is the wiring: `reroll`
+ * takes the seed it is given and leaves the other settings alone.
+ */
+test("a re-roll takes the seed it is given and leaves the settings alone", async ({ page }) => {
   const experiment = await openCrowd(page, { idle: false })
   await experiment.api(({ api, arg }) => api.set(arg), MODEST)
-  const before = await experiment.api(({ api }) => api.stats().children)
   const seed = await experiment.api(({ api }) => api.reroll(4242))
   expect(seed).toBe(4242)
 
   const after = await experiment.api(({ api }) => api.get())
   expect(after.seed).toBe(4242)
-  // The settings that decide the picture are untouched; only who is in it moves.
   expect(after.density).toBe(MODEST.density)
-  void before
 })

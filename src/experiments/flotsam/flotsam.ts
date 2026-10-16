@@ -1,47 +1,27 @@
 /**
- * The engine: canvas, the clock, and everything drawn on it.
+ * The engine: the canvas, the loop, and everything drawn on it.
  *
- * Holds the sea, the current and the flotsam together and decides what a
- * settings change costs. The three are rebuilt independently, because they
- * change on different occasions: turning up the steepness rebuilds the waves and
- * leaves every piece where the current has taken it, and changing a colour
- * rebuilds the population without disturbing the water.
+ * The water itself — the sea, the current, the flotsam, the one integration
+ * step and every number `stats()` reports about them — is `water.ts`, and has no
+ * canvas in it. This file asks it where each piece is and how bright once a
+ * frame, and puts the specks there. What it adds on top is what only a page
+ * has: the pixel ratio, the vignette, the light the specks actually made, the
+ * frame rate and the loop parking itself.
  *
- * ## What moves, and what only appears to
- *
- * Each piece of flotsam owns a *rest position* — the parcel of water it is
- * sitting on — and that is the only thing this file ever integrates. Where it is
- * drawn is the rest position plus the wave displacement, which is a pure
- * function of that position and the clock and is recomputed from scratch every
- * frame.
- *
- * That split is the piece. Waves cannot accumulate, so a sea of any violence
- * leaves the flotsam exactly where it found it; currents can, so a drift of a
- * few centimetres a second empties the frame. There is no integration error to
- * creep in, no reason for anything to escape, and `transport` and `orbit` in the
- * stats are the two halves of it, separately measurable.
+ * Settings changes are the water's to cost. The sea, the current and the
+ * flotsam are rebuilt independently there, because they change on different
+ * occasions: turning up the steepness rebuilds the waves and leaves every piece
+ * where the current has taken it, and changing a colour rebuilds the population
+ * without disturbing the water.
  */
 
-import { createCurrent, currentAt, type Current } from "@/experiments/flotsam/current"
+import { frameStep } from "@/experiments/flotsam/clock"
+import { currentAt } from "@/experiments/flotsam/current"
 import { GROUND, VIGNETTE } from "@/experiments/flotsam/palette"
-import { createScatter, tune, type Scatter } from "@/experiments/flotsam/scatter"
 import { createSpecks, type Specks } from "@/experiments/flotsam/specks"
-import { needsScatter, needsSea, type Settings } from "@/experiments/flotsam/settings"
-import { makeView, screenX, screenY, worldX, worldY, wrap, type View } from "@/experiments/flotsam/view"
-import {
-  createSea,
-  heading,
-  jacobian,
-  sample,
-  gustSea,
-  HEIGHT,
-  OFFSET_X,
-  OFFSET_Y,
-  SAMPLE_SIZE,
-  SLOPE_X,
-  SLOPE_Y,
-  type Sea,
-} from "@/experiments/flotsam/waves"
+import type { Settings } from "@/experiments/flotsam/settings"
+import { screenX, screenY, worldX, worldY } from "@/experiments/flotsam/view"
+import { createWater, type Water } from "@/experiments/flotsam/water"
 
 export type FlotsamStats = {
   dots: number
@@ -132,34 +112,6 @@ export type Flotsam = {
 }
 
 /**
- * Sharpness of the specular lobe.
- *
- * Sets how wide the glitter path is. Low and every piece glints faintly all the
- * time, which reads as fog rather than water; high and only the few pieces at
- * exactly the mirror angle light up, which reads as sparks. Twenty is about
- * where the bands become bands.
- */
-const SHINE = 20
-
-/** What a piece keeps when it is turned away from the light, and its peak gain. */
-const GLINT_FLOOR = 0.45
-const GLINT_GAIN = 2.6
-
-/** Fixed step `run()` advances in. Small enough that a fast current is smooth. */
-const RUN_STEP = 1 / 60
-
-/** Ceiling on `run()`, so a mistyped argument cannot lock the tab up. */
-const MAX_RUN_STEPS = 60_000
-
-/** Grid the dispersion statistic is measured on. Cells, not pixels. */
-const GRID_X = 40
-const GRID_Y = 24
-
-/** Lattice the Jacobian is sampled on. Coarse: it is looking for a fold, not a value. */
-const PROBE_X = 25
-const PROBE_Y = 15
-
-/**
  * Narrowing a `const` does not reach into hoisted function declarations, and
  * every draw routine below is one — so the guard has to produce a non-null type
  * rather than assert one at the call site.
@@ -175,40 +127,24 @@ export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flo
 
   const stillOnly = window.matchMedia("(prefers-reduced-motion: reduce)")
 
-  let settings = initial
-  let sea: Sea = createSea(settings)
-  let scatter: Scatter = createScatter({ ...settings })
-  tune(scatter, sea)
-
+  const water: Water = createWater(initial)
   const specks: Specks = createSpecks(context)
 
   let width = 0
   let height = 0
   let dpr = 1
   let background: HTMLCanvasElement | null = null
-  let view: View = makeView(settings.span, 1, 1, sea)
-  // After the view, always: the eddy field is quantised to whole cycles across
-  // the patch, so it cannot be built until the patch is known. See `current.ts`.
-  let current: Current = createCurrent(settings, view.patchWidth, view.patchHeight)
 
   let frame = 0
   let running = false
   let debug = false
-  let clock = 0
   let previous = 0
   let fps = 0
-  let drawnDots = 0
-  let orbit = 0
-  let transport = 0
-  let minJacobian = 1
-  let dispersion = 0
   /** Set when the picture needs repainting without anything having moved. */
   let dirty = true
 
-  /** Reused, so sampling the sea allocates nothing however many pieces there are. */
-  const water = new Float64Array(SAMPLE_SIZE)
+  /** Reused by the debug overlay, so drawing the current allocates nothing. */
   const flow = { x: 0, y: 0 }
-  const cells = new Int32Array(GRID_X * GRID_Y)
 
   /**
    * Reduced motion gets a still frame, not a slowed one.
@@ -220,12 +156,17 @@ export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flo
    * gives a still of the sea at t = 0 with all its shape and gathering intact
    * rather than the flat water that zeroing the steepness would give.
    */
-  const isAnimated = () =>
-    !stillOnly.matches &&
-    settings.playback > 0 &&
-    (settings.steepness > 0 || settings.drift > 0 || settings.eddies > 0 || (settings.stokes > 0 && sea.steepness > 0))
-
-  const waterMoves = () => settings.drift > 0 || settings.eddies > 0 || (settings.stokes > 0 && sea.reach > 0)
+  const isAnimated = () => {
+    const settings = water.settings
+    return (
+      !stillOnly.matches &&
+      settings.playback > 0 &&
+      (settings.steepness > 0 ||
+        settings.drift > 0 ||
+        settings.eddies > 0 ||
+        (settings.stokes > 0 && water.sea.steepness > 0))
+    )
+  }
 
   function resize(): void {
     const nextWidth = canvas.clientWidth || window.innerWidth
@@ -238,8 +179,7 @@ export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flo
     dpr = nextDpr
     canvas.width = Math.round(width * dpr)
     canvas.height = Math.round(height * dpr)
-    view = makeView(settings.span, width, height, sea)
-    current = createCurrent(settings, view.patchWidth, view.patchHeight)
+    water.resize(width, height)
     background = null
   }
 
@@ -282,70 +222,6 @@ export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flo
     return buffer
   }
 
-  /** The halfway vector between the light and the eye, which is straight down. */
-  function halfway(): [number, number, number] {
-    const [ax, ay] = heading(settings.azimuth)
-    const elevation = (settings.elevation * Math.PI) / 180
-    const cos = Math.cos(elevation)
-    const lx = ax * cos
-    const ly = ay * cos
-    const lz = Math.sin(elevation)
-    // The eye is at (0, 0, 1): straight down at the water, everywhere in frame.
-    const length = Math.hypot(lx, ly, lz + 1) || 1
-    return [lx / length, ly / length, (lz + 1) / length]
-  }
-
-  /**
-   * Advances the rest positions. The one place anything accumulates.
-   *
-   * **Midpoint rather than Euler.** The eddy field is incompressible and
-   * periodic on the patch, which together are what let `current.ts` promise that
-   * it stirs the flotsam without ever concentrating it — so that every clump on
-   * screen is the waves' doing. An integrator does not inherit that promise for
-   * free: a forward Euler step lands slightly outside the true arc on a turning
-   * flow, and the error compounds into a slow expansion away from each gyre.
-   * Measured with the waves off and `eddies` at 0.9 over a three-metre gyre, one
-   * minute of Euler took the index of dispersion to 1.08 where midpoint left it
-   * at 0.96 — a real drift, small, and bought back for one extra evaluation of
-   * three cosines.
-   *
-   * It is worth being clear that this is the *small* half of the problem. The
-   * same measurement against a field that was incompressible but not periodic on
-   * the patch read **134**, and no integrator would have helped; see the
-   * torus note in `current.ts`.
-   *
-   * Wave drift is left out of the midpoint probe deliberately: it is uniform
-   * over space, so it cannot bend a trajectory and cannot change an area either
-   * way.
-   */
-  function advance(elapsed: number): void {
-    if (!waterMoves()) {
-      transport = 0
-      return
-    }
-
-    const stokes = settings.stokes
-    const half = elapsed / 2
-    let speed = 0
-
-    for (let i = 0; i < scatter.count; i++) {
-      const x = worldX(view, scatter.u[i]!)
-      const y = worldY(view, scatter.v[i]!)
-
-      currentAt(current, x, y, clock, flow)
-      currentAt(current, x + flow.x * half, y + flow.y * half, clock + half, flow)
-
-      const vx = flow.x + stokes * scatter.stokesX[i]!
-      const vy = flow.y + stokes * scatter.stokesY[i]!
-      speed += Math.hypot(vx, vy)
-
-      scatter.u[i] = wrap(scatter.u[i]! + (vx * elapsed) / view.patchWidth)
-      scatter.v[i] = wrap(scatter.v[i]! + (vy * elapsed) / view.patchHeight)
-    }
-
-    transport = scatter.count > 0 ? speed / scatter.count : 0
-  }
-
   function draw(): void {
     resize()
     if (!background) background = paintBackground()
@@ -355,117 +231,25 @@ export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flo
     context.globalAlpha = 1
     context.drawImage(background, 0, 0, width, height)
 
-    // The wind, once a frame rather than once a speck. Everything below — the
-    // displacement, the slope, the fold check — reads the sea as this leaves it.
-    gustSea(sea, settings.gusts, clock)
+    const seen = water.survey()
 
     specks.reset()
-    cells.fill(0)
-    drawnDots = 0
-
     context.globalCompositeOperation = "lighter"
-
-    const [hx, hy, hz] = halfway()
-    const { glint, shade, gleam, exposure, softness } = settings
-    specks.setSoftness(softness)
+    specks.setSoftness(water.settings.softness)
     // The sub-pixel floor is about the real pixel grid, and the canvas is backed
     // at `dpr`. See MIN_CORE_DEVICE_PX.
     specks.setScale(dpr)
-    const reach = sea.reach || 1
-    const trains = scatter.trains
-    let orbitSum = 0
 
-    for (let i = 0; i < scatter.count; i++) {
-      const x = worldX(view, scatter.u[i]!)
-      const y = worldY(view, scatter.v[i]!)
-      sample(sea, x, y, clock, scatter.response, i * trains, water)
-
-      const px = screenX(view, x + water[OFFSET_X]!)
-      const py = screenY(view, y + water[OFFSET_Y]!)
-
-      const core = scatter.radius[i]! / view.metresPerPx
-      // Exposure first, so everything downstream — the bloom included — is
-      // scaled by it. A dimmer scene should have less glare, not the same glare
-      // around dimmer pieces.
-      let brightness = scatter.brightness[i]! * exposure
-
-      // Height reads the crests; slope reads the faces. The two show the same
-      // wave a quarter cycle apart, which is why both are controls.
-      if (shade > 0) {
-        brightness *= Math.max(0, 1 + shade * Math.max(-1, Math.min(1, water[HEIGHT]! / reach)))
-      }
-
-      if (glint > 0) {
-        // Flotsam lies flat and turns with the surface, so its facet normal is
-        // the water's. This is the whole reason the waves are visible: bands of
-        // pieces come round to the mirror angle together and flare together.
-        const nx = -water[SLOPE_X]!
-        const ny = -water[SLOPE_Y]!
-        const length = Math.hypot(nx, ny, 1) || 1
-        const facing = (nx * hx + ny * hy + hz) / length
-        const spec = facing > 0 ? facing ** SHINE : 0
-        brightness *= 1 - glint + glint * (GLINT_FLOOR + GLINT_GAIN * spec)
-      }
-
-      if (brightness <= 0) continue
-
-      // The glare's size does not follow a piece's brightness, and used not to.
-      // Blooming an over-bright piece outward sounds right and cost more than it
-      // was worth: it made the glare's inner edge wander as the waves lit a piece
-      // and let it go, so the sprite bucket it fell in flipped back and forth and
-      // large pieces visibly pulsed. Over-brightness now reads the way the
-      // palette intends — a piece sums past full in the strong channels and clips
-      // toward white — which is both cheaper and what real glare looks like.
-      const halo = core + gleam
-      const bound = halo + 2
-      if (px < -bound || py < -bound || px > width + bound || py > height + bound) continue
-
-      specks.draw(px, py, core, halo, scatter.hue[i]!, scatter.saturation[i]!, brightness)
-      drawnDots++
-      orbitSum += water[OFFSET_X]! * water[OFFSET_X]! + water[OFFSET_Y]! * water[OFFSET_Y]!
-
-      if (px >= 0 && py >= 0 && px < width && py < height) {
-        const cx = Math.min(GRID_X - 1, Math.floor((px / width) * GRID_X))
-        const cy = Math.min(GRID_Y - 1, Math.floor((py / height) * GRID_Y))
-        cells[cy * GRID_X + cx]!++
-      }
+    const { scatter } = water
+    const { visible, px, py, core, halo, brightness } = seen
+    for (let n = 0; n < seen.count; n++) {
+      const i = visible[n]!
+      specks.draw(px[i]!, py[i]!, core[i]!, halo[i]!, scatter.hue[i]!, scatter.saturation[i]!, brightness[i]!)
     }
-
-    orbit = drawnDots > 0 ? Math.sqrt(orbitSum / drawnDots) : 0
-    dispersion = indexOfDispersion()
-    minJacobian = probeJacobian()
 
     context.globalCompositeOperation = "source-over"
     context.globalAlpha = 1
     if (debug) drawDebug()
-  }
-
-  /** Variance over mean of the per-cell counts. See `FlotsamStats.dispersion`. */
-  function indexOfDispersion(): number {
-    let total = 0
-    for (let i = 0; i < cells.length; i++) total += cells[i]!
-    if (total === 0) return 0
-
-    const mean = total / cells.length
-    let variance = 0
-    for (let i = 0; i < cells.length; i++) {
-      const d = cells[i]! - mean
-      variance += d * d
-    }
-    return variance / cells.length / mean
-  }
-
-  /** Sweeps the patch for the worst area compression. See `FlotsamStats.minJacobian`. */
-  function probeJacobian(): number {
-    let worst = Infinity
-    for (let j = 0; j < PROBE_Y; j++) {
-      const y = worldY(view, (j + 0.5) / PROBE_Y)
-      for (let i = 0; i < PROBE_X; i++) {
-        const value = jacobian(sea, worldX(view, (i + 0.5) / PROBE_X), y, clock)
-        if (value < worst) worst = value
-      }
-    }
-    return worst === Infinity ? 1 : worst
   }
 
   /**
@@ -481,6 +265,8 @@ export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flo
     const centreX = width / 2
     const centreY = height / 2
     const diagonal = Math.hypot(width, height)
+
+    const { sea, view, current, clock } = water
 
     for (const train of sea.trains) {
       const spacing = train.wavelength / view.metresPerPx
@@ -535,21 +321,13 @@ export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flo
   function tick(now: number): void {
     frame = requestAnimationFrame(tick)
 
-    const elapsed = previous === 0 ? 0 : Math.min(0.25, (now - previous) / 1000)
+    const { elapsed, step } = frameStep(previous, now, water.settings.playback)
     previous = now
     if (elapsed > 0) fps += (1 / elapsed - fps) * 0.1
 
     if (isAnimated()) {
-      // The one place `playback` is applied, and it has to stay the one place.
-      // Everything time-dependent in the piece reads `clock` or is integrated
-      // through `advance`, so scaling the step here slows the waves, the
-      // current, the gusts and the wind's veering by exactly the same factor —
-      // which is what makes it a clock rather than a claim about the water. A
-      // control that reached into the sea instead would be the wave-speed
-      // setting `waves.ts` refuses to have.
-      const step = elapsed * settings.playback
-      clock += step
-      advance(step)
+      // `step` is the only place `playback` is applied — see `clock.ts`.
+      water.step(step)
       draw()
       dirty = false
       return
@@ -621,66 +399,35 @@ export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flo
     },
 
     setSettings(next) {
-      const before = settings
-      settings = next
-
-      if (needsSea(before, settings)) sea = createSea(settings)
-
-      if (needsScatter(before, settings)) {
-        // A new seed redraws every piece's size, colour and home, so nothing
-        // carries over; anything else keeps the positions the current has spent
-        // a minute establishing.
-        scatter = createScatter({ ...settings }, before.seed === settings.seed ? scatter : undefined)
-      }
-      tune(scatter, sea)
-
-      // The view depends on the sea's reach, and the current on the view, so
-      // these two are in this order and after everything above.
-      view = makeView(settings.span, width, height, sea)
-      // Cheap enough to rebuild unconditionally — three terms — and everything
-      // in it comes from the seed and the patch, so rebuilding is idempotent and
-      // loses no state.
-      current = createCurrent(settings, view.patchWidth, view.patchHeight)
+      water.setSettings(next)
       wake()
     },
 
-    /**
-     * Advance the sea by a stretch of time in one call.
-     *
-     * This piece's answer to Dangler's `settle()`, and it exists for the same
-     * reason: the thing worth looking at is not the first frame. Nothing here
-     * relaxes, but plenty of it is *slow* — Stokes drift moves flotsam at
-     * centimetres a second and the gathering takes a wave period or two to
-     * establish — and neither a poster nor a test can afford to sit through it
-     * in real time. Stepped rather than jumped, because the current is
-     * integrated and a single enormous step would take every piece in a
-     * straight line through the eddies it should have curved around.
-     */
+    /** Stepped in fixed steps; see `Water.run` for why it is not one jump. */
     run(seconds) {
-      const steps = Math.min(MAX_RUN_STEPS, Math.max(0, Math.round(seconds / RUN_STEP)))
-      for (let i = 0; i < steps; i++) {
-        clock += RUN_STEP
-        advance(RUN_STEP)
-      }
+      water.run(seconds)
       draw()
     },
 
-    stats: () => ({
-      dots: scatter.count,
-      trains: sea.trains.length,
-      steepness: sea.steepness,
-      minJacobian,
-      dispersion,
-      orbit,
-      transport,
-      drawnDots,
-      fillPx: Math.round(specks.fill()),
-      dimmedDots: specks.dimmed(),
-      light: Math.round((specks.lit() / Math.max(1, width * height)) * 1000) / 1000,
-      clock,
-      fps: Math.round(fps * 10) / 10,
-      running,
-    }),
+    stats: () => {
+      const measured = water.stats()
+      return {
+        dots: measured.dots,
+        trains: measured.trains,
+        steepness: measured.steepness,
+        minJacobian: measured.minJacobian,
+        dispersion: measured.dispersion,
+        orbit: measured.orbit,
+        transport: measured.transport,
+        drawnDots: measured.drawnDots,
+        fillPx: Math.round(specks.fill()),
+        dimmedDots: specks.dimmed(),
+        light: Math.round((specks.lit() / Math.max(1, width * height)) * 1000) / 1000,
+        clock: measured.clock,
+        fps: Math.round(fps * 10) / 10,
+        running,
+      }
+    },
 
     setDebug(on) {
       debug = on

@@ -1,6 +1,4 @@
 import type { ExperimentApi } from "@/experiments/dangler/runner"
-import { DEFAULT_SETTINGS } from "@/experiments/dangler/settings"
-import { PRESETS } from "@/experiments/dangler/presets"
 import { expect, openExperiment, test } from "../../../../tests/support/experiment"
 import { litPixels as countLit } from "../../../../tests/support/canvas.ts"
 
@@ -35,9 +33,6 @@ const LIT_THRESHOLD = 90
 /** A scene big enough to be representative and small enough to settle fast. */
 const MODEST_SCENE = { strands: 12, segments: 18 }
 
-/** `seed` is the one setting with no slider; it has explicit handling instead. */
-const SETTINGS_WITHOUT_A_CONTROL = ["seed"]
-
 function openDangler(page: Parameters<typeof openExperiment>[0], options?: Parameters<typeof openExperiment>[2]) {
   return openExperiment<ExperimentApi>(page, "dangler", options)
 }
@@ -59,61 +54,6 @@ test("settles to a shape it actually holds, with light on the canvas", async ({ 
   expect(await litPixels(page)).toBeGreaterThan(0)
 
   await experiment.shot("settled")
-})
-
-test("every setting has a control, so the panel and a shared URL cannot disagree", async ({ page }) => {
-  const experiment = await openDangler(page)
-
-  const uncontrolled = await experiment.api(({ api }) => {
-    const controlled = new Set(api.controls().map((control) => control.key))
-    return Object.keys(api.get()).filter((key) => !controlled.has(key))
-  })
-
-  expect(uncontrolled).toEqual(SETTINGS_WITHOUT_A_CONTROL)
-})
-
-test("settings survive the round trip through the query string", async ({ page }) => {
-  const experiment = await openDangler(page)
-
-  // Every slider moved to a value inside its own bounds. Read the applied
-  // settings back rather than predicting them: `get()` has already done the
-  // clamping and the rounding, so the expectation is whatever the piece
-  // actually holds and the test needs to know nothing about which keys are
-  // integers.
-  //
-  // **The skipped list is returned rather than ignored.** Every one of Dangler's
-  // rows is a slider, so this sweep covers all of them — and if it gains a
-  // choice or a toggle, the arithmetic below has no bound to work from and the
-  // honest outcome is that this test says so. Narrowing and moving on is the
-  // shape that quietly stops covering the new row; the round trip would still
-  // pass, having never carried it. That was #130's lesson one layer up: the flat
-  // report let Psyxels *invent* a bound here rather than admit it had none.
-  const applied = await experiment.api(({ api }) => {
-    const patch: Record<string, number> = {}
-    const skipped: string[] = []
-    for (const control of api.controls()) {
-      if (control.kind === "slider" || control.kind === "range") {
-        patch[control.key] = control.min + (control.max - control.min) * 0.37
-      } else {
-        skipped.push(`${control.key} (${control.kind})`)
-      }
-    }
-    // Kept small for runtime only; a small count round-trips the same code.
-    api.set({ ...patch, strands: 5, segments: 12, beads: 4 })
-    return { settings: api.get(), url: api.url(), skipped }
-  })
-
-  expect(
-    applied.skipped,
-    "dangler has gained a control with no track, and this sweep cannot move it. Extend the loop " +
-      "to set it the way src/experiments/starry-night/tests/starry-night.spec.ts does for its choice and toggle rows, rather " +
-      "than leaving the round trip silently not covering it.",
-  ).toEqual([])
-
-  await page.goto(applied.url)
-  await page.waitForFunction(() => Boolean(window.experiment))
-
-  expect(await experiment.api(({ api }) => api.get())).toEqual(applied.settings)
 })
 
 test("reduced motion gets a still frame, not a running loop and not a blank canvas", async ({ page }) => {
@@ -139,29 +79,6 @@ test("reduced motion gets a still frame, not a running loop and not a blank canv
   expect(await litPixels(page)).toBeGreaterThan(0)
 })
 
-test("the panel opens styled, with a row for every control", async ({ page }) => {
-  const experiment = await openDangler(page, { settings: MODEST_SCENE, idle: false })
-
-  await experiment.api(({ api }) => api.panel(true))
-  const panel = page.locator(".panel")
-  await expect(panel).toBeVisible()
-
-  const controlCount = await experiment.api(({ api }) => api.controls().length)
-  await expect(panel.locator(".row input[type=range]")).toHaveCount(controlCount)
-
-  // A panel that rendered unstyled went unnoticed once. Its background is the
-  // cheapest proof the stylesheet reached it, since the piece imports no
-  // globals.css and owns every rule itself. Boxed, the ground is each box's and
-  // the panel around them is bare (#257).
-  const background = await panel
-    .locator(".box")
-    .first()
-    .evaluate((node) => getComputedStyle(node).backgroundColor)
-  expect(background).not.toBe("rgba(0, 0, 0, 0)")
-
-  await experiment.shot("panel")
-})
-
 test("a resize does not blank the piece", async ({ page }) => {
   const experiment = await openDangler(page, { settings: MODEST_SCENE, idle: true })
   await experiment.api(({ api }) => api.settle())
@@ -174,40 +91,4 @@ test("a resize does not blank the piece", async ({ page }) => {
   await expect.poll(() => litPixels(page)).toBeGreaterThan(0)
 
   await experiment.shot("resized")
-})
-
-test("a bare URL lands on the first preset, and says so in the address bar", async ({ page }) => {
-  const experiment = await openDangler(page, { idle: true })
-
-  // The scene, not just the address: the defaults are three strands and the
-  // first preset is fifty-two, so this would pass on a redirect that rewrote the
-  // URL without actually loading anything.
-  const landed = await experiment.api(({ api }) => api.get())
-  expect(landed).toEqual(PRESETS[0]!.settings)
-  expect(landed.strands).not.toBe(DEFAULT_SETTINGS.strands)
-
-  // Rewritten, so a link copied without touching a control keeps pointing at
-  // this scene rather than at whichever preset is featured later. Read through
-  // `decode`: the address is packed, so `strands=52` is not in its text — but
-  // the claim was always that the address carries the scene, not that it spells
-  // it. See `src/experiments/docs/adr/20260906-an-address-is-packed-not-readable.md`.
-  expect(new URL(page.url()).searchParams.get("s"), "the landing rewrite left no packed address").toBeTruthy()
-  expect(await experiment.api(({ api, arg }) => api.decode(arg).strands, page.url())).toBe(PRESETS[0]!.settings.strands)
-
-  // And the rewrite has to be one the piece can read back.
-  await page.goto(page.url())
-  await page.waitForFunction(() => Boolean(window.experiment))
-  expect(await experiment.api(({ api }) => api.get())).toEqual(landed)
-})
-
-test("the escape hatches still work on a bare URL, which the landing rewrite replaces", async ({ page }) => {
-  // `?panel=1` names no setting, so it lands on the preset *and* has to survive
-  // being read before the address is rewritten. Reading it afterwards would
-  // silently stop opening the panel.
-  const experiment = await openDangler(page, { query: { panel: "1" }, idle: false })
-
-  // Asserted on the DOM rather than through `api.panel()`, which toggles when
-  // called with no argument and would close the very thing it was asked about.
-  await expect(page.locator(".panel")).toBeVisible()
-  expect(await experiment.api(({ api }) => api.get())).toEqual(PRESETS[0]!.settings)
 })

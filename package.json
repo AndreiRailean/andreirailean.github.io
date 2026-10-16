@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "pnpm run runners && astro dev",
     "start": "pnpm run runners && astro dev",
-    "build": "pnpm run runners && astro check && astro build && pnpm run check:links",
+    "build": "pnpm run runners && pnpm run typecheck && astro build && pnpm run check:links",
     "build:quick": "pnpm run runners && astro build",
     "check:links": "node scripts/check-links.mts",
     "preview": "node scripts/preview.ts",

@@ -1,3 +1,4 @@
+import { frameAdvance } from "@/experiments/psyxels/clock"
 import { packField, type Field, type Psyx } from "@/experiments/psyxels/field"
 import { paintGlyph } from "@/experiments/psyxels/glyphs"
 import { buildMask, maskSize, type Mask } from "@/experiments/psyxels/mask"
@@ -5,7 +6,6 @@ import { createPalette, GROUND, type Palette } from "@/experiments/psyxels/palet
 import { arrivalOf, breathOf, levelOf, morphOf, spanOf, spinOf } from "@/experiments/psyxels/pulse"
 import { needsPacking, needsSubject, type Settings } from "@/experiments/psyxels/settings"
 import { paintSubject } from "@/experiments/psyxels/subject"
-import { createFadeTile, eraseHalo } from "@/experiments/psyxels/fade"
 
 /**
  * The engine: a canvas, a clock, and the two questions the piece is made of.
@@ -148,7 +148,6 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings): Psy
    * One image per address: typing a URL asks for every prefix of it, and only
    * the one that is still the setting when it arrives is drawn.
    */
-  let fadeTile: ReturnType<typeof createFadeTile> | null = null
   let picture: HTMLImageElement | null = null
   let pictureFor = ""
   let pictureState: PsyxelsStats["picture"] = "none"
@@ -597,18 +596,13 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings): Psy
     const kept = Math.exp(-elapsed / life)
 
     haloCtx.setTransform(1, 0, 0, 1, 0, 0)
-    if (settings.dither) {
-      // #117: the flat fill below cannot take an 8-bit alpha under 128 at a
-      // long afterglow. Same mean removal, spent where it can act — `fade.ts`.
-      fadeTile ??= createFadeTile()
-      eraseHalo(haloCtx, width, height, 1 - kept, true, fadeTile)
-    } else {
-      haloCtx.globalCompositeOperation = "destination-out"
-      haloCtx.globalAlpha = 1 - kept
-      haloCtx.filter = `blur(${Math.max(1, Math.min(width, height) * 0.006)}px)`
-      haloCtx.fillStyle = "#000"
-      haloCtx.fillRect(0, 0, width, height)
-    }
+    // A flat fill, which cannot take an 8-bit alpha under 128 on a long
+    // afterglow (#117). A dithered fade that could was compared and not kept.
+    haloCtx.globalCompositeOperation = "destination-out"
+    haloCtx.globalAlpha = 1 - kept
+    haloCtx.filter = `blur(${Math.max(1, Math.min(width, height) * 0.006)}px)`
+    haloCtx.fillStyle = "#000"
+    haloCtx.fillRect(0, 0, width, height)
 
     /**
      * **Added at the same weight it was faded by**, which makes the buffer a
@@ -651,14 +645,8 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings): Psy
   }
 
   function step(now: number): void {
-    const elapsed = last === 0 ? 0 : Math.min(0.1, (now - last) / 1000)
+    const advance = frameAdvance(last, now, settings.playback, reduced?.matches ?? false)
     last = now
-
-    // The clock is scaled in exactly one place, so the breathing, the frame
-    // changes and the repacking all slow by the same factor and every
-    // relationship between them survives.
-    const frozen = reduced?.matches ?? false
-    const advance = frozen ? 0 : elapsed * settings.playback
     clock += advance
 
     if (advance > 0 || dirty) {

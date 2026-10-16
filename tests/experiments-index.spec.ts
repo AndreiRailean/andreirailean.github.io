@@ -54,6 +54,9 @@ test("lists every experiment, each with a poster that actually loaded", async ({
     const plate = plates.filter({ has: page.locator(`a.open[href="/experiments/${slug}/"]`) })
     await expect(plate).toHaveCount(1)
     await expect(plate.locator(".title")).toHaveText(title)
+    // And its note, which `experiments-notes.spec.ts` used to check by walking
+    // every note back to here; the notes are now tested on one host (#287).
+    await expect(plate.locator(`a.note[href="/experiments/${slug}/about/"]`)).toHaveCount(1)
 
     // Decoded, not merely present. A missing or unreadable image still has a
     // box; only `naturalWidth` tells them apart.

@@ -41,7 +41,10 @@ test("puts embers over the fire, and draws fewer of them than it is carrying", a
 
   // Ten seconds, because the scene does not exist at t=0 in either sense: an
   // ember takes a second or two to cross the frame, and the picture is built up
-  // over frames wherever the shutter is open.
+  // over frames wherever the shutter is open. **Not shorter**: tried at three on
+  // 2026-10-16, and the unpainted band below had not filled yet — the share came
+  // out 0.03 to 0.38 in 9 runs of 12. An ember has to live long enough to cool
+  // into it, which is the fire's time and not the test's.
   //
   // Then a further second, one frame at a time, all inside this one call so
   // nothing can step the piece between a frame and the stats read after it.
@@ -91,11 +94,12 @@ test("puts embers over the fire, and draws fewer of them than it is carrying", a
 test("a mote is drawn with no body at all, and still paints", async ({ page }) => {
   // `mark: mote` skips the core and the streak — the halo is the whole mark. It
   // is the one mark kind a refactor of the drawing could silently blank, because
-  // every other kind would keep painting from its core.
+  // every other kind would keep painting from its core. Two seconds rather than
+  // eight: skipping the halo for a mote still fails it, seen 2026-10-16.
   const experiment = await openFire(page, { settings: { mark: "mote", hue: 190, hueSpread: 50 }, idle: true })
 
   const stats = await experiment.api(({ api }) => {
-    api.settle(8)
+    api.settle(2)
     return api.stats()
   })
 
@@ -121,37 +125,4 @@ test("reduced motion gets a fire that has been going a while, and no loop", asyn
   expect(await litPixels(page)).toBeGreaterThan(0)
 
   await experiment.shot("reduced-motion")
-})
-
-test("settings survive the round trip through the query string", async ({ page }) => {
-  const experiment = await openFire(page)
-
-  const applied = await experiment.api(({ api }) => {
-    // Every control, moved off whatever it currently is, so the round trip has
-    // to carry it. `mark` is swept too: it is not a number, and a report that
-    // gave it bounds would have this loop setting values the validator rejects
-    // — passing while testing nothing. See #85.
-    const patch: Record<string, unknown> = {}
-    for (const control of api.controls()) {
-      const key = control.key
-      if (control.kind === "slider" || control.kind === "range") {
-        patch[key] = control.min + (control.max - control.min) * 0.37
-      } else if (control.kind === "choice" || control.kind === "set") {
-        const held = api.get()[key as keyof ReturnType<typeof api.get>]
-        patch[key] = control.options.find((option) => option !== held) ?? control.options[0]
-      } else {
-        patch[key] = !api.get()[key as keyof ReturnType<typeof api.get>]
-      }
-    }
-
-    // Kept small for runtime only; a small population round-trips the same code.
-    api.set({ ...patch, count: 200 } as Parameters<typeof api.set>[0])
-    return { settings: api.get(), url: api.url() }
-  })
-
-  await page.goto(applied.url)
-  await page.waitForFunction(() => Boolean(window.experiment))
-  const restored = await experiment.api(({ api }) => api.get())
-
-  expect(restored).toEqual(applied.settings)
 })

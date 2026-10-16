@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest"
+import { keysOf } from "@/experiments/kit/controls"
 import {
+  CONTROLS,
   DEFAULT_SETTINGS,
   normalizeSettings,
   settingsFromQuery,
@@ -19,6 +21,19 @@ const settingsForLanding = (params: URLSearchParams) => landing(module, PRESETS,
  * written outside its own bounds, means a shared link quietly shows a different
  * scene than the one that was sent.
  */
+
+/**
+ * Every setting has a control, so the panel and a shared URL cannot disagree.
+ * `seed` is the one without a slider; it has explicit handling instead. Moved
+ * here from `dangler.spec.ts` on 2026-10-16, where it asked the same question of
+ * a live page; seen red by pointing the `beads` control at another key.
+ */
+describe("the panel", () => {
+  it("has a control for every setting except the seed", () => {
+    const controlled = new Set<string>(CONTROLS.flatMap((control) => keysOf(control) as string[]))
+    expect(Object.keys(DEFAULT_SETTINGS).filter((key) => !controlled.has(key))).toEqual(["seed"])
+  })
+})
 
 describe("the query string", () => {
   it("round-trips a custom scene unchanged", () => {

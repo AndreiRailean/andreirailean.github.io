@@ -130,8 +130,10 @@ flatten` at first, which looks right on a letter — ink is 1 almost everywhere 
   them does not scatter the field, it silently swaps in a mark the scene may
   never have chosen, and the swap is invisible because both marks are legal.
   `paintGlyph` applies `turn` only where `shape.paint` exists, and
-  `src/experiments/psyxels/tests/psyxels.spec.ts` pins it by asking the canvas rather than the painter:
-  a field of built marks must be pixel-identical at `spin: 0` and `spin: 1`.
+  `glyphs.test.ts` pins it per mark with a context that records every call: a
+  built mark makes the same calls at any `turn`. (It was five screenshots of a
+  running field until 2026-10-16; the decision is the painter's, so it is asked
+  of the painter.)
   A psyx's bearing is its own and is held for its life — both halves of a
   cross-fade read it, or a mark jumps as it morphs.
 - **A drawn mark answers to `weight` itself, and the specimen sheet is what
@@ -232,8 +234,9 @@ flatten` at first, which looks right on a letter — ink is 1 almost everywhere 
   square for twenty seconds against a mean of two — reported by eye against
   numbers that looked healthy. `PATIENCE_LIMIT` is a _deadline_, not a lean:
   leaning the odds by how long a psyx had waited halved every coarse life, which
-  is a different change from the one that was wanted. The test asserts the ratio
-  of the longest life to the mean.
+  is a different change from the one that was wanted. `longestWhole` in
+  `stack.ts` states the bound it gives, and `stack.test.ts` drives one square
+  turn by turn against it, alongside the ratio of the longest life to the mean.
 - **The knockout is capped, not simply bolder.** It is drawn wider than the mark
   so it reads as a hole rather than a scratch, and doubling the weight is fine
   until the weight is heavy: at `weight` 0.12 a doubled knockout is a quarter of
@@ -296,15 +299,16 @@ flatten` at first, which looks right on a letter — ink is 1 almost everywhere 
 - **A flat fade cannot take 8-bit alpha to zero, and on a long afterglow it
   stalls at half** (#117). `destination-out` at the ~0.004 a long afterglow on a
   slow playback asks for leaves every alpha from 1 to 127 where it is, so the
-  buffer settles to a 50% plateau over everywhere light has been. `fade` set to
-  `dither` spends the same mean removal on a sparse shifting share of pixels at
-  0.75 each, in `fade.ts`; it changes the floor and nothing else. The test runs
-  `eraseHalo`'s own source against the browser's rasteriser — flat must still
-  stall at 127 and dither must land near `255 × (1 − a)ⁿ` — because four
-  statistics over the rendered frame failed to see this, one backwards. Do not
-  put a blur on the dithered erase: it averages the pattern back into the flat
-  fill it replaced. Presets `trail flat` and `trail dither` are the comparison,
-  identical but for the fade.
+  buffer settles to a 50% plateau over everywhere light has been. **This is
+  known and kept.** A dithered fade, the same mean removal spent on a sparse,
+  shifting share of pixels at 0.75 each, was built beside it in #269. Against
+  the browser's rasteriser it did reach the ground: 26.6 from 255 over 600
+  frames, where flat stalls at 127. Andrei compared the two on several presets
+  on 2026-10-15 and kept flat, because the dither's grain is noise nothing else
+  in the piece makes. So the plateau is the look, and a fade that reaches zero
+  by adding grain is the answer already tried. The `dither` address slot is
+  retired; `git log --diff-filter=D -- src/experiments/psyxels/fade.ts` finds
+  the code if a fade that reaches zero without grain is ever wanted.
 - **`biggest` claimed a range it did not have.** It was a slider beside
   `levels`, and at `levels: 0` — which `luna` ships with — every psyx was the
   biggest size, so the control only made them all big: "biggest doesn't seem to
@@ -413,7 +417,8 @@ its name and range alone.
 | `subject.ts`                            | the only place that knows what the picture is, and which way round            |
 | `mask.ts`                               | the subject as coverage: summed-area tables, variance, the white point        |
 | `glyphs.ts`                             | the vocabulary, the walk between frames, the blend between them, the drawing  |
-| `field.ts`                              | the quadtree: splitting, merging, churn, and a psyx's own life                |
+| `stack.ts`                              | one square's change of mind: when it is asked, what it answers, the deadline  |
+| `field.ts`                              | the quadtree: splitting, merging, the grain kept under a merge, a psyx's life |
 | `pulse.ts`                              | how bright a psyx is, whether it is there at all, and its transition          |
 | `palette.ts`                            | the argument between the subject's colour, the psyx's, and the edge's         |
 | `psyxels.ts`                            | the engine: canvas, the clock, drawing, stats                                 |
@@ -454,7 +459,9 @@ be read across origins.
 
 **Typing into the panel is not a shortcut.** The kit's text control stands the
 single-key shortcuts down while it has the focus, or the `1` in what is typed
-loads preset one over it. `psyxels.spec.ts` has the test, seen failing.
+loads preset one over it. That is the kit's guarantee and `tests/kit.spec.ts`
+tests it once, on the kit's own fixture
+(`../docs/adr/20261016-the-kit-is-tested-as-a-library.md`).
 
 ## Verifying a change
 
@@ -476,13 +483,32 @@ reconsiders its size a handful of times a minute.
   `changes` and `flicks` say whether anything is alive; `drawMs` and `fill` say
   what it costs.
 - **`src/experiments/psyxels/tests/psyxels.spec.ts` drives the API under `pnpm test`**, and every test in
-  it is one of the traps above.
+  it is one of the traps above. **It holds only what needs a canvas or a live
+  page**: light on the frame, the glow and the afterglow, pictures arriving,
+  and one wiring check each that churn, flicker and pause reach the engine.
+  What a rate or a clock _does_ is a function and belongs in a unit test —
+  `stack.test.ts` for the rates, `clock.test.ts` for the frame clock — and the
+  chrome is the kit's, tested once in `tests/kit.spec.ts`. Andrei, 2026-10-16:
+  "testing a random number generator doesn't require a world built on that."
 
 **`src/experiments/psyxels/tests/` covers everything that is a function and a number** —
 `pnpm exec vitest run psyxels`. The field is unit-testable because `packField` takes a
 `Mask` interface rather than a canvas: the tests hand it a synthetic subject with
 an exactly known area, which is how the cover, the pruning and the churn rate are
 checked without a browser.
+
+**A psyx's life is the stack's, and is tested without a field.** The squares
+over one point are a stack, and the psyx there lasts until the first square at
+or above it changes its mind. When a square is asked and what it answers —
+`changeGap`, `decideSplit`, the deadline, `reconsider` — live in `stack.ts` with
+no mask and no tree, and `stack.test.ts` drives one square turn by turn: the
+churn proportion is arithmetic, the deadline is a rigged generator, and the bound
+is `longestWhole`. The field keeps only what the tree adds — that a fine psyx is
+ended by every clock above it — and watches it on `STACKS`, a few 80px roots,
+rather than a picture. These used to be ten minutes of a 640×480 field and six
+seconds of test; they are now under half a second. Andrei, 2026-10-16: "the
+primitive would ensure that the large psyxel's lifetime is bounded based on the
+decision at the stack level".
 
 **The glow's cost is a software-rasteriser cost.** Gathering it takes the
 landing scene from 6.7ms a frame to 25, and almost none of that is the blur —

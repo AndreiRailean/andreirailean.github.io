@@ -1,4 +1,4 @@
-import { gaussian, hashSeed, makeRng, type Rng } from "@/experiments/random"
+import { gaussian, hashSeed, makeRng } from "@/experiments/random"
 import { indexOfGlyph, nextGlyph, type GlyphName } from "@/experiments/psyxels/glyphs"
 // The arrival ease's own length. This file decides when a psyx was born and
 // `pulse.ts` decides what being newly born looks like, so the constant lives
@@ -6,6 +6,7 @@ import { indexOfGlyph, nextGlyph, type GlyphName } from "@/experiments/psyxels/g
 import { BIRTH_S } from "@/experiments/psyxels/pulse"
 import type { Mask } from "@/experiments/psyxels/mask"
 import type { Settings } from "@/experiments/psyxels/settings"
+import { decideSplit, MIN_PX, reconsider, type Square } from "@/experiments/psyxels/stack"
 
 /**
  * The packing: how squares of wildly different sizes cover a picture without
@@ -34,22 +35,6 @@ import type { Settings } from "@/experiments/psyxels/settings"
  * Churn is those two decisions being taken again, per square, on the square's
  * own clock. Nothing else moves a psyx.
  */
-
-/** No psyx narrower than this many screen pixels. Below it a mark is a smudge and the count explodes. */
-export const MIN_PX = 3
-
-/** Most halvings between the biggest psyx and the smallest. */
-export const MAX_LEVELS = 5
-
-/** How many times the biggest size halves to reach the smallest, whole and in range. */
-export function levelsBetween(finest: number, coarse: number): number {
-  const halvings = Math.round(Math.log2(coarse / finest))
-  return Number.isFinite(halvings) ? Math.max(0, Math.min(MAX_LEVELS, halvings)) : 0
-}
-
-/** How many times a square may be quartered in this scene — what the packing reads. */
-export const levelsOf = (settings: Pick<Settings, "finest" | "coarse">): number =>
-  levelsBetween(settings.finest, settings.coarse)
 
 /**
  * One psyx: a square of the picture, and a small mind of its own.
@@ -122,44 +107,29 @@ export type Psyx = {
   turn: number
 }
 
-type Node = Psyx & {
-  /** Unevenness under the square: 0 flat, 0.5 a hard edge through the middle. */
-  dev: number
-  split: boolean
-  kids: Node[] | null
-  /**
-   * The children it had when it last merged, kept rather than discarded.
-   *
-   * **A big psyx coming and going must not restir the grain underneath it.**
-   * Rebuilding the subtree on every split gave a square's fine psyxels a life no
-   * longer than its coarse one — every ancestor that changed its mind wiped
-   * them — so the finest grain turned over several times faster than anything
-   * else and the large marks were the only stable thing on screen. Kept, they
-   * resume: same marks, same colours, same places, arriving again rather than
-   * being replaced.
-   */
-  spare: Node[] | null
-  /** Column and row at this depth, so a square's identity survives a repack. */
-  ix: number
-  iy: number
-  /** Its own generator, for every decision it will ever take. */
-  rng: Rng
-  /**
-   * How many times running it has decided to stay whole.
-   *
-   * Each one makes the next decision likelier to go the other way, which bounds
-   * the tail. Without it the odds are memoryless and a coarse psyx that keeps
-   * winning the toss sits there for twenty seconds — reported as "a large psyx
-   * staying on screen for a very long time", and it is the mean that looked fine
-   * rather than the distribution.
-   */
-  patience: number
-  /** When it last reconsidered its size, and the draw deciding when it next will. */
-  changed: number
-  changeRoll: number
-  /** The draw deciding when it next changes frame. */
-  flickRoll: number
-}
+/** A square of the tree: a psyx, the stack's memory of its decisions, and its place in the tree. */
+type Node = Psyx &
+  Square & {
+    split: boolean
+    kids: Node[] | null
+    /**
+     * The children it had when it last merged, kept rather than discarded.
+     *
+     * **A big psyx coming and going must not restir the grain underneath it.**
+     * Rebuilding the subtree on every split gave a square's fine psyxels a life no
+     * longer than its coarse one — every ancestor that changed its mind wiped
+     * them — so the finest grain turned over several times faster than anything
+     * else and the large marks were the only stable thing on screen. Kept, they
+     * resume: same marks, same colours, same places, arriving again rather than
+     * being replaced.
+     */
+    spare: Node[] | null
+    /** Column and row at this depth, so a square's identity survives a repack. */
+    ix: number
+    iy: number
+    /** The draw deciding when it next changes frame. */
+    flickRoll: number
+  }
 
 /** A psyx that has been replaced, kept only long enough to fade. */
 export type Ghost = Psyx & { died: number }
@@ -306,65 +276,6 @@ function makeNode(
   return node
 }
 
-/**
- * Whether a square should be four squares.
- *
- * The threshold runs from half — the standard deviation of a hard edge cutting a
- * square in two, so nothing splits — down to a hair above zero, where any
- * variation at all is enough. Variety is consulted second and only matters where
- * detail did not already decide, which is why turning detail up does not make
- * variety redundant: they act in different places.
- */
-function decideSplit(node: Node, settings: Settings): boolean {
-  if (node.depth >= levelsOf(settings)) return false
-  if (node.size / 2 < MIN_PX) return false
-  const threshold = 0.5 * (1 - settings.detail) + 0.012
-
-  if (node.dev > threshold) {
-    /**
-     * **Fuzz lets an edge square decline to subdivide.**
-     *
-     * Detail alone makes the boundary the finest thing in the picture, so the
-     * artwork ends in a hairline however soft the psyxels either side of it are
-     * — the field looks clipped to a shape rather than packed into one. A square
-     * that declines stays coarse and *hangs over* the edge, which is the only
-     * way a large mark ever sits outside the subject.
-     *
-     * Kept deliberately low, because declining is not free: a square that stays
-     * whole is one psyx where there would have been four, so this thins the
-     * whole field and not just its edge. At 0.5 the landing scene lost a third
-     * of its psyxels and the letter went patchy; at 0.3 it loses a tenth and the
-     * boundary still breaks up. The rest of the softness is `levelOf`'s, which
-     * only ever *adds* psyxels outside the subject.
-     */
-    if (node.rng() > settings.fuzz * 0.3) return true
-  }
-
-  // A deadline rather than a lean, so the *tail* is cut and the mean is left
-  // alone: leaning the odds instead halved every coarse psyx's life, which is a
-  // different change from the one that was asked for.
-  if (node.patience >= PATIENCE_LIMIT && settings.variety > 0) return true
-  return node.rng() < splitChance(settings.variety)
-}
-
-/**
- * How likely a square with no reason to divide is to divide anyway.
- *
- * **Deliberately capped short of certain, and that is the whole control.** Read
- * as a raw probability it reached 1 and every square divided — so the setting
- * called *variety* produced, at its maximum, a field of one size with no variety
- * in it at all. The complaint came from the piece's author and it is exactly
- * right: a control whose extreme is uniform is not describing what it does.
- *
- * At this cap the sizes are as mixed as a single probability can make them —
- * roughly a quarter of the picture's area at the coarsest size and a third at
- * the finest, with the rest spread between. A field of nothing but fine psyxels
- * is still reachable, and it is `coarse` and `levels` that reach it, because
- * that is a statement about what sizes exist rather than about how mixed they
- * are.
- */
-export const splitChance = (variety: number) => variety * 0.78
-
 /** A departing psyx, kept as plain data: no generator, no children, no clocks. */
 function mourn(node: Node, time: number, into: Ghost[]): void {
   if (node.split && node.kids) {
@@ -462,67 +373,6 @@ function revive(node: Node, time: number): void {
   node.flicked = time
   if (node.kids) for (const kid of node.kids) revive(kid, time)
 }
-
-/**
- * The gap before a square next reconsiders its size, in seconds.
- *
- * Read from a stored draw rather than scheduled ahead, so that dragging the
- * churn control retimes every square that has not yet fired instead of only
- * those packed after the change.
- */
-/**
- * How much longer each level down waits between reconsidering itself.
- *
- * **A psyx's life is not its own square's clock; it is the first of its
- * ancestors to change its mind.** With every square asking at the same rate, a
- * psyx four levels down had five clocks that could end it and a coarse one had
- * one — so the fine grain turned over five times faster, and the large marks sat
- * still while everything around them boiled. That is exactly backwards for a
- * picture where the large marks are the ones the eye goes to.
- *
- * Measured over ninety seconds at the landing scene, mean age in seconds by
- * level, coarsest first:
- *
- * | patience | ages                            | flips | match |
- * | -------- | ------------------------------- | ----- | ----- |
- * | 1 (none) | 12.2, 10.3, 7.0, 7.0, 10.0      | 2894  | 0.888 |
- * | 2.2      | 7.7, 10.5, 11.3, 12.8, 14.6     | 764   | 0.934 |
- * | 3        | 7.5, 15.1, 18.2, 19.8, 20.8     | 402   | 0.821 |
- *
- * Left alone, the coarse marks are the longest-lived thing on screen, which is
- * backwards when they are also the marks the eye goes to. At 2.2 the order is
- * reversed and the ages run monotonically the other way. Further than that the
- * fine grain stops turning over at all, and the letterform starts to suffer —
- * every change is a whole coarse square's worth, and some of them merge across
- * a stroke.
- */
-const DEPTH_PATIENCE = 2.2
-
-/**
- * How many turns running a psyx may decide to stay whole before it must divide.
- *
- * Without it the odds are memoryless: a coarse psyx that keeps winning a fair
- * toss sits in one square for twenty seconds, which was reported as "a large
- * psyx staying on screen for a very long time" against a *mean* that looked
- * perfectly healthy. Three turns is reached by four scenes in a hundred, so the
- * distribution keeps its shape and loses its tail.
- */
-const PATIENCE_LIMIT = 3
-
-/**
- * What the slowing costs the field, given back.
- *
- * The control says how often a psyx is repacked, and it has to keep saying
- * that: slowing the deep squares without this took the whole field from a
- * thousand changes a minute to thirty, because almost every square *is* a deep
- * one. The series `1 + 1/3 + 1/9 + …` sums to this, so dividing the interval by
- * it leaves a deep psyx's total rate at the control's value and a coarse one's
- * within a third of it — where before they differed fivefold.
- */
-const DEPTH_SPREAD = DEPTH_PATIENCE / (DEPTH_PATIENCE - 1)
-
-const changeGap = (churn: number, roll: number, depth: number) =>
-  churn <= 0 ? Infinity : ((60 / churn) * (0.4 + 1.5 * roll) * DEPTH_PATIENCE ** depth) / DEPTH_SPREAD
 
 /** The gap before a psyx next picks a frame. Divided by its own rate: some psyxels are quick. */
 const flickGap = (flicker: number, roll: number, rate: number) =>
@@ -630,11 +480,8 @@ export function packField(mask: Mask, settings: Settings, time: number): Field {
 
   /** One square's turn: reconsider its size, or, being a leaf, its frame. */
   function visit(node: Node, time: number, settings: Settings): void {
-    if (time - node.changed >= changeGap(settings.churn, node.changeRoll, node.depth)) {
-      node.changed = time
-      node.changeRoll = node.rng()
-      const wanted = decideSplit(node, settings)
-      node.patience = wanted ? 0 : node.patience + 1
+    const wanted = reconsider(node, time, settings)
+    if (wanted !== null) {
       if (wanted !== node.split) {
         // `context` still carries the settings the field was packed with, which
         // is correct: anything in `needsPacking` rebuilds the whole field, so the

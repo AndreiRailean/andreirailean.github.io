@@ -1,6 +1,14 @@
 import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
-import { browserGrep, classify, piecesOnDisk, select, unitArgs } from "../../scripts/affected.ts"
+import {
+  browserGrep,
+  classify,
+  piecesOnDisk,
+  select,
+  unitArgs,
+  unmatched,
+  WIRING_SPEC,
+} from "../../scripts/affected.ts"
 import { browserSpecs } from "./specs.ts"
 
 /**
@@ -58,6 +66,7 @@ describe("what a path selects", () => {
     "src/pages/experiments/index.astro",
     "src/showcase/wall.ts",
     "tests/kit.spec.ts",
+    "tests/kit/fixture.ts",
     "tests/support/experiment.ts",
     "scripts/affected.ts",
     ".github/workflows/test-unit.yml",
@@ -82,16 +91,37 @@ describe("what a path selects", () => {
   /**
    * Playwright matches `--grep` against `project file title`, so a slug anchored
    * on `^` selects nothing. That was the form the ticket proposed; the script
-   * also lists a selection before running it and fails an empty kit slice.
+   * also lists a selection before running it and fails a piece whose wiring
+   * test it did not select.
    */
   it("anchors the slug where Playwright's matched string puts it", () => {
     const grep = new RegExp(browserGrep({ everything: false, pieces: ["walkers"] })!)
-    expect(grep.test("chromium tests/kit.spec.ts walkers: presets run down the left")).toBe(true)
+    expect(grep.test(`chromium ${WIRING_SPEC} walkers: boots through the gallery`)).toBe(true)
     expect(grep.test("chromium src/experiments/walkers/tests/walkers.spec.ts the primary runs")).toBe(true)
     expect(grep.test("chromium tests/experiments-index.spec.ts lists every experiment")).toBe(true)
-    expect(grep.test("chromium tests/kit.spec.ts crowd: presets run down the left")).toBe(false)
+    expect(grep.test(`chromium ${WIRING_SPEC} crowd: boots through the gallery`)).toBe(false)
     expect(grep.test("chromium tests/showcase.spec.ts the page")).toBe(false)
+    // The kit is tested once, on a fixture, and a piece's change cannot reach it (#287).
+    expect(grep.test("chromium tests/kit.spec.ts boxed: the corners are presets")).toBe(false)
     expect(browserGrep({ everything: false, pieces: [] })).toBeNull()
+  })
+
+  /**
+   * **The selection check, against listings the repo does not produce.** It is
+   * what stops a grep that matches nothing from passing for ever, so it is
+   * tested both ways: a piece whose wiring test is listed is found, and one
+   * listed only in some other spec — or under a slug that merely starts the
+   * same — is not.
+   */
+  it("fails a selected piece whose wiring test was not listed", () => {
+    const listed = [
+      `  [chromium] › ${WIRING_SPEC}:49:3 › walkers: boots through the gallery`,
+      "  [chromium] › src/experiments/crowd/tests/crowd.spec.ts:10:1 › crowd: something of crowd's own",
+      `  [chromium] › ${WIRING_SPEC}:49:3 › starry-night: boots through the gallery`,
+    ].join("\n")
+    expect(unmatched(listed, ["walkers", "starry-night"])).toEqual([])
+    expect(unmatched(listed, ["walkers", "crowd"])).toEqual(["crowd"])
+    expect(unmatched(listed, ["starry"])).toEqual(["starry"])
   })
 
   it("classifies the unit suite's own shared files as affecting no piece", () => {
@@ -110,6 +140,7 @@ const SHARED_SPECS = [
   "tests/embed-origin.spec.ts",
   "tests/experiments-index.spec.ts",
   "tests/experiments-notes.spec.ts",
+  "tests/experiments-wiring.spec.ts",
   "tests/harness.spec.ts",
   "tests/kit.spec.ts",
   "tests/reel.spec.ts",
@@ -130,6 +161,29 @@ it("places every browser spec in a piece or on the shared list", () => {
   ).toEqual([])
   // Every declared shared spec exists, so the list cannot rot into a pass.
   for (const path of SHARED_SPECS) expect(browserSpecs(), `${path} is declared shared and missing`).toContain(path)
+})
+
+/**
+ * **Every shard a suite is cut into is one somebody runs.** `--shard i/N` with
+ * a matrix that lists fewer than N values leaves whole shards unrun, and an
+ * empty or unrun shard reports nothing, so the tests in it go quietly unchecked
+ * — the vacuous shape, at the scale of half a suite. So the matrix must be
+ * exactly 1..N, and both the pull-request run and `main`'s run must pass the
+ * same N.
+ */
+it.each(["test-unit.yml", "test-browser.yml"])("%s runs every shard it cuts", (file) => {
+  const source = readFileSync(`.github/workflows/${file}`, "utf8")
+  const listed = /shard:\s*\[([^\]]*)\]/.exec(source)
+  expect(listed, `${file} has no \`shard: [...]\` matrix`).not.toBeNull()
+  const shards = listed![1]!.split(",").map((value) => Number(value.trim()))
+  const totals = [...source.matchAll(/--shard \$\{\{ matrix\.shard \}\}\/(\d+)/g)].map((match) => Number(match[1]))
+  // Both runs, the pull request's and main's, so neither can drift alone.
+  expect(totals, "expected `--shard ${{ matrix.shard }}/N` on both the affected and the full run").toHaveLength(2)
+  for (const total of totals) {
+    expect(shards, `the matrix must list every shard 1..${total}`).toEqual(
+      Array.from({ length: total }, (_, i) => i + 1),
+    )
+  }
 })
 
 /**

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest"
-import { eraseTile } from "@/experiments/walkers/draw"
-import { CONTROLS } from "@/experiments/walkers/settings"
+import { makeRng } from "@/experiments/random"
+import { makeBody } from "@/experiments/walkers/body"
+import type { Walker } from "@/experiments/walkers/crowd"
+import { eraseTile, placeHeads } from "@/experiments/walkers/draw"
+import { CONTROLS, normalizeSettings } from "@/experiments/walkers/settings"
+import { lift, makeView, type View } from "@/experiments/walkers/view"
 
 /**
  * The ground has to forget.
@@ -87,5 +91,99 @@ describe("the trail's decay", () => {
       expect(eraseTile(perFrame(boundary, step), tile)).toBe(tile)
       tile = eraseTile(perFrame(boundary, step), tile)
     }
+  })
+})
+
+/**
+ * The camera is a pinhole, and this is where that becomes a place on the glass.
+ *
+ * A head sits nearer the lens than the ground does, so it lands outward from
+ * the centre of the frame by `lift` — camera / (camera − z) — and is drawn
+ * larger by the same factor. This was a browser test that settled a park and
+ * read the mean radius of the bright pixels, which in a young park counted
+ * grass as heads and failed 4 runs in 6 (#287). The claim is about one function
+ * and one walker, so that is all it builds.
+ *
+ * The walkers here are walking with `bob` at zero, which takes the gait's rise
+ * and sway out of the head's position, and walking takes the postural drift of
+ * somebody standing with it. What is left is posture over feet, so every
+ * expectation is exact.
+ */
+describe("where a head lands on the glass", () => {
+  const settings = normalizeSettings({ bob: 0 })
+  const HEAD = 1.7
+
+  /** Only what `placeHeads` reads; the rest of a walker is the crowd's business. */
+  const walker = (x: number, y: number, posture = HEAD): Walker =>
+    ({
+      x,
+      y,
+      facing: 0,
+      speed: 1.3,
+      stride: 0,
+      posture,
+      hop: 0,
+      phase: 0,
+      activity: "walking",
+      body: makeBody(makeRng(3), "adult", 1.34),
+    }) as unknown as Walker
+
+  const frame = (camera: number) => makeView(12, camera, 1280, 800)
+
+  /** Distance from the centre of the frame, in pixels. */
+  const radius = (view: View, placed: { sx: number; sy: number }) =>
+    Math.hypot(placed.sx - view.width / 2, placed.sy - view.height / 2)
+
+  /** How much further out the head is than the feet. */
+  const thrown = (camera: number) => {
+    const view = frame(camera)
+    const [head] = placeHeads([walker(4, -3)], view, settings, 0)
+    return radius(view, head!) / (5 * view.pxPerMetre)
+  }
+
+  it("throws a head outward by camera / (camera − height): nearly a quarter at nine metres", () => {
+    expect(lift(frame(9), HEAD)).toBeCloseTo(9 / (9 - HEAD), 9)
+    expect(thrown(9)).toBeCloseTo(9 / (9 - HEAD), 6)
+    expect(thrown(9)).toBeGreaterThan(1.2)
+  })
+
+  it("barely moves it from a camera a hundred and twenty metres up", () => {
+    expect(thrown(120)).toBeCloseTo(120 / (120 - HEAD), 6)
+    expect(thrown(120)).toBeLessThan(1.015)
+  })
+
+  it("throws it along its own radius, in every quarter of the frame", () => {
+    const view = frame(9)
+    for (const [x, y] of [
+      [3, 2],
+      [-3, 2],
+      [-3, -2],
+      [3, -2],
+    ] as const) {
+      const [head] = placeHeads([walker(x, y)], view, settings, 0)
+      const dx = (head!.sx - view.width / 2) / view.pxPerMetre
+      const dy = (view.height / 2 - head!.sy) / view.pxPerMetre
+      expect(Math.atan2(dy, dx), `direction at ${x},${y}`).toBeCloseTo(Math.atan2(y, x), 9)
+      expect(Math.hypot(dx, dy), `outward at ${x},${y}`).toBeGreaterThan(Math.hypot(x, y) * 1.2)
+    }
+  })
+
+  it("leaves a head under the lens exactly where it is, however low the camera", () => {
+    const view = frame(4)
+    const [head] = placeHeads([walker(0, 0)], view, settings, 0)
+    expect(head!.sx).toBeCloseTo(view.width / 2, 9)
+    expect(head!.sy).toBeCloseTo(view.height / 2, 9)
+  })
+
+  it("draws a head larger by the same factor it is thrown outward", () => {
+    const view = frame(9)
+    const feet = walker(4, -3)
+    const [head] = placeHeads([feet], view, settings, 0)
+    expect(head!.radius / ((feet.body.headBreadth / 2) * view.pxPerMetre)).toBeCloseTo(thrown(9), 9)
+  })
+
+  it("paints the higher of two heads last, so it is the one in front", () => {
+    const placed = placeHeads([walker(1, 1, 1.7), walker(1, 1, 1.1)], frame(9), settings, 0)
+    expect(placed.map((item) => item.z)).toEqual([1.1, 1.7])
   })
 })

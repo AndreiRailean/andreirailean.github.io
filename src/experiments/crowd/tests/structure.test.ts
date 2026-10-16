@@ -1,20 +1,30 @@
 import { describe, expect, it } from "vitest"
-import { createLoop, createPath } from "@/experiments/crowd/path"
-import { createStroll } from "@/experiments/crowd/stroll"
-import { createThrong } from "@/experiments/crowd/throng"
-import type { Boulder } from "@/experiments/crowd/boulders"
-import { bodyRadius } from "@/experiments/crowd/body"
+import { createLoop, createPath, hikingPace, lanePush } from "@/experiments/crowd/path"
+import { createStroll, type Neighbourhood } from "@/experiments/crowd/stroll"
+import { createThrong, teamSlots } from "@/experiments/crowd/throng"
 import { normalizeSettings, type Settings } from "@/experiments/crowd/settings"
 import { PRESETS } from "@/experiments/crowd/presets"
 
 /**
- * The structured crowd: a lining that stands, a way that bends, teams.
+ * The structured crowd: a lining that stands, a way that bends, teams, a hill,
+ * sides of the way, a run, a chase.
  *
  * **Each of these asserts that a mechanism fired**, not that the scene ran.
  * A lining nobody is placed in, a bend nobody follows and a team size that
  * never forms all leave a scene that renders perfectly well — which is the
  * class `docs/agents/experiment-writer.md` warns about under _Measure before
  * you look_.
+ *
+ * **And each is the smallest thing that can show it** (#287). Where the
+ * property is one function's — Tobler's pace, the lane push, my team's places
+ * — that function is checked directly; what is left in the throng is a few
+ * seconds showing the throng calls it. Where it is mine — my gait, my course
+ * round a loop, my glances at a run — I walk the scene's own way with nobody
+ * else on it. The chase's decisions are `runaway.test.ts` and
+ * `chase.test.ts`; this file used to chase for minutes, 81 s of the unit job.
+ *
+ * Every "break it" note below was done: the fault named was put back and the
+ * test was seen to go red.
  */
 
 const STEP = 1 / 120
@@ -30,6 +40,73 @@ function walk(label: string, seconds: number) {
     crowd.step(STEP)
   }
   return { settings, me, crowd }
+}
+
+/**
+ * Me, walking a scene's own way with nobody else on it. The throng is built
+ * for its way and its ground and never stepped; what I am handed is that, and
+ * no people.
+ */
+function me(label: string, patch: Partial<Settings>, seconds: number) {
+  const preset = PRESETS.find((p) => p.label === label)!
+  const settings = normalizeSettings({ ...preset.settings, ...patch })
+  const walker = createStroll(settings, settings.seed)
+  const throng = createThrong(settings, walker)
+  const empty: Neighbourhood = {
+    neighbours: () => [],
+    companions: [],
+    halfWidth: throng.halfWidth,
+    path: throng.path,
+    quarry: null,
+    stalls: throng.stalls,
+    boulders: throng.boulders,
+    caught: false,
+  }
+  const bias = (settings.pitch * Math.PI) / 180
+  const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a))
+  let n = 0
+  let running = 0
+  let low = Infinity
+  let high = -Infinity
+  let lateral = 0
+  let absLateral = 0
+  let maxAbsLateral = 0
+  let turned = 0
+  let fastestTurn = 0
+  let wide = 0
+  let steep = 0
+  let last = walker.course
+  for (let step = 0; step < seconds * 120; step++) {
+    walker.step(STEP, empty)
+    const d = wrap(walker.course - last)
+    last = walker.course
+    if (step < 5 * 120) continue
+    n++
+    if (walker.stats().running) running++
+    const z = walker.eye().z
+    low = Math.min(low, z)
+    high = Math.max(high, z)
+    const lat = throng.path.lateral(walker.x, walker.y)
+    lateral += lat
+    absLateral += Math.abs(lat)
+    maxAbsLateral = Math.max(maxAbsLateral, Math.abs(lat))
+    turned += d
+    fastestTurn = Math.max(fastestTurn, Math.abs(d / STEP))
+    if (Math.abs(wrap(walker.yaw - walker.course)) > (25 * Math.PI) / 180) wide++
+    if (Math.abs(walker.pitch - bias) > (10 * Math.PI) / 180) steep++
+  }
+  return {
+    running: running / n,
+    bounce: high - low,
+    meanLateral: lateral / n,
+    meanAbsLateral: absLateral / n,
+    maxAbsLateral,
+    halfWidth: throng.halfWidth,
+    turned,
+    fastestTurn,
+    wide: wide / n,
+    steep: steep / n,
+  }
 }
 
 describe("a path", () => {
@@ -101,14 +178,27 @@ describe("teams", () => {
     for (const group of crowd.groups) expect(group.size).toBe(settings.team)
   })
 
-  it("puts me at the back of a team of my own, with nobody behind me", () => {
-    const { crowd, settings } = walk("teams", 6)
-    const mates = crowd.companions
+  /**
+   * "A companion behind you provides no reference, because you cannot see
+   * them" — so my own team is a block with me in the middle of its back row.
+   * This was six seconds of the teams scene; it is one function. Break it:
+   * putting me in the front row (`row: 0`) sends most of them behind me and
+   * fails.
+   */
+  it("puts me at the back of a team of my own, with nobody behind me, at every size", () => {
+    for (let mates = 4; mates <= 15; mates++) {
+      const slots = teamSlots(mates)
+      expect(slots.length).toBe(mates)
+      for (const [, ahead] of slots) expect(ahead).toBeGreaterThanOrEqual(0)
+      expect(slots.filter(([, ahead]) => ahead > 0.5).length).toBeGreaterThan(mates / 2)
+    }
+  })
+
+  it("stands my team in those places from the first frame", () => {
+    const { crowd, settings } = walk("teams", 0)
     expect(settings.companions).toBeGreaterThan(3)
-    expect(mates.length).toBe(settings.companions)
-    for (const mate of mates) expect(mate.besideAhead).toBeGreaterThanOrEqual(0)
-    const ahead = mates.filter((mate) => mate.besideAhead > 0.5).length
-    expect(ahead).toBeGreaterThan(mates.length / 2)
+    const places = crowd.companions.map((mate) => [mate.besideRight, mate.besideAhead])
+    expect(places).toEqual(teamSlots(settings.companions).map(([right, ahead]) => [right, ahead]))
   })
 })
 
@@ -170,73 +260,95 @@ describe("the trail", () => {
 
 describe("effort", () => {
   /**
-   * The concertina: a crowd walking a hill by Tobler's function bunches on the
-   * climbs. **The ratio is against the control at effort 0**, which measured
-   * 0.92 over ninety seconds, so an effort that stopped doing anything fails
-   * rather than passing on the seed's terrain. 1.87 with it.
+   * Tobler's hiking function, relative to level ground. Its fastest point is a
+   * gentle descent of 5%, and it is asymmetric: climbing 25% is about 0.42 of
+   * level pace, descending it about 0.59.
    */
-  function bunching(effort: number): number {
-    const preset = PRESETS.find((p) => p.label === "the trail")!
-    const settings = normalizeSettings({ ...preset.settings, effort })
-    const me = createStroll(settings, settings.seed)
-    const crowd = createThrong(settings, me)
-    let up = 0
-    let down = 0
-    let upLen = 0
-    let downLen = 0
-    for (let step = 0; step < 75 * 120; step++) {
-      me.step(STEP, crowd)
-      crowd.step(STEP)
-      if (step < 45 * 120 || step % 240 !== 0) continue
-      for (let x = me.x - 200; x < me.x + 200; x += 1) {
-        const g = crowd.path.groundSlope(x)
-        if (g > 0.1) upLen++
-        else if (g < -0.1) downLen++
-      }
-      for (const person of crowd.people) {
-        if (Math.abs(person.x - me.x) > 200) continue
-        const g = crowd.path.groundSlope(person.x)
-        if (g > 0.1) up++
-        else if (g < -0.1) down++
-      }
-    }
-    return up / upLen / (down / downLen)
-  }
+  it("slows a climb more than the same descent, and does nothing at effort 0", () => {
+    for (const grade of [-0.3, -0.1, 0, 0.1, 0.3]) expect(hikingPace(grade, 0)).toBe(1)
+    expect(hikingPace(0, 1)).toBeCloseTo(1, 9)
+    expect(hikingPace(-0.05, 1)).toBeGreaterThan(1)
+    expect(hikingPace(0.25, 1)).toBeCloseTo(0.42, 2)
+    expect(hikingPace(-0.25, 1)).toBeCloseTo(0.59, 2)
+    expect(hikingPace(0.25, 0.5)).toBeCloseTo(1 + 0.5 * (hikingPace(0.25, 1) - 1), 9)
+  })
 
-  it("bunches the crowd on the climbs, and only when it is on", () => {
-    const off = bunching(0)
-    const on = bunching(1)
-    expect(off).toBeLessThan(1.25)
-    expect(on).toBeGreaterThan(off * 1.4)
-  }, 60_000)
+  /**
+   * The concertina: a crowd walking a hill by Tobler's function bunches on the
+   * climbs, because it slows on them. This was ninety seconds of the trail
+   * counting heads on climbs against descents; what it needs to show is that
+   * the throng applies the pace at all, which three seconds does: walkers on a
+   * climb move at 0.52 of their pace with it and 0.94 without. Break it:
+   * dropping `hikingPace` from the throng's wanted velocity fails.
+   */
+  it("is what the crowd walks a climb at", () => {
+    const climbing = (effort: number) => {
+      const preset = PRESETS.find((p) => p.label === "the trail")!
+      const settings = normalizeSettings({ ...preset.settings, effort })
+      const walker = createStroll(settings, settings.seed)
+      const crowd = createThrong(settings, walker)
+      let pace = 0
+      let n = 0
+      for (let step = 0; step < 3 * 120; step++) {
+        walker.step(STEP, crowd)
+        crowd.step(STEP)
+        if (step < 2 * 120 || step % 30 !== 0) continue
+        for (const p of crowd.people) {
+          if (p.watcher || p.standing || p.companion) continue
+          const speed = Math.hypot(p.vx, p.vy)
+          if (speed < 0.3 || (crowd.path.groundSlope(p.x) * p.vx) / speed <= 0.1) continue
+          pace += speed / p.preferred
+          n++
+        }
+      }
+      expect(n).toBeGreaterThan(100)
+      return pace / n
+    }
+    expect(climbing(0)).toBeGreaterThan(0.85)
+    expect(climbing(1)).toBeLessThan(0.65)
+  })
 })
 
 describe("keeping to a side", () => {
+  it("pushes toward my side of the way, the oncoming the other, mirrored by sign, and not on open ground", () => {
+    const half = 3
+    // From the middle of the way: walking with me (along +1) is pushed left
+    // at keep 1, oncoming right, and keep −1 mirrors.
+    expect(lanePush(0, half, 1, 1)).toBeGreaterThan(0)
+    expect(lanePush(0, half, -1, 1)).toBeLessThan(0)
+    expect(lanePush(0, half, 1, -1)).toBeLessThan(0)
+    // At rest on their own side, a quarter of the way across.
+    expect(lanePush(half * 0.5, half, 1, 1)).toBeCloseTo(0, 9)
+    expect(lanePush(-half * 0.5, half, -1, 1)).toBeCloseTo(0, 9)
+    expect(lanePush(0, half, 1, 0)).toBe(0)
+    expect(lanePush(0, Infinity, 1, 1)).toBe(0)
+    // Stronger the more `keep` there is.
+    expect(lanePush(0, half, 1, 1)).toBeCloseTo(2 * lanePush(0, half, 1, 0.5), 9)
+  })
+
   /**
-   * The share of walkers on their own side of the way. **The control is the
-   * same scene at `keep` 0**, which measured 0.45 — random, and a little under
-   * half because the middle counts for neither side — so a lane force that
-   * stopped doing anything fails rather than passing on the seed's luck.
+   * The share of walkers on their own side of the way, against the same scene
+   * at `keep` 0 — 0.49, random — so a lane force that stopped doing anything
+   * fails rather than passing on the seed's luck. Three seconds is enough to
+   * see the sorting under way: 0.74 and 0.79 at keep 1, 0.18 mirrored. This
+   * was twenty-five seconds, three times over. Break it: dropping `lanePush`
+   * from the throng fails.
    */
   function sides(keep: number) {
     const preset = PRESETS.find((p) => p.label === "keep left")!
     const settings = normalizeSettings({ ...preset.settings, keep })
-    const me = createStroll(settings, settings.seed)
-    const crowd = createThrong(settings, me)
+    const walker = createStroll(settings, settings.seed)
+    const crowd = createThrong(settings, walker)
     let withMe = 0
     let withMeLeft = 0
     let oncoming = 0
     let oncomingRight = 0
-    let mine = 0
-    let samples = 0
-    for (let step = 0; step < 25 * 120; step++) {
-      me.step(STEP, crowd)
+    for (let step = 0; step < 3 * 120; step++) {
+      walker.step(STEP, crowd)
       crowd.step(STEP)
-      if (step < 12 * 120 || step % 120 !== 0) continue
-      mine += crowd.path.lateral(me.x, me.y)
-      samples++
+      if (step % 60 !== 0) continue
       for (const person of crowd.people) {
-        if (Math.hypot(person.x - me.x, person.y - me.y) > 40) continue
+        if (Math.hypot(person.x - walker.x, person.y - walker.y) > 40) continue
         const speed = Math.hypot(person.vx, person.vy)
         if (speed < 0.3) continue
         const along = crowd.path.along(person.x, person.y)
@@ -251,24 +363,24 @@ describe("keeping to a side", () => {
         }
       }
     }
-    return { withMe: withMeLeft / withMe, oncoming: oncomingRight / oncoming, me: mine / samples }
+    return { withMe: withMeLeft / withMe, oncoming: oncomingRight / oncoming }
   }
 
-  it("puts my stream on the left and the oncoming one on my right", () => {
+  it("sorts the crowd onto its sides, and mirrors when told to keep right", () => {
     const off = sides(0)
     const on = sides(1)
-    expect(off.withMe).toBeLessThan(0.65)
-    expect(off.oncoming).toBeLessThan(0.65)
-    expect(on.withMe).toBeGreaterThan(0.95)
-    expect(on.oncoming).toBeGreaterThan(0.95)
-    expect(on.me).toBeGreaterThan(0.5)
+    const right = sides(-1)
+    expect(off.withMe).toBeLessThan(0.6)
+    expect(off.oncoming).toBeLessThan(0.6)
+    expect(on.withMe).toBeGreaterThan(0.65)
+    expect(on.oncoming).toBeGreaterThan(0.65)
+    expect(right.withMe).toBeLessThan(0.3)
+    expect(right.oncoming).toBeLessThan(0.3)
   })
 
-  it("mirrors when told to keep right", () => {
-    const right = sides(-1)
-    expect(right.withMe).toBeLessThan(0.05)
-    expect(right.oncoming).toBeLessThan(0.05)
-    expect(right.me).toBeLessThan(-0.5)
+  it("keeps me on my side too", () => {
+    expect(me("keep left", { keep: 1 }, 10).meanLateral).toBeGreaterThan(0.5)
+    expect(me("keep left", { keep: -1 }, 10).meanLateral).toBeLessThan(-0.5)
   })
 })
 
@@ -277,85 +389,109 @@ describe("the runner", () => {
    * "i can increase my pace … but not enough to make it feel like a jog. maybe
    * because my bobbing is still walk-like." Both were true: the track stopped at
    * 2.2 m/s, which is the walk-run transition, and the bob was a walk's at any
-   * speed. So this asserts the gait, not the pace.
+   * speed. So this asserts the gait, not the pace — and the gait is mine, so it
+   * is run on the runner's way with nobody else on it. Not running into people
+   * is the avoidance, which `steering.test.ts` checks.
+   *
+   * The bounce itself — how far a run rises against a walk — is `headBob`, on a
+   * head going nowhere, in `body.test.ts`. What is left here is that I break
+   * into a run and that my eye is drawn with a run's bob when I do, which this
+   * walk shows for nothing because it is walking anyway.
    */
-  function run(patch: Partial<Settings>, seconds: number) {
-    const preset = PRESETS.find((p) => p.label === "runner")!
-    const settings = normalizeSettings({ ...preset.settings, ...patch })
-    const me = createStroll(settings, settings.seed)
-    const crowd = createThrong(settings, me)
-    let running = 0
-    let steps = 0
-    let low = Infinity
-    let high = -Infinity
-    let lateral = 0
-    let hits = 0
-    for (let step = 0; step < seconds * 120; step++) {
-      me.step(STEP, crowd)
-      crowd.step(STEP)
-      if (step < 5 * 120) continue
-      steps++
-      if (me.stats().running) running++
-      const z = me.eye().z
-      low = Math.min(low, z)
-      high = Math.max(high, z)
-      lateral += Math.abs(crowd.path.lateral(me.x, me.y))
-      for (const person of crowd.neighbours(me.x, me.y, 1.5)) {
-        if (Math.hypot(person.x - me.x, person.y - me.y) < person.radius + bodyRadius(settings.height)) hits++
-      }
-    }
-    return { running: running / steps, bounce: high - low, lateral: lateral / steps, hits }
-  }
-
-  it("runs, bouncing twice as far as a walk, down the middle, into nobody", () => {
-    const runner = run({}, 20)
+  it("runs, bouncing twice as far as a walk, down the middle", () => {
+    const runner = me("runner", {}, 20)
     expect(runner.running).toBeGreaterThan(0.95)
     expect(runner.bounce).toBeGreaterThan(0.065)
-    expect(runner.lateral).toBeLessThan(0.5)
-    expect(runner.hits).toBe(0)
+    expect(runner.meanAbsLateral).toBeLessThan(0.5)
   })
 
   it("walks, with a walk's bob, at a walking pace", () => {
-    const walker = run({ walk: 1.3 }, 12)
+    const walker = me("runner", { walk: 1.3 }, 12)
     expect(walker.running).toBe(0)
     expect(walker.bounce).toBeLessThan(0.055)
   })
 })
 
-describe("the chase", () => {
+describe("the chase, wired", () => {
   /**
-   * The gap to the person in red has to keep opening and closing. **The first
-   * version settled** — a pace varying smoothly with distance always has a
-   * distance where it equals mine, and two minutes of the market ended on
-   * 4 m, 4 m, 4 m — so the assertion is on the range over the *last* minute,
-   * where a settled chase has none. The ceiling catches the other failure: a
-   * quarry that only ever runs is gone.
+   * What the person in red decides is `runaway.test.ts`, and what I do about it
+   * is `chase.test.ts`. This is that the throng hands both the real ground:
+   * twenty seconds among boulders is enough for the gap to open and close and
+   * for them to get behind one (at 11.8 s on this seed), and I never walk into
+   * a boulder doing it. It replaces four tests that chased for two to four
+   * minutes each.
    */
-  it("keeps the gap opening and closing, and never loses them", () => {
+  it("runs a chase among boulders: the gap opens and closes, they hide, and I go round", () => {
     const preset = PRESETS.find((p) => p.label === "catch me")!
-    // Thinned and pulled in, because the chase does not depend on how many
-    // strangers there are and the full market is forty seconds of test.
     const settings = normalizeSettings({ ...preset.settings, density: 12, reach: 40 })
-    const me = createStroll(settings, settings.seed)
-    const crowd = createThrong(settings, me)
-    const late: number[] = []
-    let furthest = 0
-    for (let step = 0; step < 100 * 120; step++) {
-      me.step(STEP, crowd)
+    const walker = createStroll(settings, settings.seed)
+    const crowd = createThrong(settings, walker)
+    let hid = false
+    let low = Infinity
+    let high = 0
+    let inside = 0
+    for (let step = 0; step < 20 * 120; step++) {
+      walker.step(STEP, crowd)
       crowd.step(STEP)
-      if (step % 60 !== 0) continue
-      const gap = crowd.stats().quarry
-      furthest = Math.max(furthest, gap)
-      if (step > 40 * 120) late.push(gap)
+      if (crowd.stats().hiding) hid = true
+      if (crowd.boulders.inside(walker.x, walker.y) > 0.3) inside++
+      if (step < 5 * 120 || step % 60 !== 0) continue
+      low = Math.min(low, crowd.stats().quarry)
+      high = Math.max(high, crowd.stats().quarry)
     }
+    expect(crowd.boulders.active).toBe(true)
     expect(crowd.quarry).not.toBeNull()
-    expect(Math.max(...late) - Math.min(...late)).toBeGreaterThan(8)
-    expect(Math.min(...late)).toBeLessThan(5)
-    expect(furthest).toBeLessThan(35)
-  }, 60_000)
+    expect(hid).toBe(true)
+    expect(high - low).toBeGreaterThan(4)
+    expect(high).toBeLessThan(35)
+    expect(inside).toBe(0)
+  })
+
+  /**
+   * **The stalls scene, pinned.** `catch me` walks among boulders now, but the
+   * stalls are still reachable through addresses that name them — the
+   * showcase's `catch me` among them. Nobody walks through a stall, least of
+   * all me, which is what makes a straight line to them impossible.
+   */
+  it("runs a chase through the stalls, and nobody walks through one", () => {
+    const preset = PRESETS.find((p) => p.label === "catch me")!
+    const settings = normalizeSettings({
+      ...preset.settings,
+      stalls: 0.5,
+      aisle: 3,
+      boulders: 0,
+      density: 12,
+      reach: 40,
+    })
+    const walker = createStroll(settings, settings.seed)
+    const crowd = createThrong(settings, walker)
+    let trespass = 0
+    let crowdIn = 0
+    let crowdN = 0
+    let low = Infinity
+    let high = 0
+    for (let step = 0; step < 15 * 120; step++) {
+      walker.step(STEP, crowd)
+      crowd.step(STEP)
+      if (crowd.stalls.blocked(walker.x, walker.y, 0)) trespass++
+      if (step % 600 === 0) {
+        for (const person of crowd.people) {
+          crowdN++
+          if (crowd.stalls.blocked(person.x, person.y, 0)) crowdIn++
+        }
+      }
+      if (step < 5 * 120 || step % 60 !== 0) continue
+      low = Math.min(low, crowd.stats().quarry)
+      high = Math.max(high, crowd.stats().quarry)
+    }
+    expect(crowd.stalls.active).toBe(true)
+    expect(trespass).toBe(0)
+    expect(crowdIn / crowdN).toBeLessThan(0.02)
+    expect(high - low).toBeGreaterThan(2)
+  })
 
   it("has nobody in red when there is nothing to chase", () => {
-    const { crowd } = walk("market", 1)
+    const { crowd } = walk("market", 0)
     expect(crowd.quarry).toBeNull()
     expect(crowd.stats().quarry).toBe(0)
   })
@@ -375,299 +511,39 @@ describe("the loop", () => {
   })
 
   /**
-   * The run has to go round, not merely stay on a curve. **Thinned for speed**
-   * — the lining is what costs, and what is asserted is my own course — and
-   * the turning is checked by sign as well as size, since a loop turns one way
-   * and a street that bends turns both.
+   * The run has to go round, not merely stay on a curve, so the turning is
+   * checked by sign as well as size: a loop turns one way and a street that
+   * bends turns both. It is my course, so it is run on the loop with nobody
+   * else on it.
    */
   it("takes me round it, always turning the same way, smoothly, on the way", () => {
-    const preset = PRESETS.find((p) => p.label === "loop run")!
-    const settings = normalizeSettings({ ...preset.settings, watchers: 30 })
-    const me = createStroll(settings, settings.seed)
-    const crowd = createThrong(settings, me)
-    let last = me.course
-    let turned = 0
-    let fastest = 0
-    let off = 0
-    for (let step = 0; step < 40 * 120; step++) {
-      me.step(STEP, crowd)
-      crowd.step(STEP)
-      const d = Math.atan2(Math.sin(me.course - last), Math.cos(me.course - last))
-      last = me.course
-      if (step < 3 * 120) continue
-      turned += d
-      fastest = Math.max(fastest, Math.abs(d / STEP))
-      off = Math.max(off, Math.abs(crowd.path.lateral(me.x, me.y)))
-    }
-    // Forty seconds at 3 m/s is a sixth of a 700 m lap: about 60° of left turn.
-    expect(turned).toBeGreaterThan(0.6)
-    expect(fastest).toBeLessThan(0.6)
-    expect(off).toBeLessThan(crowd.halfWidth)
-    expect(crowd.stats().companions).toBe(3)
+    const run = me("loop run", {}, 40)
+    // Thirty-five seconds at 3 m/s is about a sixth of a 700 m lap: some 50° of left turn.
+    expect(run.turned).toBeGreaterThan(0.6)
+    expect(run.fastestTurn).toBeLessThan(0.6)
+    expect(run.maxAbsLateral).toBeLessThan(run.halfWidth)
+  })
+
+  it("brings my companions", () => {
+    expect(walk("loop run", 0).crowd.stats().companions).toBe(3)
   })
 })
 
 describe("glancing at a run", () => {
   /**
    * "Current glancing model breaks the loop running illusion because it appears
-   * like a distracted child is about to fall over." The same scene walked and
+   * like a distracted child is about to fall over." The same way walked and
    * run, so the comparison is the gait alone: measured on the loop, running
    * took wide head turns from 19.5% of the time to 4.7% and glances up or down
-   * from 10% to under 1%.
+   * from 10% to under 1%. The head is mine, so it is run with nobody else on
+   * the loop; what a glance is about at a run is `glanceKind` in
+   * `stroll.test.ts`.
    */
-  function gaze(walk: number) {
-    const preset = PRESETS.find((p) => p.label === "loop run")!
-    const settings = normalizeSettings({ ...preset.settings, watchers: 30, walk })
-    const me = createStroll(settings, settings.seed)
-    const crowd = createThrong(settings, me)
-    const bias = (settings.pitch * Math.PI) / 180
-    let n = 0
-    let wide = 0
-    let steep = 0
-    for (let step = 0; step < 60 * 120; step++) {
-      me.step(STEP, crowd)
-      crowd.step(STEP)
-      if (step < 5 * 120) continue
-      n++
-      const yaw = Math.abs(Math.atan2(Math.sin(me.yaw - me.course), Math.cos(me.yaw - me.course)))
-      if (yaw > (25 * Math.PI) / 180) wide++
-      if (Math.abs(me.pitch - bias) > (10 * Math.PI) / 180) steep++
-    }
-    return { wide: wide / n, steep: steep / n }
-  }
-
   it("keeps a runner's eyes on the way ahead", () => {
-    const walking = gaze(1.3)
-    const running = gaze(3)
+    const walking = me("loop run", { walk: 1.3 }, 60)
+    const running = me("loop run", { walk: 3 }, 60)
     expect(running.wide).toBeLessThan(walking.wide * 0.5)
     expect(running.steep).toBeLessThan(0.02)
     expect(walking.steep).toBeGreaterThan(running.steep * 3)
-  }, 60_000)
-})
-
-/**
- * **The stalls scene, pinned.** `catch me` walks among boulders now, but the
- * stalls are still reachable through addresses that name them — the showcase's
- * `catch me` among them — and the gaze and catch numbers below were taken on
- * them. So the scene these tests measure is stated rather than inherited.
- */
-const STALLS = { stalls: 0.5, aisle: 3, boulders: 0 } as const
-
-describe("chasing through the stalls", () => {
-  /**
-   * "They're almost always in front, which makes them appear like a center
-   * marker on a camera screen." Measured as the share of the chase with the red
-   * head within 5° of my heading. Aiming at them straight down an aisle was 77%;
-   * following their trail through a runaway who ducks round corners is 12%.
-   * The stalls are asserted too, from both sides: nobody walks through one,
-   * least of all me, which is what makes a straight line to them impossible.
-   */
-  it("follows their trail round the corners rather than locking on", () => {
-    const preset = PRESETS.find((p) => p.label === "catch me")!
-    const settings = normalizeSettings({ ...preset.settings, ...STALLS, density: 12, reach: 40 })
-    const me = createStroll(settings, settings.seed)
-    const crowd = createThrong(settings, me)
-    let samples = 0
-    let centred = 0
-    let trespass = 0
-    let crowdIn = 0
-    let crowdN = 0
-    for (let step = 0; step < 200 * 120; step++) {
-      me.step(STEP, crowd)
-      crowd.step(STEP)
-      if (step < 10 * 120 || step % 30 !== 0) continue
-      if (crowd.stalls.blocked(me.x, me.y, 0)) trespass++
-      // Only while they are running. Closing on somebody who has stopped is
-      // head-on by nature — that is how a catch happens — and a window short
-      // enough to be one long approach read 0.50 on this seed where the whole
-      // chase reads 0.29 and the running part 0.25.
-      const runaway = crowd.quarry!
-      if (crowd.caught || runaway.preferred < 1) continue
-      samples++
-      const bearing = Math.atan2(runaway.y - me.y, runaway.x - me.x) - me.course
-      if (Math.abs(Math.atan2(Math.sin(bearing), Math.cos(bearing))) < (5 * Math.PI) / 180) centred++
-      if (step % 1200 === 0) {
-        for (const person of crowd.people) {
-          crowdN++
-          if (crowd.stalls.blocked(person.x, person.y, 0)) crowdIn++
-        }
-      }
-    }
-    expect(crowd.stalls.active).toBe(true)
-    expect(centred / samples).toBeLessThan(0.35)
-    expect(trespass).toBe(0)
-    expect(crowdIn / crowdN).toBeLessThan(0.02)
-  }, 60_000)
-})
-
-describe("catching them", () => {
-  /**
-   * Seed 2222 is the one that stuck: a runaway pinned against a stall for 172
-   * seconds with me half a metre behind — "i can't quite tell whether we're
-   * walking together or we're wrestling". What it should be instead: "if i
-   * catch them we can stand together for a little bit, then they run away and
-   * I chase them again. tom and jerry style."
-   */
-  /**
-   * Each scenario is four minutes of chase, so it is run once and shared: the
-   * full-strength run alone is asserted on by three tests, and running it for
-   * each of them took the suite past its timeout on CI.
-   */
-  const runs = new Map<string, ReturnType<typeof simulate>>()
-  function chase(patch: Partial<Settings>) {
-    const key = JSON.stringify(patch)
-    const cached = runs.get(key)
-    if (cached) return cached
-    const run = simulate(patch)
-    runs.set(key, run)
-    return run
-  }
-
-  function simulate(patch: Partial<Settings>) {
-    const preset = PRESETS.find((p) => p.label === "catch me")!
-    const settings = normalizeSettings({ ...preset.settings, ...STALLS, density: 12, reach: 40, seed: 2222, ...patch })
-    const me = createStroll(settings, settings.seed)
-    const crowd = createThrong(settings, me)
-    let catches = 0
-    let was = false
-    let stuck = 0
-    let longestStuck = 0
-    let escapedAfterCatch = false
-    let samples = 0
-    let inView = 0
-    let apart = 0
-    let sideways = 0
-    let switches = 0
-    let mode = ""
-    for (let step = 0; step < 240 * 120; step++) {
-      me.step(STEP, crowd)
-      crowd.step(STEP)
-      const runaway = crowd.quarry!
-      if (crowd.caught && !was) catches++
-      was = crowd.caught
-      if (catches > 0 && !crowd.caught && crowd.stats().quarry > 6) escapedAfterCatch = true
-      const trapped = !crowd.caught && runaway.preferred > 1 && Math.hypot(runaway.vx, runaway.vy) < 0.4
-      stuck = trapped ? stuck + 1 : 0
-      longestStuck = Math.max(longestStuck, stuck)
-      if (step < 10 * 120 || step % 30 !== 0) continue
-      samples++
-      const wrap = (a: number) => Math.abs(Math.atan2(Math.sin(a), Math.cos(a)))
-      const toThem = Math.atan2(runaway.y - me.y, runaway.x - me.x)
-      if (wrap(toThem - me.yaw) < 0.54) inView++
-      // Only while they are well off my line of travel, where the two ways to
-      // look are different ways.
-      if (wrap(toThem - me.course) > 0.35) {
-        apart++
-        const now = wrap(me.yaw - me.course) < 0.14 ? "ahead" : wrap(me.yaw - toThem) < 0.14 ? "them" : ""
-        if (!now) sideways++
-        else if (now !== mode) {
-          if (mode) switches++
-          mode = now
-        }
-      }
-    }
-    return {
-      catches,
-      escapedAfterCatch,
-      longestStuck: longestStuck * STEP,
-      inView: inView / samples,
-      sideways: sideways / apart,
-      switchesPerMinute: switches / 3.8,
-    }
-  }
-
-  it("catches them, stands with them, and they get away again — never wrestling", () => {
-    const run = chase({})
-    expect(run.catches).toBeGreaterThan(0)
-    expect(run.escapedAfterCatch).toBe(true)
-    expect(run.longestStuck).toBeLessThan(2)
-  }, 120_000)
-
-  // They bolt from within arm's reach, so without a re-arm distance the next
-  // step caught them again: 55 catches in four minutes on this seed.
-  it("lets them get away before they can be caught again", () => {
-    expect(chase({ seed: 31337 }).catches).toBeLessThan(10)
-  }, 120_000)
-
-  it("keeps them in sight most of the time, and only because of the chase", () => {
-    // The control is the same chase at a quarter of the strength, where most
-    // glances go the ordinary way.
-    expect(chase({}).inView).toBeGreaterThan(0.65)
-    expect(chase({ chase: 0.25 }).inView).toBeLessThan(0.6)
-  }, 120_000)
-
-  /**
-   * "the head should face predominantly in one of 2 directions: direction of
-   * travel, person being chased. We can't run looking sideways, so that means
-   * the head turns much more often." Measured while they are off to one side:
-   * resting the head part of the way toward them pointed it at neither 44% of
-   * the time and switched six times a minute; the two-way gaze is 17%, the
-   * turn itself, and 38 switches.
-   */
-  it("looks at the way or at them, not in between, and turns often", () => {
-    const run = chase({})
-    expect(run.sideways).toBeLessThan(0.3)
-    expect(run.switchesPerMinute).toBeGreaterThan(20)
-  }, 120_000)
-})
-
-describe("chasing among boulders", () => {
-  /**
-   * "Running into things does and losing the target is." On open ground a
-   * runaway runs straight away from me and sits dead ahead; with boulders they
-   * keep one between us, so they are lost behind it some of the time and are
-   * not a crosshair. A spot fixed behind the boulder when they picked it was
-   * built first and hid them 0% of the time, because I follow their trail round
-   * the same side — so both halves are asserted: that they hide, and that the
-   * hiding actually puts a boulder in the way.
-   */
-  it("keeps a boulder between us, is lost behind it, and is still caught", () => {
-    const preset = PRESETS.find((p) => p.label === "catch me")!
-    const settings = normalizeSettings({ ...preset.settings, density: 12, reach: 40 })
-    const me = createStroll(settings, settings.seed)
-    const crowd = createThrong(settings, me)
-    let samples = 0
-    let hiding = 0
-    let blocked = 0
-    let centred = 0
-    let running = 0
-    let catches = 0
-    let was = false
-    let inside = 0
-    const around: Boulder[] = []
-    for (let step = 0; step < 200 * 120; step++) {
-      me.step(STEP, crowd)
-      crowd.step(STEP)
-      if (crowd.caught && !was) catches++
-      was = crowd.caught
-      if (step < 10 * 120 || step % 30 !== 0) continue
-      samples++
-      const runaway = crowd.quarry!
-      if (crowd.stats().hiding) hiding++
-      if (crowd.boulders.inside(me.x, me.y) > 0.3) inside++
-      // A boulder across the line between us, on the ground.
-      const ux = runaway.x - me.x
-      const uy = runaway.y - me.y
-      const length = Math.hypot(ux, uy)
-      for (const b of crowd.boulders.within(me.x, me.y, length, around)) {
-        const t = ((b.x - me.x) * ux + (b.y - me.y) * uy) / (length * length)
-        if (t <= 0 || t >= 1) continue
-        if (Math.hypot(me.x + ux * t - b.x, me.y + uy * t - b.y) < b.r * 0.8) {
-          blocked++
-          break
-        }
-      }
-      if (!crowd.caught && runaway.preferred >= 1) {
-        running++
-        const bearing = Math.atan2(uy, ux) - me.course
-        if (Math.abs(Math.atan2(Math.sin(bearing), Math.cos(bearing))) < (5 * Math.PI) / 180) centred++
-      }
-    }
-    expect(crowd.boulders.active).toBe(true)
-    expect(hiding / samples).toBeGreaterThan(0.2)
-    expect(blocked / samples).toBeGreaterThan(0.1)
-    expect(centred / running).toBeLessThan(0.35)
-    expect(catches).toBeGreaterThan(0)
-    expect(inside).toBe(0)
-  }, 120_000)
+  })
 })

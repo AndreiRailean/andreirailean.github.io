@@ -23,6 +23,15 @@ See `src/experiments/docs/adr/20260928-a-piece-is-a-library-behind-three-files.m
 A check that reads specs as text lists them through `tests/unit/specs.ts`, never
 `readdirSync("tests")`, which would silently stop seeing every piece's.
 
+**The kit is tested once, as a library, and never per piece.** `tests/kit.spec.ts`
+drives a synthetic piece in `tests/kit/` that holds one of every control kind,
+served from `http://kit.test` by `tests/support/kit-fixture.ts`. It is never
+built into the site. A kit behaviour belongs there, not in a loop over the
+pieces and not in a piece's spec. What a piece owes the chrome is one test in
+`tests/experiments-wiring.spec.ts`: it boots, exposes the console API, and
+draws. That file finds pieces on its own. The note is tested the same way, on
+one host. See `src/experiments/docs/adr/20261016-the-kit-is-tested-as-a-library.md`.
+
 `pnpm test` runs both. The extensions are load-bearing — each runner is
 configured to collect only its own, or they collect each other's files and fail
 on the other's imports.
@@ -32,8 +41,8 @@ on the other's imports.
 a change inside `src/experiments/<slug>/` or its routes selects that piece,
 prose selects none, and **anything else selects everything**. Unit always runs
 `tests/unit/` plus each selected piece's `tests/`; browser runs each selected
-piece's spec, its `<slug>: ` slice of `kit.spec.ts` and `experiments-notes.spec.ts`,
-and the index spec. Every push to `main` runs both suites whole, so a mis-map
+piece's spec, its `<slug>: ` test in `experiments-wiring.spec.ts`, and the index
+spec. Every push to `main` runs both suites whole, so a mis-map
 fails one merge later. Run it locally with `pnpm run test:affected unit` —
 it diffs against `origin/main`, including uncommitted work — and add `--dry-run`
 to see the selection alone. `scripts/affected.ts` has the reasoning, and
@@ -68,33 +77,29 @@ the picture and the numbers describe one frame. `--size WxH` changes the
 viewport from the suite's 1280×900. A still is evidence for a person and nothing
 compares it — see "The principle" below.
 
-**A full `pnpm run test:unit` no longer answers in milliseconds, and two pieces
-are why.** `src/experiments/walkers/tests/` and `src/experiments/crowd/tests/` simulate hours of crowd
-to assert things no screenshot and no shorter run can — a counterflow sorting
-into files, a population holding without arriving in waves, a head that glances
-and comes back — and between them they are **722 of the suite's 736 seconds**
-of test time, measured 2026-09-26. Everything else is still instant, and the
-filter is how you get it: `pnpm exec vitest crowd`, `pnpm exec vitest walkers`,
-`pnpm exec vitest <yours>`. Reach for the filter mid-change and the full run
-before you push.
+**Test the decision, not a world that happens to make it.** Andrei, 2026-10-16:
+"we don't need a 100s of walking to test stopping. testing a random number
+generator doesn't require a world built on that. if we're testing collision
+detection - limit to that. if we're testing turning - do that." Crowd and
+walkers simulated hours of crowd to assert things each decided by one function
+— a stop, a turn, a catch, a hide — and were **722 of the suite's 736 seconds**
+of test time on 2026-09-26. With those decisions pulled out of the step loops
+and checked on constructed inputs (#289, #291 and the crowd's second pass,
+#287), the whole suite is **45 s of test time** and no file is over ten.
 
-### Why the crowd's checks are split across files
+So a new long walk is a decision that has not been found yet. Find the function
+that decides, export it unchanged (prove unchanged with a seeded trace,
+byte-identical before and after), test it directly, and keep a few seconds of
+the real world only to show the world calls it. Where the property is the
+observer's own — a gait, a course, a gaze — walk the scene's way with nobody
+else on it; `crowd/tests/structure.test.ts`'s `me` and
+`crowd/tests/chase.test.ts`'s `alone` are the pattern.
 
-**Vitest runs one file on one worker, start to finish, and these tests are
-synchronous arithmetic** — `describe.concurrent` shares a thread and buys
-nothing. So the full run can never finish sooner than its heaviest single file,
-however many workers there are. `crowd/stroll.test.ts` was 307 seconds of test
-time on its own, plus its `describe`-level runs, which vitest books as _import_
-time and does not show against the file at all. It set the unit job's wall clock
-at about nine minutes, longer than the browser job.
-
-So `stroll` is three files and `throng` is two, cut along `describe` lines
-that already shared nothing but constants, and those constants live in
-`src/experiments/crowd/tests/support.ts`. **When a crowd file grows past a couple of
-minutes, split it the same way rather than adding to it**: the cost of one more
-file is an import line, and the cost of one more minute in the heaviest file is
-paid by every PR. Read file times with `--reporter=json`, since the default
-reporter's per-file figures leave out the `describe`-level work.
+**Vitest still runs one file on one worker, start to finish**, so the full run
+can never finish sooner than its heaviest file, however many workers there are.
+`crowd/stroll.test.ts` was once 307 seconds on its own and set the unit job at
+nine minutes. Read file times with `--reporter=json`, and remember that work in
+a `describe` body is booked as _import_ time and does not show against the file.
 
 ## Neither runner typechecks
 
@@ -325,13 +330,23 @@ timeout over.
 **So a test about the chrome should hold the piece.** `api.pause(true)` is in the
 minimum surface of every piece and parks the frame loop without tearing anything
 down — `stats().running` goes false. Do it before touching the panel, not after.
-`kit.spec.ts` does it for every test through `openHeld`, and that one change took
-the CI browser job from about 8.2 minutes to 6.0 (#234).
+`kit.spec.ts` did it for every test through `openHeld` when it drove real pieces,
+and that one change took the CI browser job from about 8.2 minutes to 6.0
+(#234). Its fixture now draws one rectangle, so it no longer needs holding.
 
 **More workers are not the lever; less work per test is.** Four CI workers
 with `fullyParallel` were measured against the default two and bought nothing,
 while a CPU-heavy test timed out under the contention —
 `docs/adr/20260927-more-browser-workers-buy-nothing-on-ci.md`.
+
+**More runners are, once no single file is the floor.** Both test jobs run as
+two shards on two runners, each runner keeping its two workers. That is more
+cores rather than more workers per core, and it is the case that ADR left open.
+It only paid once `kit.spec.ts` ran in `mode: "parallel"`, because a file goes to
+one worker whole. So **a spec file that grows past a few minutes wants
+`test.describe.configure({ mode: "parallel" })`**, or it becomes the job's wall
+clock however many shards there are —
+`docs/adr/20261015-test-jobs-shard-across-two-runners.md`.
 
 **And a drag is one settings change per step.** `page.mouse.move(x, y, { steps:
 8 })` is eight of them, and a settings change can be expensive: flotsam's size
@@ -355,9 +370,9 @@ which is nothing. The work is synchronous arithmetic and parking the frame loop
 cannot touch it.
 
 **And the simulated duration is often not the cost either.** #133 asks for these
-to be measured, so: flotsam's `a raft ignores the chop` costs the same at
-`run(0.5)`, `run(1)` and `run(3)` — 14.4s in all three. Phase-timed, the cost is
-**speck size**, not seconds:
+to be measured, so: flotsam's `a raft ignores the chop`, at 4,000 dots, cost the
+same at `run(0.5)`, `run(1)` and `run(3)` — 14.4s in all three. Phase-timed, the
+cost was **speck size**, not seconds:
 
 |           | with 4mm specks | with 1.2m rafts |
 | --------- | --------------- | --------------- |
@@ -370,6 +385,12 @@ rather than a test's waste, it is identical in either runner, and it is why
 **moving that test to a headless harness would not make it cheap** — the same
 thing #131 measured for walkers, now confirmed on a second piece. What a harness
 buys is the page, and a shorter serial chain; it does not buy the arithmetic.
+
+**What did make it cheap was asking for less of it** (#292). The orbit ratio it
+asserts does not depend on how many specks there are, so the test now runs 300
+dots at `run(0.5)` and keeps only that ratio; how the response falls with size
+is `waves.test.ts`, and gathering on a steep sea has its own test. Fewer specks
+is fewer rafts' worth of arithmetic, which is the cost the table found.
 
 **Do not read a single whole-test timing as a measurement.** This box is shared
 with other sessions, and the same test measured 24s, 29s and 41-55s within an

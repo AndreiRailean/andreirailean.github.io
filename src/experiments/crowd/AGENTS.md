@@ -86,6 +86,80 @@ you look at something and then go to it. The corridor is the control — in a
 seven-metre street the pull toward its line beats the glance and the heading
 stays inside a few degrees, which is what walls are.
 
+## How the crowd is tested: the decision, not a world that produces it
+
+Andrei, on #287: "we don't need a 100s of walking to test stopping. testing a
+random number generator doesn't require a world built on that. if we're testing
+collision detection - limit to that. if we're testing turning - do that."
+
+The checks used to walk the market — nine thousand people — for one to five
+minutes and read statistics off the result: 880 s of the unit job, one test
+alone 271 s. So each of the walk's decisions is now **a pure export of
+`stroll.ts`** that `createStroll` calls: `spellLength` (walking or stopped),
+`glanceKind` (what a glance is about), `sweepFor` and `spotSpread` (how far it
+goes), `aimAt` (where a look puts the head),
+`neckStep` and `courseStep` (the two springs), `facingTarget` (the sidestep),
+`turnsToLook` (a stop becoming a turn) and `confinement` (a corridor holding the
+line). They were lifted out with the arithmetic and the order of the random
+draws untouched, which a seeded twelve-second trace of every preset confirmed
+byte for byte. `tests/stroll.test.ts` checks each one with the inputs that
+matter, and every historical fault in this file was put back and seen red there.
+
+**What still walks is wiring, in a world sized for the check.** `reach` sizes
+the world, so a walk that needs a stop to happen walks a world of reach 12 with
+almost nobody in it (0.1 s), and the overlap check walks a crowd of reach 30, just
+wider than the detail radius, for four seconds. Before adding a long walk, find
+the decision it is waiting for and call that instead. `tests/draw.test.ts` does
+the same for the frame: it puts somebody two metres away rather than walking
+forty seconds until somebody happens to come close.
+
+**The files claim is not tested, and the old test did not test it either.** It
+read how often a walker's nearest neighbours go the same way, before and after
+two minutes. Measured 2026-10-16: the market as shipped went 0.485 → 0.597, and
+with `spacing` at its floor of 0.3 — a tenth of the avoidance — 0.501 → 0.565,
+both past its `+0.05`. In a small world the weakened crowd scored _higher_, on
+that statistic and on a lateral-only version. So the statistic mostly sees
+where re-entered walkers land. It was removed rather than kept as coverage; see
+"What is not here".
+
+**The chase is decisions too.** The person in red's were inside `throng.ts`'s
+closure; they are **`runaway.ts`** now — `flee` (the catch, the bolt, the
+re-arm, the run/dawdle switch), `pickHide` and `keepCover` (the boulder), and
+`junctionHeading` (the corner at an aisle crossing) — lifted out the same way,
+with the same seeded trace plus five chase variants byte-identical. The throng
+keeps one `RunawayState` and passes a `RunawayWorld` whose ground, settings and
+stream are getters, because each is replaced on a rebuild or reseed; a world
+captured by value would go stale silently. My side of the chase — the two-way
+gaze's `chaseSpell`, following their trail, being stopped by a stall, standing
+with them when caught — is checked in `tests/chase.test.ts` against a scripted
+person in red on empty ground, and theirs in `tests/runaway.test.ts`.
+
+**`structure.test.ts` walks seconds, not minutes.** It used to chase for two to
+four minutes at a time and walk hills and lanes for up to ninety seconds: 81 s.
+Tobler's pace, the lane push and my team's places are checked as functions
+(`hikingPace`, `lanePush`, `teamSlots`), with three to twenty seconds of the
+throng to show it calls them; my gait, my course round the loop and my gaze at
+a run are walked on the scene's own way with nobody else on it (`me` in that
+file). 3.4 s of test time, measured 2026-10-16.
+
+**Behaviours that compose are tested apart.** Andrei, on #287: "if a static
+crowd can bob and a small crowd can walk in the same direction, we can assume
+that a walking crowd can bob. gazing around doesn't require a full infinity of
+people to be useful". The bob is **`headBob` in `body.ts`**, one function for
+everybody's head and mine; it is checked on a head going nowhere with its phase
+swept through a stride (`tests/body.test.ts`), one drawn frame shows the crowd
+is drawn with it (`tests/draw.test.ts`), and the runner's walk, which happens
+anyway, shows mine is. **Shrink a world only as far as its check can still
+fail.** Measured 2026-10-16 with the fault put back: companions keeping station
+needs a crowd that pushes — with the spring removed the median gap read 0.89 m
+among 45 people, a pass, and 2.66 among 136. **And where no size will do, find
+the decision.** How far a glance swings walking and stopped is **`sweepFor`**,
+and where that puts a spot is **`spotSpread`**; both were inline, and the only
+check was a 45-person walk's percentiles, which could not see them — the stopped
+p90 read 14.5 against its line of 20 at density 5 as shipped, and raising the
+walking sweep to the stopped one moved the walking p90 _down_. The walk that is
+left has two people in it and checks the neck's wiring.
+
 ## The gaze has two axes and a subject
 
 - **`pitch` is a bias, not a lock**, and holding the vertical fixed while the
@@ -194,8 +268,9 @@ stays inside a few degrees, which is what walls are.
   itself.
 
 - **A statistic over the crowd has to say what it does with people who are
-  standing still.** The counterflow test measures how often neighbours agree on a
-  direction, and its control failed at 0.38 against an expected 0.5 — which sent
+  standing still.** The counterflow test (since removed, see "How the crowd is
+  tested") measured how often neighbours agree on a direction, and its control
+  failed at 0.38 against an expected 0.5 — which sent
   this session after the random number generator. The primary has 22% of the
   crowd standing, `Math.sign(0)` matches no walker, and `0.22² + 0.78²/2` is
   0.353. **The control was working and the expectation was wrong.**
@@ -606,8 +681,8 @@ but much larger and of black colour so the blend in with the background".
   replaced them in the market; the stalls stay because addresses already out
   there name them, the showcase's `catch me` among them. Their bounds are
   declared in `BOUNDS` directly, since a setting with no slider has no track.
-  `structure.test.ts` pins the stalls scene for the gaze and catch tests that
-  were measured on it.
+  `structure.test.ts` pins the stalls scene in its short chase through them, and
+  `chase.test.ts` builds one stall to be stopped by.
 - **A grid of boulders is a forest: it hides most of the crowd.** `layout` 1
   and 2 put nearly equal boulders exactly on a square or hexagonal lattice,
   `aisle` (as "passages") apart, origin at a crossing; `coverage` fills that
@@ -687,6 +762,18 @@ the control in its heading.
 
 ## What is not here, and would be worth having
 
+- **A check that files form.** "The crowd sorts itself into files" is the
+  strongest claim the note makes and nothing tests it (see "How the crowd is
+  tested"). A real one needs a statistic that responds to the avoidance — the
+  control is the same crowd at `spacing: 0.3` — and probably a world with no
+  boundary to re-enter through, since re-entry by direction sorts the crowd on
+  its own.
+- **A check that I look at my companions.** One read the time my head was
+  within 20° of a companion and could not tell a look aimed at them from one
+  aimed four metres to their side (0.37 against 0.19, past a 0.05 line, and the
+  same with nobody else about). `glanceKind` and `aimAt` are each checked; that
+  a companion glance ends with the head on the companion is not. It needs the
+  walk to say what it is looking at, which it does not expose.
 - **Nobody is going anywhere in particular.** People carry a heading, not a
   destination, so nothing walks up to something, waits, and leaves. The standing
   people are standing where they happened to be.
