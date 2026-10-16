@@ -125,6 +125,17 @@ describes the work.
 > save this as clockwork
 > http://100.117.55.104:4627/experiments/artdeco/?s=___f_____3AwGoJEkOUhREMIIMMC0AAHPUgCEIAAQAmyzqCRJT
 
+## 2026-10-17 — busyness
+
+> is there a way to control the "busyness"? some areads end up with too many
+> intersections. so far I've been managing it with the "life" of a line and if
+> longer life (fewer stop) is allowed it end up being very busy and almost
+> completely fills the piece. i'm wondering if it is possible to have "area
+> busyiness" determination to increase the incidence of stops and or kick off
+> the line disappearance process sooner. so in a busy area, a new line crossing
+> through would "infect" existing lines to make them start disappearing. and
+> the disappearance itself would make decisions at intersections and turns.
+
 ## Open questions
 
 _Mine, not his — what I assumed and what would settle it._
@@ -206,3 +217,17 @@ _Mine, not his — what I assumed and what would settle it._
   meet the bottom and top drawing. Preset 15, crossroads, is your scene that
   way. Not built: sides with a different stem count, gap or angle from the
   bottom.
+- **Busyness** (2026-10-17). Built as you described it, in a group of its own.
+  _crowded at_ is how many visible lines near a point, from every drawing on
+  screen, count as fully busy. _hush_ raises the odds of stopping there, at
+  decisions and meetings. _infect_ is the odds that a line a tip crosses in a
+  busy place starts dissolving from the crossing, a gap widening both ways at
+  the speed lines grow. _contagion_ is the odds the dissolving carries on into
+  the next line at each turn, split or meeting it reaches. Measured on the
+  construct with life 30: 14.6% of the frame lit and climbing without it, near
+  7% and steady with infect and contagion at 0.2 (preset 17, construct,
+  thinned). Higher than about 0.4 contagion and it eats the whole drawing.
+  Open: dissolving only passes along joints a line made while growing, so it
+  does not jump to a line from an older drawing that merely crosses it; and a
+  dissolving line could make other decisions on the way (turn back, stop
+  early), which is not built.

@@ -131,10 +131,33 @@ being found.
   and are not joined to it. A mitre longer than four strand offsets, at a sharp
   rebound, is dropped rather than drawn as a spike.
 
+- **Dissolving is a gap, not a tail.** A segment holds one `rot` (where it
+  began) and `rotAt` (the tree's `D` then), and everything within `D - rotAt`
+  of `rot` is gone: for drawing, for meetings (`gone`), and for busyness. One
+  gap per segment; a second infection of a dissolving segment is ignored.
+- **Joints are recorded as they happen**, in `meet` (the tip's end and the met
+  line's point) and `spawn` (a child's start and its parent's point). Turns
+  are `prev` and `next`. Dissolving passes only along those, so two lines that
+  cross without either meeting the other (a cross from an older drawing, say)
+  are not joined, and dissolving does not jump between them.
+- **Busyness and infection look across drawings, meetings do not.** In flow,
+  older drawings still on screen are most of what makes a place busy, so
+  `busyAt` counts every tree's visible lines and their images, and
+  `infectAlong` can set an older drawing's line dissolving. Tips still only
+  meet their own drawing's lines.
+- **Every busyness choice is a hash, not a stream**, of the seed, the drawing
+  and the pair of segments (`pairOdds`), except `hush`, which reads `quiet`
+  off the token from its own stream. Each joint decides once (`done`).
+- **Infect is steep.** At `infect` 0.6 with `contagion` 0.5, the construct
+  emptied to 2% of pixels lit, against 14.6% and climbing with neither; 0.2
+  and 0.2 at `crowd` 24 holds it near 7%. Contagion above about 0.4
+  percolates through a joined drawing.
+
 ## Checking a mechanism fired
 
 `experiment.stats()` counts every decision by kind, every meeting by kind
 (`line`, `mirror`, `axis`, `halo`, `edge`, `depth`, `cap`), what the lines
 `chose` at them, rebounds, offshoots, circles by placement (`corner`,
-`along`), and segments dropped at the caps (`MAX_SEGS`, `MAX_HEADS`). A setting whose
+`along`), `busy` (lines hushed, set dissolving, and dissolving passed on),
+and segments dropped at the caps (`MAX_SEGS`, `MAX_HEADS`). A setting whose
 counter stays at zero is not doing anything, however the picture looks.
