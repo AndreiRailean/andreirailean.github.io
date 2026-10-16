@@ -136,6 +136,40 @@ describes the work.
 > through would "infect" existing lines to make them start disappearing. and
 > the disappearance itself would make decisions at intersections and turns.
 
+## 2026-10-17 — the permanent circle, and circles crowding
+
+> i'm looking at this, a derivative of preset 17, and the main circle has not
+> moved in a few minutes now. nothing can kill it and it makes no decision to
+> go. there's something to its permanence, but i'd like to know how to control
+> it.
+>
+> http://100.117.55.104:4627/experiments/artdeco/?s=___f_____39J2cJEkaUggKMIJMMC0AAHHUgUKYYAQBIyxAADIAMYRQ
+>
+> I started playing with circles and it appears that busyness controlls allow
+> me to find them manageable again, though i do find places of
+> multi-circle-overlap that look messy. circles draw special attention. i think
+> they need to be controlled by probability based on other circles nearby. if
+> other circles are around the likelihood of spawning a circle should go down.
+> [Image #1]
+
+_(Image #1: a close-up of six small rings, several overlapping each other and
+two overlapping in a chain along a line.)_
+
+## 2026-10-17 — tips instead of lines
+
+> i just saw something interesting. the tip of the line ended up in a state
+> where its body disappeared. so they (the tips) were flying in different
+> directions. that added some nuance and made me wander if instead of thinking
+> about lines we think about those tips. so rather than line deciding to stop
+> moving and starting another spawn, the dot keeps moving and makes decision to
+> draw or not and while doing that it makes decisions to trun and to split.
+> stopping becomes stopping to draw. so another decision becomes starting to
+> draw. and the dot can turn and split while not drawing anything - just the
+> tips are flying through. whether that makes tips immortal and how that
+> impacts the art will show if it's a good idea. i like what we have so far and
+> don't want it's feel to change. not sure if this tip thing is a hint at a new
+> piece or another type of "pen"
+
 ## Open questions
 
 _Mine, not his — what I assumed and what would settle it._
@@ -231,3 +265,28 @@ _Mine, not his — what I assumed and what would settle it._
   does not jump to a line from an older drawing that merely crosses it; and a
   dissolving line could make other decisions on the way (turn back, stop
   early), which is not built.
+- **The permanent circle** (2026-10-17). It was a stack: in flow every drawing
+  draws its own big circle in the same place, three or four on screen at once,
+  so a gap dissolving in one was covered by the next. Now controllable:
+  _circle odds_ (some drawings have none), _circle drift_ (its height wanders),
+  the big circle dissolves under _infect_ like a line, and _shy_ keeps a
+  drawing from adding one while an older one still shows. With shy at 1 there
+  is never more than one, and it fades or dissolves before another comes.
+  Preset 18, construct, breathing, is your derivative with these on.
+- **Circles crowding**: _shy_. Each visible circle within a radius, edge to
+  edge (mirror images and the big circle included), makes a new one that much
+  more likely to be left out. On your scene with corner circles at 0.6: 70
+  placed in two minutes without, 27 with shy at 0.8.
+- **Tips instead of lines** (2026-10-17). Built as a second pen, so nothing you
+  have changes: _pen: line_ is what there was, and every preset is on it.
+  _pen: tips_ makes every stop a lift: the tip flies on drawing nothing and
+  meeting nothing, still turning, splitting and echoing, until _land_ puts the
+  pen down and it draws from wherever it is. _tips_ (line group) draws a dot on
+  every tip so the flying ones show. Immortality is the open question, so it is
+  a setting: _flight_ is how many decisions a lifted tip may make before it
+  dies; the edge and depth still end tips too. Preset 19, pen up, is the spire
+  this way. On the construct the tips pen is far denser, since branching tips
+  no longer die where they meet; the busyness controls should be what tames it.
+  Whether this is a pen or a piece of its own: it shares everything with the
+  line pen, which is the case for a pen, and it reads differently enough that
+  a piece is plausible. Yours to say once you have flown it.

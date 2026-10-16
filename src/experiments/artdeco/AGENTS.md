@@ -153,11 +153,39 @@ being found.
   and 0.2 at `crowd` 24 holds it near 7%. Contagion above about 0.4
   percolates through a joined drawing.
 
+- **In flow the big circle is a stack.** Every drawing draws its own in the
+  same place, so three or four are on screen at once and a gap dissolving in
+  one is covered by the next. That is why it looked permanent. `haloOdds`
+  leaves it out of some drawings, `haloDrift` moves it, and `shy` keeps a
+  drawing from adding one while an earlier one is still showing
+  (`haloShowing`). Its odds and drift come from their own hashes, salted 23 and
+  29, so they move neither the stems' wander nor its size.
+- **Shy circles count images and the big circle.** `place` counts every
+  visible circle image within a radius, edge to edge, of the new one, its own
+  mirror images included, and leaves it out with odds `1 - (1 - shy)^n` from a
+  hash of its position. A shied corner circle is not counted in `corner`.
+
+- **The tips pen flies on ghosts.** A lifted tip's segment has id -1 and is
+  never stored, registered, drawn or met, and a lifted tip skips `firstHit`,
+  circles and infection. Its children are lifted too. Everything that ended a
+  tip now calls `lift`, which ends it with the line pen and lifts it with the
+  tips pen; only the edge, `depth`, `flight` and the caps still end one. A
+  `land` (its own stream, salt 41) starts a fresh stored segment, and that
+  decision then applies to it.
+- **`tree.live` is the tip cap, not `heads.length`.** `heads` is emptied while
+  a step runs and refilled at its end, so checking its length against
+  `MAX_HEADS` in `spawn` let any number through: the construct on the tips pen
+  reached 4911 tips in one drawing. `live` counts every tip alive, those born
+  this step included, and now holds at about 1200. No line-pen preset had
+  reached the cap, so none moved.
+
 ## Checking a mechanism fired
 
 `experiment.stats()` counts every decision by kind, every meeting by kind
 (`line`, `mirror`, `axis`, `halo`, `edge`, `depth`, `cap`), what the lines
 `chose` at them, rebounds, offshoots, circles by placement (`corner`,
-`along`), `busy` (lines hushed, set dissolving, and dissolving passed on),
+`along`), `busy` (lines hushed, set dissolving, and dissolving passed on), `halos`
+(big circles showing, and dissolving), `circles.shied`, `pen` (lifts, lands,
+tips grounded by `flight`, tips flying now),
 and segments dropped at the caps (`MAX_SEGS`, `MAX_HEADS`). A setting whose
 counter stays at zero is not doing anything, however the picture looks.
