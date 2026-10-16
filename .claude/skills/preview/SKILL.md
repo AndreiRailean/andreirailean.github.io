@@ -55,6 +55,29 @@ So: **previews happen when you are not building.** If the browser suite warns
 that a preview is serving the review port, that warning is telling you somebody
 is mid-review — finish the run and tell him to reload, or wait.
 
+## What is on his screen: the bridge
+
+`pnpm run preview` also starts a **bridge**: every preview page posts what it is
+showing to `.astro/bridge.jsonl` — the scene whenever it changes, the window and
+DPR, and under `?trace=1` an event trace with an overlay. So his screen is
+something you can read instead of something he has to describe (#305).
+
+- **"Save what I have on screen as preset X"** → `pnpm run bridge state <piece>`
+  prints the scene as a preset object. Add it to that piece's `presets.ts` under
+  his label. Check the time it prints: it is his last change, and an old one
+  means the tab you want is not the one that posted.
+- **"It does something odd when I…"** → give him the page with `?trace=1`, ask
+  him to do it, then `pnpm run bridge trace <piece>`. This found #303's cause
+  where every headless reproduction had failed.
+- `pnpm run bridge` follows everything as it arrives.
+
+**It never deploys, and that is held by checks rather than by care.** A build
+only carries the client while the bridge is running, `pnpm run build` sets
+`NO_BRIDGE`, and it ends with a scan of `dist/` that fails on the client's
+marker (`tests/unit/preview-bridge.test.ts`). The bridge stops itself thirty
+seconds after the preview does, so it needs no stopping of its own. Pages driven
+by the browser suite post nothing unless the address has `?bridge=1`.
+
 ## Stopping it
 
 A preview is about 179 MB, against roughly 1.2 GB for `astro dev`. It is cheap
