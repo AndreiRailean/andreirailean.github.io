@@ -53,6 +53,7 @@ exports[`artdeco > has not edited a slot in place 1`] = `
   "beat num grid=0.05 origin=0.05 bits=5",
   "haloVary num grid=0.05 origin=0 bits=5",
   "strandsOn enum all|stems",
+  "sides enum copies|own",
 ]
 `;
 

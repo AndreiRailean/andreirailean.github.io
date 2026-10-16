@@ -212,13 +212,17 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
   const centre = () => width / 2
   const middle = () => height / 2
 
+  const ownSides = () => settings.fold === "4" && settings.sides === "own"
+
   let images: Xf[] = []
   let imagesFor = ""
   /** The dihedral group of order 2n; index 0 is the identity and index 1 the left-right mirror. */
   function group(): Xf[] {
-    const key = `${settings.fold} ${settings.reach} ${width} ${height}`
+    const key = `${settings.fold} ${settings.reach} ${settings.sides} ${width} ${height}`
     if (imagesFor === key) return images
-    const n = Number(settings.fold)
+    // Sides of their own: four is two folds, top and bottom and left and right,
+    // and the side stems are grown rather than turned copies of the bottom ones.
+    const n = ownSides() ? 2 : Number(settings.fold)
     images = []
     for (let k = 0; k < n; k++) {
       const turn = (2 * Math.PI * k) / n
@@ -232,7 +236,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
         Math.abs(ux) > EPS ? width / 2 / Math.abs(ux) : Infinity,
         Math.abs(uy) > EPS ? height / 2 / Math.abs(uy) : Infinity,
       )
-      const push = settings.reach === "edges" ? edge - height / 2 : 0
+      const push = settings.reach === "edges" && !ownSides() ? edge - height / 2 : 0
       const ox = ux * push
       const oy = uy * push
       images.push({ xx: c, xy: -sn, yx: sn, yy: c, flip: false, turn, ox, oy })
@@ -242,10 +246,13 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     return images
   }
 
-  function image(f: Xf, x: number, y: number): [number, number] {
+  /** `slide` false leaves out the shift `reach: "edges"` gives a copy, for the big circle. */
+  function image(f: Xf, x: number, y: number, slide = true): [number, number] {
     const ox = x - centre()
     const oy = y - middle()
-    return [centre() + f.xx * ox + f.xy * oy + f.ox, middle() + f.yx * ox + f.yy * oy + f.oy]
+    const sx = slide ? f.ox : 0
+    const sy = slide ? f.oy : 0
+    return [centre() + f.xx * ox + f.xy * oy + sx, middle() + f.yx * ox + f.yy * oy + sy]
   }
 
   /** The inverse image: every map here is orthonormal, so its inverse is its transpose. */
@@ -533,7 +540,9 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     const out: (Halo & { turn: number })[] = []
     for (const f of group()) {
       if (f.flip) continue
-      const [x, y] = image(f, halo.x, halo.y)
+      // Turned with the copies but never slid with them, so a big circle on the
+      // centre stays one circle whatever `reach` does to the lines.
+      const [x, y] = image(f, halo.x, halo.y, false)
       if (out.some((h) => Math.hypot(h.x - x, h.y - y) < 0.5)) continue
       out.push({ x, y, r: halo.r, turn: f.turn })
     }
@@ -812,16 +821,16 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     if (stems % 2 === 1) xs.push(cx)
     for (let k = 1; k <= Math.floor(stems / 2); k++)
       xs.push(cx + Math.max(0.25, (stems % 2 === 1 ? k : k - 0.5) + settings.wander * (2 * birth() - 1)) * gap)
-    for (const x of xs) {
-      const seg = newSeg(tree, x, height - inset(), 0, 0, 0, x === cx)
-      if (!seg) continue
+    const stem = (x: number, y: number, d: number, f: Family, axis: boolean) => {
+      const seg = newSeg(tree, x, y, d, 0, 0, axis)
+      if (!seg) return
       const head: Head = {
         seg,
-        family: tree.root,
+        family: f,
         n: 0,
         hand: 1,
         depth: 0,
-        toDecision: stretch(0, stepPx()),
+        toDecision: stretch(d, stepPx()),
         stepLen: stepPx(),
         echo: null,
         bead: Infinity,
@@ -830,6 +839,18 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
       }
       arm(head)
       tree.heads.push(head)
+    }
+    for (const x of xs) stem(x, height - inset(), 0, tree.root, x === cx)
+    if (ownSides()) {
+      // From the right edge, pointing left, deciding for themselves; their
+      // images give the left edge, and the pair above and below the middle.
+      const side = family(tree)
+      const cy = middle()
+      const ys: number[] = []
+      if (stems % 2 === 1) ys.push(cy)
+      for (let k = 1; k <= Math.floor(stems / 2); k++)
+        ys.push(cy + Math.max(0.25, (stems % 2 === 1 ? k : k - 0.5) + settings.wander * (2 * birth() - 1)) * gap)
+      for (const y of ys) stem(width - inset(), y, -turns() / 4, side, false)
     }
     return tree
   }
@@ -963,7 +984,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
       ctx.stroke()
     }
     for (const tree of trees) {
-      if (tree.halo) ring(tree, tree.halo.x, tree.halo.y, tree.halo.r, 0, 0, true, settings.haloMark)
+      if (tree.halo) ring(tree, tree.halo.x, tree.halo.y, tree.halo.r, 0, 0, true, settings.haloMark, false)
       const base = px(settings.radius)
       for (const c of tree.circles) {
         const r = base * (1 + settings.jitter * (2 * c.size - 1))
@@ -1022,7 +1043,17 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
    * and erased from there by the tail. A solid one grows out from its centre
    * instead; a cutout fills with the background first, hiding what is behind.
    */
-  function ring(tree: Tree, x: number, y: number, r: number, born: number, gen: number, axis: boolean, how: Mark) {
+  function ring(
+    tree: Tree,
+    x: number,
+    y: number,
+    r: number,
+    born: number,
+    gen: number,
+    axis: boolean,
+    how: Mark,
+    slide = true,
+  ) {
     if (r <= 0.25) return
     const drawn = tree.D - born
     const tail = tree.D - tree.delay - born
@@ -1033,7 +1064,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     const at: [number, number, number][] = []
     for (const f of group()) {
       if (axis && f.flip) continue
-      const [ix, iy] = image(f, x, y)
+      const [ix, iy] = image(f, x, y, slide)
       if (at.some(([ox, oy]) => Math.hypot(ox - ix, oy - iy) < 0.5)) continue
       at.push([ix, iy, Math.PI / 2 + f.turn])
     }

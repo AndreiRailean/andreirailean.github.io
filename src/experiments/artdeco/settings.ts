@@ -26,6 +26,7 @@ export type Fold = "1" | "2" | "3" | "4" | "6"
 export type Reach = "centre" | "edges"
 export type ThriceOf = "any" | "branch" | "turn" | "echo"
 export type StrandsOn = "all" | "stems"
+export type Sides = "copies" | "own"
 export type Unison = "family" | "all"
 export type CornerAt = "turns" | "splits" | "both"
 export type Mark = "ring" | "solid" | "cutout"
@@ -38,6 +39,8 @@ export type Settings = {
   fold: Fold
   /** Centre: the copies are turned about the centre, stems on a circle of the height. Edges: each slides out until its stem starts at the frame's edge. */
   reach: Reach
+  /** At 4: whether the left and right are turned copies of the bottom, or grow from the side edges deciding for themselves. */
+  sides: Sides
   /** Share of the stem gap a pair of stems may stray by, drawn afresh for each drawing. */
   wander: number
   /** A tendency upwards: upright stretches grow up to four times as long, and at these odds a turn leans back towards upright. */
@@ -129,6 +132,7 @@ export type Settings = {
 }
 
 type EnumKey =
+  | "sides"
   | "strandsOn"
   | "fold"
   | "reach"
@@ -151,6 +155,7 @@ export const FOLDS: Fold[] = ["1", "2", "3", "4", "6"]
 export const REACHES: Reach[] = ["centre", "edges"]
 export const THRICE_OFS: ThriceOf[] = ["any", "branch", "turn", "echo"]
 export const STRANDS_ONS: StrandsOn[] = ["all", "stems"]
+export const SIDESES: Sides[] = ["copies", "own"]
 export const UNISONS: Unison[] = ["family", "all"]
 export const CORNER_ATS: CornerAt[] = ["turns", "splits", "both"]
 export const MARKS: Mark[] = ["ring", "solid", "cutout"]
@@ -203,7 +208,20 @@ export const CONTROLS: Control[] = [
       { value: "edges", label: "to the edges" },
     ],
     hint: "Round the centre: every copy's stems start as far from the centre as the bottom ones, so at 4 the drawing is a square. To the edges: each copy slides out until its stems start at the edge of the frame, so it fills a wide screen. Only differs at 3 and up.",
-    inert: (settings: Settings) => settings.fold === "1" || settings.fold === "2",
+    inert: (settings: Settings) =>
+      settings.fold === "1" || settings.fold === "2" || (settings.fold === "4" && settings.sides === "own"),
+  },
+  {
+    kind: "choice",
+    key: "sides",
+    label: "sides",
+    group: "growth",
+    options: [
+      { value: "copies", label: "turned copies" },
+      { value: "own", label: "their own" },
+    ],
+    hint: "At 4 only. Turned copies: the left and right are the bottom turned a quarter round. Their own: stems grow in from the side edges and make their own decisions, mirrored left to right and top to bottom, so the sides are a second drawing that meets the first.",
+    inert: (settings: Settings) => settings.fold !== "4",
   },
   {
     kind: "slider",
@@ -664,6 +682,7 @@ export const CONTROLS: Control[] = [
 export const DEFAULT_SETTINGS: Settings = {
   fold: "1",
   reach: "centre",
+  sides: "copies",
   wander: 0,
   rise: 0,
   thrice: 0,
@@ -800,6 +819,7 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
     angle: oneOf(ANGLES, String(merged.angle), base.angle),
     fold: oneOf(FOLDS, String(merged.fold), base.fold),
     reach: oneOf(REACHES, merged.reach, base.reach),
+    sides: oneOf(SIDESES, merged.sides, base.sides),
     thriceOf: oneOf(THRICE_OFS, merged.thriceOf, base.thriceOf),
     strandsOn: oneOf(STRANDS_ONS, merged.strandsOn, base.strandsOn),
     unison: oneOf(UNISONS, merged.unison, base.unison),
@@ -824,6 +844,7 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
 const GROWTH_KEYS = [
   "fold",
   "reach",
+  "sides",
   "wander",
   "rise",
   "thrice",
@@ -918,6 +939,7 @@ export const REGISTRY: readonly Slot[] = [
   { key: "beat", kind: "num", grid: 0.05, origin: 0.05, bits: 5 },
   { key: "haloVary", kind: "num", grid: 0.05, origin: 0, bits: 5 },
   { key: "strandsOn", kind: "enum", options: ["all", "stems"] },
+  { key: "sides", kind: "enum", options: ["copies", "own"] },
 ]
 
 export function settingsToQuery(settings: Settings): URLSearchParams {
