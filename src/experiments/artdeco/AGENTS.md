@@ -185,6 +185,16 @@ being found.
   `runner-bundle.test` caught 59 of 59 hints shipping. Pass `inert` to `odds()`
   instead.
 
+- **The flock is off at the top of its range** (`FLOCK_OFF`, 1200). At 1200
+  it still bit now and then and moved pen up by two segments, so a scene
+  saved before it existed (snowflake) would not have replayed. It counts
+  flying tips at the start of each step plus those born or lifted since,
+  because a stepping tree's `heads` is empty; deaths in the step are not
+  taken off, so it errs small. Full, it stops a flying tip splitting and
+  turns a lift into an end, which is what makes it exact (peak 60 at 60).
+- **Toll costs depth for every pen**, and flight as well for a flying tip, so
+  it changes line-pen drawings too when above 0.
+
 ## Checking a mechanism fired
 
 `experiment.stats()` counts every decision by kind, every meeting by kind
@@ -192,6 +202,7 @@ being found.
 `chose` at them, rebounds, offshoots, circles by placement (`corner`,
 `along`), `busy` (lines hushed, set dissolving, and dissolving passed on), `halos`
 (big circles showing, and dissolving), `circles.shied`, `pen` (lifts, lands,
-tips grounded by `flight`, tips flying now),
+tips grounded by `flight`, splits and lifts refused by `flock`, tips flying
+now),
 and segments dropped at the caps (`MAX_SEGS`, `MAX_HEADS`). A setting whose
 counter stays at zero is not doing anything, however the picture looks.

@@ -170,6 +170,20 @@ two overlapping in a chain along a line.)_
 > don't want it's feel to change. not sure if this tip thing is a hint at a new
 > piece or another type of "pen"
 
+## 2026-10-17 — taming tips, and snowflake
+
+> hmmm. it does begin to look like a different piece, but we'll keep it here
+> because learning the controls is a little hard. tips dynamic needs to be
+> tamed. tips end up splitting endlessly and the screen becomes filled with
+> the noise of moving dots. the nuance i saw stops being attractive. i think
+> split decisions need to carry a cost, so splitting into 3, shortens their
+> life or we cap the density. or maybe we have a hierarchy of tips and some can
+> be seen and others cannot.
+>
+> here, i turned off the tips and am quite enjoying the constant
+> re-generation. let's call this a snowflake
+> http://100.117.55.104:4627/experiments/artdeco/?s=___f______9_A5lBiZjDMMwjCCFDAtAAAQlAFAAAAKAAMtAACjARFkVQAKwI
+
 ## Open questions
 
 _Mine, not his — what I assumed and what would settle it._
@@ -290,3 +304,11 @@ _Mine, not his — what I assumed and what would settle it._
   Whether this is a pen or a piece of its own: it shares everything with the
   line pen, which is the case for a pen, and it reads differently enough that
   a piece is plausible. Yours to say once you have flown it.
+- **Taming tips** (2026-10-17), all three of your ideas, each a setting:
+  _toll_ (a split's cost: each line it makes starts that many decisions
+  further through its depth, and a flying one further through its flight),
+  _flock_ (the most tips flying at once; full, a flying tip cannot split and a
+  line that would lift ends instead), and _dots to_ (only tips up to that many
+  splits from a stem are drawn as dots). On pen up in flow, flying tips peaked
+  at 1143 with none of them, 113 with toll 2, and exactly 60 with flock 60.
+  Snowflake is preset 20, as you made it.
