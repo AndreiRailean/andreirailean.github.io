@@ -506,7 +506,7 @@ export function lanePush(lateral: number, halfWidth: number, along: number, keep
  * **Tobler's hiking function**, `6·exp(−3.5·|grade + 0.05|)` km/h, taken
  * relative to level ground so it multiplies whatever pace a person already
  * has. Its fastest point is a gentle descent of 5%, and it is asymmetric:
- * climbing 25% is about 0.44 of level pace, descending it about 0.58. `effort`
+ * climbing 25% is about 0.42 of level pace, descending it about 0.59. `effort`
  * blends from no effect at 0 to the whole function at 1, so the difference it
  * makes — the crowd concertinaing on every climb — can be switched off and
  * looked at.

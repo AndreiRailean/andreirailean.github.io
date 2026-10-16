@@ -125,7 +125,7 @@ const COMPANION_SLOTS: readonly (readonly [number, number])[] = [
  * reference, and a team is a dozen of them. The spacing is the crowd's teams'
  * (0.8 m abreast, 1.05 m between rows), so mine reads as one of theirs.
  */
-function teamSlots(mates: number): (readonly [number, number])[] {
+export function teamSlots(mates: number): (readonly [number, number])[] {
   const size = mates + 1
   const across = Math.min(4, Math.ceil(Math.sqrt(size)))
   const rows = Math.ceil(size / across)
