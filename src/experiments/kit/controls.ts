@@ -567,6 +567,13 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     const focused = document.activeElement
     if (pointerOverUi || (focused instanceof HTMLInputElement && focused.type === "text" && root.contains(focused)))
       return
+    // **Nor while the window does not have the focus**, because then the page
+    // cannot see the pointer. Traced on Andrei's machine coming back from
+    // another app: one mousemove on entering, a mouseleave ten milliseconds
+    // later with the pointer still inside, and no further events while he moved
+    // over the panel — so the timer ran out under his hand. A first click
+    // reaches the page and gives it the focus, and `focus` starts the timer.
+    if (!document.hasFocus()) return
     idleTimer = window.setTimeout(() => setIdle(true), IDLE_MS)
   }
 
@@ -1023,7 +1030,7 @@ export function createControls<S extends object>(options: Options<S>): Controls<
    * the piece and reads as outside; the next one lands on the chrome. The pair
    * of boundary events stay for touch, which has no moves to read.
    */
-  const onMouseMove = (event: MouseEvent) => {
+  const onMouse = (event: MouseEvent) => {
     pointerOverUi = event.target instanceof Node && root.contains(event.target)
     goActive()
   }
@@ -1123,8 +1130,9 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     goActive()
   }
 
-  window.addEventListener("mousemove", onMouseMove)
-  window.addEventListener("mousedown", onActivity)
+  window.addEventListener("mousemove", onMouse)
+  window.addEventListener("mousedown", onMouse)
+  window.addEventListener("focus", onActivity)
   window.addEventListener("wheel", onActivity, { passive: true })
   window.addEventListener("touchstart", onActivity, { passive: true })
   window.addEventListener("keydown", onKeyDown)
@@ -1143,8 +1151,9 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     },
     destroy() {
       window.clearTimeout(idleTimer)
-      window.removeEventListener("mousemove", onMouseMove)
-      window.removeEventListener("mousedown", onActivity)
+      window.removeEventListener("mousemove", onMouse)
+      window.removeEventListener("mousedown", onMouse)
+      window.removeEventListener("focus", onActivity)
       window.removeEventListener("wheel", onActivity)
       window.removeEventListener("touchstart", onActivity)
       window.removeEventListener("keydown", onKeyDown)
