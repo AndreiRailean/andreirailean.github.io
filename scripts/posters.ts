@@ -67,6 +67,7 @@ const SIZE_BUDGET_BYTES = 400_000
  * to the index — is worse than the chore.
  */
 export const SLUGS = [
+  "artdeco",
   "bubbles",
   "crowd",
   "dangler",

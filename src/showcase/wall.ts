@@ -63,8 +63,13 @@ export type WallEntry = {
  * crossing pieces tears one down and mounts another. Judged worth it, and the
  * order is a source edit away from any other opinion.
  *
- * **Hexgrid's `embers` leads, on the rule every lead has: `/showcase/` is
+ * **Art Deco's `construct` leads, on the rule every lead has: `/showcase/` is
  * entry zero and that is the newest published scene.** It is the piece's
+ * primary, a scene Andrei found by playing with it. Its other four — snowflake,
+ * facade, skyline and clockwork — are woven further down, one after every
+ * fifth entry. Andrei named all five.
+ *
+ * **Hexgrid's `embers` led before it, on the same rule.** It is the piece's
  * primary, a scene Andrei found by dragging. Its other eleven presets are
  * woven further down, one after every fifth entry. Andrei asked for all of
  * them.
@@ -116,6 +121,15 @@ export type WallEntry = {
  */
 export const WALL: readonly WallEntry[] = [
   {
+    id: "artdeco-construct",
+    title: "construct",
+    piece: "artdeco",
+    pieceTitle: "Art Deco",
+    note: "Andrei's, from playing with it: folded top and bottom at 60°, three stems far apart, flowing, so each new drawing grows into what the last one left.",
+    runner: "artdeco.b8c2c26d9d98.js",
+    scene: "___f________cEnZwkSRpSCAowggwwLQAAcdSBQpgABAEjLEAAMgAoAFUAAYCh3w",
+  },
+  {
     id: "hexgrid-embers",
     title: "embers",
     piece: "hexgrid",
@@ -159,6 +173,15 @@ export const WALL: readonly WallEntry[] = [
     note: "A two-way trail winding over a hill, and everybody keeps left — my stream on one half, the people coming towards me on the other. Nothing draws the trail. It is the shape the crowd makes following it, two ribbons of heads running off into the distance and lifting over the rise.",
     runner: "crowd.9810eb51f4a2.js",
     scene: "_-__7___QE_IyQUJSxwJiySiPDFAAol5_yAMADxoAw4UCgwoACgAAA4",
+  },
+  {
+    id: "artdeco-snowflake",
+    title: "snowflake",
+    piece: "artdeco",
+    pieceTitle: "Art Deco",
+    note: "Andrei's: six-fold at 60°, on the tips pen with the dots off, so lines lift and land unseen, and busyness keeps the regeneration from filling the frame.",
+    runner: "artdeco.b8c2c26d9d98.js",
+    scene: "___f________cAOZQYmYwzDMIwghQwLQAAEJQBQAAACgADLQAAowERZFUACsCB3w",
   },
   {
     id: "bubbles-time-bubbles",
@@ -206,6 +229,15 @@ export const WALL: readonly WallEntry[] = [
     scene: "vov___9wOgBcqyaCCIAKhNokkKAZAAAUAAJQOYZPANBaFGRRaApi",
   },
   {
+    id: "artdeco-facade",
+    title: "facade",
+    piece: "artdeco",
+    pieceTitle: "Art Deco",
+    note: "Folded twice: three stems from the bottom and their images from the top, square turns inside a frame, growing towards each other until they meet in the middle.",
+    runner: "artdeco.b8c2c26d9d98.js",
+    scene: "___f________cEIggYaYYVCAQxCCwwLQAAUJQQwCAACgADIEAAMgAoAFUAAYCh3w",
+  },
+  {
     id: "streakers-saturn",
     title: "saturn",
     piece: "streakers",
@@ -251,6 +283,15 @@ export const WALL: readonly WallEntry[] = [
     scene: "____cHe4yOQRr5kYJixyxRQGIAoGfBwD4",
   },
   {
+    id: "artdeco-skyline",
+    title: "skyline",
+    piece: "artdeco",
+    pieceTitle: "Art Deco",
+    note: "Rising: upright runs four times as long, turns leaning back to upright, single offshoots in threes, and the stems drawn as double rules.",
+    runner: "artdeco.b8c2c26d9d98.js",
+    scene: "___f________cIMggYaYYTlAAxCCwwLQAANNQNIAgACgADIABzsYIoAFUAAYCh3w",
+  },
+  {
     id: "dotfield-still",
     title: "still",
     piece: "dotfield",
@@ -294,6 +335,15 @@ export const WALL: readonly WallEntry[] = [
     note: "Lines from a ring all round the screen, each turned the same few degrees off the middle, so their crossings draw a hole.",
     runner: "streakers.7286d5bcf698.js",
     scene: "-_-fQI7gA0AGAjJsFAA2WAABIAMHg",
+  },
+  {
+    id: "artdeco-clockwork",
+    title: "clockwork",
+    piece: "artdeco",
+    pieceTitle: "Art Deco",
+    note: "Andrei's: four with sides of their own, two stems each way at 60°, a small cut-out circle that changes size every drawing, flowing.",
+    runner: "artdeco.b8c2c26d9d98.js",
+    scene: "___f________cDAagkSQ5SFEQwggwwLQAAc9SAIQgABACbLOoJElMoAFUAAYCh3w",
   },
   {
     id: "crowd-the-street",
