@@ -18,6 +18,10 @@ import {
   SHARE_UP,
   spellLength,
   SPOT_AHEAD,
+  SPOT_BEARING_MIN,
+  spotSpread,
+  STOPPED_BELOW,
+  sweepFor,
   STRAFE_LIMIT,
   TURN_ON_LOOK,
   TURN_WALKING,
@@ -74,6 +78,33 @@ describe("what a glance is about", () => {
   it("nearly drops the sky at a run", () => {
     // "It is much harder to run and follow birds right over your head."
     expect(share("up", 0, 1)).toBeCloseTo(SHARE_UP * 0.1, 3)
+  })
+})
+
+describe("how far a glance goes, walking and stopped", () => {
+  // **Stopping to look around is the one time the head should go furthest.**
+  // This was read off a 45-person walk's 90th percentile, which measured 14.5
+  // against its line of 20 at density 5 with nothing wrong (#287). Break it:
+  // set `SWEEP_STOPPED` to the walking 0.3 and the first two tests go red.
+  it("sweeps a stopped head more than three times as wide as a walking one", () => {
+    expect(sweepFor(0, 1)).toBeGreaterThan(3 * sweepFor(1.3, 1))
+    expect(sweepFor(STOPPED_BELOW - 0.01, 1)).toBeGreaterThan(3 * sweepFor(STOPPED_BELOW, 1))
+  })
+
+  it("puts a stopped observer's spots wider, and a walker's no narrower than a stall beside them", () => {
+    const walking = spotSpread(sweepFor(1.3, 1), 0)
+    const stopped = spotSpread(sweepFor(0, 1), 0)
+    expect(stopped).toBeGreaterThan(walking * 1.4)
+    expect(stopped).toBeLessThanOrEqual(NECK_LIMIT)
+    // The floor: walking, you still turn your head to look at a stall.
+    expect(walking).toBe(SPOT_BEARING_MIN)
+  })
+
+  it("scales with `looking`, up to a limit, and is nothing at nothing", () => {
+    expect(sweepFor(0, 0.5)).toBeCloseTo(sweepFor(0, 1) / 2, 12)
+    expect(sweepFor(0, 5)).toBe(sweepFor(0, 1.3))
+    expect(sweepFor(0, 0)).toBe(0)
+    expect(sweepFor(1.3, -1)).toBe(0)
   })
 })
 
@@ -296,15 +327,19 @@ const SMALL = { reach: 12 }
 const STREET = PRESETS.find((preset) => preset.label === "the street")!
 
 describe("the walk, end to end, in a small world", () => {
-  it("rests the head ahead while walking, glances and comes back, and looks round when stopped", () => {
-    const walking = watch({ ...SMALL, density: 10, walk: 1.2, pausing: 0, looking: 1, companions: 0 }, 40)
+  it("rests the head ahead while walking, and glances through the neck's spring", () => {
+    // **Two people, not forty-five, and no stopped half.** How far a glance
+    // goes walking and stopped is `sweepFor` and `spotSpread`, above. The
+    // percentiles this used to read could not see it: with the walking sweep
+    // raised to the stopped one the walking p90 went *down*, 17.0 to 9.4, and
+    // the stopped p90 measured 14.5 against its line of 20 at density 5 with
+    // nothing wrong (#287). What is left is the wiring: the head comes back to
+    // ahead, and it gets there through `neckStep`. Break it: set the offset
+    // straight to the glance's target and the peak turn reads 7,000°/s.
+    const walking = watch({ ...SMALL, density: 0.5, walk: 1.2, pausing: 0, looking: 1, companions: 0 }, 40)
     expect(walking.median).toBeLessThan(4)
-    expect(walking.p90).toBeLessThan(30)
     expect(walking.stillFraction).toBeLessThan(0.45)
     expect(walking.peakTurn).toBeLessThan(400)
-    const stopped = watch({ ...SMALL, density: 10, walk: 0, pausing: 1, looking: 1, companions: 0 }, 40)
-    expect(stopped.p90).toBeGreaterThan(20)
-    expect(stopped.median).toBeLessThan(12)
   })
 
   it("changes direction at its stops", () => {
