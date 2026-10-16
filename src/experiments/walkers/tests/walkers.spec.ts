@@ -18,8 +18,9 @@ import { expect, openExperiment, test } from "../../../../tests/support/experime
  * - the **camera** does what the geometry says — heads lean outward from their
  *   feet at a low camera and stop leaning at a high one, which is a claim about
  *   pixels and nothing else;
- * - the **settings round-trip** through a URL, and the chrome's escape hatches
- *   work for tools that cannot evaluate JS;
+ * - the chrome's **escape hatches** work for tools that cannot evaluate JS (a
+ *   scene round-tripping through its URL is the shared address codec's, and is
+ *   tested for every piece at once in `tests/unit/experiments-urls.test.ts`);
  * - **reduced motion** gets a populated still rather than an empty field, which
  *   no screenshot can distinguish from a running one;
  * - and the piece's own verbs — `settle`, `reroll`, `debug` — do what they say.
@@ -98,9 +99,13 @@ async function inked(page: Parameters<typeof openExperiment>[0]) {
   })
 }
 
+/**
+ * A cold landing — two seconds of park, not a minute: the opening cast is
+ * scattered across the whole world, so the frame is full from the first frame.
+ */
 test("a crowd, on a ground", async ({ page }) => {
   const experiment = await openWalkers(page, { settings: MODEST, idle: true })
-  await experiment.api(({ api }) => api.settle(60))
+  await experiment.api(({ api }) => api.settle(2))
   await painted(page)
 
   const stats = await experiment.api(({ api }) => api.stats())
@@ -137,7 +142,8 @@ test("a crowd, on a ground", async ({ page }) => {
  */
 test("heads lean out over their own feet, and lean further from a lower camera", async ({ page }) => {
   const experiment = await openWalkers(page, { settings: { ...MODEST, camera: 120 }, idle: true })
-  await experiment.api(({ api }) => api.settle(45))
+  // A cold landing already fills the frame; what is under test is the lens.
+  await experiment.api(({ api }) => api.settle(2))
 
   // Nearly frozen for the rest of the test. The two readings below are of the
   // same crowd at two camera heights, and a crowd that walks between them is a
@@ -224,15 +230,20 @@ test("settle moves the park forward, and by a lot", async ({ page }) => {
    * at sixteen steps — an eighth of a second — so the poster recipe's
    * `settle(120)` did nothing, every still was of a park that had barely started
    * arriving, and nothing errored. A minute of park has to be a minute of park.
+   *
+   * Five seconds asked, not ninety. The fault is a ceiling of a handful of
+   * steps — `MAX_STEPS` is 4 now, a thirtieth of a second — so any request
+   * longer than that tells the two apart; ninety only made the honest version
+   * slow. Seen failing with `advance` capped at `MAX_STEPS`: 0.075 s passed.
    */
   const before = await experiment.api(({ api }) => api.stats())
-  const after = await experiment.api(({ api }) => api.settle(90))
+  const after = await experiment.api(({ api }) => api.settle(5))
 
   // Asserted on the **clock**, which is exact. Comparing a crowd before and
   // after is not: two different afternoons can hold the same number of people,
   // and this test passed and failed by coincidence before `stats()` could say
   // what time it was.
-  expect(after.clock - before.clock, "ninety seconds of park did not pass").toBeGreaterThan(85)
+  expect(after.clock - before.clock, "five seconds of park did not pass").toBeGreaterThan(4.9)
   expect(after.inFrame).toBeGreaterThan(3)
 })
 
@@ -244,7 +255,6 @@ test("settle moves the park forward, and by a lot", async ({ page }) => {
  */
 test("a re-roll is a different crowd at the same settings", async ({ page }) => {
   const experiment = await openWalkers(page, { settings: MODEST, idle: true })
-  await experiment.api(({ api }) => api.settle(30))
 
   const before = await experiment.api(({ api }) => api.get())
   const seed = await experiment.api(({ api }) => api.reroll())
@@ -258,7 +268,7 @@ test("a re-roll is a different crowd at the same settings", async ({ page }) => 
 
 test("the debug overlay draws over the crowd and comes off again", async ({ page }) => {
   const experiment = await openWalkers(page, { settings: MODEST, idle: true })
-  await experiment.api(({ api }) => api.settle(45))
+  await experiment.api(({ api }) => api.settle(2))
   await painted(page)
   const plain = await inked(page)
   expect(plain.vivid, "the piece itself drew saturated pixels").toBeLessThan(50)
@@ -299,30 +309,6 @@ test("reduced motion parks the loop on a crowd, not on an empty field", async ({
   await experiment.shot("still")
 })
 
-test("a scene round-trips through its URL", async ({ page }) => {
-  const experiment = await openWalkers(page, { idle: true })
-
-  const wanted = {
-    flow: "gather",
-    palette: "teams",
-    dusk: true,
-    density: 27,
-    children: 0.34,
-    span: 17,
-    traces: 3,
-    bob: 1.65,
-  } as const
-
-  const applied = await experiment.api(({ api, arg }) => api.set(arg as never), wanted)
-  const url = await experiment.api(({ api }) => api.url())
-
-  await page.goto(url)
-  await page.waitForFunction(() => Boolean(window.experiment))
-  const restored = await experiment.api(({ api }) => api.get())
-
-  expect(restored).toEqual(applied)
-})
-
 test("?settle= lands on a park that has already been running", async ({ page }) => {
   // For tools that cannot evaluate JS, which is the same reason ?panel= and
   // ?idle= exist.
@@ -333,14 +319,18 @@ test("?settle= lands on a park that has already been running", async ({ page }) 
   // when it was scattered across the whole world. A cold landing is now a full
   // frame, so the population says nothing and the two readings differed by one
   // person.
+  //
+  // Five seconds, not a hundred and twenty: a cold landing's clock is a frame
+  // or two, so anything past a second tells the two apart. Seen failing with
+  // `advance` capped at `MAX_STEPS`: the warm landing's clock read 0.26.
   const cold = await openWalkers(page, { settings: MODEST, query: { idle: "1" } })
   const coldStats = await cold.api(({ api }) => api.stats())
 
-  const warm = await openWalkers(page, { settings: MODEST, query: { idle: "1", settle: "120" } })
+  const warm = await openWalkers(page, { settings: MODEST, query: { idle: "1", settle: "5" } })
   const warmStats = await warm.api(({ api }) => api.stats())
 
-  expect(coldStats.clock).toBeLessThan(10)
-  expect(warmStats.clock).toBeGreaterThan(115)
+  expect(coldStats.clock).toBeLessThan(1)
+  expect(warmStats.clock).toBeGreaterThan(4.9)
   expect(warmStats.inFrame).toBeGreaterThan(3)
 })
 
@@ -356,7 +346,7 @@ test("the primary runs, populates and draws", async ({ page }) => {
 
   await experiment.api(({ api }) => {
     api.preset(1)
-    api.settle(20)
+    api.settle(2)
   })
   await painted(page)
 
