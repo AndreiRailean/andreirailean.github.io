@@ -36,7 +36,7 @@ import {
   type GlyphName,
 } from "@/experiments/psyxels/glyphs"
 import type { Chrome } from "@/experiments/piece"
-import { levelsBetween, levelsOf, MAX_LEVELS, MIN_PX } from "@/experiments/psyxels/field"
+import { levelsBetween, levelsOf, MAX_LEVELS, MIN_PX } from "@/experiments/psyxels/stack"
 
 export { levelsOf }
 

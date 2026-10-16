@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest"
-import { levelsOf, packField, type Field } from "@/experiments/psyxels/field"
+import { packField, type Field } from "@/experiments/psyxels/field"
+import { levelsOf } from "@/experiments/psyxels/stack"
 import { GLYPH_NAMES, indexOfGlyph, type GlyphName } from "@/experiments/psyxels/glyphs"
 import type { CellStats, Mask } from "@/experiments/psyxels/mask"
+import { BIRTH_S } from "@/experiments/psyxels/pulse"
 import { DEFAULT_SETTINGS, type Settings } from "@/experiments/psyxels/settings"
 
 /**
@@ -49,6 +51,18 @@ function maskOf(width: number, height: number, ink: (x: number, y: number) => nu
 
 /** Ink everywhere: nothing to split for, so only `variety` can. */
 const FLOOD = maskOf(640, 480, () => 1, 640 * 480)
+
+/**
+ * A few stacks, not a picture: a small square of ink packed into 80px roots.
+ *
+ * For anything that has to watch the field live. How long a psyx lasts is the
+ * stack's — `stack.test.ts`, one square and one turn at a time — and what is
+ * left for the field is whether the tree keeps it: which squares are asked at
+ * all, and what a merge does to the grain. Nine roots answer that as well as
+ * sixty-three, at a seventh of the work.
+ */
+const STACKS = maskOf(160, 160, () => 1, 160 * 160)
+const STACK_COARSE = 80 / 160
 
 /**
  * A hard diagonal edge: the case detail exists for.
@@ -189,11 +203,12 @@ describe("life", () => {
     expect(field.changes()).toBe(0)
   })
 
+  /** The wiring: the control reaches the stack's clock through the field. What the clock does is `stack.test.ts`'s. */
   it("repacks at a rate that follows the churn control", () => {
     const run = (churn: number, until: number) => {
-      const settings = { ...PLAIN, churn, variety: 0.64 }
-      const field = packField(FLOOD, settings, 0)
-      for (let t = 0; t < until; t += 1 / 30) field.update(t, settings)
+      const settings = { ...PLAIN, coarse: STACK_COARSE, finest: STACK_COARSE / 2 ** 3, churn, variety: 0.64 }
+      const field = packField(STACKS, settings, 0)
+      for (let t = 0; t < until; t += 1 / 10) field.update(t, settings)
       return field.changes()
     }
 
@@ -276,11 +291,16 @@ describe("stability", () => {
  * the coarse marks looked like the only stable thing on screen while the grain
  * around them turned over. They were — a psyx is ended by the first of its
  * ancestors to change its mind, and a coarse one has the fewest.
+ *
+ * **This is the one lifetime the stack cannot state on its own.** Each square's
+ * clock and its deadline are `stack.test.ts`'s; that a fine psyx is ended by
+ * every clock above it is the tree's, so it is watched here — on a few stacks,
+ * not a picture.
  */
 describe("lifetimes", () => {
   /** Mean life of the leaves at each depth, measured by watching them go. */
   function livesByDepth(settings: Settings, until: number): number[] {
-    const field = packField(FLOOD, settings, 0)
+    const field = packField(STACKS, settings, 0)
     const seen = new Map<string, { depth: number; born: number }>()
     const lives: number[][] = []
 
@@ -308,7 +328,8 @@ describe("lifetimes", () => {
   }
 
   it("does not let the coarse psyxels outlast the grain around them", () => {
-    const lives = livesByDepth({ ...PLAIN, finest: PLAIN.coarse / 2 ** 3, churn: 40, variety: 0.64, detail: 0 }, 400)
+    const settings = { ...PLAIN, coarse: STACK_COARSE, finest: STACK_COARSE / 2 ** 3, churn: 40, variety: 0.64 }
+    const lives = livesByDepth(settings, 400)
     const measured = lives.filter((life) => life > 0)
     expect(measured.length).toBeGreaterThan(2)
 
@@ -325,16 +346,6 @@ describe("lifetimes", () => {
      * grain around them.
      */
     expect(measured[0]! / Math.min(...measured)).toBeLessThan(1.5)
-  })
-
-  it("keeps a psyx's life in proportion to the churn control at every size", () => {
-    const slow = livesByDepth({ ...PLAIN, finest: PLAIN.coarse / 2 ** 2, churn: 15, variety: 0.64, detail: 0 }, 400)
-    const fast = livesByDepth({ ...PLAIN, finest: PLAIN.coarse / 2 ** 2, churn: 60, variety: 0.64, detail: 0 }, 400)
-
-    for (let depth = 0; depth < slow.length; depth++) {
-      if (!(slow[depth]! > 0) || !(fast[depth]! > 0)) continue
-      expect(slow[depth]! / fast[depth]!, `depth ${depth}`).toBeGreaterThan(2)
-    }
   })
 })
 
@@ -431,19 +442,30 @@ describe("where a psyx sits", () => {
 })
 
 describe("what a psyx leaves behind", () => {
+  /**
+   * Asked every fifth of a second, not every frame: the bound is over a second
+   * and the arrival half of one, so a coarser look sees both, and a few stacks
+   * depart as often as a picture's worth does.
+   */
   it("keeps a departing psyx long enough for its replacement to arrive", () => {
-    const settings = { ...PLAIN, churn: 60, variety: 0.64, detail: 0 }
-    const field = packField(FLOOD, settings, 0)
+    const settings = { ...PLAIN, coarse: STACK_COARSE, finest: STACK_COARSE / 2 ** 3, churn: 60, variety: 0.64 }
+    const field = packField(STACKS, settings, 0)
     expect(field.ghosts()).toHaveLength(0)
 
     let seen = 0
-    for (let t = 0; t < 20; t += 1 / 30) {
+    let oldest = 0
+    for (let t = 0; t < 20; t += 1 / 5) {
       field.update(t, settings)
       seen = Math.max(seen, field.ghosts().length)
-      // Nothing lingers: every ghost on the list is a recent one.
-      for (const ghost of field.ghosts()) expect(t - ghost.died).toBeLessThan(1.5)
+      for (const ghost of field.ghosts()) {
+        // Nothing lingers: every ghost on the list is a recent one.
+        expect(t - ghost.died).toBeLessThan(1.5)
+        oldest = Math.max(oldest, t - ghost.died)
+      }
     }
     expect(seen).toBeGreaterThan(0)
+    // And none is dropped before what replaced it has finished arriving.
+    expect(oldest).toBeGreaterThanOrEqual(BIRTH_S)
   })
 
   it("gives a ghost the mark and the place the psyx had, so it fades where it stood", () => {
@@ -461,42 +483,6 @@ describe("what a psyx leaves behind", () => {
       expect(ghost.size).toBeGreaterThan(0)
       expect(ghost.died).toBeGreaterThan(0)
     }
-  })
-})
-
-/**
- * **No psyx may hold a square indefinitely by winning a fair toss.**
- *
- * The odds of dividing are the same on every turn, so a life is memoryless and
- * has a long tail — a coarse psyx sat in one square for twenty seconds against a
- * mean of two, which is what the piece's author saw and what the mean hid. The
- * deadline cuts the tail without moving the mean, which is the whole point:
- * leaning the odds instead halved every coarse psyx's life.
- */
-describe("the longest a psyx can stay", () => {
-  it("bounds the tail while leaving the average where it was", () => {
-    const settings = { ...PLAIN, finest: PLAIN.coarse / 2 ** 1, churn: 60, variety: 0.64, detail: 0 }
-    const field = packField(FLOOD, settings, 0)
-
-    const seen = new Map<string, number>()
-    const lives: number[] = []
-    for (let t = 0; t < 600; t += 1 / 20) {
-      field.update(t, settings)
-      const now = new Map<string, number>()
-      for (const psyx of field.psyxels()) {
-        if (psyx.depth !== 0) continue
-        now.set(`${psyx.x},${psyx.y},${psyx.born}`, psyx.born)
-      }
-      for (const [key, born] of seen) if (!now.has(key)) lives.push(t - born)
-      seen.clear()
-      for (const [key, born] of now) seen.set(key, born)
-    }
-
-    expect(lives.length).toBeGreaterThan(50)
-    const mean = lives.reduce((sum, life) => sum + life, 0) / lives.length
-    // Four turns of a one-second-ish clock, and nothing beyond it. Unbounded,
-    // the longest of a few hundred runs to five times the mean and beyond.
-    expect(Math.max(...lives) / mean).toBeLessThan(4)
   })
 })
 
