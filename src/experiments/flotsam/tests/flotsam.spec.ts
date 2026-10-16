@@ -188,7 +188,8 @@ test("draws flotsam on unfolded water", async ({ page }) => {
 /**
  * **Wiring, not the physics.** That a sea with no current transports nothing, that
  * a slow current does, that a steep sea gathers and eddies do not, and that wave
- * drift moves the flotsam over a minute and not over a frame are all
+ * drift moves the flotsam over a minute and not over a frame, and that a raft
+ * ignores the chop a speck is tracing, are all
  * `water.test.ts`, against the water with no page around it (#287). What is
  * left for a page is that the engine steps the water it draws and reports what
  * that water measured — so one scene with a current, stepped through `run()`.
@@ -221,35 +222,6 @@ test("the page steps the water it draws, and reports what the water measured", a
   expect(after.orbit).toBeGreaterThan(0.1)
   expect(after.dispersion).toBeGreaterThan(0)
   expect(after.minJacobian).not.toBe(before.minJacobian)
-})
-
-/**
- * **Wiring, not the property: the engine moves each speck by its own response.**
- * How the response falls with size is `waves.test.ts` ("size response"), and that
- * a big speck is handed a smaller one than a small speck is `scatter.test.ts`.
- * Gathering on a steep sea is the test above. So this keeps only the orbit
- * ratio, which does not depend on how many specks there are: 300 rather than
- * 4000, whose cost was a metre-wide raft's arithmetic, not the run (see
- * `tests/AGENTS.md`). The ratio measured 51-52 at run(0.5), run(1) and run(3)
- * on 2026-09-07; the bound is 20. With `sizeResponse` returning 1 it fails,
- * seen 2026-10-16.
- */
-test("a raft ignores the chop a speck beside it is tracing", async ({ page }) => {
-  const experiment = await openFlotsam(page, {
-    settings: { dots: 300, trains: 1, shortest: 1.2, longest: 1.2, steepness: 0.8, span: 6 },
-    idle: true,
-  })
-
-  const orbit = (sizes: { smallest: number; largest: number }) =>
-    experiment.api(({ api, arg }) => {
-      api.set(arg)
-      api.run(0.5)
-      return api.stats().orbit
-    }, sizes)
-
-  const specks = await orbit({ smallest: 0.004, largest: 0.006 })
-  const rafts = await orbit({ smallest: 1, largest: 1.2 })
-  expect(specks).toBeGreaterThan(rafts * 20)
 })
 
 /**
