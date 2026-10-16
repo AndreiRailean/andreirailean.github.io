@@ -50,6 +50,16 @@ export type WalkersStats = CrowdStats & {
   heads: number
   /** Square metres of ground in frame. Density is quoted against this. */
   area: number
+  /**
+   * The camera height, in metres, that the last frame was projected from.
+   *
+   * Read off the view the renderer was handed rather than off the settings, so
+   * it says the setting reached the picture. Where a head lands for a given
+   * height is `placeHeads`'s, and is tested there; a pixel reading cannot stand
+   * in for this one, because the height also sets the world's margin and so the
+   * cast, and a different crowd differs on the glass whatever the lens did.
+   */
+  camera: number
   /** Rolling average, so a heavy setting shows up as a number. */
   fps: number
   /**
@@ -146,6 +156,8 @@ export function createWalkers(canvas: HTMLCanvasElement, initial: Settings): Wal
 
   /** Where the clock was when the last frame was drawn, for the trail's decay. */
   let drawnAt = 0
+  /** The camera height the last frame was projected from. Zero until one is. */
+  let drawnFrom = 0
 
   /**
    * Built here, but **not populated here.**
@@ -233,6 +245,7 @@ export function createWalkers(canvas: HTMLCanvasElement, initial: Settings): Wal
     })
 
     drawnAt = crowd.clock
+    drawnFrom = view.camera
 
     if (debug) drawDebug(context, crowd.walkers, crowd.groups, view)
   }
@@ -413,6 +426,7 @@ export function createWalkers(canvas: HTMLCanvasElement, initial: Settings): Wal
         clock: crowd.clock,
         heads,
         area: view.area,
+        camera: drawnFrom,
         fps,
         running,
       }
