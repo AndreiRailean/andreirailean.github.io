@@ -365,6 +365,27 @@ html[data-idle="true"] #ui > * {
   white-space: nowrap;
 }
 
+/* A stacked choice is ruled off above and below, because its options are
+   spaced exactly like its neighbours' rows. Two in a row read as one list of
+   eight otherwise (#280). Andrei: "thin hairline on top and bottom should do
+   it. or one between multiple multi-option controls" — so a run of them
+   shares one line between each pair rather than doubling it, and the box
+   edge stands in for a rule at either end. */
+#ui .row:has(> .modes.stacked) {
+  padding-block: var(--ui-row-gap, 0.3rem);
+  border-block: 1px solid var(--ui-edge, rgb(255 255 255 / 12%));
+}
+
+#ui .row:has(> .modes.stacked) + .row:has(> .modes.stacked),
+#ui .row:has(> .modes.stacked):first-child,
+#ui .group + .row:has(> .modes.stacked) {
+  border-top: 0;
+}
+
+#ui .row:has(> .modes.stacked):last-child {
+  border-bottom: 0;
+}
+
 /* A set can hold more options than a choice ever does — a vocabulary rather
    than a mode — so it lays out on a fixed number of columns instead of taking
    whatever width one line would need. The panel has no width of its own; it is
