@@ -13,7 +13,8 @@ keeping them apart.
   of flotsam has a _rest position_ — the parcel of water it sits on — and where
   it is drawn is that position plus `sample()`. Nothing accumulates, so a sea of
   any violence leaves it exactly where it found it. This is the piece's thesis
-  and `src/experiments/flotsam/tests/flotsam.spec.ts` asserts it as `transport === 0`.
+  and `src/experiments/flotsam/tests/water.test.ts` asserts it: two minutes of a
+  violent sea with no current leave every rest position bit-for-bit where it was.
 - **The current is integrated.** It moves the rest positions, and it is the only
   thing in the piece that takes flotsam anywhere.
 
@@ -351,7 +352,11 @@ in order to work at all, and every one of them was learned by breaking it.
   | on the spot in `stats()`, always current               | `dots`, `trains`, `steepness`, `clock`, `running`                                  |
   | in `draw()`, so one frame behind                       | `drawnDots`, `orbit`, `dispersion`, `minJacobian`, `fillPx`, `dimmedDots`, `light` |
   | in `advance()`, so behind until the sea is **stepped** | **`transport`**                                                                    |
-  | in `tick()`                                            | `fps`                                                                              |
+
+  `advance()` and the measuring half of `draw()` are `water.ts` now — the
+  `draw()` row is written by `water.survey()`, which `draw()` calls once a frame
+  — but the timing is unchanged, and so is the trap.
+  | in `tick()` | `fps` |
 
   The last row is the trap. `tick()` has two paths: when `isAnimated()` it
   integrates and draws, but the `dirty` path **draws without integrating**. So
@@ -390,19 +395,20 @@ in order to work at all, and every one of them was learned by breaking it.
 
 ## Shape of the code
 
-| File          | Holds                                                                         |
-| ------------- | ----------------------------------------------------------------------------- |
-| `settings.ts` | `Settings`, the `CONTROLS` spec, `CHROME`, query parsing, what a change costs |
-| `random.ts`   | `homeFor`: where speck `i` starts. The generators are the kit's               |
-| `waves.ts`    | the Gerstner spectrum: displacement, height, slope, folding, wave drift       |
-| `current.ts`  | the set and drift, and the patch-periodic incompressible eddy field           |
-| `scatter.ts`  | seed → the flotsam: homes, sizes, colours, per-train response, wave drift     |
-| `view.ts`     | metres to pixels, and the wrapped patch                                       |
-| `specks.ts`   | sprite cache and additive drawing                                             |
-| `palette.ts`  | the water, and what a speck is made of                                        |
-| `flotsam.ts`  | the engine: canvas, the clock, integration, drawing, stats                    |
-| `presets.ts`  | the named scenes; the first is the primary                                    |
-| `runner.ts`   | `start` for the page, `mount` for a frozen runner, and the verbs              |
+| File          | Holds                                                                                           |
+| ------------- | ----------------------------------------------------------------------------------------------- |
+| `settings.ts` | `Settings`, the `CONTROLS` spec, `CHROME`, query parsing, what a change costs                   |
+| `random.ts`   | `homeFor`: where speck `i` starts. The generators are the kit's                                 |
+| `waves.ts`    | the Gerstner spectrum: displacement, height, slope, folding, wave drift                         |
+| `current.ts`  | the set and drift, and the patch-periodic incompressible eddy field                             |
+| `scatter.ts`  | seed → the flotsam: homes, sizes, colours, per-train response, wave drift                       |
+| `view.ts`     | metres to pixels, and the wrapped patch                                                         |
+| `specks.ts`   | sprite cache and additive drawing                                                               |
+| `palette.ts`  | the water, and what a speck is made of                                                          |
+| `water.ts`    | no canvas: the clock, integration, where each piece lands and how bright, the stats it measures |
+| `flotsam.ts`  | the engine: canvas, the loop, drawing, and the stats only a page has                            |
+| `presets.ts`  | the named scenes; the first is the primary                                                      |
+| `runner.ts`   | `start` for the page, `mount` for a frozen runner, and the verbs                                |
 
 `random.ts` holds only `homeFor` now. The generators it is built on —
 `hashSeed`, `makeRng`, `gaussian` — moved to `../random.ts` when Psyxels
@@ -446,7 +452,10 @@ it.
   a size response, an eddy field — is tested as that function; the spec keeps a
   short check that the engine is wired to it. Andrei, 2026-10-16: "if we're
   testing collision detection - limit to that." A raft against a speck needs
-  300 dots and half a second, not 4000 and three.
+  300 dots and half a second, not 4000 and three. **The physics of the water is
+  not the page's either**: transport, gathering, the eddies and wave drift are
+  `water.test.ts`, against `water.ts`, and the spec keeps one test that the page
+  steps the water it draws (#287).
 
 **`src/experiments/flotsam/tests/` covers the physics, and you should run it after touching
 any of it** — `pnpm exec vitest run flotsam` for all of it, `pnpm exec vitest waves` while
