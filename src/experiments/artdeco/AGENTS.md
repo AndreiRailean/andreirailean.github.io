@@ -91,12 +91,32 @@ being found.
   line is not a multiple of the angle, so a rebound off it is snapped by
   `reflectOff` and may find no direction and stop. The hint says 15°, 30° and
   60° suit threes.
-- **The drawing depends a little on frame length.** Tips grow one after another
-  inside a frame, so a tip meets a neighbour's line as it stood at the end of
-  the last frame. Stepped at 1/60 s (`settle`, the poster) and live, triad grew
-  63 and 67 segments. More folds mean more meetings between different tips, so
-  this shows more at 2 and up. An address replays the rules exactly but not
-  always the identical drawing; nothing has been done about it.
+- **Growth runs in fixed ticks of `TICK` (1/60 s).** Tips grow one after
+  another inside a step, so a tip meets a neighbour's line as it stood at the
+  end of the last step. While a step was a frame, the drawing depended on frame
+  length: triad grew 63 segments stepped and 67 live, and two live loads of
+  the construct diverged within seconds. `tick` now banks frame time in
+  `owed` and spends it a `TICK` at a time, and `settle` steps by `TICK`, so
+  live, settled, poster and replay all grow one drawing. `TICK` is the step
+  `settle` always used, which is why no preset moved. Changing it moves every
+  drawing.
+- **Every stream added since the first is its own rng.** `marks` (meetings and
+  circles), `threes` (which decisions repeat) and `leans` (rise's turns) each
+  hang off the family with their own salt, so a setting at 0 consumes nothing
+  that an older drawing depended on. Reading a new uniform from `rng` or
+  `marks` instead would move every seed. `birth` (wander and the big circle's
+  size) is per drawing, not per family.
+- **Threes are three tokens.** A decision that repeats pushes two copies after
+  itself, so `head.n` counts them and `depth` spends three. The first two carry
+  `again`, which makes the next decision come `beat` steps on, not a step on.
+- **`reach: "edges"` breaks the group.** Each copy is shifted out along its stem,
+  so an image of an image is no longer an image, and the copies stop meeting
+  at the centre. Meetings are still between a tip and each image of each line,
+  which does not need the group property; nothing else should assume it.
+- **Strand mitres follow `prev` and `next`,** which only a turn or a rebound
+  sets (`bend`). A split's children start in the middle of their parent's band
+  and are not joined to it. A mitre longer than four strand offsets, at a sharp
+  rebound, is dropped rather than drawn as a spike.
 
 ## Checking a mechanism fired
 

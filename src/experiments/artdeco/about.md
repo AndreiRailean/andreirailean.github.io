@@ -27,3 +27,7 @@ can sit on the centre line for the lines to meet.
 The symmetry can fold further: top and bottom as well as left and right, so
 lines grow in from both edges and meet in the middle, or three, four or six
 copies turned round the centre like a kaleidoscope.
+
+Some decisions can come in threes, a beat apart, so a single offshoot becomes
+three parallel lines. A tendency to rise makes upright lines run longer and
+turns lean back towards upright, for something like a skyline.

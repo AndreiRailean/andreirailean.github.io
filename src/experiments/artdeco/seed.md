@@ -66,6 +66,52 @@ describes the work.
 > and bottom. and am thinking of how a "rule of threes" can be implemented in
 > this experiment.
 
+## 2026-10-16 — playing with it, and "the construct"
+
+> I'm playing with this:
+> http://100.117.55.104:4627/experiments/artdeco/?s=___f____QEnZwkSRpSCAowggwwLQAAcdSBQpgABAEjLE
+>
+> Observations: the stems all come from the same location, which pegs the
+> birth to always be in the same spot. i wonder if allowing variability beyond
+> the static calculation based on screen height would help. having them be born
+> in the same spots does help maintain consistency, especially with a config
+> like this that appears to never stop. the next birth naturally fits into what
+> was there before and keeps completing the same picture
+>
+> When I said the "rule of threes" i guess i meant that the same decision is
+> made 3 times in a row or the same "shape" i birthed three times. perhaps that
+> only applies to some decisions. say if the line decides to send an off-shoot,
+> it makes the same decision 3 times at the same interval, so result appears as
+> 3 parallel lines. the effect would probably get lost unless the the effect is
+> constrained to only some decisions only some of the time.
+>
+> the circle always being the same size is interesting, but also gets a little
+> predictable.
+>
+> a little surprised that 4 stems grows from a square canvas, not the sides of
+> the screen. i guess it makes it easier to predict the symmetry. the piece
+> appears more impressive when it fills the screen. but when birth happens in
+> the middle of the screen the effect is not as seamless.
+>
+> would be good to allow for a vertical bias - so a line would have a tendency
+> to go longer in the up-down plane to build skyscraper-like structures.
+>
+> i'm finding circles a little hard to control, so i'm not testing them at the
+> moment. they overlap a little too much and unpredictably, so i'll leave them
+> until i get the feel for the lines.
+>
+> i'm not finding the multi-line treatment (triplets) very useful. it may be
+> good as a stem, but it only works if it is smarter about angles and joins. it
+> produces joins that only touch on one of the lines and has others over or
+> undershoot. hard to control and kinda gets boring really quickly.
+>
+> save this one as "the construct"
+> http://100.117.55.104:4627/experiments/artdeco/?s=___f____QEnZwkSRpSCAowggwwLQAAcdSBQpgABAEjLE
+>
+> - it's the same one as above, only the stems are a little further apart. on
+>   my screen, the pattern it produces is mesmerising. not sure what will happen
+>   on replay.
+
 ## Open questions
 
 _Mine, not his — what I assumed and what would settle it._
@@ -115,3 +161,24 @@ _Mine, not his — what I assumed and what would settle it._
   decisions or the big circle placed on thirds of the frame; repeating each
   mark three times. If one of those is what you meant, it is a setting rather
   than a rebuild.
+- **Answers to the third round** (2026-10-16), each a setting:
+  - _Birth in the same spot_: `wander` moves each pair of stems by up to that
+    share of the gap, afresh each drawing; 0 keeps your construct's behaviour.
+    Not built: stems placed as a share of the width, not the height.
+  - _Threes as the same decision three times_: `in threes`, `threes of` and
+    `beat`. One offshoot (`offshoots` 1) in threes gives your three parallels.
+    Repeats are drawn per decision, so they only happen some of the time.
+  - _The circle always the same size_: `big circle varies`, per drawing. Small
+    circles already had `jitter`.
+  - _4 grows from a square_: `copies: to the edges` slides each copy out until
+    its stems start at the frame's edge.
+  - _Vertical bias_: `rise` lengthens upright stretches and, at the same odds,
+    makes turns lean back towards upright. Two mechanisms under one slider; if
+    you want them apart, that is a split.
+  - _Strands_: joins at turns are now mitred, and `strands on: stems only`
+    bands the stems alone. Splits still start in the middle of a band.
+  - _Replay_: two live loads of the construct used to diverge within seconds,
+    because the drawing depended on frame length. Growth now runs in fixed
+    ticks, so a replay is the same drawing. **The construct you saw was one of
+    those frame-dependent drawings**; the preset now grows the fixed one, which
+    may not be the exact picture you fell for.
