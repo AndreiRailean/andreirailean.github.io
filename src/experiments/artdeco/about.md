@@ -1,9 +1,9 @@
 ---
 slug: artdeco
 title: Art Deco
-summary: A gold line grows up from the bottom of the frame and decides as it goes — split, turn, carry on, or throw off parallel offshoots — with every decision mirrored about the centre line.
+summary: Gold lines grow in from the top and bottom of the frame and decide as they go — split, turn, carry on, or throw off parallel offshoots — mirrored both ways, each drawing growing into what the last one left.
 started: 2026-10-15
-updated: 2026-10-16
+updated: 2026-10-17
 poster: ./poster.webp
 tags:
   - canvas
