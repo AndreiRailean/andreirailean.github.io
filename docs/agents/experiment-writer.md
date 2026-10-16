@@ -280,10 +280,10 @@ survive this session, and everything below is easier to judge against it.
    `## Adding a piece` never mentions it, so it is the step most likely to be
    skipped — and it is where the next session's traps are supposed to live.
    Frontmatter is validated by `src/content.config.ts`.
-7. **The four registration points**, three of which fail loudly and one of which
-   fails by silently leaving the piece out: `SLUGS` in `scripts/posters.ts`,
-   `PIECES` in `tests/kit.spec.ts`, `EXPECTED` in
-   `tests/experiments-index.spec.ts`, `NOTES` in `tests/experiments-notes.spec.ts`.
+7. **The two registration points**, both of which fail loudly: `SLUGS` in
+   `scripts/posters.ts` and `EXPECTED` in `tests/experiments-index.spec.ts`.
+   `tests/experiments-wiring.spec.ts` finds a new piece by itself; the kit and
+   the note are tested once each, not per piece.
 8. **Capture the poster, _then_ add `poster:` to `about.md`.** This order is
    forced: the collection resolves that path through `image()`, and a missing
    file 500s the index. Posters are captured by hand and committed —

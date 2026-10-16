@@ -2,45 +2,56 @@ import { describe, expect, it } from "vitest"
 import { CUTOFF } from "@/experiments/crowd/steering"
 import { DETAIL, detailFor } from "@/experiments/crowd/throng"
 import { BOUNDS } from "@/experiments/crowd/settings"
-import { PATIENT, relative, STEP, walk } from "./support"
+import { STEP, walk } from "./support"
 
 /**
- * The crowd, over long enough for the things it claims to be about to happen.
+ * Nobody walks through anybody where it can be seen.
  *
- * **These are slow and are meant to be.** Every claim here is about a crowd that
- * has been walking for a minute or two: a population that holds, a crowd that
- * does not thin out on the side the observer is walking into, files that form
- * without anything knowing what a file is. None of them is visible in a frame
- * and none is expressible in a shorter run. `pnpm exec vitest crowd` is the
- * filter; see `tests/AGENTS.md` on why the unit suite has a slow module in it.
+ * This used to be a forty-second walk of the market (64 s, #287). What it
+ * checks is the level of detail: past the detail radius nobody avoids anybody,
+ * and that is only safe if what the far crowd carries in is resolved before it
+ * is close enough to see. So the scene is a crowd just wider than the detail
+ * radius, which is all that needs.
+ *
+ * **The counterflow test that lived here is gone, because it could not see
+ * what it claimed.** It read how often a walker's six nearest neighbours go
+ * the same way, before and after two minutes. Measured on 2026-10-16: at the
+ * market's size it rose 0.485 → 0.597 with the avoidance as shipped and
+ * 0.501 → 0.565 with `spacing` at its floor of 0.3 (a tenth of the force), and
+ * both pass its `+0.05`; in a world of reach 16 to 20 the weakened crowd
+ * scores *higher* than the real one, on that statistic and on a lateral-only
+ * version of it. So it was measuring where re-entered walkers land, mostly,
+ * and not files. A test that can tell files from that needs a design — a world
+ * with no boundary to re-enter through, or a control the statistic responds
+ * to — and is in `crowd/AGENTS.md` as open.
  */
 
 describe("nobody walks through anybody where it can be seen", () => {
-  it(
-    "keeps visible overlaps rare across a long walk",
-    () => {
-      // **The check the detail radius needs.** Past `DETAIL` nobody avoids
-      // anybody, so the far crowd interpenetrates freely and carries those
-      // overlaps in as the observer walks. That is fine if and only if they are
-      // resolved long before anybody can see them, and `overlapsSeen` is the only
-      // thing that can say so — `overlaps` counts the far ones too and would pass
-      // a piece that was visibly broken.
-      //
-      // Measured at 0.06-0.19 pairs per step across the five scenes. Dropping
-      // `DETAIL` to 8 takes it past 2.
-      const { me, crowd, run } = walk({ density: 50, walk: 1.2 }, 20)
-      let seen = 0
-      let steps = 0
-      for (let t = 0; t < 40; t += STEP) {
-        run(STEP)
-        seen += crowd.stats().overlapsSeen
-        steps++
-      }
-      void me
-      expect(seen / steps).toBeLessThan(0.6)
-    },
-    PATIENT,
-  )
+  it("keeps visible overlaps rare, in a crowd just wider than the detail radius", () => {
+    // **Past the detail radius nobody avoids anybody**, so the far crowd
+    // interpenetrates freely and carries those overlaps in as I walk. That is
+    // fine if and only if they are resolved before they come within `SEEN`,
+    // where an overlap is unmistakable — and `overlapsSeen` is the count that
+    // can say so; `overlaps` includes the far ones and would pass a broken
+    // piece.
+    //
+    // **A world of reach 30, not the market's ninety.** All the check needs is
+    // a ring of crowd outside the detail radius to carry overlaps in, and me
+    // going fast enough — 3 m/s, closing at nearly 5 — that the far crowd
+    // crosses from the detail radius to `SEEN` inside the window. Measured 0.04
+    // a step; with the detail radius cut to 8 m it is 0.24, so the line sits
+    // between with three times of room either side.
+    const { crowd, run } = walk({ reach: 30, density: 60, walk: 3 }, 1)
+    expect(crowd.stats().world).toBeGreaterThan(DETAIL + 4)
+    let seen = 0
+    let steps = 0
+    for (let t = 0; t < 3.5; t += STEP) {
+      run(STEP)
+      seen += crowd.stats().overlapsSeen
+      steps++
+    }
+    expect(seen / steps).toBeLessThan(0.12)
+  }, 60_000)
 
   it("has a detail radius wide enough for the anticipation it is cutting off", () => {
     // Not a measurement — an arithmetic invariant between two constants in two
@@ -56,63 +67,4 @@ describe("nobody walks through anybody where it can be seen", () => {
     expect(detailFor({ paceHigh: BOUNDS.paceHigh.max, walk: BOUNDS.walk.max })).toBeGreaterThanOrEqual(CUTOFF * fastest)
     expect(detailFor({ paceHigh: 1.8, walk: 1.3 })).toBe(DETAIL)
   })
-})
-
-describe("what nothing in the code knows about", () => {
-  it(
-    "sorts a counterflow into files",
-    () => {
-      // Two streams meeting head on sort themselves into lanes within a few
-      // metres. Nothing in this piece knows what a lane is; it is what happens
-      // when avoidance is anticipatory, and it is the single strongest claim the
-      // note makes.
-      //
-      // The statistic: for each person, how many of their six nearest neighbours
-      // are going the same way. Random mixing gives a half. **The control is the
-      // same reading at the start of the same run** — without it this is measuring
-      // whatever else the placement happened to do.
-      // Nobody standing, because a file is a claim about people who are walking
-      // and `sign(0)` matches no walker. The first version left the primary's 22%
-      // standing in and its own control failed at 0.38 — which is exactly right
-      // for that scene (`0.22² + 0.78²/2 = 0.353`) and says nothing at all about
-      // files. **The control was working; the expectation was wrong.**
-      const settings = { stream: 1, against: 0.5, density: 45, walk: 1.4, pausing: 0, grouping: 0, standing: 0 }
-      const { me, crowd, run } = walk(settings, 0)
-
-      const agreement = () => {
-        // Walkers only, belt and braces: `standing: 0` above already excludes
-        // them, and a later edit to these settings must not quietly turn this
-        // statistic back into a measurement of how many people are stopped.
-        const near = relative(crowd, me)
-          .filter((p) => Math.hypot(p.ahead, p.beside) < 14)
-          .filter((p) => Math.hypot(p.person.vx, p.person.vy) > 0.25)
-        let total = 0
-        let same = 0
-        for (const self of near) {
-          const mine = Math.sign(self.person.vx * Math.cos(me.course) + self.person.vy * Math.sin(me.course))
-          const others = near
-            .filter((o) => o !== self)
-            .map((o) => ({ o, d: Math.hypot(o.ahead - self.ahead, o.beside - self.beside) }))
-            .sort((a, b) => a.d - b.d)
-            .slice(0, 6)
-          for (const { o } of others) {
-            total++
-            if (Math.sign(o.person.vx * Math.cos(me.course) + o.person.vy * Math.sin(me.course)) === mine) same++
-          }
-        }
-        return same / total
-      }
-
-      const before = agreement()
-      run(120)
-      const after = agreement()
-
-      // The control: a scattered crowd is near chance.
-      expect(before).toBeGreaterThan(0.42)
-      expect(before).toBeLessThan(0.58)
-      // And after two minutes it is not.
-      expect(after, `files did not form: ${before.toFixed(3)} to ${after.toFixed(3)}`).toBeGreaterThan(before + 0.05)
-    },
-    PATIENT,
-  )
 })

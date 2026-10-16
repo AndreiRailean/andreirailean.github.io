@@ -1,141 +1,110 @@
 import { describe, expect, it } from "vitest"
 import { createStroll } from "@/experiments/crowd/stroll"
 import { createThrong, MAX_PEOPLE } from "@/experiments/crowd/throng"
+import { entryAngle } from "@/experiments/crowd/random"
 import { normalizeSettings } from "@/experiments/crowd/settings"
 import { PRESETS } from "@/experiments/crowd/presets"
-import { PATIENT, walk } from "./support"
+import { makeRng } from "@/experiments/random"
+import { walk } from "./support"
 
 /**
- * The crowd, over long enough for the things it claims to be about to happen.
+ * The crowd as a population: how big it is, and where somebody who leaves it
+ * comes back in.
  *
- * **These are slow and are meant to be.** Every claim here is about a crowd that
- * has been walking for a minute or two: a population that holds, a crowd that
- * does not thin out on the side the observer is walking into, files that form
- * without anything knowing what a file is. None of them is visible in a frame
- * and none is expressible in a shorter run. `pnpm exec vitest crowd` is the
- * filter; see `tests/AGENTS.md` on why the unit suite has a slow module in it.
+ * **These used to be two-minute walks of the market** — a population that
+ * holds, a crowd that stays uniform round the observer, a re-entry rate — at
+ * 77, 82 and 28 seconds (#287). Each is a property of one decision: `restock`
+ * says how many, and `entryAngle` says where a leaver comes back. So
+ * `entryAngle` is checked as the function it is, and the population in a world
+ * small enough that everybody leaves it every few seconds.
  */
 
+describe("where somebody comes back in", () => {
+  const rng = makeRng(5)
+  const samples = (ux: number, uy: number, n = 40_000) => Array.from({ length: n }, () => entryAngle(rng, ux, uy))
+
+  it("puts them on the side they would have come from, walking in", () => {
+    // **Inward, always.** Somebody re-entered on the side they are already
+    // leaving is re-entered again at once: a uniform angle did that to half of
+    // them, 335 re-entries a second against 142 — and in a world sized by
+    // `reach`, the crowd stopped keeping up and the outer rings spread 1.36
+    // against 1.01. Break it: `return rng() * Math.PI * 2` sends half outward.
+    for (const [ux, uy] of [
+      [1.4, 0],
+      [-0.3, 1.1],
+      [0, -2],
+    ] as const) {
+      const outward = samples(ux, uy).filter((a) => Math.cos(a) * ux + Math.sin(a) * uy > 1e-9).length
+      expect(outward).toBe(0)
+    }
+  })
+
+  it("weights the entry by how fast a uniform crowd crosses each part of the boundary", () => {
+    // The rate a uniform crowd crosses a boundary element is its density times
+    // the inward component of velocity, so entries are distributed as `cos`
+    // about the direction the person comes from. That is what keeps the crowd
+    // they enter uniform. Six bins either side, against the cosine's share.
+    const from = Math.atan2(-0, -1.4)
+    const BINS = 12
+    const counts = new Array<number>(BINS).fill(0)
+    const all = samples(1.4, 0)
+    for (const angle of all) {
+      const delta = Math.atan2(Math.sin(angle - from), Math.cos(angle - from))
+      counts[Math.min(BINS - 1, Math.floor(((delta + Math.PI / 2) / Math.PI) * BINS))]!++
+    }
+    for (let bin = 0; bin < BINS; bin++) {
+      const low = -Math.PI / 2 + (bin * Math.PI) / BINS
+      const expected = (Math.sin(low + Math.PI / BINS) - Math.sin(low)) / 2
+      expect(counts[bin]! / all.length).toBeCloseTo(expected, 2)
+    }
+  })
+
+  it("has no preferred side for somebody keeping pace with me", () => {
+    // Nobody moving relative to the observer crosses the boundary at all, so
+    // every angle is as good as another.
+    const all = samples(0, 0)
+    const ahead = all.filter((a) => Math.cos(a) > 0).length / all.length
+    expect(ahead).toBeCloseTo(0.5, 1)
+  })
+})
+
 describe("the world travels with the observer", () => {
-  it(
-    "holds its population over a walk of a hundred metres",
-    () => {
-      const { crowd } = walk({ walk: 1.6, pausing: 0, density: 40 }, 90)
-      const stats = crowd.stats()
-      const wanted = Math.round((40 / 100) * Math.PI * stats.world * stats.world)
-      expect(stats.people).toBe(Math.min(MAX_PEOPLE, wanted))
-    },
-    PATIENT,
-  )
+  it("holds its population inside the world, step after step", () => {
+    // **A drain looks exactly like an ordinary thinning crowd** and is
+    // invisible in any single frame. In a world of reach 8, walking at 1.6 m/s
+    // with everybody streaming at me, the whole crowd leaves and comes back
+    // every few seconds, so a population that would drain over a long walk
+    // drains here at once. Counted inside the world, not as the length of an
+    // array the leavers stay in. Break it: return from `reenter` before moving
+    // anybody, and the count inside falls within a second.
+    const { me, crowd, run } = walk({ reach: 8, walk: 1.6, pausing: 0, density: 40, stream: 1, against: 1 }, 0)
+    const stats = crowd.stats()
+    const wanted = Math.min(MAX_PEOPLE, Math.round((40 / 100) * Math.PI * stats.world * stats.world))
+    expect(stats.people).toBe(wanted)
+    let lowest = Infinity
+    for (let t = 0; t < 20; t += 0.5) {
+      run(0.5)
+      const world = crowd.stats().world
+      const inside = crowd.people.filter((p) => Math.hypot(p.x - me.x, p.y - me.y) <= world + 0.5).length
+      lowest = Math.min(lowest, inside)
+    }
+    expect(crowd.stats().people).toBe(wanted)
+    expect(lowest / wanted).toBeGreaterThan(0.97)
+    // And it was a walk: the observer went somewhere, through the crowd.
+    expect(Math.hypot(me.x, me.y)).toBeGreaterThan(20)
+  })
 
-  it(
-    "stays uniform around the observer, except for the hole they make in it",
-    () => {
-      // The crowd must not drain as the observer walks into it — a fault that
-      // looks exactly like an ordinary thinning crowd and is invisible in any
-      // single frame. Everybody walking at me is the worst case, so that is the
-      // case.
-      //
-      // **This does now test `entryAngle`, and for a while it did not.** In a
-      // smaller world the uniform version was self-correcting fast enough to be
-      // indistinguishable here, and this check passed against a broken one. With
-      // the world sized by `reach` it no longer keeps up: breaking `entryAngle`
-      // takes the outer spread from 1.007 to 1.362. The statement that "a
-      // density check cannot see this" was true when it was written and is not
-      // true now, which is worth knowing before trusting either.
-      //
-      // **Averaged over the run, not read at the end**, and that was the second
-      // mistake. A single instantaneous front/back count swings between 0.96 and
-      // 1.20 with no trend, so which number comes out depends on when you stop —
-      // shortening this run from 150 seconds to 100 turned it red on a crowd
-      // that had not changed. Over fifty samples it is 1.04 and barely moves.
-      const RINGS = 5
-      const rings = new Array<number>(RINGS).fill(0)
-      let front = 0
-      let back = 0
-      let samples = 0
-
-      const { me, crowd, run } = walk({ stream: 1, against: 1, walk: 1.6, pausing: 0, density: 40 }, 30)
-      for (let sample = 0; sample < 50; sample++) {
-        run(2)
-        samples++
-        const edge = crowd.stats().world * 0.95
-        const cos = Math.cos(me.course)
-        const sin = Math.sin(me.course)
-        for (const person of crowd.people) {
-          const dx = person.x - me.x
-          const dy = person.y - me.y
-          const r = Math.hypot(dx, dy)
-          if (r > edge) continue
-          // **Equal-area rings**, so a uniform crowd puts the same count in each
-          // — hence the square. Rings of equal *width* hold areas in the ratio
-          // 1:3:5:7:9 and would pass on very nearly anything.
-          rings[Math.min(RINGS - 1, Math.floor((r / edge) ** 2 * RINGS))]!++
-          if (dx * cos + dy * sin > 0) front++
-          else back++
-        }
-      }
-
-      const outer = rings.slice(1)
-      const mean = outer.reduce((a, b) => a + b, 0) / outer.length
-
-      // The outer four are the crowd proper, uniform to about a per cent. This
-      // is what a drain breaks, in whichever ring it drains.
-      expect(Math.max(...outer) / Math.min(...outer)).toBeLessThan(1.1)
-
-      // **The innermost ring is short, and the reason is not the one first
-      // written here.** That said it was the hole the observer makes by being
-      // avoided. Measured against a control with the observer's own avoidance
-      // switched off, that accounts for a quarter of it: 0.925 against 0.897.
-      //
-      // The rest is the level of detail. Anticipation reaches four seconds
-      // ahead, which is a long-range repulsion, and it only acts inside
-      // `DETAIL` — so the crowd there relaxes outward and the surplus sits just
-      // beyond, 214 people against 286 over equal areas either side of the
-      // radius. It is not visible: at 24 m a head is a couple of pixels and the
-      // band is already a continuum, and a render was checked for the seam
-      // before this was left alone.
-      expect(rings[0]! / mean).toBeLessThan(0.98)
-      expect(rings[0]! / mean).toBeGreaterThan(0.5)
-
-      // And no front-to-back bias beyond the mild pile-up of walking into people.
-      expect(samples).toBe(50)
-      expect(front / back).toBeGreaterThan(0.95)
-      expect(front / back).toBeLessThan(1.15)
-    },
-    PATIENT,
-  )
-
-  it(
-    "puts people back where they will stay, rather than where they will leave again",
-    () => {
-      // **The check `entryAngle` needs**, and the one the density check above
-      // cannot be. Both versions produce the same crowd; only one of them produces
-      // it without re-entering a third of the population into the side they are
-      // already walking out of.
-      //
-      // Measured on this exact scene: 142 re-entries a second with the
-      // flux-weighted angle, 335 with a uniform one. The threshold sits between
-      // them with room either side, so this fails the moment somebody
-      // simplifies that `asin` away.
-      //
-      // **Measured over a window, not over the whole run**, for two reasons. The
-      // opening stretch is not steady state — nobody has reached the boundary yet
-      // — so including it drags the rate down toward the threshold from the wrong
-      // side. And the run has to be short: this box is shared, the first version
-      // simulated 150 seconds and passed at 16s alone and timed out at 30s inside
-      // a full suite, which is the flakiness `tests/AGENTS.md` warns about rather
-      // than a slow test.
-      const { crowd, run } = walk({ stream: 1, against: 1, walk: 1.6, pausing: 0, density: 40 }, 30)
-      const from = crowd.stats().reentries
-      run(30)
-      const perSecond = (crowd.stats().reentries - from) / 30
-
-      expect(perSecond).toBeGreaterThan(20)
-      expect(perSecond, "re-entry angle is no longer weighted by inward flux").toBeLessThan(220)
-    },
-    PATIENT,
-  )
+  it("is a different crowd at another seed, and the same crowd at the same one", () => {
+    // What a re-roll is for. `crowd.spec.ts` checks the page passes the seed
+    // through; this checks the seed is what decides who is there.
+    const cast = (seed: number) => {
+      const settings = normalizeSettings({ ...PRESETS[0]!.settings, reach: 12, seed })
+      const crowd = createThrong(settings, createStroll(settings, settings.seed))
+      return crowd.people.map((p) => [p.x, p.y])
+    }
+    expect(cast(4242)).toEqual(cast(4242))
+    expect(cast(4242)).not.toEqual(cast(4243))
+  })
 
   it("sizes the world from reach, whatever the fade is", () => {
     // **`fade` does not size the world any more**, and this is the check that

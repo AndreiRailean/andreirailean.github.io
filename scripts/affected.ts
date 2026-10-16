@@ -23,16 +23,19 @@
  *   every piece and a good deal of prose, plus each selected piece's
  *   `src/experiments/<slug>/tests/`. With nothing selected, the shared checks
  *   alone.
- * - **browser** — each selected piece's own spec, its slice of `kit.spec.ts` and
- *   `experiments-notes.spec.ts`, whose tests are all titled `<slug>: …`, and
- *   the index spec, which lists every piece. With nothing selected, nothing.
+ * - **browser** — each selected piece's own spec, its test in
+ *   `experiments-wiring.spec.ts`, titled `<slug>: …`, and the index spec, which
+ *   lists every piece. With nothing selected, nothing. The kit and the notes
+ *   are not a piece's: each is tested once, on a fixture or a host, so a change
+ *   to one piece cannot reach them and a change to the kit selects everything
+ *   (#287).
  *
  * **Playwright's `--grep` is matched against `project file title`**, as in
- * `chromium tests/kit.spec.ts walkers: presets run…`, so the slug is anchored on
- * a space rather than on `^`. `^walkers: ` was the obvious form, and it matches
- * nothing — the vacuous-check shape the root `AGENTS.md` lists first. So before
- * running, the selection is listed and a selected piece that matched no kit test
- * is an error rather than a quiet pass.
+ * `chromium tests/experiments-wiring.spec.ts walkers: boots…`, so the slug is
+ * anchored on a space rather than on `^`. `^walkers: ` was the obvious form, and
+ * it matches nothing — the vacuous-check shape the root `AGENTS.md` lists first.
+ * So before running, the selection is listed and a selected piece that matched
+ * no wiring test is an error rather than a quiet pass.
  *
  * The full suite still runs on every push to `main` — see the workflows — so a
  * mis-map fails one merge later and can be traced to it, rather than never.
@@ -123,16 +126,24 @@ function run(command: string, args: string[]): number {
   return spawnSync(command, args, { stdio: "inherit" }).status ?? 1
 }
 
-/** Lists what a grep selects and fails a selected piece whose kit slice came back empty. */
+/** The spec holding one `<slug>: ` test per piece, which every selected piece must match. */
+export const WIRING_SPEC = "tests/experiments-wiring.spec.ts"
+
+/** The selected pieces a `playwright --list` matched no wiring test for. */
+export function unmatched(listed: string, pieces: readonly string[]): string[] {
+  const lines = listed.split("\n")
+  return pieces.filter(
+    (slug) => !lines.some((line) => line.includes(`${WIRING_SPEC}:`) && line.includes(`› ${slug}: `)),
+  )
+}
+
+/** Lists what a grep selects and fails a selected piece whose wiring test came back unselected. */
 function checkBrowserSelection(grep: string, pieces: readonly string[]): void {
   const listed = execFileSync("pnpm", ["exec", "playwright", "test", "--list", "--grep", grep], { encoding: "utf8" })
-  const lines = listed.split("\n")
-  const missing = pieces.filter(
-    (slug) => !lines.some((line) => line.includes("tests/kit.spec.ts:") && line.includes(`› ${slug}: `)),
-  )
+  const missing = unmatched(listed, pieces)
   if (missing.length > 0) {
     throw new Error(
-      `--grep ${JSON.stringify(grep)} selected no kit test for ${missing.join(", ")}. ` +
+      `--grep ${JSON.stringify(grep)} selected no wiring test for ${missing.join(", ")}. ` +
         `A selection that matches nothing passes for ever; fix the pattern rather than this check.`,
     )
   }
@@ -149,7 +160,7 @@ function main(argv: string[]): number {
   const dry = argv.includes("--dry-run")
   // Passed through to vitest or Playwright, so CI can split one selection across runners.
   // The selection check below lists the whole selection, unsharded: a shard
-  // holding none of a piece's kit tests is normal, and must not read as a miss.
+  // holding none of a piece's tests is normal, and must not read as a miss.
   const shardAt = argv.indexOf("--shard")
   const shard = shardAt >= 0 ? ["--shard", argv[shardAt + 1]!] : []
 

@@ -120,8 +120,9 @@ export type BaseApi<S> = {
  *
  * ### Why this is the kit's, and why it took three faults to get here
  *
- * This report is a cross-piece contract — `tests/kit.spec.ts` holds all five
- * pieces to it — that lived nowhere. It existed as five hand-written shapes and
+ * This report is a cross-piece contract —
+ * `tests/unit/experiments-controls-report.test.ts` holds every piece to it —
+ * that lived nowhere. It existed as five hand-written shapes and
  * has now produced the same class of fault three times:
  *
  * - **#85**: three pieces reported three ways, nothing said which was the
@@ -159,15 +160,14 @@ export type ControlReport =
  * **The switch is exhaustive on purpose — there is no `default:` branch.** That
  * is the whole mechanical value of hoisting the mapping rather than only the
  * type. Every previous instance of this fault came out of a `default:` reading
- * `min` and `max` off whatever fell through it, and `tests/kit.spec.ts` had
+ * `min` and `max` off whatever fell through it, and the browser suite had
  * already predicted the next one: "the day the kit gains a kind that has no
  * track, the default hands back `min: control.min` off a control with no `min`".
  * With one exhaustive switch here, that day is a compile error in this file
  * instead of five silent untruths in the pieces.
  *
- * **Offered, like the rest of the kit.** A piece that needs a different report
- * writes its own and says why in a `kit-opt-out:` line; `tests/kit.spec.ts`
- * still holds whatever it produces to `key` and to an honest bound.
+ * **Every piece's report is this one**: `gallery/boot.ts` builds `controls()`
+ * from it, so there is no piece-written shape left to drift.
  */
 export function reportControls<K>(controls: readonly Control<K>[]): ControlReport[] {
   return controls.flatMap((control): ControlReport[] =>

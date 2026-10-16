@@ -1,100 +1,58 @@
-import type { BaseApi } from "./support/experiment.ts"
-import { expect, openExperiment, test } from "./support/experiment.ts"
+import type { Page } from "@playwright/test"
+import { expect, test } from "./support/experiment.ts"
+import { openKit, type Layout } from "./support/kit-fixture.ts"
 
 /**
- * The chrome both pieces build from the kit.
+ * The kit, tested once, the way a library is.
  *
- * Every assertion here is written once and runs against each piece, which is the
- * whole point of the kit — not that the code is shared, but that the *behaviour*
- * is, so nobody has to relearn the panel in the next room.
+ * Andrei, 2026-10-16: "most of the kit needs to be tested independently of the
+ * experiments. if a slider doesn't work, it's all we need to know. we don't want
+ * to make sure that a slider works in every experiment. that's not a good kit,
+ * if it works like that. [...] kit needs to be tested like a generic library
+ * would be."
  *
- * These are the things that had already drifted before the kit existed: Starry
- * Night's panel opened downward from the bar while Dangler's opened up, and each
- * piece had its own copy of the keyboard handling to drift next.
- */
-
-const PIECES = [
-  "bubbles",
-  "crowd",
-  "dangler",
-  "dotfield",
-  "embers",
-  "flotsam",
-  "hexgrid",
-  "psyxels",
-  "starry-night",
-  "streakers",
-  "walkers",
-]
-
-/**
- * Pieces whose `GROUPS` declare governed groups — #242. **A piece that adopts
- * them adds itself here**, and every other piece is asserted to have none, so
- * the check below can neither sit vacuous on an adopter nor miss one.
- */
-const GOVERNED = new Set<string>(["crowd"])
-
-/** Pieces whose panel is boxed (`boxes` in their CHROME), so the box test holds them to it. */
-const BOXED = new Set<string>([
-  "bubbles",
-  "crowd",
-  "dangler",
-  "dotfield",
-  "embers",
-  "flotsam",
-  "hexgrid",
-  "psyxels",
-  "streakers",
-  "walkers",
-])
-
-/**
- * **Every test here is about the chrome, so every one holds the piece.** A
- * running piece queues every round trip — a `boundingBox`, a keypress, an
- * `api.get()` — behind its own rendering on the one core a headless page has;
- * "A running piece starves the thread Playwright is talking to" in
- * `tests/AGENTS.md` has the mechanism. Two tests here did this by hand and
- * thirteen did not. `pause` parks the frame loop and nothing else: the kit's
- * state, its URL sync and `data-preset` all go on without it.
+ * So every test here drives `tests/kit/`, a synthetic piece holding one of
+ * everything the kit offers, booted through the gallery's own `boot()` exactly
+ * as a piece is. Until then this file ran each assertion against all eleven
+ * pieces: 220 tests and 522 of the browser suite's 1,233 seconds, re-proving
+ * one shared code path eleven times. Whether each *piece* is wired to the kit
+ * is `tests/experiments-wiring.spec.ts`, one test a piece. See
+ * `src/experiments/docs/adr/20261016-the-kit-is-tested-as-a-library.md`.
  *
- * Measured on this file alone, two workers as CI runs it, held and running
- * alternated so both met the same load: 3.2 and 3.3 minutes held, 4.5 and 4.4
- * running. It was 40% of the browser suite's test time before this (#133).
+ * **Each test names the bug it exists for**, because every one of them was
+ * found on a real piece first; the fixture only lets them be checked without
+ * one.
  */
-/**
- * **Spread across workers rather than given to one.** Playwright hands a file to
- * a single worker unless told otherwise, and this file is the suite's largest by
- * far: 522 of 1233 seconds of test time, measured 2026-10-15, all of it on
- * worker 0 while the others ran everything else. So it set the browser job's
- * floor alone, and no runner or shard added could get under it. Every test
- * here opens its own page and shares nothing — no hooks, no module state — so
- * nothing orders them. #274.
- */
+
 test.describe.configure({ mode: "parallel" })
 
-const openHeld = async (...args: Parameters<typeof openExperiment<BaseApi>>) => {
-  const experiment = await openExperiment<BaseApi>(...args)
-  await experiment.api(({ api }) => api.pause(true))
-  return experiment
-}
+const shown = (page: Page) => page.evaluate(() => document.documentElement.dataset.preset)
 
-for (const slug of PIECES) {
+/** Settings off the page, typed loosely: the fixture's own type would only be cast back to this. */
+const settings = async (page: Page) =>
+  (await page.evaluate(() => (window.experiment as { get: () => Record<string, unknown> }).get())) as Record<
+    string,
+    unknown
+  >
+
+const LAYOUTS: Layout[] = ["boxed", "column"]
+
+for (const layout of LAYOUTS) {
   /**
-   * **Where the chrome sits — #223.** Presets down the left edge in columns of
-   * five; the actions and `adjust` top right, with the panel opening downward
-   * beneath them and stopping short of `about`, which has the bottom-right
-   * corner to itself. It used to be one bar in the bottom-right corner, where
-   * sixteen presets buried everything that was not a scene.
+   * **Where the chrome sits — #223.** Presets down the left, the actions and
+   * `adjust` top right with the panel opening beneath them and stopping short
+   * of `about`, which has the bottom-right corner to itself; `all experiments`
+   * bottom left. Held at a short window, where the panel would run over `about`
+   * if its height were not capped — at a tall one this passes on any panel.
    */
-  test(`${slug}: presets run down the left, the bar and its panel sit top right, about bottom right, all experiments bottom left`, async ({
-    page,
-  }) => {
-    const experiment = await openHeld(page, slug, { idle: false })
+  test(`${layout}: the corners are presets, bar and panel, about, and all experiments`, async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 420 })
+    const experiment = await openKit(page, { layout, idle: false })
     await experiment.api(({ api }) => api.panel(true))
 
     const box = async (selector: string) => {
       const found = await page.locator(selector).first().boundingBox()
-      if (!found) throw new Error(`${slug}: nothing at ${selector}`)
+      if (!found) throw new Error(`nothing at ${selector}`)
       return found
     }
     const { width, height } = page.viewportSize()!
@@ -104,822 +62,559 @@ for (const slug of PIECES) {
     const about = await box("#ui > .about")
     const index = await box("#ui > .index")
 
-    expect(presets.x, `${slug}: the presets are not on the left`).toBeLessThan(width / 4)
-    expect(presets.y, `${slug}: the presets do not start at the top`).toBeLessThan(height / 8)
-    expect(bar.x + bar.width, `${slug}: the bar is not on the right`).toBeGreaterThan(width * 0.9)
-    expect(bar.y, `${slug}: the bar is not at the top`).toBeLessThan(height / 8)
-    expect(about.x + about.width, `${slug}: about is not on the right`).toBeGreaterThan(width * 0.9)
-    expect(about.y + about.height, `${slug}: about is not at the bottom`).toBeGreaterThan(height * 0.9)
-    expect(panel.y, `${slug}: the panel is not beneath the bar`).toBeGreaterThanOrEqual(bar.y + bar.height - 1)
-    expect(panel.y + panel.height, `${slug}: the panel runs over about`).toBeLessThanOrEqual(about.y + 1)
-    expect(index.x, `${slug}: all experiments is not on the left`).toBeLessThan(width / 10)
-    expect(index.y + index.height, `${slug}: all experiments is not at the bottom`).toBeGreaterThan(height * 0.9)
+    expect(presets.x, "the presets are not on the left").toBeLessThan(width / 4)
+    expect(presets.y, "the presets do not start at the top").toBeLessThan(height / 8)
+    expect(bar.x + bar.width, "the bar is not on the right").toBeGreaterThan(width * 0.9)
+    expect(bar.y, "the bar is not at the top").toBeLessThan(height / 8)
+    expect(about.x + about.width, "about is not on the right").toBeGreaterThan(width * 0.9)
+    expect(about.y + about.height, "about is not at the bottom").toBeGreaterThan(height * 0.9)
+    expect(panel.y, "the panel is not beneath the bar").toBeGreaterThanOrEqual(bar.y + bar.height - 1)
+    expect(panel.y + panel.height, "the panel runs over about").toBeLessThanOrEqual(about.y + 1)
+    expect(index.x, "all experiments is not on the left").toBeLessThan(width / 10)
+    expect(index.y + index.height, "all experiments is not at the bottom").toBeGreaterThan(height * 0.9)
   })
 
   /**
-   * **The presets run down the left edge until they have to wrap.** Columns
-   * of five from #223 put crowd's 23 five columns across, under the boxes of
-   * any screen below 1600; Andrei, on #258, wanted them down the edge "until
-   * they have to wrap into another column", at every size.
-   *
-   * Held at a short window so the wrap happens: a second column must start at
-   * the top, and only once the first could not have taken one more.
+   * **A governed group disables what the scene does not use — #242.** While
+   * its governor holds its off value the group's other rows are inert: still
+   * shown, disabled and marked, because hiding them made the panel jump
+   * whenever a layer was switched. The governor stays live, since it is how the
+   * group comes back. In a box a governing toggle sits in the heading as its
+   * switch; in a column it is the row above the group. Both are drawn here.
    */
-  test(`${slug}: the presets fill the left edge before they wrap`, async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 420 })
-    await openHeld(page, slug, { idle: false })
-    const boxes = await page
-      .locator("#ui .presets .preset")
-      .evaluateAll((all) => all.map((element) => element.getBoundingClientRect().toJSON() as DOMRect))
-    expect(boxes.length, `${slug} has no presets`).toBeGreaterThan(0)
-    const first = boxes[0]!
-    const inFirst = boxes.filter((box) => Math.abs(box.x - first.x) < 1)
-    const rest = boxes.slice(inFirst.length)
-    // The presets stop short of `all experiments`, which has the corner beneath them.
-    const link = await page.locator("#ui > .index").evaluate((element) => element.getBoundingClientRect().top)
-    // And a column wraps only at its own limit. `max-height` is a calc() that
-    // getComputedStyle leaves unresolved, so let the column grow to it and read it.
-    const floor = await page.locator("#ui .presets").evaluate((element) => {
-      const column = element as HTMLElement
-      column.style.height = "100vh"
-      const limit = column.getBoundingClientRect().bottom
-      column.style.height = ""
-      return limit
-    })
-    // Checked on the cap rather than on where the presets happen to end, which
-    // clears the link at most heights even when the cap does not.
-    expect(floor, `${slug}: the presets can run over all experiments`).toBeLessThanOrEqual(link)
-    // The first column is the leading presets, in order, with no gaps.
-    expect(boxes.slice(0, inFirst.length), `${slug}: the first column is not the leading presets`).toEqual(inFirst)
-    if (rest.length === 0) return
-    const last = inFirst.at(-1)!
-    expect(
-      last.bottom + (last.y - (inFirst.at(-2) ?? first).bottom) + last.height,
-      `${slug}: a second column started while the first had room for another preset`,
-    ).toBeGreaterThan(floor)
-    expect(rest[0]!.x, `${slug}: the second column is not to the right of the first`).toBeGreaterThan(first.x + 1)
-    expect(rest[0]!.y, `${slug}: the second column does not start at the top`).toBeCloseTo(first.y, 0)
-  })
-
-  /**
-   * **A governed group disables what the scene does not use — #242.** While its
-   * governor holds its off value the group's other rows are inert: **still
-   * shown**, disabled and marked, because hiding them made the whole panel jump
-   * whenever a layer was switched. Turned on, at least one of them is live
-   * again. The governor itself stays live either way, since it is how the group
-   * is switched back on.
-   */
-  test(`${slug}: a governed group's rows are inert, not hidden, while its governor is off`, async ({ page }) => {
-    const experiment = await openHeld(page, slug, { idle: false })
-    await experiment.api(({ api }) => api.panel(true))
-    const bodies = page.locator("#ui .panel .rows[data-governor]")
-    const count = await bodies.count()
-
-    if (!GOVERNED.has(slug)) {
-      expect(count, `${slug} has governed groups; add it to GOVERNED so they are tested`).toBe(0)
-      return
-    }
-    expect(count, `${slug} is listed in GOVERNED but declares no governed group`).toBeGreaterThan(0)
-
-    const names = await experiment.api(({ api }) => api.presets())
-    for (let index = 0; index < count; index++) {
-      const body = bodies.nth(index)
-      const key = (await body.getAttribute("data-governor"))!
-      const off: unknown = JSON.parse((await body.getAttribute("data-off"))!)
-
-      await experiment.api(({ api, arg }) => api.set({ [arg.key]: arg.off } as never), { key, off })
-      await expect(body, `${slug}: ${key} is off and its rows were hidden`).toBeVisible()
-      const rows = body.locator(".row")
-      expect(await rows.count(), `${slug}: ${key}'s group has no rows under its governor`).toBeGreaterThan(0)
-      await expect(
-        body.locator('.row[data-inert="false"]'),
-        `${slug}: ${key} is off and a row is still live`,
-      ).toHaveCount(0)
-      await expect(
-        body.locator("input:not([disabled])"),
-        `${slug}: ${key} is off and an input still takes a drag`,
-      ).toHaveCount(0)
-      // The row just above the group, or — for a toggle in a boxed panel — the
-      // switch inside the heading just above it.
-      const governor = body.locator(
-        "xpath=preceding-sibling::*[1]/descendant-or-self::*[contains(concat(' ', normalize-space(@class), ' '), ' governor ')]",
-      )
-      await expect(governor, `${slug}: ${key}'s governor is not the row above its group`).toHaveClass(/\bgovernor\b/)
-      await expect(governor, `${slug}: ${key} is off and its governor went with the rows`).toBeVisible()
-      await expect(governor, `${slug}: ${key} is off and its governor cannot be switched back on`).toHaveAttribute(
-        "data-inert",
-        "false",
-      )
-
-      // On: the first preset that uses the group, so "on" is a value the piece chose.
-      let on = false
-      for (let preset = 1; preset <= names.length && !on; preset++) {
-        const scene = await experiment.api(({ api, arg }) => api.preset(arg), preset)
-        on = JSON.stringify(scene[key]) !== JSON.stringify(off)
-      }
-      expect(on, `${slug}: no preset turns ${key} on, so its rows can never be seen`).toBe(true)
-      await expect(
-        body.locator('.row[data-inert="false"]').first(),
-        `${slug}: ${key} is on and every one of its rows is still inert`,
-      ).toBeVisible()
-    }
-  })
-
-  /**
-   * **A toggle is a toggle group**: two buttons, the current one lit, each
-   * setting its own value. It used to be one button whose label flipped, which
-   * reads as an action — "unorthodox and surprising". So the labels must not
-   * move, exactly one is lit, and clicking the unlit one is what flips it.
-   */
-  test(`${slug}: every toggle is two buttons, one lit, that set their own value`, async ({ page }) => {
-    const experiment = await openHeld(page, slug, { idle: false })
-    await experiment.api(({ api }) => api.panel(true))
-    type Listed = { kind: string; key: string; label: string }
-    const listed = await experiment.api(({ api }) => (api as unknown as { controls: () => Listed[] }).controls())
-    const toggles = listed.filter((control) => control.kind === "toggle")
-    for (const toggle of toggles) {
-      const row = page.locator("#ui .panel .row").filter({ has: page.locator(".label", { hasText: toggle.label }) })
-      const buttons = row.locator("button.mode")
-      await expect(buttons, `${slug}: ${toggle.key} is not two buttons`).toHaveCount(2)
-      const labels = await buttons.allTextContents()
-      await expect(row.locator('button.mode[data-active="true"]'), `${slug}: ${toggle.key} lights one`).toHaveCount(1)
-      const before = Boolean((await experiment.api(({ api }) => api.get()))[toggle.key])
-      await buttons.nth(before ? 0 : 1).click()
-      const after = Boolean((await experiment.api(({ api }) => api.get()))[toggle.key])
-      expect(after, `${slug}: ${toggle.key} did not flip`).toBe(!before)
-      await expect(buttons.nth(after ? 1 : 0), `${slug}: ${toggle.key} lit the wrong one`).toHaveAttribute(
-        "data-active",
-        "true",
-      )
-      await expect(
-        row.locator('button.mode[data-active="true"]'),
-        `${slug}: ${toggle.key} lights both after the click`,
-      ).toHaveCount(1)
-      expect(await buttons.allTextContents(), `${slug}: ${toggle.key}'s labels moved`).toEqual(labels)
-    }
-  })
-
-  /**
-   * **Boxes: nothing scrolls, and a fold is the viewer's, not the scene's.**
-   * A boxed panel stacks a box per group down the right edge instead of
-   * scrolling one column, and a box's heading folds it to the heading alone —
-   * remembered in the browser across a reload, and never written into the
-   * address, which is the scene's.
-   */
-  test(`${slug}: a boxed panel does not scroll, and a fold survives a reload without touching the address`, async ({
-    page,
-  }) => {
-    const experiment = await openHeld(page, slug, { idle: false })
-    await experiment.api(({ api }) => api.panel(true))
-    const boxes = page.locator("#ui .panel.boxed > .box")
-    if (!BOXED.has(slug)) {
-      expect(await boxes.count(), `${slug} has boxes; add it to BOXED so they are tested`).toBe(0)
-      return
-    }
-    expect(await boxes.count(), `${slug} is listed in BOXED but draws no boxes`).toBeGreaterThan(1)
-    const panel = page.locator("#ui .panel")
-    const scrolls = await panel.evaluate((element) => element.scrollHeight > element.clientHeight + 1)
-    expect(scrolls, `${slug}'s boxed panel scrolls`).toBe(false)
-
-    const first = boxes.first()
-    const rowsIn = first.locator(".row")
-    await expect(rowsIn.first(), `${slug}: an open box shows its rows`).toBeVisible()
-    const before = page.url()
-    await first.locator(".group").click()
-    await expect(rowsIn.first(), `${slug}: a folded box still shows its rows`).toBeHidden()
-    expect(page.url(), `${slug}: folding a box changed the address`).toBe(before)
-
-    await page.reload()
-    await page.waitForFunction(() => "experiment" in window)
-    await page.evaluate(() =>
-      (window as unknown as { experiment: { panel: (o: boolean) => void } }).experiment.panel(true),
-    )
-    await expect(
-      page.locator("#ui .panel.boxed > .box").first().locator(".row").first(),
-      `${slug}: a fold did not survive a reload`,
-    ).toBeHidden()
-    // And unfolds, so the test leaves the browser as it found it.
-    await page.locator("#ui .panel.boxed > .box").first().locator(".group").click()
-    await expect(page.locator("#ui .panel.boxed > .box").first().locator(".row").first()).toBeVisible()
-  })
-
-  /**
-   * **Every row fits its box, at every preset — #257.** The unboxed panel grew
-   * to its widest row; a box is exactly `--ui-panel-min` wide, border-box, so
-   * a row wider than that is clipped at the box's edge or wraps a button onto
-   * two lines, and nothing else says so. Psyxels' subject choices ran 86px past
-   * the edge and walkers' "to a spot" broke in two the day the two were boxed.
-   *
-   * The presence half is the count: a box with no rows measured would pass.
-   */
-  test(`${slug}: every row of a boxed panel fits its box, at every preset`, async ({ page }) => {
-    test.skip(!BOXED.has(slug), "not boxed")
-    const experiment = await openHeld(page, slug, { idle: false })
-    await experiment.api(({ api }) => api.panel(true))
-    const presets = await page.locator("#ui .presets .preset").count()
-    for (let index = 1; index <= presets; index++) {
-      await experiment.api(({ api, arg }) => api.preset(arg), index)
-      const { measured, misfits } = await page.evaluate(() => {
-        const misfits: string[] = []
-        let measured = 0
-        for (const box of document.querySelectorAll<HTMLElement>("#ui .panel.boxed > .box")) {
-          const style = getComputedStyle(box)
-          const edge =
-            box.getBoundingClientRect().right - parseFloat(style.paddingRight) - parseFloat(style.borderRightWidth)
-          for (const row of box.querySelectorAll<HTMLElement>(".row")) {
-            if (row.getClientRects().length === 0) continue
-            measured++
-            const name = row.querySelector(".label")?.textContent ?? "?"
-            for (const part of row.querySelectorAll<HTMLElement>("button, .value, .label, input")) {
-              if (part.getBoundingClientRect().right > edge + 1) misfits.push(`${name}: runs past the box`)
-              const text = [...part.childNodes].find((node) => node.nodeType === Node.TEXT_NODE)
-              if (!text) continue
-              const range = document.createRange()
-              range.selectNodeContents(text)
-              const lines = new Set([...range.getClientRects()].map((rect) => Math.round(rect.top)))
-              if (lines.size > 1) misfits.push(`${name}: "${text.textContent}" wraps`)
-            }
-          }
-        }
-        return { measured, misfits: [...new Set(misfits)] }
-      })
-      expect(measured, `${slug}: no rows were measured`).toBeGreaterThan(0)
-      expect(misfits, `${slug}, preset ${index}: a row does not fit its box; raise --ui-panel-min`).toEqual([])
-    }
-  })
-
-  /**
-   * **The bar reads reroll, copy link, adjust — #257.** The piece's own actions
-   * first, where it has any, then `copy link`, then `adjust`. The copy action
-   * was a full-width row at the foot of the panel until then, and the presence
-   * half here is what keeps the absence half honest: a panel with no copy row
-   * passes as readily when the button is gone altogether.
-   */
-  test(`${slug}: the bar ends copy link, adjust, and the presets lead their column from one`, async ({ page }) => {
-    const experiment = await openHeld(page, slug, { idle: false })
-
-    const labels = await page.locator(".bar button, .bar a").allTextContents()
-    expect(labels.slice(-2)).toEqual(["copy link", "adjust"])
-    await experiment.api(({ api }) => api.panel(true))
-    await expect(page.locator(".panel")).toBeVisible()
-    await expect(page.locator(".panel .copy")).toHaveCount(0)
-    // The way back to every piece has a corner of its own: the only way back
-    // used to be through the note (Andrei, 2026-10-02).
-    await expect(page.locator("#ui > .about")).toHaveText("about")
-    await expect(page.locator("#ui > .index")).toHaveText("all experiments")
-    expect(await page.locator("#ui > .index").getAttribute("href")).toBe("/experiments/")
-    // Numbered from one, because the digits load them.
-    expect((await page.locator("#ui .presets .preset").allTextContents())[0]).toMatch(/^1 /)
-  })
-
-  test(`${slug}: c opens the panel, Escape closes it, and a digit loads a preset`, async ({ page }) => {
-    const experiment = await openHeld(page, slug, { idle: false })
-    const panel = page.locator(".panel")
-
-    await page.keyboard.press("c")
-    await expect(panel).toBeVisible()
-    await page.keyboard.press("Escape")
-    await expect(panel).toBeHidden()
-
-    const second = await experiment.api(({ api }) => api.preset(2))
-    await experiment.api(({ api }) => api.preset(1))
-    await page.keyboard.press("2")
-    expect(await experiment.api(({ api }) => api.get())).toEqual(second)
-  })
-
-  /**
-   * **Every key a preset's title names loads that preset — #223.** The titles
-   * said `key 10` through `key 16` on crowd, and there is no such key: a digit
-   * is one keypress, so the tenth preset onward is reachable by arrows and the
-   * pointer only. Read from the titles rather than from the count, so the check
-   * holds whatever the titles claim and cannot pass by a piece having few
-   * presets — paired with a presence assertion that some title claims a key.
-   */
-  test(`${slug}: every key a preset's title names loads that preset`, async ({ page }) => {
-    const experiment = await openHeld(page, slug, { idle: false })
-    const shown = () => page.evaluate(() => document.documentElement.dataset.preset)
-
-    const titles = await page
-      .locator("#ui button.preset")
-      .evaluateAll((buttons) => buttons.map((b) => b.getAttribute("title") ?? ""))
-    const claims = titles.flatMap((title, index) => {
-      const key = /\(key ([^,)]+)/.exec(title)?.[1]
-      return key === undefined ? [] : [{ index, key }]
-    })
-    expect(claims.length, `${slug}: no preset title names a key at all`).toBeGreaterThan(0)
-
-    for (const { index, key } of claims) {
-      expect(key, `${slug}: preset ${index + 1} names "key ${key}", which is not one keypress`).toHaveLength(1)
-      // Start from a different preset, so the key has to move something.
-      await experiment.api(({ api, arg }) => api.preset(arg), index === 0 ? 2 : 1)
-      await page.keyboard.press(key)
-      expect(await shown(), `${slug}: key ${key} did not load preset ${index + 1}`).toBe(String(index))
-    }
-  })
-
-  /**
-   * Left and right step through the presets, the way a swipe does on a phone.
-   *
-   * Stepping is not the digits with extra steps: it is how a scene gets compared
-   * to the one beside it, where hunting for the right digit is a different
-   * gesture entirely. Asserted through the published `data-preset` rather than
-   * by comparing settings, which is what the kit itself uses to decide.
-   */
-  test(`${slug}: left and right step through the presets, and stop at both ends`, async ({ page }) => {
-    const experiment = await openHeld(page, slug, { idle: false })
-    const shown = () => page.evaluate(() => document.documentElement.dataset.preset)
-
-    const names = await experiment.api(({ api }) => api.presets())
-    test.skip(names.length < 2, `${slug} has only one preset`)
-
-    expect(await shown()).toBe("0")
-
-    await page.keyboard.press("ArrowRight")
-    expect(await shown(), `${slug}: right did not step forward`).toBe("1")
-    await page.keyboard.press("ArrowLeft")
-    expect(await shown(), `${slug}: left did not step back`).toBe("0")
-
-    // Neither end wraps, which is what the same gesture does in the interactive
-    // view. Pressed past the stop rather than up to it, since a clamp that is
-    // off by one only shows when it is overshot.
-    await page.keyboard.press("ArrowLeft")
-    expect(await shown(), `${slug}: the primary wrapped to the last preset`).toBe("0")
-
-    // Jumped to rather than walked to: stepping is a property of the kit, and
-    // walking there cost one scene change per preset, so the test grew with
-    // every preset a piece gained — #238.
-    await experiment.api(({ api, arg }) => api.preset(arg), names.length)
-    await page.keyboard.press("ArrowRight")
-    expect(await shown(), `${slug}: the last preset wrapped to the primary`).toBe(String(names.length - 1))
-    await page.keyboard.press("ArrowLeft")
-    expect(await shown(), `${slug}: left did not step back from the last`).toBe(String(names.length - 2))
-  })
-
-  /**
-   * A focused slider keeps its own arrow keys.
-   *
-   * Arrows are how a range input is operated without a pointer, and the panel is
-   * deliberately keyboard-reachable — taking them would make every slider
-   * unusable for anyone not holding a mouse.
-   *
-   * The assertion is about the presets, not about the slider: whether the value
-   * moves is the browser's business, and a handle already sitting on its stop
-   * would not move either. What must not happen is the scene jumping to the next
-   * preset.
-   */
-  test(`${slug}: a focused slider keeps its own arrow keys`, async ({ page }) => {
-    const experiment = await openHeld(page, slug, { idle: false })
-    await experiment.api(({ api }) => api.panel(true))
-
-    // The first slider the primary leaves enabled: a disabled one refuses focus,
-    // the arrow then reaches the page, and the presets step for a reason that
-    // has nothing to do with sliders. Hexgrid's primary greys out its first.
-    const slider = page.locator(".panel input[type=range]:not(:disabled)").first()
-    await expect(slider).toBeVisible()
-    await slider.focus()
-    await expect(slider, `${slug}: the slider never took focus`).toBeFocused()
-
-    await page.keyboard.press("ArrowRight")
-    const shown = await page.evaluate(() => document.documentElement.dataset.preset)
-    expect(shown, `${slug}: an arrow on a focused slider stepped the presets`).not.toBe("1")
-  })
-
-  /**
-   * `data-preset` on `<html>`, which the kit publishes and the gallery reads.
-   *
-   * The interactive view names the scene on its placard and lights one dot from
-   * this attribute and nothing else — it is the only way anything outside the
-   * kit can know which preset is on screen without holding an opinion about
-   * what a piece's settings mean, which is exactly what `gallery/` may not have.
-   *
-   * It arrived in #82 with its only check inside `tests/reel.spec.ts`, the
-   * consumer's own spec. That tested that the reel's reading worked, not that
-   * the kit publishes anything: delete the reel and the promise went with it,
-   * and the next surface to rely on it would start from an untested one. So it
-   * is asserted here, across every piece, the same way every other kit
-   * behaviour is. See #83.
-   *
-   * Absent rather than `-1` for a scene that is nobody's preset. That
-   * distinction is the whole reason the attribute can be trusted — a piece
-   * someone has dragged a slider on must not keep claiming to be preset 0.
-   */
-  /**
-   * The landing contract, which was written once and checked once.
-   *
-   * Four pieces implement `settingsForLanding` and the rewrite that goes with
-   * it, and until this loop it was asserted for **walkers only** — the piece
-   * that happened to be written last. The section's cost of each piece being
-   * standalone shows up here not as duplication but as a hole: dangler,
-   * flotsam and psyxels have the same behaviour and nothing checked any of
-   * them. It settles nothing, so covering five pieces costs about what covering
-   * one did.
-   *
-   * Asserted through the API rather than by importing each piece's `PRESETS`,
-   * so this stays a claim about behaviour and needs to know nothing about where
-   * a piece keeps its scenes.
-   */
-  test(`${slug}: a bare address lands on the primary`, async ({ page }) => {
-    const experiment = await openHeld(page, slug, { idle: true })
-
-    const landed = await experiment.api(({ api }) => api.get())
-    // **`preset(1)`, not `preset(0)`.** The number is the keyboard digit rather
-    // than an index, so the primary is 1 — `preset(0)` throws, which is how this
-    // test found out.
-    const primary = await experiment.api(({ api }) => {
-      api.preset(1)
-      return api.get()
-    })
-
-    expect(landed, `${slug}: a bare address did not land on the first preset`).toEqual(primary)
-  })
-
-  /**
-   * And it leaves with a link to *that scene*.
-   *
-   * The indirection is the point: a visitor's link describes the park in front
-   * of them rather than standing for "whatever is featured this month", so
-   * promoting a preset cannot invalidate a link anybody has already sent. See
-   * `src/experiments/CONTEXT.md` on *primary*.
-   *
-   * **starry-night was skipped here until #128 closed, and how it closed matters
-   * for reading this.** It had no rewrite at all, and adding one was not enough:
-   * its primary holds its `DEFAULT_SETTINGS` values exactly, and the address was
-   * written as the *difference* from those, so the rewrite produced an empty
-   * query — the one address that means "whatever is featured". Every piece now
-   * writes the whole scene, so the assertion below holds for all five without
-   * anyone having to move a scene off its baseline to earn it.
-   */
-  test(`${slug}: a bare address is rewritten to the scene it landed on`, async ({ page }) => {
-    const experiment = await openHeld(page, slug, { idle: true })
-
-    const landed = await experiment.api(({ api }) => api.get())
-    const address = page.url()
-    expect(address, `${slug}: a bare address was left bare`).toMatch(/\?.+=/)
-
-    await page.goto(address)
-    await page.waitForFunction(() => Boolean(window.experiment))
-    const restored = await experiment.api(({ api }) => api.get())
-
-    expect(restored, `${slug}: its own address did not restore its own scene`).toEqual(landed)
-  })
-
-  /**
-   * An opaque address has to be readable *somehow*, and this is the somehow.
-   *
-   * Addresses stopped being readable deliberately — see
-   * `src/experiments/docs/adr/20260906-an-address-is-packed-not-readable.md` —
-   * and the whole bargain rests on `decode` existing and working. It is checked
-   * here rather than in a unit test because the thing that has to work is the
-   * handle a person actually reaches for in a console, on a real page, against
-   * the address that page rewrote for itself.
-   */
-  test(`${slug}: says what its own address means`, async ({ page }) => {
-    const experiment = await openHeld(page, slug, { idle: true })
-
-    const showing = await experiment.api(({ api }) => api.get())
-    const address = page.url()
-
-    // The whole URL, which is what someone pasting a link has in hand.
-    expect(await experiment.api(({ api, arg }) => api.decode(arg), address)).toEqual(showing)
-
-    // And the bare packed value, which is what they have after copying out of
-    // the middle of one.
-    const packed = new URLSearchParams(address.split("?")[1]).get("s")
-    expect(packed, `${slug} did not write a packed address`).toBeTruthy()
-    expect(await experiment.api(({ api, arg }) => api.decode(arg), packed!)).toEqual(showing)
-
-    // No argument means the address in the bar.
-    expect(await experiment.api(({ api }) => api.decode())).toEqual(showing)
-  })
-
-  test(`${slug}: publishes which preset is on screen, and stops when it is nobody's`, async ({ page }) => {
-    const experiment = await openHeld(page, slug, { idle: false })
-    const html = page.locator("html")
-    const shown = () => page.evaluate(() => document.documentElement.dataset.preset)
-
-    // A bare landing is the primary, which is position one.
-    await expect(html).toHaveAttribute("data-preset", "0")
-
-    // A preset names itself wherever it sits, so the placard cannot be right by
-    // luck at index 0 and wrong everywhere else. **First, second and last, not
-    // every one — #238:** which index is on screen is the kit's arithmetic, the
-    // same for the eighth preset as the third, and applying all of them made
-    // this grow with every preset a piece gained. Each scene is kept, because
-    // the last assertion needs a value that belongs to none of them.
-    const names = await experiment.api(({ api }) => api.presets())
-    const sample = [...new Set([0, 1, names.length - 1])].filter((index) => index < names.length)
-    const scenes: Record<string, unknown>[] = []
-    for (const index of sample) {
-      scenes.push(await experiment.api(({ api, arg }) => api.preset(arg), index + 1))
-      expect(await shown(), `${slug} preset ${index} (${names[index]})`).toBe(String(index))
-    }
-
-    // And a scene that is nobody's preset says so by saying nothing.
-    //
-    // Driven through `get`/`set` and the presets alone — the documented minimum
-    // surface — rather than through `controls()`. Two earlier attempts failed
-    // for reasons worth keeping: the slider's midpoint happened to *be* the
-    // loaded preset's value on starry-night, so nothing moved; and
-    // `controls()` is not the same shape in every piece, so reading `.key` off
-    // it silently yielded `undefined` there and the nudge went to a key no
-    // piece has. A kit-wide assertion may only lean on what every piece
-    // promises.
-    const scene = scenes.at(-1)!
-    const numeric = Object.keys(scene).filter((key) => typeof scene[key] === "number")
-    // Every key that varies across the sampled presets, tried in turn — not the
-    // first. With a sample of three, the first can be an integer two apart
-    // (bubbles' `jets`: 3 and 4) whose every interior point snaps back.
-    const varying = numeric.filter((candidate) => new Set(scenes.map((each) => each[candidate])).size > 1)
-    if (varying.length === 0) throw new Error(`${slug}: no numeric setting varies across its presets`)
-
-    // A value no preset uses for this key, so the attribute has to go absent
-    // rather than land on a neighbour by coincidence.
-    //
-    // **`+1` was the third attempt and it is wrong for the same reason as the
-    // first two: it can silently fail to move anything.** Every numeric setting
-    // in the section lands on a grid — `docs/adr/20260906-a-setting-lands-on-a-grid.md`
-    // — and where that grid is coarser than 1, `normalizeSettings` snaps the
-    // nudge straight back. Embers' first varying setting is a population on a
-    // log track with a step of ten, so `2600 + 1` came back as 2600 and the
-    // assertion below fired. Four pieces had passed on the coincidence that
-    // their own first varying setting was stored in whole units.
-    //
-    // So the candidates are **interior points between preset values**, which is
-    // the one construction that needs neither bounds nor a grid: `key` was
-    // chosen for varying across the presets, so there are at least two distinct
-    // legal values with room between them, and nothing here can clamp. What is
-    // asserted is the value that came *back* — snapping is expected, landing on
-    // a preset's value is what has to be ruled out.
-    let moved: Record<string, unknown> | undefined
-    let key = varying[0]!
-    const tried: string[] = []
-    for (const candidateKey of varying) {
-      key = candidateKey
-      const taken = new Set(scenes.map((each) => each[key] as number))
-      const distinct = [...taken].sort((a, b) => a - b)
-      const candidates = distinct.flatMap((value, index) =>
-        index === 0
-          ? []
-          : [0.25, 0.5, 0.75].map((along) => distinct[index - 1]! + (value - distinct[index - 1]!) * along),
-      )
-      for (const candidate of candidates) {
-        moved = await experiment.api(({ api, arg }) => api.set({ [arg.key]: arg.value } as never), {
-          key,
-          value: candidate,
-        })
-        if (!taken.has(moved[key] as number)) break
-        moved = undefined
-      }
-      if (moved) break
-      tried.push(`${key}: ${candidates.join(", ")} against ${distinct.join(", ")}`)
-    }
-
-    expect(
-      moved,
-      `${slug}: no value between its presets' settings survived normalisation as something no preset ` +
-        `holds, so nothing was tested. Tried ${tried.join("; ")}.`,
-    ).toBeDefined()
-    expect(await shown(), `${slug} still claims a preset after ${key} moved`).toBeUndefined()
-  })
-
-  /**
-   * `controls()` reports one entry per **settings key**, and every key is real.
-   *
-   * The shape had drifted three ways and nothing said which was the contract.
-   * Flotsam and Psyxels flattened over `keysOf` — one entry per key. Dangler
-   * read `control.key` directly, which is `undefined` for a range control and
-   * was correct only because Dangler has none. Starry Night reported one entry
-   * per *control* with a `keys` array and no `key` at all.
-   *
-   * That cost a real assertion: generic code reading `.key` got `undefined` on
-   * Starry Night, wrote the patch to a setting no piece has, and the check that
-   * followed passed because nothing had moved. See #85, and #84 where it bit.
-   *
-   * So the contract is the flat one, and this holds every piece to it. A key
-   * that does not name a real setting is the failure worth catching — it is
-   * indistinguishable from a working control until something tries to drive it.
-   */
-  test(`${slug}: reports one control entry per settings key`, async ({ page }) => {
-    const experiment = await openExperiment<BaseApi & { controls: () => { key?: unknown }[] }>(page, slug, {
-      idle: false,
-    })
-
-    const entries = await experiment.api(({ api }) => api.controls())
-    expect(entries.length, `${slug} reports no controls`).toBeGreaterThan(0)
-
-    const settings = await experiment.api(({ api }) => api.get())
-    const unusable = entries.filter((entry) => typeof entry.key !== "string" || !(entry.key in settings))
-
-    expect(
-      unusable.map((entry) => JSON.stringify(entry)),
-      `${slug}: every controls() entry needs a \`key\` naming a real setting. An entry reporting ` +
-        `\`keys\` instead, or a key the piece has no setting for, cannot be driven — and code that ` +
-        `tries writes to nothing and passes. Flatten over keysOf(), as the other pieces do.`,
-    ).toEqual([])
-  })
-
-  /**
-   * **A bound it reports has to be a number.** Leaving it out is fine.
-   *
-   * This is #85's shape for the third time. A piece builds its report with a
-   * `switch` on the control's kind and a `default:` for the rest — and the day
-   * the kit gains a kind that has no track, the default hands back
-   * `min: control.min` off a control with no `min`. The property is *present*
-   * and `undefined`, the type says `number`, and every consumer that trusts it
-   * gets `NaN` out of its own arithmetic. `src/experiments/dangler/tests/dangler.spec.ts` and
-   * `src/experiments/starry-night/tests/starry-night.spec.ts` both compute `min + (max - min) * 0.37` to
-   * sweep every control, so the value written is `NaN` and the assertion after
-   * it passes, having moved nothing. That is exactly how #85 was missed.
-   *
-   * **Absence is the correct answer, not a lesser one.** The report is the kit's
-   * `ControlReport` since #130 — a discriminated union where `slider | range`
-   * carry the bounds, `choice | set` carry `options` and `toggle` carries
-   * neither — so a trackless control has nowhere to invent one. Before that,
-   * three pieces declared a flat `{ key, group, label, min, max, hint }`, which
-   * is what *forced* the invention.
-   *
-   * So this asserts the narrow thing and nothing more: report a bound or do
-   * not, but do not report one that is not a number.
-   *
-   * **What it cannot catch, said here so nobody reads it as wider than it is.**
-   * A piece forced to fill the field can put a *plausible* number there rather
-   * than an absent one, and this passes it — Psyxels' `glyphs` set reported
-   * `min: 0, max: 0` for a setting whose value is a list of five names, and no
-   * tightening of this assertion reaches a valid `0`. The fault is a field that
-   * should not be present, so the check has to be about **presence**, and it is
-   * `tests/unit/experiments-controls-report.test.ts`. That one runs over every
-   * piece's real `CONTROLS` in milliseconds; this one is still what holds a
-   * piece that builds its own report at runtime. See #130 and
-   * `src/experiments/docs/adr/20260907-the-controls-report-is-the-kits.md`.
-   */
-  test(`${slug}: reports a real bound, or none at all`, async ({ page }) => {
-    const experiment = await openExperiment<BaseApi & { controls: () => Record<string, unknown>[] }>(page, slug, {
-      idle: false,
-    })
-
-    const entries = await experiment.api(({ api }) => api.controls())
-    expect(entries.length, `${slug} reports no controls`).toBeGreaterThan(0)
-
-    const invented = entries.filter(
-      (entry) => ("min" in entry && !Number.isFinite(entry.min)) || ("max" in entry && !Number.isFinite(entry.max)),
-    )
-
-    expect(
-      invented.map((entry) => JSON.stringify(entry)),
-      `${slug}: a controls() entry reports a \`min\` or \`max\` that is not a number. A control ` +
-        `with no track should leave them out — starry-night and walkers do — rather than have a ` +
-        `\`default:\` branch read them off a control that has neither. Present-and-undefined is ` +
-        `the signature: the type says number, and a spec sweeping the controls writes NaN and ` +
-        `then passes, having moved nothing. See #85.`,
-    ).toEqual([])
-  })
-
-  test(`${slug}: the panel is reachable by keyboard and its rows are labelled`, async ({ page }) => {
-    const experiment = await openHeld(page, slug, { idle: false })
-    await experiment.api(({ api }) => api.panel(true))
-
-    // Every row carries its own tooltip and a label, which is the only thing
-    // naming a bare slider.
-    const rows = page.locator(".panel .row")
-    const count = await rows.count()
-    expect(count).toBeGreaterThan(0)
-    for (let i = 0; i < count; i++) {
-      await expect(rows.nth(i).locator(".label")).not.toBeEmpty()
-      expect(await rows.nth(i).getAttribute("title")).toBeTruthy()
-    }
-  })
-
-  /**
-   * The bar's copy button, which had no test at all until the copy action
-   * learned to carry more than one thing (#144), and moved from the panel to the
-   * bar in #257.
-   *
-   * Deliberately not asserting what reached the clipboard. `kit/copy.ts` has two
-   * paths — `navigator.clipboard` and a legacy selection fallback for the
-   * plain-http LAN case — and which one runs depends on the origin and on a
-   * permission the suite would have to grant. The label is the part every piece
-   * relies on and the part a refactor can break: it announces the outcome and
-   * then goes back to what it said.
-   */
-  test(`${slug}: the bar's copy button is labelled and reports back`, async ({ page }) => {
-    await openHeld(page, slug, { idle: false })
-
-    const buttons = page.locator(".bar .copy")
-    expect(await buttons.count()).toBeGreaterThan(0)
-
-    const first = buttons.first()
-    const resting = (await first.textContent())?.trim()
-    expect(resting).toBeTruthy()
-    expect(await first.getAttribute("title")).toBeTruthy()
-
-    await first.click()
-    await expect(first).not.toHaveText(resting!)
-
-    // And it does not stay stuck on the outcome.
-    await expect(first).toHaveText(resting!, { timeout: 4000 })
-  })
-
-  /**
-   * A bound pair is two handles on **one** track, and both of them can be
-   * grabbed.
-   *
-   * Two separate bugs, one of which had been shipped in Starry Night since the
-   * range control existed and was inherited by the next piece to use one.
-   *
-   * The kit renders DOM, not appearance: the class names are its contract with a
-   * piece's stylesheet, and a control kind a piece has no CSS for renders
-   * unstyled with nothing to say so. Flotsam's first `.span` rule stacked the two
-   * inputs one above the other, which is two ranges rather than a range, and it
-   * looked deliberate.
-   *
-   * The second is why this test presses a real mouse rather than checking
-   * geometry. The filled bar between the handles is a pseudo-element, so it is
-   * the row's *last* child in paint order and sits on top of both inputs — and
-   * its left edge lands exactly on the lower thumb, which therefore could not be
-   * grabbed at all. The upper thumb sits on the bar's right edge, a pixel
-   * outside it, and worked fine; so the row was half broken in a way that looked
-   * like a knack rather than a bug, and no assertion about layout would ever
-   * have caught it.
-   *
-   * Skipped for a piece with no bound pair rather than asserted absent; Dangler
-   * has none and is not wrong for it.
-   */
-  test(`${slug}: both handles of a bound pair sit on one track and can be dragged`, async ({ page }) => {
-    const experiment = await openHeld(page, slug, { idle: false })
-
-    // **Held, and that is worth 35x on every round trip.** This test is about
-    // the chrome, and a running piece starves the main thread it shares with
-    // Playwright: ten `boundingBox()` calls on flotsam cost 9,934ms with the
-    // water running and 279ms held. Nothing stalls — everything is uniformly
-    // slow, which is why it reads as a mystery rather than as contention. See
-    // the note in `tests/AGENTS.md`.
+  test(`${layout}: a governed group's rows are inert, not hidden, while its governor is off`, async ({ page }) => {
+    const experiment = await openKit(page, { layout, idle: false })
     await experiment.api(({ api }) => {
       api.pause(true)
       api.panel(true)
     })
+    const body = page.locator('#ui .panel .rows[data-governor="layer"]')
+    await expect(body).toHaveCount(1)
+    expect(await body.getAttribute("data-off")).toBe("false")
 
-    const spans = page.locator(".panel .span")
-    const count = await spans.count()
-    test.skip(count === 0, `${slug} has no range control`)
+    await experiment.api(({ api }) => api.set({ layer: false } as never))
+    await expect(body, "the layer is off and its rows were hidden").toBeVisible()
+    await expect(body.locator(".row")).toHaveCount(2)
+    await expect(body.locator('.row[data-inert="false"]'), "the layer is off and a row is still live").toHaveCount(0)
+    await expect(body.locator("input:not([disabled])"), "an input under an off governor takes a drag").toHaveCount(0)
 
-    for (let i = 0; i < count; i++) {
-      const span = spans.nth(i)
-      const inputs = span.locator("input[type=range]")
-      await expect(inputs).toHaveCount(2)
+    const governor = body.locator(
+      "xpath=preceding-sibling::*[1]/descendant-or-self::*[contains(concat(' ', normalize-space(@class), ' '), ' governor ')]",
+    )
+    await expect(governor, "the governor is not the row above its group").toHaveClass(/\bgovernor\b/)
+    await expect(governor, "the governor went with the rows").toBeVisible()
+    await expect(governor, "the governor cannot be switched back on").toHaveAttribute("data-inert", "false")
+    if (layout === "boxed")
+      await expect(governor, "a governing toggle is not its box's switch").toHaveClass(/\bswitch\b/)
 
-      const track = await span.boundingBox()
-      const first = await inputs.nth(0).boundingBox()
-      const second = await inputs.nth(1).boundingBox()
-      if (!track || !first || !second) throw new Error(`${slug}: a range row has no box`)
+    await governor.locator("button.mode", { hasText: "on" }).click()
+    expect((await settings(page)).layer, "the governor's own button did not switch it on").toBe(true)
+    await expect(body.locator('.row[data-inert="false"]'), "on, and every row is still inert").toHaveCount(2)
+  })
 
-      // One track: both handles run its full width and sit on the same line.
-      expect(Math.abs(first.y - second.y)).toBeLessThan(1)
-      expect(first.width).toBeCloseTo(track.width, 0)
-      expect(second.width).toBeCloseTo(track.width, 0)
-      expect(track.height).toBeLessThan(first.height * 1.5)
-
-      // And both can be taken hold of. Dragged *inward*, toward each other, so
-      // neither is asked to move off a stop it is already sitting on.
-      for (const [index, direction] of [
-        [0, 1],
-        [1, -1],
-      ] as const) {
-        const input = inputs.nth(index)
-        const key = await input.getAttribute("data-key")
-        if (!key) throw new Error(`${slug}: a range handle has no data-key`)
-
-        const box = (await input.boundingBox())!
-        const along = await input.evaluate((element) => {
-          const range = element as HTMLInputElement
-          const min = Number(range.min)
-          return (Number(range.value) - min) / (Number(range.max) - min)
-        })
-        const x = box.x + box.width * along
-        const y = box.y + box.height / 2
-
-        // The thing under the pointer must be the input itself. When it was the
-        // row — a pseudo-element, which `elementFromPoint` reports as its
-        // owner — the press went nowhere and the handle simply did not move.
-        const under = await page.evaluate(
-          ({ x, y }) => document.elementFromPoint(x, y)?.tagName.toLowerCase() ?? "nothing",
-          { x, y },
-        )
-        expect(under, `${slug}: handle ${index} of row ${i} is covered by something`).toBe("input")
-
-        // **One move, not eight.** Every step of a drag is a settings change,
-        // and a settings change can be expensive: flotsam's size pair is in
-        // `needsScatter`, so eight steps rebuilt 8,500 specks eight times per
-        // handle. The assertion below is what proves one move is enough — it
-        // fails if the handle did not take.
-        const before = await experiment.api(({ api }) => api.get())
-        await page.mouse.move(x, y)
-        await page.mouse.down()
-        await page.mouse.move(x + direction * 24, y)
-        await page.mouse.up()
-        const after = await experiment.api(({ api }) => api.get())
-
-        expect(after[key], `${slug}: dragging handle ${index} of row ${i} changed nothing`).not.toBe(before[key])
+  /**
+   * **A value is one line, always.** A value that wrapped — crowd's boulders
+   * going from "none" to "4% of the ground" — made its row taller and moved
+   * every row below it as the slider was dragged; in a box it ran past the
+   * edge instead (#257). The fixture's `verbose` formats far wider than its
+   * column, so the ellipsis has to be doing the work: the presence half is that
+   * the text really does overflow.
+   */
+  test(`${layout}: a value too long for its column stays on one line inside the panel`, async ({ page }) => {
+    const experiment = await openKit(page, { layout, idle: false })
+    await experiment.api(({ api }) => {
+      api.pause(true)
+      api.panel(true)
+    })
+    const measured = await page.locator("#ui .panel .row", { hasText: "verbose" }).evaluate((row) => {
+      const value = row.querySelector<HTMLElement>(".value")!
+      const container = row.closest<HTMLElement>(".box") ?? row.closest<HTMLElement>(".panel")!
+      const style = getComputedStyle(container)
+      const range = document.createRange()
+      range.selectNodeContents(value)
+      return {
+        overflows: value.scrollWidth > value.clientWidth,
+        lines: new Set([...range.getClientRects()].map((rect) => Math.round(rect.top))).size,
+        right: value.getBoundingClientRect().right,
+        edge:
+          container.getBoundingClientRect().right - parseFloat(style.paddingRight) - parseFloat(style.borderRightWidth),
       }
-    }
+    })
+    expect(measured.lines, "a long value wrapped").toBe(1)
+    expect(measured.right, "a long value runs past the panel's edge").toBeLessThanOrEqual(measured.edge + 1)
+    expect(measured.overflows, "the value fits, so this measured nothing; lengthen its format").toBe(true)
   })
 }
+
+/**
+ * **The presets run down the left edge until they have to wrap** (Andrei, #258).
+ * At a short window twelve presets need a second column: it must start at the
+ * top, and only once the first could not have taken one more. The cap is read
+ * rather than where the presets happen to end, which clears `all experiments`
+ * at most heights even when the cap does not.
+ */
+test("the presets fill the left edge before they wrap", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 420 })
+  await openKit(page, { idle: false })
+  const boxes = await page
+    .locator("#ui .presets .preset")
+    .evaluateAll((all) => all.map((element) => element.getBoundingClientRect().toJSON() as DOMRect))
+  expect(boxes).toHaveLength(12)
+  const first = boxes[0]!
+  const inFirst = boxes.filter((box) => Math.abs(box.x - first.x) < 1)
+  const rest = boxes.slice(inFirst.length)
+  expect(rest.length, "twelve presets at 420px did not wrap, so this measured nothing").toBeGreaterThan(0)
+
+  const link = await page.locator("#ui > .index").evaluate((element) => element.getBoundingClientRect().top)
+  // `max-height` is a calc() getComputedStyle leaves unresolved, so let the column grow to it and read it.
+  const floor = await page.locator("#ui .presets").evaluate((element) => {
+    const column = element as HTMLElement
+    column.style.height = "100vh"
+    const limit = column.getBoundingClientRect().bottom
+    column.style.height = ""
+    return limit
+  })
+  expect(floor, "the presets can run over all experiments").toBeLessThanOrEqual(link)
+  expect(boxes.slice(0, inFirst.length), "the first column is not the leading presets").toEqual(inFirst)
+  const last = inFirst.at(-1)!
+  expect(
+    last.bottom + (last.y - (inFirst.at(-2) ?? first).bottom) + last.height,
+    "a second column started while the first had room for another preset",
+  ).toBeGreaterThan(floor)
+  expect(rest[0]!.x, "the second column is not to the right of the first").toBeGreaterThan(first.x + 1)
+  expect(rest[0]!.y, "the second column does not start at the top").toBeCloseTo(first.y, 0)
+})
+
+/**
+ * **Boxes: nothing scrolls, and a fold is the viewer's, not the scene's.** At a
+ * window too short for them the boxes wrap into columns rather than the panel
+ * scrolling, and
+ * a heading folds its box — remembered across a reload, never written into the
+ * address, which is the scene's (`20260929-a-panel-in-boxes-folds-are-the-viewers`).
+ */
+test("a boxed panel does not scroll, and a fold survives a reload without touching the address", async ({ page }) => {
+  // Short enough that the three boxes need two columns, tall enough that each
+  // box fits one: a box taller than the window has nowhere to wrap to.
+  await page.setViewportSize({ width: 1280, height: 640 })
+  const experiment = await openKit(page, { idle: false })
+  await experiment.api(({ api }) => api.panel(true))
+  const boxes = page.locator("#ui .panel.boxed > .box")
+  await expect(boxes).toHaveCount(3)
+  const lefts = await boxes.evaluateAll((all) => new Set(all.map((box) => box.getBoundingClientRect().left)).size)
+  expect(lefts, "the boxes did not need a second column, so nothing was asked not to scroll").toBeGreaterThan(1)
+  const scrolls = await page
+    .locator("#ui .panel")
+    .evaluate((element) => element.scrollHeight > element.clientHeight + 1)
+  expect(scrolls, "the boxed panel scrolls").toBe(false)
+
+  const rows = () => page.locator("#ui .panel.boxed > .box").first().locator(".row").first()
+  await expect(rows(), "an open box shows its rows").toBeVisible()
+  const before = page.url()
+  await boxes.first().locator(".group").click()
+  await expect(rows(), "a folded box still shows its rows").toBeHidden()
+  expect(page.url(), "folding a box changed the address").toBe(before)
+
+  await page.reload()
+  await page.waitForFunction(() => Boolean(window.experiment))
+  await experiment.api(({ api }) => api.panel(true))
+  await expect(rows(), "a fold did not survive a reload").toBeHidden()
+})
+
+/**
+ * **A toggle is a toggle group**: two buttons, the current one lit, each
+ * setting its own value. It was one button whose label flipped, which reads as
+ * an action — "unorthodox and surprising". So the labels must not move.
+ */
+test("a toggle is two buttons, one lit, that set their own value", async ({ page }) => {
+  const experiment = await openKit(page, { idle: false })
+  await experiment.api(({ api }) => {
+    api.pause(true)
+    api.panel(true)
+  })
+  const row = page.locator("#ui .panel .row", { has: page.locator(".label", { hasText: /^flag$/ }) })
+  const buttons = row.locator("button.mode")
+  await expect(buttons).toHaveCount(2)
+  const labels = await buttons.allTextContents()
+  await expect(row.locator('button.mode[data-active="true"]')).toHaveCount(1)
+
+  const before = Boolean((await settings(page)).flag)
+  await buttons.nth(before ? 0 : 1).click()
+  const after = Boolean((await settings(page)).flag)
+  expect(after, "the toggle did not flip").toBe(!before)
+  await expect(buttons.nth(after ? 1 : 0), "the toggle lit the wrong one").toHaveAttribute("data-active", "true")
+  await expect(row.locator('button.mode[data-active="true"]'), "both are lit").toHaveCount(1)
+  expect(await buttons.allTextContents(), "the toggle's labels moved").toEqual(labels)
+})
+
+/** A choice sets its value and lights it, in a row or stacked one per line. */
+test("a choice's buttons set their own value, in a row or stacked", async ({ page }) => {
+  const experiment = await openKit(page, { idle: false })
+  await experiment.api(({ api }) => {
+    api.pause(true)
+    api.panel(true)
+  })
+  for (const [key, label, option] of [
+    ["mode", "three", "three"],
+    ["route", "straight through", "through"],
+  ] as const) {
+    const button = page
+      .locator(`#ui .panel .row`, { has: page.locator(".label", { hasText: key }) })
+      .locator("button.mode", { hasText: label })
+    await button.click()
+    expect((await settings(page))[key], `${key} did not take ${option}`).toBe(option)
+    await expect(button).toHaveAttribute("data-active", "true")
+  }
+  // Stacked is one per line: every option of `route` at its own height.
+  const tops = await page
+    .locator("#ui .panel .modes.stacked button.mode")
+    .evaluateAll((all) => new Set(all.map((element) => Math.round(element.getBoundingClientRect().top))).size)
+  expect(tops, "a stacked choice is not one option per line").toBe(4)
+})
+
+/**
+ * **A set refuses its last removal, and says so.** `least` is one rule in one
+ * place instead of every reader having an opinion about an empty set; the
+ * buttons that cannot be the one to empty it carry `data-locked`, because a
+ * click that silently does nothing reads as broken.
+ */
+test("a set adds and removes, and will not go below its floor", async ({ page }) => {
+  const experiment = await openKit(page, { idle: false })
+  await experiment.api(({ api }) => {
+    api.pause(true)
+    api.panel(true)
+  })
+  const row = page.locator("#ui .panel .row", { has: page.locator(".label", { hasText: "marks" }) })
+  const mark = (name: string) => row.locator("button.mode", { hasText: new RegExp(`^${name}$`) })
+
+  await mark("bar").click()
+  expect((await settings(page)).marks).toEqual(["dot", "ring", "bar"])
+  await mark("dot").click()
+  await mark("ring").click()
+  expect((await settings(page)).marks).toEqual(["bar"])
+  await expect(mark("bar"), "the last one standing is not marked locked").toHaveAttribute("data-locked", "true")
+  await mark("bar").click()
+  expect((await settings(page)).marks, "the set emptied").toEqual(["bar"])
+})
+
+/**
+ * **Typing is not a shortcut** (#263). While a text field has the focus the
+ * panel's keys are left alone, or typing "Luna" would load a preset and the
+ * `c` in "Acid" would close the panel under the cursor. What is typed is the
+ * setting, and reaches the address.
+ */
+test("text typed into the panel is the setting, and no key in it is a shortcut", async ({ page }) => {
+  const experiment = await openKit(page, { idle: false })
+  await experiment.api(({ api }) => {
+    api.pause(true)
+    api.panel(true)
+  })
+  const field = page.locator("#ui .panel input.text")
+  await field.click()
+  await page.keyboard.type("c2 nr")
+  expect((await settings(page)).words).toBe("c2 nr")
+  await expect(page.locator("#ui .panel"), "a c typed into the field closed the panel").toBeVisible()
+  expect(await shown(page), "a digit typed into the field loaded a preset").toBeUndefined()
+  expect(await experiment.api(({ api }) => api.decode()), "the address does not carry the text").toMatchObject({
+    words: "c2 nr",
+  })
+})
+
+/**
+ * **The bar reads the piece's actions, then copy link, then adjust — #257.**
+ * The presence half is what keeps the absence half honest: a panel with no copy
+ * row passes as readily when the button is gone altogether.
+ */
+test("the bar is the actions, copy link and adjust, and the presets are numbered from one", async ({ page }) => {
+  const experiment = await openKit(page, { idle: false })
+  expect(await page.locator("#ui .bar button, #ui .bar a").allTextContents()).toEqual([
+    "reroll",
+    "nudge",
+    "copy link",
+    "adjust",
+  ])
+  await experiment.api(({ api }) => api.panel(true))
+  await expect(page.locator("#ui .panel")).toBeVisible()
+  await expect(page.locator("#ui .panel .copy")).toHaveCount(0)
+  // The way back to every piece has a corner of its own (Andrei, 2026-10-02).
+  await expect(page.locator("#ui > .about")).toHaveText("about")
+  await expect(page.locator("#ui > .about")).toHaveAttribute("href", "/experiments/kit-fixture/about/")
+  await expect(page.locator("#ui > .index")).toHaveText("all experiments")
+  await expect(page.locator("#ui > .index")).toHaveAttribute("href", "/experiments/")
+  // Numbered from one, because the digits load them.
+  expect((await page.locator("#ui .presets .preset").allTextContents())[0]).toBe("1 scene 1")
+})
+
+/** An action runs on its button and on its key; reroll is the gallery's, through the piece's own `reroll`. */
+test("an action runs from its button and its key, and reroll moves the seed and the address", async ({ page }) => {
+  const experiment = await openKit(page, { idle: false })
+  const nudges = () =>
+    experiment.api(({ api }) => (api as unknown as { stats: () => { nudges: number } }).stats().nudges)
+
+  await page.locator("#ui .bar button", { hasText: "nudge" }).click()
+  expect(await nudges()).toBe(1)
+  await page.keyboard.press("n")
+  expect(await nudges()).toBe(2)
+
+  const before = { seed: (await settings(page)).seed, url: page.url() }
+  await page.keyboard.press("r")
+  expect((await settings(page)).seed, "reroll kept the seed").not.toBe(before.seed)
+  expect(page.url(), "reroll left the address on the old seed").not.toBe(before.url)
+})
+
+test("c opens the panel, Escape closes it, and a digit loads a preset", async ({ page }) => {
+  const experiment = await openKit(page, { idle: false })
+  const panel = page.locator("#ui .panel")
+
+  await page.keyboard.press("c")
+  await expect(panel).toBeVisible()
+  await page.keyboard.press("Escape")
+  await expect(panel).toBeHidden()
+
+  const second = await experiment.api(({ api }) => api.preset(2))
+  await experiment.api(({ api }) => api.preset(1))
+  await page.keyboard.press("2")
+  expect(await settings(page)).toEqual(second)
+})
+
+/**
+ * **A preset's title names its key only if it has one — #223.** The titles said
+ * `key 10` through `key 16` on crowd, and there is no such key: a digit is one
+ * keypress. Twelve presets put both sides of that line here, and every key a
+ * title claims is pressed.
+ */
+test("every key a preset's title names loads that preset, and the tenth onward claim none", async ({ page }) => {
+  const experiment = await openKit(page, { idle: false })
+  const titles = await page
+    .locator("#ui button.preset")
+    .evaluateAll((buttons) => buttons.map((button) => button.getAttribute("title") ?? ""))
+  expect(titles).toHaveLength(12)
+  const claims = titles.map((title) => /\(key ([^,)]+)/.exec(title)?.[1])
+  expect(claims.slice(0, 9)).toEqual(["1", "2", "3", "4", "5", "6", "7", "8", "9"])
+  expect(claims.slice(9), "a preset past the ninth claims a key").toEqual([undefined, undefined, undefined])
+
+  for (const [index, key] of claims.slice(0, 9).entries()) {
+    // From a different preset, so the key has to move something.
+    await experiment.api(({ api, arg }) => api.preset(arg), index === 0 ? 2 : 1)
+    await page.keyboard.press(key!)
+    expect(await shown(page), `key ${key} did not load preset ${index + 1}`).toBe(String(index))
+  }
+})
+
+/**
+ * Left and right step through the presets, the way a swipe does, and stop at
+ * both ends rather than wrapping. Pressed past each stop, since a clamp that is
+ * off by one only shows when it is overshot.
+ */
+test("left and right step through the presets, and stop at both ends", async ({ page }) => {
+  const experiment = await openKit(page, { idle: false })
+  expect(await shown(page)).toBe("0")
+  await page.keyboard.press("ArrowRight")
+  expect(await shown(page), "right did not step forward").toBe("1")
+  await page.keyboard.press("ArrowLeft")
+  expect(await shown(page), "left did not step back").toBe("0")
+  await page.keyboard.press("ArrowLeft")
+  expect(await shown(page), "the primary wrapped to the last preset").toBe("0")
+
+  await experiment.api(({ api }) => api.preset(12))
+  await page.keyboard.press("ArrowRight")
+  expect(await shown(page), "the last preset wrapped to the primary").toBe("11")
+  await page.keyboard.press("ArrowLeft")
+  expect(await shown(page), "left did not step back from the last").toBe("10")
+
+  // From a scene that is nobody's preset, either direction lands on the primary.
+  await experiment.api(({ api }) => api.set({ amount: 9 } as never))
+  expect(await shown(page)).toBeUndefined()
+  await page.keyboard.press("ArrowRight")
+  expect(await shown(page), "stepping from nobody's scene did not land on the primary").toBe("0")
+})
+
+/**
+ * **A focused slider keeps its own arrow keys**: they are how a range input is
+ * worked without a pointer. The value moves and the scene does not jump to the
+ * next preset.
+ *
+ * And on a **log track the arrow must not stall.** Its step is one part in a
+ * thousand of the position, which just above a power of ten is finer than the
+ * grid, so the value rounded back to where it was and the handle never moved
+ * again — found on psyxels' sizes. The fixture's `span` lands on 1, one of the
+ * values where that happens.
+ */
+test("a focused slider keeps its arrow keys, and a log track's arrows do not stall", async ({ page }) => {
+  const experiment = await openKit(page, { idle: false })
+  await experiment.api(({ api }) => {
+    api.pause(true)
+    api.panel(true)
+  })
+
+  const amount = page.locator('#ui .panel input[type=range][data-key="amount"]')
+  await amount.focus()
+  await page.keyboard.press("ArrowRight")
+  expect(await shown(page), "an arrow on a focused slider stepped the presets").not.toBe("1")
+  expect((await settings(page)).amount, "an arrow on a focused slider did not move it").toBe(0.5)
+
+  expect((await settings(page)).span).toBe(1)
+  const span = page.locator('#ui .panel input[type=range][data-key="span"]')
+  await span.focus()
+  await page.keyboard.press("ArrowRight")
+  const up = Number((await settings(page)).span)
+  expect(up, "an arrow on a log track stalled at 1").toBeGreaterThan(1)
+  await page.keyboard.press("ArrowLeft")
+  await page.keyboard.press("ArrowLeft")
+  expect(Number((await settings(page)).span), "the log track did not come back down").toBeLessThan(1)
+})
+
+/**
+ * **A bound pair is two handles on one track, and both can be grabbed.** The
+ * filled bar between them is a pseudo-element painted over both inputs, and
+ * its left edge landed on the lower thumb, which could not be taken hold of at
+ * all — half broken in a way that looked like a knack. So this presses a real
+ * mouse, after checking the input itself is what is under it.
+ */
+test("both handles of a bound pair sit on one track and can be dragged", async ({ page }) => {
+  const experiment = await openKit(page, { idle: false })
+  await experiment.api(({ api }) => {
+    api.pause(true)
+    api.panel(true)
+  })
+  const span = page.locator("#ui .panel .span")
+  await expect(span).toHaveCount(1)
+  const inputs = span.locator("input[type=range]")
+  await expect(inputs).toHaveCount(2)
+
+  const track = (await span.boundingBox())!
+  const first = (await inputs.nth(0).boundingBox())!
+  const second = (await inputs.nth(1).boundingBox())!
+  expect(Math.abs(first.y - second.y)).toBeLessThan(1)
+  expect(first.width).toBeCloseTo(track.width, 0)
+  expect(second.width).toBeCloseTo(track.width, 0)
+  expect(track.height).toBeLessThan(first.height * 1.5)
+
+  // Inward, toward each other, so neither is asked off a stop.
+  for (const [index, direction] of [
+    [0, 1],
+    [1, -1],
+  ] as const) {
+    const input = inputs.nth(index)
+    const key = (await input.getAttribute("data-key"))!
+    const box = (await input.boundingBox())!
+    const along = await input.evaluate((element) => {
+      const range = element as HTMLInputElement
+      return (Number(range.value) - Number(range.min)) / (Number(range.max) - Number(range.min))
+    })
+    const x = box.x + box.width * along
+    const y = box.y + box.height / 2
+    const under = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.tagName.toLowerCase(), { x, y })
+    expect(under, `handle ${index} is covered by something`).toBe("input")
+
+    const before = (await settings(page))[key]
+    await page.mouse.move(x, y)
+    await page.mouse.down()
+    await page.mouse.move(x + direction * 24, y)
+    await page.mouse.up()
+    expect((await settings(page))[key], `dragging handle ${index} changed nothing`).not.toBe(before)
+  }
+})
+
+/**
+ * **`data-preset` on `<html>`** is how anything outside the kit — the reel's
+ * placard, a stylesheet — knows which preset is on screen without an opinion
+ * about a piece's settings. Absent, not `-1`, for a scene that is nobody's,
+ * so a dragged slider stops the piece claiming to be preset 0.
+ */
+test("publishes which preset is on screen, and stops when it is nobody's", async ({ page }) => {
+  const experiment = await openKit(page, { idle: false })
+  await expect(page.locator("html")).toHaveAttribute("data-preset", "0")
+  for (const index of [0, 1, 11]) {
+    await experiment.api(({ api, arg }) => api.preset(arg), index + 1)
+    expect(await shown(page), `preset ${index + 1}`).toBe(String(index))
+  }
+  // No preset holds `amount: 9`.
+  const moved = await experiment.api(({ api }) => api.set({ amount: 9 } as never))
+  expect(moved.amount).toBe(9)
+  expect(await shown(page), "still claims a preset after amount moved").toBeUndefined()
+})
+
+/**
+ * **The landing contract.** A bare address lands on the primary and is
+ * rewritten to *that scene*, so a link copied without touching anything keeps
+ * working when the featured preset changes; and the rewritten address restores
+ * it. The escape hatches are read from the address as opened, before the
+ * rewrite. `src/experiments/CONTEXT.md` on *primary*.
+ */
+test("a bare address lands on the primary and is rewritten to the scene it landed on", async ({ page }) => {
+  const experiment = await openKit(page, { idle: true })
+  const landed = await settings(page)
+  // The digit, not the index: `preset(0)` throws.
+  const primary = await experiment.api(({ api }) => api.preset(1))
+  expect(landed, "a bare address did not land on the first preset").toEqual(primary)
+
+  const address = page.url()
+  expect(address, "a bare address was left bare").toMatch(/\?s=.+/)
+  await page.goto(address)
+  await page.waitForFunction(() => Boolean(window.experiment))
+  expect(await settings(page), "its own address did not restore its own scene").toEqual(landed)
+})
+
+test("the escape hatches open the panel, pin idle and call the piece's own", async ({ page }) => {
+  const experiment = await openKit(page, { query: "panel=1&idle=0&debug=1" })
+  await expect(page.locator("#ui .panel")).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.dataset.idle)).toBe("false")
+  const stats = await experiment.api(({ api }) => (api as unknown as { stats: () => { debug: boolean } }).stats())
+  expect(stats.debug, "?debug=1 did not reach the piece's verb").toBe(true)
+  // None of them is a setting, so none survives into the shareable address.
+  expect(page.url()).not.toMatch(/panel=|idle=|debug=/)
+})
+
+/**
+ * **`decode` is how an opaque address is read** — whole URL, bare packed value,
+ * or the bar — since addresses stopped being readable on purpose
+ * (`20260906-an-address-is-packed-not-readable.md`).
+ */
+test("says what its own address means", async ({ page }) => {
+  const experiment = await openKit(page, { idle: true })
+  await experiment.api(({ api }) => api.preset(5))
+  const showing = await settings(page)
+  const address = page.url()
+  expect(await experiment.api(({ api, arg }) => api.decode(arg), address)).toEqual(showing)
+  const packed = new URLSearchParams(address.split("?")[1]).get("s")
+  expect(packed, "no packed address was written").toBeTruthy()
+  expect(await experiment.api(({ api, arg }) => api.decode(arg), packed!)).toEqual(showing)
+  expect(await experiment.api(({ api }) => api.decode())).toEqual(showing)
+})
+
+/** The gallery tints the document from a scene, through the piece's `theme`. */
+test("the page is themed from the scene on screen", async ({ page }) => {
+  const experiment = await openKit(page, { idle: false })
+  await experiment.api(({ api }) => api.set({ mode: "two" } as never))
+  expect(await page.evaluate(() => document.documentElement.dataset.fixtureMode)).toBe("two")
+})
+
+/** Every row carries a label and its own tooltip, which is the only thing naming a bare slider. */
+test("every row of the panel is labelled and has a tooltip", async ({ page }) => {
+  const experiment = await openKit(page, { idle: false })
+  await experiment.api(({ api }) => api.panel(true))
+  const rows = page.locator("#ui .panel .row")
+  const missing = await rows.evaluateAll(
+    (all) =>
+      all.filter((row) => !row.querySelector(".label")?.textContent?.trim() || !row.getAttribute("title")).length,
+  )
+  expect(await rows.count()).toBeGreaterThan(5)
+  expect(missing, "a row has no label or no tooltip").toBe(0)
+})
+
+/**
+ * **The copy button reports back, and goes back to what it said.** What reached
+ * the clipboard is not asserted: `kit/copy.ts` has two paths and which one runs
+ * depends on the origin and a permission. The label is what every piece relies
+ * on and what a refactor can break.
+ */
+test("the bar's copy button is labelled and reports back", async ({ page }) => {
+  await openKit(page, { idle: false })
+  const copy = page.locator("#ui .bar .copy")
+  await expect(copy).toHaveCount(1)
+  await expect(copy).toHaveText("copy link")
+  expect(await copy.getAttribute("title")).toBeTruthy()
+  await copy.click()
+  await expect(copy).not.toHaveText("copy link")
+  await expect(copy).toHaveText("copy link", { timeout: 4000 })
+})

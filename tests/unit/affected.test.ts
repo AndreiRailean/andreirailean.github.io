@@ -1,6 +1,14 @@
 import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
-import { browserGrep, classify, piecesOnDisk, select, unitArgs } from "../../scripts/affected.ts"
+import {
+  browserGrep,
+  classify,
+  piecesOnDisk,
+  select,
+  unitArgs,
+  unmatched,
+  WIRING_SPEC,
+} from "../../scripts/affected.ts"
 import { browserSpecs } from "./specs.ts"
 
 /**
@@ -58,6 +66,7 @@ describe("what a path selects", () => {
     "src/pages/experiments/index.astro",
     "src/showcase/wall.ts",
     "tests/kit.spec.ts",
+    "tests/kit/fixture.ts",
     "tests/support/experiment.ts",
     "scripts/affected.ts",
     ".github/workflows/test-unit.yml",
@@ -82,16 +91,37 @@ describe("what a path selects", () => {
   /**
    * Playwright matches `--grep` against `project file title`, so a slug anchored
    * on `^` selects nothing. That was the form the ticket proposed; the script
-   * also lists a selection before running it and fails an empty kit slice.
+   * also lists a selection before running it and fails a piece whose wiring
+   * test it did not select.
    */
   it("anchors the slug where Playwright's matched string puts it", () => {
     const grep = new RegExp(browserGrep({ everything: false, pieces: ["walkers"] })!)
-    expect(grep.test("chromium tests/kit.spec.ts walkers: presets run down the left")).toBe(true)
+    expect(grep.test(`chromium ${WIRING_SPEC} walkers: boots through the gallery`)).toBe(true)
     expect(grep.test("chromium src/experiments/walkers/tests/walkers.spec.ts the primary runs")).toBe(true)
     expect(grep.test("chromium tests/experiments-index.spec.ts lists every experiment")).toBe(true)
-    expect(grep.test("chromium tests/kit.spec.ts crowd: presets run down the left")).toBe(false)
+    expect(grep.test(`chromium ${WIRING_SPEC} crowd: boots through the gallery`)).toBe(false)
     expect(grep.test("chromium tests/showcase.spec.ts the page")).toBe(false)
+    // The kit is tested once, on a fixture, and a piece's change cannot reach it (#287).
+    expect(grep.test("chromium tests/kit.spec.ts boxed: the corners are presets")).toBe(false)
     expect(browserGrep({ everything: false, pieces: [] })).toBeNull()
+  })
+
+  /**
+   * **The selection check, against listings the repo does not produce.** It is
+   * what stops a grep that matches nothing from passing for ever, so it is
+   * tested both ways: a piece whose wiring test is listed is found, and one
+   * listed only in some other spec — or under a slug that merely starts the
+   * same — is not.
+   */
+  it("fails a selected piece whose wiring test was not listed", () => {
+    const listed = [
+      `  [chromium] › ${WIRING_SPEC}:49:3 › walkers: boots through the gallery`,
+      "  [chromium] › src/experiments/crowd/tests/crowd.spec.ts:10:1 › crowd: something of crowd's own",
+      `  [chromium] › ${WIRING_SPEC}:49:3 › starry-night: boots through the gallery`,
+    ].join("\n")
+    expect(unmatched(listed, ["walkers", "starry-night"])).toEqual([])
+    expect(unmatched(listed, ["walkers", "crowd"])).toEqual(["crowd"])
+    expect(unmatched(listed, ["starry"])).toEqual(["starry"])
   })
 
   it("classifies the unit suite's own shared files as affecting no piece", () => {
@@ -110,6 +140,7 @@ const SHARED_SPECS = [
   "tests/embed-origin.spec.ts",
   "tests/experiments-index.spec.ts",
   "tests/experiments-notes.spec.ts",
+  "tests/experiments-wiring.spec.ts",
   "tests/harness.spec.ts",
   "tests/kit.spec.ts",
   "tests/reel.spec.ts",

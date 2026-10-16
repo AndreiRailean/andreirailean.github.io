@@ -119,6 +119,28 @@ describe.each(slugs)("%s", (slug) => {
     expect(nameless.map((entry) => JSON.stringify(entry))).toEqual([])
   })
 
+  /**
+   * **A key that names no setting is indistinguishable from a working control
+   * until something tries to drive it** — the patch goes to a setting nobody
+   * has and the check after it passes, having moved nothing (#85). This was
+   * asked of every piece's page in `kit.spec.ts`; it is the piece's data, so it
+   * is asked of the data here (#287).
+   */
+  it("reports only keys the piece has a setting for", async () => {
+    const module = (await import(`../../src/experiments/${slug}/settings.ts`)) as {
+      DEFAULT_SETTINGS: Record<string, unknown>
+    }
+    const report = reportControls(await controlsOf(slug))
+    expect(report.length).toBeGreaterThan(0)
+    expect(report.map((entry) => entry.key).filter((key) => !(key in module.DEFAULT_SETTINGS))).toEqual([])
+  })
+
+  /** A row's label is the only thing naming a bare slider, and its hint is the row's tooltip. */
+  it("labels every control and gives it a hint", async () => {
+    const unnamed = (await controlsOf(slug)).filter((control) => !control.label.trim() || !control.hint.trim())
+    expect(unnamed.map((control) => JSON.stringify(control))).toEqual([])
+  })
+
   it("never reports a field as present-and-undefined", async () => {
     const report = reportControls(await controlsOf(slug))
 
