@@ -60,6 +60,12 @@ describes the work.
 > turning point of the line. am seeing a big circle in the middle of the piece
 > with smaller circles all around
 
+## 2026-10-16 — top and bottom, and threes
+
+> i wonder if extra symmetry is possible by letting the lines grow from the top
+> and bottom. and am thinking of how a "rule of threes" can be implemented in
+> this experiment.
+
 ## Open questions
 
 _Mine, not his — what I assumed and what would settle it._
@@ -99,3 +105,13 @@ _Mine, not his — what I assumed and what would settle it._
   arc) rather than only past it, are both open. Presets 8–10 (medallion,
   sunrise, beads) are three readings of "a big circle in the middle with
   smaller circles all around".
+- **Top and bottom, and threes** (2026-10-16). I built both as one control,
+  `fold`: the drawing's symmetry. 2 grows from the bottom and from the top,
+  mirrored both ways, and the two meet in the middle. 3 is the reading of the
+  rule of threes I could build as a mechanism: three copies turned round the
+  centre, each mirrored. The triad preset adds threes everywhere else too
+  (bands of three strands, echoes of three offshoots). Other readings, not
+  built: a split into three lines rather than two; proportion by thirds, with
+  decisions or the big circle placed on thirds of the frame; repeating each
+  mark three times. If one of those is what you meant, it is a setting rather
+  than a rebuild.

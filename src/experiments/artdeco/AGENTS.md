@@ -5,6 +5,10 @@ its foot are the ones this build could not answer by itself.
 
 ## The model, in four sentences
 
+(Since `fold`: "the right half" below is the bottom stems, and "drawn twice"
+is drawn once per image of the dihedral group; see the docblock in
+`artdeco.ts`.)
+
 Lines grow up from the bottom of the frame at one speed and take a decision
 every `step` of length. **Only the right half is grown**; every segment is
 drawn twice, once reflected, so symmetry is by construction and never checked.
@@ -71,6 +75,28 @@ being found.
 - **A circle is born where the tip was, and is mirrored by its line's `axis`
   flag**, not by its centre's distance from the axis, so a corner circle on a
   mirrored line near the centre line is still drawn twice.
+
+- **`fold` 1 keeps the old mirror test verbatim.** The general own-image test
+  (a tip's path against its image's path) finds the same meetings in
+  principle, but not at the same distance from the centre line: the old guard
+  is `|a| > ORIGIN` horizontally, the general one a distance along the path.
+  Using the general test for the plain mirror moved sunrise from 624 segments
+  to 591. Image index 1 is that mirror and is special-cased for that reason.
+- **Head-on images meet halfway, not at the centre.** A vertical line off the
+  centre line and its top-and-bottom image are collinear, and both tips grow
+  at one speed, so the meeting is the midpoint of the tip and its image. A
+  flip that fixes a line pointwise (the plain mirror on the centre line) is
+  the line itself and is skipped.
+- **Images off the angle.** At `fold` 3 with 45° or 90°, a turned copy of a
+  line is not a multiple of the angle, so a rebound off it is snapped by
+  `reflectOff` and may find no direction and stop. The hint says 15°, 30° and
+  60° suit threes.
+- **The drawing depends a little on frame length.** Tips grow one after another
+  inside a frame, so a tip meets a neighbour's line as it stood at the end of
+  the last frame. Stepped at 1/60 s (`settle`, the poster) and live, triad grew
+  63 and 67 segments. More folds mean more meetings between different tips, so
+  this shows more at 2 and up. An address replays the rules exactly but not
+  always the identical drawing; nothing has been done about it.
 
 ## Checking a mechanism fired
 

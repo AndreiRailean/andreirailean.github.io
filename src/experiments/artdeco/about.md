@@ -23,3 +23,7 @@ When a line meets another it decides that too: stop there, cross, or rebound
 off it. Circles can land on its corners or along its stretches, drawing
 themselves round from their lowest point as the lines grow, and one big circle
 can sit on the centre line for the lines to meet.
+
+The symmetry can fold further: top and bottom as well as left and right, so
+lines grow in from both edges and meet in the middle, or three, four or six
+copies turned round the centre like a kaleidoscope.
