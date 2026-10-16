@@ -7,6 +7,7 @@ import {
   GLYPHS,
   indexOfGlyph,
   nextGlyph,
+  paintGlyph,
   type GlyphName,
 } from "@/experiments/psyxels/glyphs"
 
@@ -191,5 +192,69 @@ describe("armsOf", () => {
     expect(armsOf(RING).across).toBe(false)
     expect(armsOf(BAR).along).toBe(false)
     expect(armsOf(BAR).across).toBe(true)
+  })
+})
+
+/**
+ * Every call a mark makes on its context, in order. Two logs that match are the
+ * same pixels, without a canvas to draw them on.
+ */
+function strokesOf(glyph: number, turn: number): string[] {
+  const log: string[] = []
+  const show = (value: unknown) => (typeof value === "number" ? value.toFixed(4) : String(value))
+  const ctx = new Proxy(
+    {},
+    {
+      get:
+        (_, name) =>
+        (...args: unknown[]) =>
+          void log.push(`${String(name)}(${args.map(show).join(",")})`),
+      set: (_, name, value) => {
+        log.push(`${String(name)}=${show(value)}`)
+        return true
+      },
+    },
+  ) as unknown as CanvasRenderingContext2D
+  paintGlyph(ctx, glyph, 50, 50, 20, 2, turn)
+  return log
+}
+
+/**
+ * **Turning a decomposed mark does not scatter the field, it says something the
+ * field did not mean.** A minus turned a quarter is a bar, a plus turned an
+ * eighth is a cross, and both are separate entries in the vocabulary. This was a
+ * browser test comparing five screenshots of a running field; the decision is
+ * this function's, so it is asked here. Seen red 2026-10-16 by letting every
+ * mark take `turn`.
+ */
+describe("paintGlyph's turn", () => {
+  const built: GlyphName[] = [
+    "minus",
+    "plus",
+    "circled-minus",
+    "circled-plus",
+    "ring",
+    "dot",
+    "cross",
+    "circled-cross",
+    "bar",
+  ]
+  const drawn = GLYPH_NAMES.filter((name) => !built.includes(name))
+
+  it.each(built)("leaves %s exactly as it is", (name) => {
+    const glyph = indexOfGlyph(name)
+    expect(strokesOf(glyph, 1)).toEqual(strokesOf(glyph, 0))
+  })
+
+  it.each(drawn)("turns %s", (name) => {
+    const glyph = indexOfGlyph(name)
+    const turned = strokesOf(glyph, 1)
+    expect(turned).not.toEqual(strokesOf(glyph, 0))
+    expect(turned).toContain("rotate(1.0000)")
+  })
+
+  it("has marks of both kinds, so neither list passes empty", () => {
+    expect(drawn.length).toBeGreaterThan(3)
+    expect(built.length + drawn.length).toBe(GLYPH_NAMES.length)
   })
 })

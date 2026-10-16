@@ -1,3 +1,4 @@
+import { frameAdvance } from "@/experiments/psyxels/clock"
 import { packField, type Field, type Psyx } from "@/experiments/psyxels/field"
 import { paintGlyph } from "@/experiments/psyxels/glyphs"
 import { buildMask, maskSize, type Mask } from "@/experiments/psyxels/mask"
@@ -644,14 +645,8 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings): Psy
   }
 
   function step(now: number): void {
-    const elapsed = last === 0 ? 0 : Math.min(0.1, (now - last) / 1000)
+    const advance = frameAdvance(last, now, settings.playback, reduced?.matches ?? false)
     last = now
-
-    // The clock is scaled in exactly one place, so the breathing, the frame
-    // changes and the repacking all slow by the same factor and every
-    // relationship between them survives.
-    const frozen = reduced?.matches ?? false
-    const advance = frozen ? 0 : elapsed * settings.playback
     clock += advance
 
     if (advance > 0 || dirty) {

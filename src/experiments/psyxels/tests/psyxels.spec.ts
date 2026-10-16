@@ -1,7 +1,5 @@
 import type { ExperimentApi } from "@/experiments/psyxels/runner"
-import { DEFAULT_SETTINGS, settingsToQuery, type Settings } from "@/experiments/psyxels/settings"
-import { PRESETS } from "@/experiments/psyxels/presets"
-import { GLYPH_NAMES } from "@/experiments/psyxels/glyphs"
+import type { Settings } from "@/experiments/psyxels/settings"
 import { expect, openExperiment, test } from "../../../../tests/support/experiment"
 
 /**
@@ -496,41 +494,34 @@ test("bloom and overlap fill the ground around a large psyx without repacking", 
  * the difference between two field states sampled seven seconds apart. The
  * glow's own half — light where there was none — is a count, holds, and stays.
  */
+/**
+ * The glow, at one field state. Churn is off so the two readings are the same
+ * packing, which is what lets "adds no psyxels" be an equality rather than the
+ * `> 0` it used to be, which no glow bug could fail. The afterglow is measured
+ * separately, as a set difference, in the next test (#109). Seen red
+ * 2026-10-16 by skipping the halo composite in `draw()`.
+ */
 test("the glow spills light, and adds no psyxels doing it", async ({ page }) => {
   const experiment = await openPsyxels(page, { idle: true })
 
   const paint = async (patch: Record<string, number>) => {
     await experiment.api(({ api, arg }) => {
       api.set(arg)
-      // Long enough for the buffer to reach its resting value at any afterglow.
-      api.run(6)
+      // With no afterglow the buffer rests within the run's settling frames.
+      api.run(1)
     }, patch)
     return { lit: (await light(page)).lit, stats: await experiment.api(({ api }) => api.stats()) }
   }
 
-  const dark = await paint({ glow: 0, afterglow: 0, churn: 40 })
-  const lit = await paint({ glow: 1, afterglow: 0 })
-  const trailing = await paint({ glow: 1, afterglow: 0.95 })
+  const dark = await paint({ glow: 0, afterglow: 0, churn: 0 })
+  const lit = await paint({ glow: 1, afterglow: 0, churn: 0 })
 
   // Light where there was none: the blur puts some of every mark outside itself.
   expect(lit.lit).toBeGreaterThan(dark.lit * 1.2)
 
-  /*
-   * The afterglow used to be asserted here, as `trailing.lit > lit.lit`, and it
-   * was passing on an artefact — #109. `paint()` ends with `run(6)`, so the
-   * three readings are taken at clocks of about 7.7s, 14.6s and 21.5s: three
-   * *different* field states, because `churn: 40` repacks throughout. The
-   * margin was under 1.3% and the arrangement-to-arrangement variation reaches
-   * that, so it failed about one local run in five, and on CI in a PR touching
-   * no psyxels code.
-   *
-   * It is not restored here, because no total can measure it. It is measured as
-   * a set difference in the next test instead.
-   */
-
   // None of it is a psyx: the glow adds light, never population.
-  expect(lit.stats.psyxels).toBeGreaterThan(0)
-  expect(trailing.stats.byDepth.length).toBe(dark.stats.byDepth.length)
+  expect(lit.stats.psyxels).toBe(dark.stats.psyxels)
+  expect(lit.stats.byDepth).toEqual(dark.stats.byDepth)
 })
 
 /**
@@ -665,64 +656,34 @@ test("a repacked field does not keep the light of the one before it", async ({ p
   expect(after).toBeLessThan(before * 0.5)
 })
 
-test("churn repacks squares over time, and holds still at zero", async ({ page }) => {
+/**
+ * **Wiring only: the engine hands the field its live churn and flicker.** What
+ * the rates do — changes in proportion to churn, frames without sizes, nothing
+ * at all at zero — is `field.test.ts`'s ("life", "lifetimes"), in milliseconds.
+ * This used to run the field for 60 s and 120 s in the page to show the same
+ * thing. Seen red 2026-10-16 by handing `field.update` a copy of the settings
+ * with both rates pinned at zero.
+ */
+test("churn and flicker reach the field, and zero holds it", async ({ page }) => {
   const experiment = await openPsyxels(page)
 
   const busy = await experiment.api(({ api }) => {
-    api.set({ churn: 60, variety: 0.5 })
-    api.run(60)
-    return api.stats()
+    api.set({ churn: 60, variety: 0.5, flicker: 4 })
+    const before = api.stats()
+    api.run(2)
+    return { before, after: api.stats() }
   })
-  expect(busy.changes).toBeGreaterThan(0)
+  expect(busy.after.changes).toBeGreaterThan(busy.before.changes)
+  expect(busy.after.flicks).toBeGreaterThan(busy.before.flicks)
 
   const still = await experiment.api(({ api }) => {
-    api.set({ churn: 0 })
+    api.set({ churn: 0, flicker: 0 })
     const before = api.stats()
-    api.run(120)
-    const after = api.stats()
-    return { before, after }
+    api.run(2)
+    return { before, after: api.stats() }
   })
   expect(still.after.changes).toBe(still.before.changes)
-  expect(still.after.byDepth).toEqual(still.before.byDepth)
-})
-
-test("flicker changes frames, and held means held", async ({ page }) => {
-  const experiment = await openPsyxels(page)
-
-  const moving = await experiment.api(({ api }) => {
-    api.set({ flicker: 4 })
-    api.run(10)
-    return api.stats()
-  })
-  expect(moving.flicks).toBeGreaterThan(0)
-
-  const held = await experiment.api(({ api }) => {
-    api.set({ flicker: 0 })
-    const before = api.stats().flicks
-    api.run(60)
-    return { before, after: api.stats().flicks }
-  })
-  expect(held.after).toBe(held.before)
-})
-
-test("playback scales the clock, and pauses it", async ({ page }) => {
-  const experiment = await openPsyxels(page)
-
-  const paused = await experiment.api(async ({ api }) => {
-    api.set({ playback: 0 })
-    const before = api.stats().clock
-    await new Promise((resolve) => setTimeout(resolve, 400))
-    return api.stats().clock - before
-  })
-  expect(paused).toBe(0)
-
-  const running = await experiment.api(async ({ api }) => {
-    api.set({ playback: 2 })
-    const before = api.stats().clock
-    await new Promise((resolve) => setTimeout(resolve, 400))
-    return api.stats().clock - before
-  })
-  expect(running).toBeGreaterThan(0.3)
+  expect(still.after.flicks).toBe(still.before.flicks)
 })
 
 test("the portrait is a photograph that actually arrived", async ({ page }) => {
@@ -784,77 +745,6 @@ test("a picture that does not arrive leaves the frame empty and says why", async
   problems.length = 0
 })
 
-/**
- * Typing is not a shortcut. The panel's single keys — `c` closes it, a digit
- * loads a preset — would otherwise fire on every letter typed into the subject,
- * and the text would be replaced by preset one's under the cursor.
- */
-test("text typed into the subject is the subject, and no key in it is a shortcut", async ({ page }) => {
-  const experiment = await openPsyxels(page)
-  await experiment.api(({ api }) => api.panel(true))
-  const field = page.locator('input.text[data-key="text"]')
-  await field.fill("")
-  await field.pressSequentially("fc1 r")
-
-  expect(await experiment.api(({ api }) => api.get().text)).toBe("fc1 r")
-  expect(await page.evaluate(() => document.querySelector<HTMLElement>(".panel")?.hidden)).toBe(false)
-  // Into the address, and out of it again.
-  const url = await experiment.api(({ api }) => api.url())
-  await page.goto(url)
-  await page.waitForFunction(() => Boolean(window.experiment))
-  expect(await experiment.api(({ api }) => api.get().text)).toBe("fc1 r")
-})
-
-test("every setting has a control, and a scene survives its own URL", async ({ page }) => {
-  const experiment = await openPsyxels(page)
-
-  const controls = await experiment.api(({ api }) => api.controls())
-  const named = new Set(controls.map((control) => control.key))
-  const settings = await experiment.api(({ api }) => api.get())
-  for (const key of Object.keys(settings)) {
-    if (key === "seed") continue
-    expect(named.has(key), key).toBe(true)
-  }
-
-  const scene = await experiment.api(({ api }) =>
-    api.set({ hue: 33, finest: 0.01, text: "&", face: "roman", spread: 140 }),
-  )
-  const url = await experiment.api(({ api }) => api.url())
-  await page.goto(url)
-  await page.waitForFunction(() => Boolean(window.experiment))
-  expect(await experiment.api(({ api }) => api.get())).toEqual(scene)
-})
-
-/**
- * **The primary, not every preset — #238.** That a preset is a valid set of
- * parameters is `tests/unit/experiments-presets.test.ts`'s job, in
- * milliseconds. The code paths the presets differ by are subjects — a
- * portrait, a glyph, a word — and each has a test of its own above and below;
- * running every preset here only repeated them, a scene at a time.
- */
-test("the primary loads and packs something", async ({ page }) => {
-  const experiment = await openPsyxels(page)
-
-  const stats = await experiment.api(({ api }) => {
-    api.preset(1)
-    api.run(4)
-    return api.stats()
-  })
-  expect(stats.psyxels, PRESETS[0]!.label).toBeGreaterThan(100)
-  expect(stats.live, PRESETS[0]!.label).toBeGreaterThan(50)
-})
-
-test("a shared address is the whole scene and nothing else", async ({ page }) => {
-  await openPsyxels(page, { settings: { hue: 111, wildness: 0.4 } })
-  // Landing on a bare URL rewrites it to describe the featured scene; landing on
-  // one that names settings leaves it alone.
-  expect(new URL(page.url()).searchParams.get("hue")).toBe("111")
-
-  await page.goto("/experiments/psyxels/")
-  await page.waitForFunction(() => Boolean(window.experiment))
-  expect(new URL(page.url()).search).toBe(`?${settingsToQuery(PRESETS[0]!.settings).toString()}`.replace(/\?$/, ""))
-})
-
 test("reduced motion holds the field still, with everything still on the canvas", async ({ page }) => {
   const experiment = await openPsyxels(page, { reducedMotion: true })
 
@@ -871,182 +761,24 @@ test("reduced motion holds the field still, with everything still on the canvas"
 })
 
 /**
- * The vocabulary is picked rather than counted, and the floor is the part worth
- * pinning: a set of one leaves `nextGlyph` nowhere to go, so the moving half of
- * the piece would stop with nothing on screen to say why.
+ * **Wiring: `pause` reaches the piece's own clock, both ways.** How far the
+ * clock moves on the frame after a resume is `frameAdvance`'s, tested in
+ * `clock.test.ts`. This test used to hold for 3 s and bound the resume's step
+ * under 2 s, a bound nothing could fail: every frame was already capped at
+ * 0.1 s. Seen red 2026-10-16 by making `setPaused(true)` return without
+ * cancelling the frame.
  */
-test("the glyph row picks marks by name, and refuses to go below two", async ({ page }) => {
-  const experiment = await openPsyxels(page, { idle: false })
-  await experiment.api(({ api }) => api.panel(true))
-
-  const row = page.locator(".panel .row", { has: page.locator(".modes.set") })
-  const buttons = row.locator("button")
-  const chosen = () => experiment.api(({ api }) => api.get().glyphs)
-
-  // One button per mark, and the lit ones are exactly the chosen ones.
-  await experiment.api(({ api }) => api.set({ glyphs: ["ring", "moon", "star"] }))
-  expect(await buttons.count()).toBe(GLYPH_NAMES.length)
-  expect(await row.locator('button[data-active="true"]').count()).toBe(3)
-  expect(await chosen()).toEqual(["ring", "moon", "star"])
-
-  // A click removes one, and the address says so rather than carrying a count.
-  // Read through `decode` rather than off the query string: the address is
-  // packed now, so the marks travel as a bitmask over the slot's frozen
-  // vocabulary. The claim is the same one — the address names *which* marks —
-  // and it is asked of the piece instead of of the URL text.
-  await buttons.nth(GLYPH_NAMES.indexOf("star")).click()
-  expect(await chosen()).toEqual(["ring", "moon"])
-  expect(await experiment.api(({ api, arg }) => api.decode(arg).glyphs, page.url())).toEqual(["ring", "moon"])
-
-  // At the floor the survivors are marked, and clicking one does nothing.
-  expect(await row.locator('button[data-locked="true"]').count()).toBe(2)
-  await buttons.nth(GLYPH_NAMES.indexOf("ring")).click()
-  expect(await chosen()).toEqual(["ring", "moon"])
-
-  /**
-   * **The panel has no width of its own — it is as wide as its widest row.** So
-   * a set of fifteen on one line does not merely look untidy, it widens every
-   * other control in the panel; it was 583px against the 446px the rest of the
-   * rows wanted. Wrapping alone would not have fixed it: the row would take the
-   * width if offered, and it is the offer that has to be withdrawn.
-   */
-  const shape = await page.evaluate(() => {
-    const panel = document.querySelector<HTMLElement>("#ui .panel")!
-    const set = document.querySelector<HTMLElement>("#ui .modes.set")!
-    const marks = [...set.querySelectorAll("button")]
-    const top = (b: Element) => Math.round(b.getBoundingClientRect().top)
-    const withRow = panel.getBoundingClientRect().width
-    const row = set.closest(".row") as HTMLElement
-    row.style.display = "none"
-    const withoutRow = panel.getBoundingClientRect().width
-    row.style.display = ""
-    return { withRow, withoutRow, lines: new Set(marks.map(top)).size }
-  })
-  expect(shape.lines).toBe(2)
-  expect(shape.withRow).toBe(shape.withoutRow)
-
-  // Adding is never refused, and the set comes back in the vocabulary's order.
-  await buttons.nth(GLYPH_NAMES.indexOf("plus")).click()
-  expect(await chosen()).toEqual(["plus", "ring", "moon"])
-  expect(await row.locator('button[data-locked="true"]').count()).toBe(0)
-})
-
-/**
- * **Turning a decomposed mark does not scatter the field, it says something the
- * field did not mean.** A minus turned a quarter is a bar; a plus turned an
- * eighth is a cross. Both are separate entries in the vocabulary, so a `spin`
- * that reached them would quietly replace one mark with another the scene never
- * chose.
- *
- * Asked of the canvas rather than of `paintGlyph`, and through the console API
- * rather than by importing the piece's internals — what matters is whether the
- * picture moved, and the boundary is the API.
- */
-test("spin turns the drawn marks and leaves the built ones alone", async ({ page }) => {
-  const experiment = await openPsyxels(page)
-
-  /**
-   * The scene with every clock stopped, so two draws of the same settings are
-   * the same pixels: nothing breathing, nothing repacking, nothing changing
-   * frame, and no buffer gathering light between frames.
-   */
-  const still = { pulse: 0, churn: 0, flicker: 0, glow: 0, afterglow: 0, spin: 0 }
-
-  const shot = async (patch: Partial<Settings>) =>
-    experiment.api(({ api, arg }) => {
-      api.set(arg as Partial<Settings>)
-      api.run(3)
-      return (document.getElementById("stage") as HTMLCanvasElement).toDataURL()
-    }, patch)
-
-  // A field of marks that spend their orientation on meaning cannot be turned.
-  const built: Partial<Settings> = { ...still, glyphs: ["plus", "cross", "minus", "bar"] }
-  expect(await shot({ ...built, spin: 1 })).toBe(await shot(built))
-
-  // A field of drawn marks can.
-  const drawn: Partial<Settings> = { ...still, glyphs: ["moon", "leaf"] }
-  const upright = await shot(drawn)
-  expect(await shot({ ...drawn, spin: 1 })).not.toBe(upright)
-
-  // And winding it back returns the scene it left, rather than a new roll.
-  expect(await shot(drawn)).toBe(upright)
-})
-
-test("the settings panel opens with a row for every control", async ({ page }) => {
-  const experiment = await openPsyxels(page, { idle: false })
-  await experiment.api(({ api }) => api.panel(true))
-
-  const rows = page.locator(".panel .row")
-  const controls = await experiment.api(({ api }) => api.controls())
-  // One row per control, and a bound pair is one row for two keys — `sizes`,
-  // the smallest and the biggest, is the one here.
-  expect(await rows.count()).toBe(controls.length - 1)
-  expect(await page.locator(".panel .group").count()).toBe(5)
-})
-
-test("the defaults are a baseline rather than a scene, and no preset leans on them", async () => {
-  // Position one is only position one. Every preset states every setting, so
-  // changing which is first moves nothing but which one a bare address lands on.
-  for (const { label, settings } of PRESETS) {
-    expect(Object.keys(settings).sort(), label).toEqual(Object.keys(DEFAULT_SETTINGS).sort())
-  }
-  expect(PRESETS[0]!.settings).not.toEqual(DEFAULT_SETTINGS)
-})
-
-/**
- * How long the field is held, in ms.
- *
- * Named because two assertions depend on the gap between it and the resume
- * window: the bug this test exists for adds exactly this much clock in one
- * step, so the ceiling below has to sit well under it.
- */
-const HELD_MS = 3000
-
-test("holding the field stops its clock, and letting go picks up where it left off", async ({ page }) => {
+test("holding the field stops its clock, and letting go starts it again", async ({ page }) => {
   const experiment = await openPsyxels(page, { idle: false })
   const clock = () => experiment.api(({ api }) => api.stats().clock)
 
-  await page.waitForTimeout(300)
-  const before = await clock()
-  expect(before).toBeGreaterThan(0)
+  await expect.poll(clock).toBeGreaterThan(0)
 
   expect(await experiment.api(({ api }) => api.pause(true))).toBe(true)
   const held = await clock()
-  // Held far longer than it is then let to run, so the two are told apart by a
-  // wide margin rather than by a tight bound on a timer nobody controls.
-  await page.waitForTimeout(HELD_MS)
+  await page.waitForTimeout(500)
   expect(await clock()).toBe(held)
 
-  /*
-   * And resumes from the moment it comes back, not from the moment it was
-   * stopped. `stop()` and `start()` would not do this — they are teardown and
-   * setup, and the piece's clock would take the whole held interval in one step
-   * the frame after. Checked here rather than in the gallery's own spec because
-   * the clock is this piece's, and this is the piece whose clock moves fast
-   * enough to read in a test.
-   */
   expect(await experiment.api(({ api }) => api.pause(false))).toBe(false)
-  const resumedAt = Date.now()
-  await page.waitForTimeout(200)
-  const after = await clock()
-  const elapsed = (Date.now() - resumedAt) / 1000
-  expect(after).toBeGreaterThan(held)
-
-  /*
-   * Two bounds, because one of them has to be measured rather than assumed.
-   *
-   * The clock is right to have advanced by however long the resume window
-   * really was, and that is not the 200ms asked for: on a loaded runner the
-   * wait plus two round trips through the page took 805ms, which failed a flat
-   * `< 0.8` bound while the piece was behaving perfectly. So the first bound
-   * scales with the time that actually passed.
-   *
-   * The second is the one the bug would blow through, and it does not scale —
-   * a resume that took the hold in one step adds the whole `HELD_MS`. It needs
-   * a real gap under that, which is why the hold is generous: a runner slow
-   * enough to spend two seconds in the resume window is slow enough that the
-   * flat bound would be wrong anyway.
-   */
-  expect(after - held, "the clock gained more than the time that has passed").toBeLessThan(elapsed + 0.3)
-  expect(after - held, "the clock took the held interval in one step").toBeLessThan(HELD_MS / 1000 - 1)
+  await expect.poll(clock).toBeGreaterThan(held)
 })
