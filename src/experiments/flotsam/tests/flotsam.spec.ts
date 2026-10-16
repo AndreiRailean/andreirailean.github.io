@@ -197,17 +197,25 @@ test("draws flotsam on unfolded water", async ({ page }) => {
  * `transport` is the only stat written by stepping rather than by drawing — see
  * the table in flotsam/AGENTS.md — and the `dirty` path of `tick()` draws
  * without stepping, so a frame wait leaves it as stale as it was (#65, #107).
+ *
+ * **Under reduced motion, or this cannot see `run()` at all.** A scene with a
+ * current is animated, so the loop steps the water in real time between any
+ * two reads, and with `run()` emptied this passed anyway — seen 2026-10-16.
+ * Reduced motion parks the clock, so the only thing that can step the water
+ * here is the call under test.
  */
 test("the page steps the water it draws, and reports what the water measured", async ({ page }) => {
   const experiment = await openFlotsam(page, {
     settings: { ...MODEST, steepness: 0.9, drift: 0.2, bearing: 0, eddies: 0, stokes: 0 },
     idle: true,
+    reducedMotion: true,
   })
 
   const before = await experiment.api(({ api }) => api.stats())
   await experiment.api(({ api }) => api.run(1))
   const after = await experiment.api(({ api }) => api.stats())
 
+  expect(after.clock - before.clock).toBeCloseTo(1, 5)
   expect(after.transport).toBeCloseTo(0.2, 3)
   // Measured by the frame `run()` drew, not left over from the first one.
   expect(after.orbit).toBeGreaterThan(0.1)
