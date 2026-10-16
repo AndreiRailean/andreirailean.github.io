@@ -27,6 +27,7 @@ export type Reach = "centre" | "edges"
 export type ThriceOf = "any" | "branch" | "turn" | "echo"
 export type StrandsOn = "all" | "stems"
 export type Sides = "copies" | "own"
+export type Pen = "line" | "tips"
 export type Unison = "family" | "all"
 export type CornerAt = "turns" | "splits" | "both"
 export type Mark = "ring" | "solid" | "cutout"
@@ -61,6 +62,20 @@ export type Settings = {
   infect: number
   /** Odds dissolving passes into the next line at each joint or turn it reaches. */
   contagion: number
+  /** Odds each drawing has the big circle. */
+  haloOdds: number
+  /** How far the big circle's height wanders from drawing to drawing, up to a quarter of the frame at 1. */
+  haloDrift: number
+  /** How strongly each circle nearby discourages a new small one. */
+  shy: number
+  /** Line: stopping ends a line. Tips: stopping lifts the pen, and the tip flies on, deciding, until it lands. */
+  pen: Pen
+  /** Tips pen: odds a lifted tip puts the pen down at each decision. */
+  land: number
+  /** Tips pen: decisions a lifted tip may make without landing before it dies. */
+  flight: number
+  /** Radius of a dot drawn on every tip, in css px; 0 for none. */
+  tipSize: number
   /** Lines starting from the bottom, mirrored: an odd count puts one on the centre line. */
   stems: number
   /** Distance between neighbouring stems, as a share of the frame's height in per cent. */
@@ -140,6 +155,7 @@ export type Settings = {
 }
 
 type EnumKey =
+  | "pen"
   | "sides"
   | "strandsOn"
   | "fold"
@@ -164,6 +180,7 @@ export const REACHES: Reach[] = ["centre", "edges"]
 export const THRICE_OFS: ThriceOf[] = ["any", "branch", "turn", "echo"]
 export const STRANDS_ONS: StrandsOn[] = ["all", "stems"]
 export const SIDESES: Sides[] = ["copies", "own"]
+export const PENS: Pen[] = ["line", "tips"]
 export const UNISONS: Unison[] = ["family", "all"]
 export const CORNER_ATS: CornerAt[] = ["turns", "splits", "both"]
 export const MARKS: Mark[] = ["ring", "solid", "cutout"]
@@ -375,6 +392,37 @@ export const CONTROLS: Control[] = [
     "Odds of carrying on while growing offshoots, one after another at the same angle — parallel lines that then make the same decisions as each other.",
   ),
   /* @__PURE__ */ odds("stop", "stop", "Odds of stopping."),
+  {
+    kind: "choice",
+    key: "pen",
+    label: "pen",
+    group: "decisions",
+    options: [
+      { value: "line", label: "line" },
+      { value: "tips", label: "tips" },
+    ],
+    hint: "Line: a line that stops is finished. Tips: stopping only lifts the pen. The tip flies on, still turning, splitting and echoing but drawing nothing and meeting nothing, until it lands and draws again. Tips then end only at the edge or at depth.",
+  },
+  {
+    .../* @__PURE__ */ odds(
+      "land",
+      "land",
+      "Tips pen: odds a lifted tip puts the pen down at each decision, starting a new line there.",
+    ),
+    inert: (settings: Settings) => settings.pen !== "tips",
+  },
+  {
+    kind: "slider",
+    key: "flight",
+    label: "flight",
+    group: "decisions",
+    min: 1,
+    max: 30,
+    step: 1,
+    format: (v) => String(Math.round(v)),
+    hint: "Tips pen: how many decisions a lifted tip may make without landing before it dies. Lifted tips meet nothing, so without this only the edge and depth end them, and splitting ones multiply fast.",
+    inert: (settings: Settings) => settings.pen !== "tips",
+  },
   /* @__PURE__ */ odds(
     "thrice",
     "in threes",
@@ -512,6 +560,18 @@ export const CONTROLS: Control[] = [
   ),
   {
     kind: "slider",
+    key: "shy",
+    label: "shy",
+    group: "circles",
+    min: 0,
+    max: 1,
+    step: 0.05,
+    format: unit,
+    hint: "How much circles keep their distance: each circle already near (closer than a radius, edge to edge, the big one and mirror images included) makes a new small one this much more likely to be left out. At 1 none ever crowd. A big circle is shy too: at these odds a drawing leaves its own out while an earlier one is still showing, so the old one can dissolve or fade rather than be drawn over.",
+    inert: (settings: Settings) => settings.corner === 0 && settings.along === 0 && settings.halo === 0,
+  },
+  {
+    kind: "slider",
     key: "radius",
     label: "radius",
     group: "circles",
@@ -570,6 +630,24 @@ export const CONTROLS: Control[] = [
     hint: "How far the big circle's radius strays from its size, as a share of it, drawn afresh for each drawing.",
     inert: (settings: Settings) => settings.halo === 0,
   },
+  /* @__PURE__ */ odds(
+    "haloOdds",
+    "circle odds",
+    "Odds each drawing has the big circle. In flow every drawing draws its own, in the same place, so at 1 it never seems to go; lower and some drawings leave it out, and the last one fades.",
+    "circles",
+  ),
+  {
+    kind: "slider",
+    key: "haloDrift",
+    label: "circle drift",
+    group: "circles",
+    min: 0,
+    max: 1,
+    step: 0.05,
+    format: unit,
+    hint: "How far the big circle's height wanders from drawing to drawing, up to a quarter of the frame either way at 1.",
+    inert: (settings: Settings) => settings.halo === 0,
+  },
   {
     kind: "slider",
     key: "haloAt",
@@ -617,6 +695,17 @@ export const CONTROLS: Control[] = [
     step: 0.25,
     format: (v) => `${v.toFixed(2)}px`,
     hint: "Width of a stem.",
+  },
+  {
+    kind: "slider",
+    key: "tipSize",
+    label: "tips",
+    group: "line",
+    min: 0,
+    max: 6,
+    step: 0.5,
+    format: (v) => (v === 0 ? "none" : `${v.toFixed(1)}px`),
+    hint: "A dot on every tip while it grows or flies, so lifted tips can be seen.",
   },
   {
     kind: "slider",
@@ -737,6 +826,13 @@ export const DEFAULT_SETTINGS: Settings = {
   hush: 0,
   infect: 0,
   contagion: 0.5,
+  haloOdds: 1,
+  haloDrift: 0,
+  shy: 0,
+  pen: "line",
+  land: 0.3,
+  flight: 6,
+  tipSize: 0,
   strandsOn: "all",
   stems: 1,
   gap: 8,
@@ -813,6 +909,12 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   hush: { min: 0, max: 1, step: 0.05 },
   infect: { min: 0, max: 1, step: 0.05 },
   contagion: { min: 0, max: 1, step: 0.05 },
+  haloOdds: { min: 0, max: 1, step: 0.05 },
+  haloDrift: { min: 0, max: 1, step: 0.05 },
+  shy: { min: 0, max: 1, step: 0.05 },
+  land: { min: 0, max: 1, step: 0.05 },
+  flight: { min: 1, max: 30, step: 1 },
+  tipSize: { min: 0, max: 6, step: 0.5 },
   haloAt: { min: 0, max: 100, step: 1 },
   width: { min: 0.5, max: 8, step: 0.25 },
   taper: { min: 0, max: 0.5, step: 0.05 },
@@ -872,6 +974,7 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
     fold: oneOf(FOLDS, String(merged.fold), base.fold),
     reach: oneOf(REACHES, merged.reach, base.reach),
     sides: oneOf(SIDESES, merged.sides, base.sides),
+    pen: oneOf(PENS, merged.pen, base.pen),
     thriceOf: oneOf(THRICE_OFS, merged.thriceOf, base.thriceOf),
     strandsOn: oneOf(STRANDS_ONS, merged.strandsOn, base.strandsOn),
     unison: oneOf(UNISONS, merged.unison, base.unison),
@@ -907,6 +1010,12 @@ const GROWTH_KEYS = [
   "hush",
   "infect",
   "contagion",
+  "haloOdds",
+  "haloDrift",
+  "shy",
+  "pen",
+  "land",
+  "flight",
   "stems",
   "gap",
   "angle",
@@ -1000,6 +1109,13 @@ export const REGISTRY: readonly Slot[] = [
   { key: "hush", kind: "num", grid: 0.05, origin: 0, bits: 5 },
   { key: "infect", kind: "num", grid: 0.05, origin: 0, bits: 5 },
   { key: "contagion", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "haloOdds", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "haloDrift", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "shy", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "pen", kind: "enum", options: ["line", "tips"] },
+  { key: "land", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "tipSize", kind: "num", grid: 0.5, origin: 0, bits: 4 },
+  { key: "flight", kind: "num", grid: 1, origin: 1, bits: 5 },
 ]
 
 export function settingsToQuery(settings: Settings): URLSearchParams {

@@ -58,6 +58,13 @@ exports[`artdeco > has not edited a slot in place 1`] = `
   "hush num grid=0.05 origin=0 bits=5",
   "infect num grid=0.05 origin=0 bits=5",
   "contagion num grid=0.05 origin=0 bits=5",
+  "haloOdds num grid=0.05 origin=0 bits=5",
+  "haloDrift num grid=0.05 origin=0 bits=5",
+  "shy num grid=0.05 origin=0 bits=5",
+  "pen enum line|tips",
+  "land num grid=0.05 origin=0 bits=5",
+  "tipSize num grid=0.5 origin=0 bits=4",
+  "flight num grid=1 origin=1 bits=5",
 ]
 `;
 
