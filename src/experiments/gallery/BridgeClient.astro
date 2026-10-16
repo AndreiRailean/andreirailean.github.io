@@ -1,0 +1,170 @@
+---
+/**
+ * The preview bridge's page half. Rendered by `PiecePage.astro` only when
+ * `bridge.ts` finds a live sidecar at build time, so nothing that deploys
+ * carries it — see that file, and #305.
+ *
+ * What it posts, each as one line of `.astro/bridge.jsonl`:
+ *
+ * - `hello` once, and `viewport` on a resize: the window, the DPR, the agent;
+ * - `scene` whenever the piece's settings change: `get()`, the address and the
+ *   preset on screen, which is what `pnpm run bridge state` turns into a preset;
+ * - `trace` under `?trace=1`: the events behind the chrome's idle state —
+ *   window enter and leave, focus, crossings into and out of `#ui`, idle
+ *   changes — with a HUD showing the same. This is the overlay that found the
+ *   cause of #303, kept.
+ *
+ * **Silent under automation.** The browser suite builds in the same worktree and
+ * would otherwise fill the log with its own runs, so a page driven by WebDriver
+ * posts nothing unless the address asks with `?bridge=1`. `?bridge=0` turns it
+ * off for a person. A sidecar that has gone away costs one failed request, after
+ * which the page stops trying.
+ */
+
+import { BRIDGE_MARKER } from "@/experiments/gallery/bridge"
+
+interface Props {
+  port: number
+  slug: string
+}
+
+const { port, slug } = Astro.props
+const marker = BRIDGE_MARKER
+---
+
+<script is:inline define:vars={{ port, slug, marker }}>
+  ;(() => {
+    const params = new URLSearchParams(location.search)
+    if (params.get("bridge") === "0") return
+    if (navigator.webdriver && !params.has("bridge")) return
+
+    const endpoint = `${location.protocol}//${location.hostname}:${port}/event`
+    const page = Math.random().toString(36).slice(2, 8)
+    const t0 = performance.now()
+    let broken = false
+
+    const send = (type, data = {}) => {
+      if (broken) return
+      const body = JSON.stringify({
+        at: new Date().toISOString(),
+        t: Math.round(performance.now() - t0),
+        marker,
+        page,
+        piece: slug,
+        type,
+        ...data,
+      })
+      // text/plain keeps it a simple request, so there is no preflight to answer.
+      fetch(endpoint, { method: "POST", body, keepalive: true, headers: { "content-type": "text/plain" } }).catch(
+        () => {
+          broken = true
+        },
+      )
+    }
+
+    const viewport = () => ({
+      width: innerWidth,
+      height: innerHeight,
+      dpr: devicePixelRatio,
+      href: location.href,
+    })
+    send("hello", { ...viewport(), agent: navigator.userAgent })
+    let resized = 0
+    addEventListener("resize", () => {
+      clearTimeout(resized)
+      resized = setTimeout(() => send("viewport", viewport()), 400)
+    })
+
+    // The scene, whenever it changes. Polled rather than hooked so the kit
+    // carries nothing for the bridge: `get()` is a copy and cheap.
+    let last = ""
+    const scene = () => {
+      const api = window.experiment
+      if (!api) return
+      const settings = api.get()
+      const key = JSON.stringify(settings)
+      if (key === last) return
+      last = key
+      const shown = document.documentElement.dataset.preset
+      const index = shown === undefined ? null : Number(shown)
+      const labels = typeof api.presets === "function" ? api.presets() : []
+      send("scene", {
+        settings,
+        url: typeof api.url === "function" ? api.url() : location.href,
+        preset: index,
+        presetLabel: index === null ? null : (labels[index] ?? null),
+      })
+    }
+    setInterval(scene, 500)
+
+    if (!params.has("trace")) return
+
+    const lines = []
+    let hud = null
+    const name = (node) =>
+      node instanceof Element
+        ? node.tagName.toLowerCase() +
+          (typeof node.className === "string" && node.className ? "." + node.className.split(" ")[0] : "")
+        : String(node)
+    const inUi = (node) => node instanceof Node && !!document.getElementById("ui")?.contains(node)
+    let moves = 0
+    let uiMoves = 0
+    let lastMove = ""
+    const draw = () => {
+      if (hud) hud.textContent = `moves ${moves} (on chrome ${uiMoves}) last: ${lastMove}\n` + lines.join("\n")
+    }
+    const trace = (event, detail = "") => {
+      const focus = document.hasFocus()
+      const visible = document.visibilityState
+      send("trace", { event, detail, focus, visible, moves, uiMoves })
+      lines.push(`${((performance.now() - t0) / 1000).toFixed(2)} ${event} ${detail} | focus=${focus} vis=${visible}`)
+      while (lines.length > 22) lines.shift()
+      draw()
+    }
+
+    addEventListener(
+      "mousemove",
+      (event) => {
+        moves++
+        if (inUi(event.target)) uiMoves++
+        lastMove = name(event.target)
+        draw()
+      },
+      true,
+    )
+    for (const type of ["pointerover", "pointerout", "pointerdown", "focus", "blur", "pointercancel"])
+      addEventListener(
+        type,
+        (event) => {
+          // Only crossings into or out of the chrome: inside it, these fire on every row.
+          if ((type === "pointerover" || type === "pointerout") && inUi(event.target) === inUi(event.relatedTarget))
+            return
+          const from = event.relatedTarget === undefined ? "" : ` ← ${name(event.relatedTarget)}`
+          trace(type, `${name(event.target)}${from}`)
+        },
+        true,
+      )
+    document.addEventListener("visibilitychange", () => trace("visibilitychange"))
+    document.documentElement.addEventListener("mouseleave", () => trace("mouseleave", "window"))
+    document.documentElement.addEventListener("mouseenter", () => trace("mouseenter", "window"))
+
+    addEventListener("load", () => {
+      hud = document.createElement("pre")
+      hud.style.cssText =
+        "position:fixed;left:50%;bottom:8px;transform:translateX(-50%);z-index:99999;margin:0;padding:6px 8px;" +
+        "font:11px/1.3 ui-monospace,monospace;background:rgb(0 0 0/80%);color:#9f9;pointer-events:none;" +
+        "max-width:60vw;white-space:pre;border:1px solid #363"
+      document.body.append(hud)
+      let was = document.documentElement.dataset.idle
+      new MutationObserver(() => {
+        const now = document.documentElement.dataset.idle
+        if (now !== was) trace(`idle=${now}`, `last move on ${lastMove}, ${moves} moves`)
+        was = now
+      }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-idle"] })
+      const ui = document.getElementById("ui")
+      ui?.addEventListener("pointerenter", () => trace("pointerenter", "#ui"))
+      ui?.addEventListener("pointerleave", () => trace("pointerleave", "#ui"))
+      draw()
+    })
+  })()
+</script>

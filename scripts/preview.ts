@@ -1,5 +1,6 @@
-import { execFile } from "node:child_process"
+import { execFile, spawn } from "node:child_process"
 import { promisify } from "node:util"
+import { bridgePort } from "../src/experiments/gallery/bridge.ts"
 import { PREVIEW_STATE, previewState, reviewPort } from "../tests/support/review-port.ts"
 
 /**
@@ -54,7 +55,31 @@ async function releaseTheSlot(): Promise<void> {
   }
 }
 
+/**
+ * Starts the preview bridge's sidecar unless one is already up, and returns its port.
+ *
+ * **Before the build, not after**, because the build is what decides whether a
+ * page carries the bridge client — it does so only while a sidecar is alive
+ * (`src/experiments/gallery/bridge.ts`). The sidecar stops itself once the
+ * preview has been gone for thirty seconds, so nothing here or anywhere else
+ * has to stop it. See #305.
+ */
+async function startBridge(): Promise<number | null> {
+  const running = bridgePort()
+  if (running !== null) return running
+  const child = spawn(process.execPath, ["scripts/bridge-sidecar.ts"], { detached: true, stdio: "ignore" })
+  child.unref()
+  for (let waited = 0; waited < 5000; waited += 100) {
+    const port = bridgePort()
+    if (port !== null) return port
+    await new Promise((resolve) => setTimeout(resolve, 100))
+  }
+  console.warn("\n  The preview bridge did not start; pages will not post to `pnpm run bridge`.\n")
+  return null
+}
+
 async function main(): Promise<void> {
+  const bridge = await startBridge()
   await run("pnpm", ["run", "build:quick"], { env: process.env })
   await releaseTheSlot()
   const wanted = reviewPort()
@@ -88,6 +113,10 @@ async function main(): Promise<void> {
   for (const url of network) console.log(`    ${url}`)
   if (network.length === 0) {
     console.log(`    (no network address bound — started without --host?)`)
+  }
+  if (bridge !== null) {
+    console.log(`\n  Pages post what is on screen to the bridge (port ${bridge}): \`pnpm run bridge\` follows it,`)
+    console.log(`  \`pnpm run bridge state <piece>\` prints the scene as a preset, and ?trace=1 adds the event trace.`)
   }
   console.log(`\n  Rebuild with \`pnpm run build:quick\` and reload; the URL does not change.`)
   console.log(`  Stop it with \`pnpm exec astro preview stop\` when the review is over.\n`)
