@@ -74,6 +74,12 @@ export type Settings = {
   land: number
   /** Tips pen: decisions a lifted tip may make without landing before it dies. */
   flight: number
+  /** Decisions of life a split takes from each of the lines it makes, and of flight from a flying one's. */
+  toll: number
+  /** Tips pen: most tips that may fly lifted at once; a flying split beyond it makes nothing. */
+  flock: number
+  /** Generations from a stem whose tips are drawn as dots. */
+  dotsTo: number
   /** Radius of a dot drawn on every tip, in css px; 0 for none. */
   tipSize: number
   /** Lines starting from the bottom, mirrored: an odd count puts one on the centre line. */
@@ -429,6 +435,29 @@ export const CONTROLS: Control[] = [
     hint: "Tips pen: how many decisions a lifted tip may make without landing before it dies. Lifted tips meet nothing, so without this only the edge and depth end them, and splitting ones multiply fast.",
     inert: (settings: Settings) => settings.pen !== "tips",
   },
+  {
+    kind: "slider",
+    key: "toll",
+    label: "toll",
+    group: "decisions",
+    min: 0,
+    max: 10,
+    step: 1,
+    format: (v) => String(Math.round(v)),
+    hint: "What a split costs: each line it makes starts this many decisions further through its depth, and a flying tip this much further through its flight, so lines that split often die young.",
+  },
+  {
+    kind: "slider",
+    key: "flock",
+    label: "flock",
+    group: "decisions",
+    min: 10,
+    max: 1200,
+    step: 10,
+    format: (v) => (v >= 1200 ? "no limit" : String(Math.round(v))),
+    hint: "Tips pen: the most tips that may fly lifted at once, across every drawing on screen. Past it, a flying tip that would split makes nothing and flies on alone, and a line that would lift its pen ends instead.",
+    inert: (settings: Settings) => settings.pen !== "tips",
+  },
   /* @__PURE__ */ odds(
     "thrice",
     "in threes",
@@ -715,6 +744,18 @@ export const CONTROLS: Control[] = [
   },
   {
     kind: "slider",
+    key: "dotsTo",
+    label: "dots to",
+    group: "line",
+    min: 0,
+    max: 12,
+    step: 1,
+    format: (v) => (v >= 12 ? "every tip" : `gen ${Math.round(v)}`),
+    hint: "A hierarchy of tips: only those up to this many splits from a stem are drawn as dots, so the first few are seen and the swarm they make is not. 0 shows the stems' tips alone.",
+    inert: (settings: Settings) => settings.tipSize === 0,
+  },
+  {
+    kind: "slider",
     key: "taper",
     label: "taper",
     group: "line",
@@ -838,6 +879,9 @@ export const DEFAULT_SETTINGS: Settings = {
   pen: "line",
   land: 0.3,
   flight: 6,
+  toll: 0,
+  flock: 1200,
+  dotsTo: 12,
   tipSize: 0,
   strandsOn: "all",
   stems: 1,
@@ -920,6 +964,9 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   shy: { min: 0, max: 1, step: 0.05 },
   land: { min: 0, max: 1, step: 0.05 },
   flight: { min: 1, max: 30, step: 1 },
+  toll: { min: 0, max: 10, step: 1 },
+  flock: { min: 10, max: 1200, step: 10 },
+  dotsTo: { min: 0, max: 12, step: 1 },
   tipSize: { min: 0, max: 6, step: 0.5 },
   haloAt: { min: 0, max: 100, step: 1 },
   width: { min: 0.5, max: 8, step: 0.25 },
@@ -1022,6 +1069,8 @@ const GROWTH_KEYS = [
   "pen",
   "land",
   "flight",
+  "toll",
+  "flock",
   "stems",
   "gap",
   "angle",
@@ -1122,6 +1171,9 @@ export const REGISTRY: readonly Slot[] = [
   { key: "land", kind: "num", grid: 0.05, origin: 0, bits: 5 },
   { key: "tipSize", kind: "num", grid: 0.5, origin: 0, bits: 4 },
   { key: "flight", kind: "num", grid: 1, origin: 1, bits: 5 },
+  { key: "toll", kind: "num", grid: 1, origin: 0, bits: 4 },
+  { key: "flock", kind: "num", grid: 10, origin: 10, bits: 7 },
+  { key: "dotsTo", kind: "num", grid: 1, origin: 0, bits: 4 },
 ]
 
 export function settingsToQuery(settings: Settings): URLSearchParams {

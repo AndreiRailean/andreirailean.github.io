@@ -65,6 +65,9 @@ exports[`artdeco > has not edited a slot in place 1`] = `
   "land num grid=0.05 origin=0 bits=5",
   "tipSize num grid=0.5 origin=0 bits=4",
   "flight num grid=1 origin=1 bits=5",
+  "toll num grid=1 origin=0 bits=4",
+  "flock num grid=10 origin=10 bits=7",
+  "dotsTo num grid=1 origin=0 bits=4",
 ]
 `;
 

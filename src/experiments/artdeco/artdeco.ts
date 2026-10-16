@@ -204,7 +204,7 @@ export type Stats = {
   /** Decisions taken as the second or third of three. */
   repeated: number
   /** Tips pen: times a pen lifted and landed, and tips flying lifted now. */
-  pen: { lifts: number; lands: number; grounded: number; flying: number }
+  pen: { lifts: number; lands: number; grounded: number; flocked: number; flying: number }
   /** Lines stopped by crowding, lines set dissolving, and dissolving passed on at a joint or turn. */
   busy: { hushed: number; dissolved: number; passedOn: number }
   /** Drawings with a big circle still showing, and how many of those are dissolving. */
@@ -222,6 +222,7 @@ const EPS = 1e-6
 /** A hit this close to the start of the tip's own segment is where it was born, not a meeting. */
 const ORIGIN = 0.75
 const REST = 1
+const FLOCK_OFF = 1200
 /** The one step growth is ever taken in, in seconds; see `tick`. */
 const TICK = 1 / 60
 
@@ -257,6 +258,10 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
   let circles = { corner: 0, along: 0, shied: 0 }
   let repeated = 0
   let lifts = 0
+  let flocked = 0
+  /** Lifted tips born this step, which `heads` does not hold until the step ends. */
+  let flyingBorn = 0
+  let flyingAtStart = 0
   let grounded = 0
   let lands = 0
   let hushed = 0
@@ -470,7 +475,13 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
   function lift(head: Head, at: number): boolean {
     if (settings.pen !== "tips") return false
     if (!head.lifted) {
+      // The flock is full: this one ends instead of joining it.
+      if (flockFull()) {
+        flocked += 1
+        return false
+      }
       lifts += 1
+      flyingBorn += 1
       head.flown = 0
     }
     const [x, y] = headPoint(head.seg)
@@ -891,9 +902,26 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     head.budget -= distance
   }
 
+  /**
+   * Tips flying lifted, in every drawing: counted when the step began, since
+   * a stepping tree's `heads` is empty, plus those born since. Deaths this
+   * step are not taken off, so the flock errs small.
+   */
+  function flying(): number {
+    return flyingAtStart + flyingBorn
+  }
+
+  /** At the top of its range the flock is off, so a scene from before it existed is unchanged. */
+  const flockFull = () => settings.flock < FLOCK_OFF && flying() >= settings.flock
+
   function spawn(tree: Tree, parent: Head, d: number, hand: 1 | -1, f: Family, x: number, y: number, at: number) {
     if (tree.live >= MAX_HEADS) {
       dropped += 1
+      return
+    }
+    // A flock: no more tips may fly lifted at once than `flock`.
+    if (parent.lifted && flockFull()) {
+      flocked += 1
       return
     }
     // A lifted tip's children fly lifted too.
@@ -903,14 +931,16 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     if (!seg) return
     if (!parent.lifted) join(parent.seg, parent.seg.len, seg, 0)
     const stepLen = Math.max(4, parent.stepLen * settings.shrink)
+    // Splitting costs: each child starts `toll` decisions further through its
+    // life, and a flying one that much further through its flight.
     const head: Head = {
       seg,
       lifted: parent.lifted,
-      flown: parent.flown,
+      flown: parent.flown + (parent.lifted ? settings.toll : 0),
       family: f,
       n: 0,
       hand,
-      depth: parent.depth,
+      depth: parent.depth + settings.toll,
       toDecision: stretch(d, stepLen),
       stepLen,
       echo: null,
@@ -921,6 +951,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     arm(head)
     tree.heads.push(head)
     tree.live += 1
+    if (head.lifted) flyingBorn += 1
   }
 
   /** Decides whether the stretch the tip is starting drops a circle, and where. */
@@ -1298,6 +1329,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     circles = { corner: 0, along: 0, shied: 0 }
     repeated = 0
     lifts = 0
+    flocked = 0
     grounded = 0
     lands = 0
     hushed = 0
@@ -1348,6 +1380,9 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
   const finished = (tree: Tree) => tree.grown >= 0 && tree.D >= tree.delay + tree.grown
 
   function step(dt: number) {
+    flyingBorn = 0
+    flyingAtStart = 0
+    for (const tree of trees) for (const head of tree.heads) if (head.lifted) flyingAtStart += 1
     for (const tree of trees) stepTree(tree, dt)
     const newest = trees[trees.length - 1]
     trees = trees.filter((t) => !finished(t) || t === newest)
@@ -1453,6 +1488,8 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
       ctx.beginPath()
       for (const tree of trees)
         for (const head of tree.heads) {
+          // A hierarchy: only tips up to `dotsTo` generations from a stem are seen.
+          if (head.seg.gen > settings.dotsTo) continue
           const [x, y] = headPoint(head.seg)
           for (const f of fs) {
             if (head.seg.axis && f.flip) continue
@@ -1664,7 +1701,13 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
         offshoots,
         circles: { ...circles },
         repeated,
-        pen: { lifts, lands, grounded, flying: trees.reduce((n, t) => n + t.heads.filter((h) => h.lifted).length, 0) },
+        pen: {
+          lifts,
+          lands,
+          grounded,
+          flocked,
+          flying: trees.reduce((n, t) => n + t.heads.filter((h) => h.lifted).length, 0),
+        },
         busy: { hushed, dissolved, passedOn },
         halos: {
           drawn: trees.filter(haloShowing).length,
