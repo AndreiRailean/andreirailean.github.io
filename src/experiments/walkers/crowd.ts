@@ -643,22 +643,9 @@ export function createCrowd({ view: initialView, settings: initialSettings }: Op
    * `f / (f + r(1 − f))`. At 0.3 with r ≈ 6 that is 7 per cent of arrivals — and
    * 30 per cent of the crowd, which is what the control says.
    */
-  function stoppingChance(): number {
-    const wanted = settings.settling
-    if (wanted <= 0) return 0
-    if (wanted >= 1) return 1
-
-    // A crossing is about the frame's own size at whatever pace the band gives.
-    const pace = Math.max(0.4, (settings.paceLow + settings.paceHigh) / 2)
-    const crossing = Math.max(4, (view.halfWidth + view.halfHeight) / pace)
-    const ratio = Math.max(1, MEAN_DWELL / crossing)
-
-    return wanted / (wanted + ratio * (1 - wanted))
-  }
-
   function spawnGroup(placeInside: boolean): void {
     const size = groupSize()
-    const stops = stream() < stoppingChance()
+    const stops = stream() < stoppingChance(settings, view)
     const errand: Errand = placeInside ? (stops ? "resident" : "cross") : stops ? "visit" : "cross"
 
     const group = makeGroup(errand)
@@ -698,8 +685,7 @@ export function createCrowd({ view: initialView, settings: initialSettings }: Op
     const runs = stream() < settings.runners
     // Children come with adults far more often than alone, and a lone child in
     // an otherwise adult crowd reads as a mistake rather than as a child.
-    const childCount =
-      size === 1 ? (stream() < settings.children * 0.35 ? 1 : 0) : Math.min(size - 1, countChildren(size))
+    const childCount = childrenIn(size, settings.children, stream)
 
     const arriving: Walker[] = []
     for (let index = 0; index < size; index++) {
@@ -721,7 +707,7 @@ export function createCrowd({ view: initialView, settings: initialSettings }: Op
     // here rather than with the rest of the errand because it needs to know
     // whether there are any children in the group, which is decided above.
     if (errand !== "cross") {
-      group.sits = stream() < (childCount > 0 ? 0.22 : 0.62)
+      group.sits = stream() < sitsChance(childCount > 0)
       // Long enough that a picnic is a picnic. A stand is a couple of minutes.
       group.until = clock + (group.sits ? 90 + stream() * 240 : 25 + stream() * 90)
     }
@@ -836,21 +822,6 @@ export function createCrowd({ view: initialView, settings: initialSettings }: Op
       if (gap < SPAWN_CLEARANCE) return false
     }
     return true
-  }
-
-  /**
-   * How many of a group are children.
-   *
-   * Drawn per member at the stated fraction, and then capped at one short of the
-   * group's size by the caller — somebody has to be the adult. The cap is why
-   * this used to be inflated by a factor of 1.4, on the reasoning that the cap
-   * and the rarity of lone children would eat the difference. It over-corrected:
-   * a setting of 30 per cent produced crowds that were half children.
-   */
-  function countChildren(size: number): number {
-    let count = 0
-    for (let index = 0; index < size; index++) if (stream() < settings.children) count++
-    return count
   }
 
   /** A rough normal draw off the shared stream, for anything that wants a bell. */
@@ -1012,7 +983,7 @@ export function createCrowd({ view: initialView, settings: initialSettings }: Op
     // turn rather than a curve.
     if (group.errand === "cross" && group.state === "arriving") {
       if (stream() < 1 - Math.exp(-RECONSIDER[settings.flow] * dt)) {
-        if (stream() < STOPS_INSTEAD * stoppingChance()) {
+        if (stream() < STOPS_INSTEAD * stoppingChance(settings, view)) {
           const spot = freeSpot(size)
           group.errand = "visit"
           group.goalX = spot.x
@@ -1020,7 +991,7 @@ export function createCrowd({ view: initialView, settings: initialSettings }: Op
           const away = edgePoint(pickEdge(), AWAY)
           group.exitX = away.x
           group.exitY = away.y
-          group.sits = stream() < (group.members.some((m) => m.body.age === "child") ? 0.22 : 0.62)
+          group.sits = stream() < sitsChance(group.members.some((m) => m.body.age === "child"))
         } else {
           const away = edgePoint(pickEdge(), AWAY)
           group.goalX = away.x
@@ -1036,25 +1007,33 @@ export function createCrowd({ view: initialView, settings: initialSettings }: Op
     // `settling` is already the setting that says which this is, so it scales
     // the rates rather than a control of its own.
     if (clock > group.urgeUntil) {
-      const appetite = 0.35 + settings.settling
+      // Drawn whether or not it is used, so the stream's order does not depend
+      // on which branch is taken.
       const draw = stream()
 
       if (group.urge !== "steady") {
         group.urge = "steady"
         group.sprinting = false
         group.urgeUntil = clock + 6 + stream() * 25
-      } else if (draw < 0.3 * appetite) {
-        // Something worth slowing down for. Short, and it happens often.
-        group.urge = "dawdle"
-        group.urgeUntil = clock + 2 + stream() * 7
-      } else if (draw < 0.45 * appetite) {
-        // Late, or catching somebody up. A third of the time it is a real run,
-        // which is how somebody who was walking a moment ago starts running.
-        group.urge = "hurry"
-        group.sprinting = stream() < 0.35
-        group.urgeUntil = clock + 4 + stream() * 12
       } else {
-        group.urgeUntil = clock + 3 + stream() * 12
+        switch (urgeChoice(draw, settings.settling)) {
+          case "dawdle":
+            // Something worth slowing down for. Short, and it happens often.
+            group.urge = "dawdle"
+            group.urgeUntil = clock + 2 + stream() * 7
+            break
+          case "hurry":
+            // Late, or catching somebody up. A third of the time it is a real
+            // run, which is how somebody who was walking a moment ago starts
+            // running.
+            group.urge = "hurry"
+            group.sprinting = stream() < 0.35
+            group.urgeUntil = clock + 4 + stream() * 12
+            break
+          case "steady":
+            group.urgeUntil = clock + 3 + stream() * 12
+            break
+        }
       }
     }
 
@@ -1089,7 +1068,7 @@ export function createCrowd({ view: initialView, settings: initialSettings }: Op
     // first version had no opinion about that at all: one was measured
     // twenty-one metres from its parent, which is not a game of tag, it is a
     // missing child.
-    if (away > LEASH && walker.activity !== "sitting" && walker.activity !== "fallen") {
+    if (strays(away, walker.activity)) {
       walker.activity = "walking"
       walker.quarry = null
       walker.until = clock + 1
@@ -1111,46 +1090,43 @@ export function createCrowd({ view: initialView, settings: initialSettings }: Op
 
     const energy = settings.play
     const draw = stream()
+    // Only looked for when the draw could be a chase: it is a scan of everybody.
+    const quarry = draw < 0.1 * energy ? findPlaymate(walker) : null
 
-    // A child in formation mostly stays in it. The rates below are per decision
-    // point rather than per second, and decision points come every second or so.
-    if (draw < 0.1 * energy) {
-      const quarry = findPlaymate(walker)
-      if (quarry) {
+    switch (playChoice(draw, energy, quarry !== null, walker.hop, walker.speed)) {
+      case "chase":
         walker.activity = "chasing"
         walker.quarry = quarry
-        quarry.activity = "fleeing"
-        quarry.quarry = walker
-        quarry.until = clock + 3 + stream() * 5
+        quarry!.activity = "fleeing"
+        quarry!.quarry = walker
+        quarry!.until = clock + 3 + stream() * 5
         walker.until = clock + 3 + stream() * 5
         return
+      case "dart":
+        walker.activity = "darting"
+        walker.until = clock + 1.2 + stream() * 2.2
+        return
+      case "crouch":
+        walker.activity = "crouching"
+        walker.until = clock + 1.5 + stream() * 3.5
+        walker.vx = 0
+        walker.vy = 0
+        return
+      case "jump": {
+        // A child's standing jump clears fifteen to twenty-five centimetres.
+        const height = 0.14 + stream() * 0.12
+        walker.hopRate = Math.sqrt(2 * G * height)
+        walker.until = clock + 0.6
+        return
       }
-    }
-    if (draw < 0.2 * energy) {
-      walker.activity = "darting"
-      walker.until = clock + 1.2 + stream() * 2.2
-      return
-    }
-    if (draw < 0.26 * energy) {
-      walker.activity = "crouching"
-      walker.until = clock + 1.5 + stream() * 3.5
-      walker.vx = 0
-      walker.vy = 0
-      return
-    }
-    if (draw < 0.31 * energy && walker.hop <= 0.001) {
-      // A child's standing jump clears fifteen to twenty-five centimetres.
-      const height = 0.14 + stream() * 0.12
-      walker.hopRate = Math.sqrt(2 * G * height)
-      walker.until = clock + 0.6
-      return
-    }
-    if (draw < 0.335 * energy && walker.speed > 0.9) {
-      walker.activity = "fallen"
-      walker.until = clock + 0.9 + stream() * 1.6
-      walker.vx = 0
-      walker.vy = 0
-      return
+      case "fall":
+        walker.activity = "fallen"
+        walker.until = clock + 0.9 + stream() * 1.6
+        walker.vx = 0
+        walker.vy = 0
+        return
+      case "carry on":
+        break
     }
 
     if (walker.activity === "darting" || walker.activity === "crouching" || walker.activity === "fleeing") {
@@ -1361,9 +1337,7 @@ export function createCrowd({ view: initialView, settings: initialSettings }: Op
   function paceScale(walker: Walker): number {
     if (clock < walker.yieldUntil) return 0
 
-    const drift =
-      1 +
-      PACE_DRIFT * (0.6 * Math.sin(clock * 0.11 + walker.phase) + 0.4 * Math.sin(clock * 0.043 + walker.phase * 2.7))
+    const drift = paceDrift(clock, walker.phase)
 
     switch (walker.group.urge) {
       case "dawdle":
@@ -1557,12 +1531,9 @@ export function createCrowd({ view: initialView, settings: initialSettings }: Op
         // Somebody crossing my path, rather than coming at me or going my way.
         // Head-on is resolved by stepping aside and overtaking needs no
         // decision; it is the crossing that people stop for.
-        if (!stationary && walker.speed > 0.3 && candidate.speed > 0.3) {
-          const alignment = (walker.vx * candidate.vx + walker.vy * candidate.vy) / (walker.speed * candidate.speed)
-          if (Math.abs(alignment) < 0.55) {
-            const tau = timeToCollision(self, other)
-            if (tau < soonest) soonest = tau
-          }
+        if (!stationary && crosses(walker, candidate)) {
+          const tau = timeToCollision(self, other)
+          if (tau < soonest) soonest = tau
         }
 
         avoidance(self, other, force)
@@ -1603,7 +1574,7 @@ export function createCrowd({ view: initialView, settings: initialSettings }: Op
 
       // Stop and let them go. Once the decision is made it stands for its own
       // duration, so nobody flickers between yielding and not.
-      if (soonest < YIELD_HORIZON && clock > walker.yieldUntil && stream() < 1 - Math.exp(-MAY_YIELD * dt)) {
+      if (mayYield(soonest, clock, walker.yieldUntil) && stream() < yieldChance(dt)) {
         walker.yieldUntil = clock + 0.4 + stream() * 1.2
       }
 
@@ -2050,6 +2021,154 @@ export function createCrowd({ view: initialView, settings: initialSettings }: Op
       return clock
     },
   }
+}
+
+// ── Decisions ─────────────────────────────────────────────────────────────
+//
+// Each of these is one choice somebody in the park makes, written as a function
+// of what they know so it can be tested on its own. `createCrowd` calls them;
+// none of them reads its state or draws from its stream except through what it
+// is handed. A test of one of these needs no park — see `tests/decisions.test.ts`.
+
+/**
+ * The chance an arrival is somebody who stops, rather than somebody crossing.
+ *
+ * **Not `settling` itself**, and the difference is a factor of six. `settling`
+ * promises "the fraction who stop somewhere in frame rather than crossing it",
+ * which anybody reading it takes to be a fraction of the crowd they can see —
+ * but applied to *arrivals* it is not, because the people who stop stay far
+ * longer than the people who cross. A dweller sits for two minutes and a
+ * crosser is gone in twenty seconds, so at a setting of 0.3 three quarters of
+ * everybody in shot was stationary. The park looked asleep and the number
+ * looked right.
+ *
+ * Little's law both ways round: to hold a fraction `f` of the *population*
+ * stationary when they stay `r` times as long, the arrivals have to be
+ * `f / (f + r(1 − f))`. At 0.3 with r ≈ 6 that is 7 per cent of arrivals — and
+ * 30 per cent of the crowd, which is what the control says.
+ */
+export function stoppingChance(
+  settings: Pick<Settings, "settling" | "paceLow" | "paceHigh">,
+  view: Pick<View, "halfWidth" | "halfHeight">,
+): number {
+  const wanted = settings.settling
+  if (wanted <= 0) return 0
+  if (wanted >= 1) return 1
+
+  // A crossing is about the frame's own size at whatever pace the band gives.
+  const pace = Math.max(0.4, (settings.paceLow + settings.paceHigh) / 2)
+  const crossing = Math.max(4, (view.halfWidth + view.halfHeight) / pace)
+  const ratio = Math.max(1, MEAN_DWELL / crossing)
+
+  return wanted / (wanted + ratio * (1 - wanted))
+}
+
+/**
+ * How many of a group of `size` are children, at a `children` fraction.
+ *
+ * Drawn per member at the stated fraction and capped at one short of the
+ * group's size — somebody has to be the adult. The cap is why this used to be
+ * inflated by a factor of 1.4, on the reasoning that the cap and the rarity of
+ * lone children would eat the difference. It over-corrected: a setting of 30
+ * per cent produced crowds that were half children.
+ *
+ * A lone child is rarer than a child in company — a third of the rate — because
+ * in an otherwise adult crowd one reads as a mistake rather than as a child.
+ */
+export function childrenIn(size: number, children: number, rng: () => number): number {
+  if (size === 1) return rng() < children * 0.35 ? 1 : 0
+  let count = 0
+  for (let index = 0; index < size; index++) if (rng() < children) count++
+  return Math.min(size - 1, count)
+}
+
+/**
+ * The chance a group that has stopped sits down rather than stands.
+ *
+ * A group with children stands far more often than it sits: somebody has to be
+ * watching, and a playground full of seated adults is a picnic.
+ */
+export const sitsChance = (withChildren: boolean): number => (withChildren ? 0.22 : 0.62)
+
+/**
+ * Whether two people moving are **crossing**, rather than meeting head on or
+ * going the same way. Head on is resolved by stepping aside and overtaking needs
+ * no decision; a crossing is what people stop for.
+ */
+export function crosses(
+  a: { vx: number; vy: number; speed: number },
+  b: { vx: number; vy: number; speed: number },
+): boolean {
+  if (a.speed <= 0.3 || b.speed <= 0.3) return false
+  const alignment = (a.vx * b.vx + a.vy * b.vy) / (a.speed * b.speed)
+  return Math.abs(alignment) < 0.55
+}
+
+/**
+ * Whether somebody may stop and let a crossing go by: the soonest crossing is
+ * close enough in time, and they are not already giving way. `soonest` is
+ * infinite when nobody is crossing them, and then nobody stops — a walker
+ * stopping for no reason reads as a stutter.
+ */
+export const mayYield = (soonest: number, clock: number, yieldUntil: number): boolean =>
+  soonest < YIELD_HORIZON && clock > yieldUntil
+
+/** The chance, in a step of `dt`, that somebody who may yield does. A rate, not a per-frame coin. */
+export const yieldChance = (dt: number): number => 1 - Math.exp(-MAY_YIELD * dt)
+
+/**
+ * A slow personal drift in pace that never repeats: two incommensurate sines on
+ * the walker's own phase. A walker who held one speed for ever read as a
+ * microbe, not a person.
+ */
+export const paceDrift = (clock: number, phase: number): number =>
+  1 + PACE_DRIFT * (0.6 * Math.sin(clock * 0.11 + phase) + 0.4 * Math.sin(clock * 0.043 + phase * 2.7))
+
+/**
+ * What a steady group decides about its pace next, from one draw. `settling` is
+ * the setting that says whether this is a park or a concourse, so it scales how
+ * often anybody dawdles or hurries rather than a control of its own.
+ */
+export function urgeChoice(draw: number, settling: number): Urge {
+  const appetite = 0.35 + settling
+  if (draw < 0.3 * appetite) return "dawdle"
+  if (draw < 0.45 * appetite) return "hurry"
+  return "steady"
+}
+
+/**
+ * Whether a child has strayed past the leash and is called back.
+ *
+ * Every play state, not just the two that go somewhere on purpose. A *fleeing*
+ * child runs for three to eight seconds at over 2 m/s and the first version
+ * had no opinion about that at all: one was measured twenty-one metres from its
+ * parent, which is not a game of tag, it is a missing child. Sitting and fallen
+ * are the exceptions because neither is going anywhere.
+ */
+export const strays = (away: number, activity: Activity): boolean =>
+  away > LEASH && activity !== "sitting" && activity !== "fallen"
+
+export type PlayChoice = "chase" | "dart" | "crouch" | "jump" | "fall" | "carry on"
+
+/**
+ * A playing child's next move, from one draw.
+ *
+ * Every transition is scaled by `energy` — the `play` setting — so at zero
+ * nothing is ever chosen. Each branch is a band of the draw, and a threshold
+ * typed wrong silently removes one: the crowd still looks busy and the piece
+ * has quietly lost jumping. The rates are per decision point rather than per
+ * second, and decision points come every second or so.
+ *
+ * A chase needs somebody to chase; without one the draw falls through to a
+ * dart. A jump needs to be on the ground, and a fall needs to be going fast.
+ */
+export function playChoice(draw: number, energy: number, hasQuarry: boolean, hop: number, speed: number): PlayChoice {
+  if (draw < 0.1 * energy && hasQuarry) return "chase"
+  if (draw < 0.2 * energy) return "dart"
+  if (draw < 0.26 * energy) return "crouch"
+  if (draw < 0.31 * energy && hop <= 0.001) return "jump"
+  if (draw < 0.335 * energy && speed > 0.9) return "fall"
+  return "carry on"
 }
 
 /** Shortest signed difference between two angles. */

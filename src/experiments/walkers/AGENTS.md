@@ -81,18 +81,47 @@ settings.ts   Settings, CONTROLS, PRESETS, the one validator.
 ```
 
 `crowd.ts` needs no browser at all — it is arithmetic on numbers — which is why
-almost everything worth asserting about this piece is in the **unit** suite and
-runs a whole afternoon of park in a second. Reach for
-`pnpm exec vitest run src/experiments/walkers` while working; the browser spec is for
-the things a real page adds, and it says which at the top.
+almost everything worth asserting about this piece is in the **unit** suite.
+Reach for `pnpm exec vitest run src/experiments/walkers` while working; the
+browser spec is for the things a real page adds, and it says which at the top.
 
-**Those unit tests are not cheap**, and they are most of the section's unit run
-— about two minutes of it. `tests/AGENTS.md` says so next to its advice about
-filters, because otherwise the next session reads "milliseconds", runs the full
-suite and concludes something is wrong.
+## Test the decision, not a park that happens to make it
 
-Two things already hold the cost down, and both are worth knowing before adding
-a third case:
+**A choice somebody in the park makes is a function, and it is tested as one**
+(#287). Who stops (`stoppingChance`), who sits (`sitsChance`), how many are
+children (`childrenIn`), whether two people are crossing (`crosses`), whether
+somebody gives way (`mayYield`, `yieldChance`), how a pace drifts (`paceDrift`),
+whether a group dawdles or hurries (`urgeChoice`), whether a child has strayed
+(`strays`) and which game it plays (`playChoice`) are exported from `crowd.ts`
+and tested in `tests/decisions.test.ts` with constructed inputs and no crowd —
+the whole file runs in well under a second.
+
+They used to be checked by running a crowd for a minute or two and counting what
+came out: a quadrant tally after seventy seconds, a share of children after
+sixty, whether any child was seen jumping in two minutes. That measured each
+decision through everything else the crowd does, at the price of the whole
+simulation, and mostly measured the random number generator. Andrei, on the same
+pattern in crowd: "testing a random number generator doesn't require a world
+built on that."
+
+So, before adding a case to `crowd.test.ts`, find the function that makes the
+decision. If it is buried in `step()` or `updateGroup()`, **extract it without
+changing behaviour** — same arithmetic, and the same draws from the stream in
+the same order, passing the draw in rather than drawing inside — and prove it
+with a seeded walk compared before and after. Then test the function, and add at
+most **a second of park** to `crowd.test.ts`'s "wired into the walk" to show the
+walk consults it, paired with its absence. Every decision there shows in the
+first second, because a park opens with residents in place and children at
+play.
+
+What stays a crowd test is what no single function owns: nobody inside anybody,
+the population holding near its target, the crowd turning over, the world
+staying bounded, and heading noise by flow. `passing.test.ts` is the one place
+`steering` is wrapped, to see that the step asks which side to pass on; it is a
+file of its own because the wrapper slows every crowd that runs beside it.
+
+What is left of the unit cost holds itself down three ways, all worth knowing
+before adding a long case:
 
 - They run at a **1/60 s step** where the piece runs at 1/120. A longer step is
   the harder case for everything they assert, so passing here implies passing at
@@ -104,14 +133,18 @@ a third case:
   measure properties four dozen show. The preset loop uses a small _window_ for
   the same reason — the viewport is not part of a preset.
 - Where an effect is small and the seed-to-seed scatter is comparable, read the
-  **same run twice** rather than comparing two runs. The lane-sorting case did
-  the latter and was comparing its seeds as much as its subject.
+  **same run twice** rather than comparing two runs. A lane-sorting case did the
+  latter and was comparing its seeds as much as its subject.
 
-The exception is worth knowing because it is the one that caught the rule out:
-**lane sorting needs the frame as well as the density.** Files form along a
-walker's path, and at span 10 a crossing takes ten seconds, which is not long
-enough for one to — the test fails there, correctly. Do not shrink that one
-below 13.
+**Lanes are no longer measured forming**, and that is deliberate rather than a
+gap. The case ran two minutes of counterflow at span 13 — it could not be
+shrunk, because files form along a walker's path and a shorter crossing gave
+them no time — and was 35 of the file's 124 seconds. What it rested on is two
+things: the side to pass on, which `steering.test.ts` tests directly (seen red
+with `passingBias` returning nothing), and the step consulting it, which
+`passing.test.ts` holds. Do not bring the long run back to check the emergent
+number; if the sorting looks wrong on screen, the decision or its wiring is
+where to look.
 
 Before adding another case, ask whether an existing one can be widened.
 
@@ -132,8 +165,14 @@ the whole reason the numbers in `stats()` exist.
   builds a placeholder view for a canvas that has no size yet, and `fill()` ran
   against it — so the whole opening crowd landed inside a few square metres at
   the middle of the frame and spent the next minute dispersing. It looked exactly
-  like a bug in the spawner. `start()` measures first and fills after, and
-  `src/experiments/walkers/tests/crowd.test.ts` counts quadrants because of it.
+  like a bug in the spawner. `start()` measures first and fills after. **No
+  test holds this, and none can now**: the placeholder view became a
+  span-sized square rather than a point, so filling against it puts the cast
+  across roughly the right ground, and with the two lines swapped back the page
+  still shows a full frame (tried, 2026-10-16). `crowd.test.ts` counted
+  quadrants on the theory that it guarded this, and could not have — its park
+  measures first by construction. Keep the order for the aspect and the margin,
+  which the placeholder gets wrong.
 - **Population control is a loop with a transport delay in it**, and every
   obvious controller oscillates. People spawn off screen and take ten or twenty
   seconds to walk into shot. Proportional on the in-frame count swung between 0
