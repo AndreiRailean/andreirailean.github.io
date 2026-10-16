@@ -184,6 +184,11 @@ two overlapping in a chain along a line.)_
 > re-generation. let's call this a snowflake
 > http://100.117.55.104:4627/experiments/artdeco/?s=___f______9_A5lBiZjDMMwjCCFDAtAAAQlAFAAAAKAAMtAACjARFkVQAKwI
 
+## 2026-10-17 — hyper cube
+
+> hyper cube
+> http://100.117.55.104:4627/experiments/artdeco/?s=___f________cAOZQYmYwzDMIwghQwLQAAEJQBQAAACgADLQAAowERZFUACsiG2M
+
 ## Open questions
 
 _Mine, not his — what I assumed and what would settle it._
