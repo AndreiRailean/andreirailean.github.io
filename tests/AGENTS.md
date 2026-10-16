@@ -77,33 +77,29 @@ the picture and the numbers describe one frame. `--size WxH` changes the
 viewport from the suite's 1280×900. A still is evidence for a person and nothing
 compares it — see "The principle" below.
 
-**A full `pnpm run test:unit` no longer answers in milliseconds, and two pieces
-are why.** `src/experiments/walkers/tests/` and `src/experiments/crowd/tests/` simulate hours of crowd
-to assert things no screenshot and no shorter run can — a counterflow sorting
-into files, a population holding without arriving in waves, a head that glances
-and comes back — and between them they are **722 of the suite's 736 seconds**
-of test time, measured 2026-09-26. Everything else is still instant, and the
-filter is how you get it: `pnpm exec vitest crowd`, `pnpm exec vitest walkers`,
-`pnpm exec vitest <yours>`. Reach for the filter mid-change and the full run
-before you push.
+**Test the decision, not a world that happens to make it.** Andrei, 2026-10-16:
+"we don't need a 100s of walking to test stopping. testing a random number
+generator doesn't require a world built on that. if we're testing collision
+detection - limit to that. if we're testing turning - do that." Crowd and
+walkers simulated hours of crowd to assert things each decided by one function
+— a stop, a turn, a catch, a hide — and were **722 of the suite's 736 seconds**
+of test time on 2026-09-26. With those decisions pulled out of the step loops
+and checked on constructed inputs (#289, #291 and the crowd's second pass,
+#287), the whole suite is **45 s of test time** and no file is over ten.
 
-### Why the crowd's checks are split across files
+So a new long walk is a decision that has not been found yet. Find the function
+that decides, export it unchanged (prove unchanged with a seeded trace,
+byte-identical before and after), test it directly, and keep a few seconds of
+the real world only to show the world calls it. Where the property is the
+observer's own — a gait, a course, a gaze — walk the scene's way with nobody
+else on it; `crowd/tests/structure.test.ts`'s `me` and
+`crowd/tests/chase.test.ts`'s `alone` are the pattern.
 
-**Vitest runs one file on one worker, start to finish, and these tests are
-synchronous arithmetic** — `describe.concurrent` shares a thread and buys
-nothing. So the full run can never finish sooner than its heaviest single file,
-however many workers there are. `crowd/stroll.test.ts` was 307 seconds of test
-time on its own, plus its `describe`-level runs, which vitest books as _import_
-time and does not show against the file at all. It set the unit job's wall clock
-at about nine minutes, longer than the browser job.
-
-So `stroll` is three files and `throng` is two, cut along `describe` lines
-that already shared nothing but constants, and those constants live in
-`src/experiments/crowd/tests/support.ts`. **When a crowd file grows past a couple of
-minutes, split it the same way rather than adding to it**: the cost of one more
-file is an import line, and the cost of one more minute in the heaviest file is
-paid by every PR. Read file times with `--reporter=json`, since the default
-reporter's per-file figures leave out the `describe`-level work.
+**Vitest still runs one file on one worker, start to finish**, so the full run
+can never finish sooner than its heaviest file, however many workers there are.
+`crowd/stroll.test.ts` was once 307 seconds on its own and set the unit job at
+nine minutes. Read file times with `--reporter=json`, and remember that work in
+a `describe` body is booked as _import_ time and does not show against the file.
 
 ## Neither runner typechecks
 
@@ -374,9 +370,9 @@ which is nothing. The work is synchronous arithmetic and parking the frame loop
 cannot touch it.
 
 **And the simulated duration is often not the cost either.** #133 asks for these
-to be measured, so: flotsam's `a raft ignores the chop` costs the same at
-`run(0.5)`, `run(1)` and `run(3)` — 14.4s in all three. Phase-timed, the cost is
-**speck size**, not seconds:
+to be measured, so: flotsam's `a raft ignores the chop`, at 4,000 dots, cost the
+same at `run(0.5)`, `run(1)` and `run(3)` — 14.4s in all three. Phase-timed, the
+cost was **speck size**, not seconds:
 
 |           | with 4mm specks | with 1.2m rafts |
 | --------- | --------------- | --------------- |
@@ -389,6 +385,12 @@ rather than a test's waste, it is identical in either runner, and it is why
 **moving that test to a headless harness would not make it cheap** — the same
 thing #131 measured for walkers, now confirmed on a second piece. What a harness
 buys is the page, and a shorter serial chain; it does not buy the arithmetic.
+
+**What did make it cheap was asking for less of it** (#292). The orbit ratio it
+asserts does not depend on how many specks there are, so the test now runs 300
+dots at `run(0.5)` and keeps only that ratio; how the response falls with size
+is `waves.test.ts`, and gathering on a steep sea has its own test. Fewer specks
+is fewer rafts' worth of arithmetic, which is the cost the table found.
 
 **Do not read a single whole-test timing as a measurement.** This box is shared
 with other sessions, and the same test measured 24s, 29s and 41-55s within an
