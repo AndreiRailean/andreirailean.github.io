@@ -302,10 +302,10 @@ export const SPOT_AHEAD = [3.2, 8]
 const SPOT_BEARING_MIN = 0.65
 
 /** Seconds a chaser looks at the person in red before looking back at the way, walking. A run shortens both. */
-const SPELL_ON_THEM = [0.7, 1.6]
+export const SPELL_ON_THEM = [0.7, 1.6]
 
 /** Seconds a chaser looks at the way ahead before looking for the person in red again, walking. */
-const SPELL_AHEAD = [0.6, 1.3]
+export const SPELL_AHEAD = [0.6, 1.3]
 
 /** The neck's natural frequency in a chase, against `NECK_OMEGA`'s 8. A 45° turn lands in about 0.2 s rather than 0.36. */
 const NECK_CHASE = 14
@@ -483,6 +483,30 @@ export function turnsToLook(stopped: boolean, roll: () => number): boolean {
 }
 
 /**
+ * A chaser's next spell of looking: at the person in red or at the way ahead,
+ * turn about, and whether this spell is the chase's at all.
+ *
+ * **A chaser looks two ways, and nowhere else**, so the spells alternate and
+ * nothing in between is offered. A spell is the chase's `chase` of the time;
+ * the rest go the ordinary way, for a second or two. A run shortens the chase's
+ * spells, because the world comes at you faster. Draws: whether, then how long.
+ */
+export function chaseSpell(
+  onThem: boolean,
+  chase: number,
+  run: number,
+  roll: () => number,
+): { onThem: boolean; chaseGaze: boolean; spell: number } {
+  const next = !onThem
+  const chaseGaze = roll() < chase
+  const pace = 1 - 0.45 * run
+  const [low, high] = next ? SPELL_ON_THEM : SPELL_AHEAD
+  let spell = (low! + roll() * (high! - low!)) * pace
+  if (!chaseGaze) spell = 0.8 + roll() * 1.2
+  return { onThem: next, chaseGaze, spell }
+}
+
+/**
  * How much the walls hold the line being walked to the way, 0 to 1: nothing on
  * open ground, more as the corridor narrows. It is the room running out.
  */
@@ -575,11 +599,10 @@ export function createStroll(settings: Settings, seed: number) {
   function chasing(dt: number): boolean {
     gazeSpell -= dt
     if (gazeSpell <= 0) {
-      onThem = !onThem
-      chaseGaze = rng() < current.chase
-      const pace = 1 - 0.45 * runMix
-      gazeSpell = (onThem ? between(SPELL_ON_THEM, rng()) : between(SPELL_AHEAD, rng())) * pace
-      if (!chaseGaze) gazeSpell = 0.8 + rng() * 1.2
+      const next = chaseSpell(onThem, current.chase, runMix, rng)
+      onThem = next.onThem
+      chaseGaze = next.chaseGaze
+      gazeSpell = next.spell
     }
     return chaseGaze
   }

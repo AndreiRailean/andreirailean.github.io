@@ -63,6 +63,13 @@ market walk. Sharding cannot split a file, and `src/experiments/crowd/AGENTS.md`
 records why the step stays at 1/120. The next unit lever is that test's length,
 which is a judgement about what it needs to show, not a CI setting.
 
+_Update 2026-10-16:_ that judgement was made (#287). The crowd's and walkers'
+long walks were replaced by tests of the functions that decide each property,
+and `stroll.route.test.ts` no longer exists. The heaviest unit file is now
+walkers' `crowd.test.ts` at about 10 s locally, and the whole unit suite is
+about 45 s of test time, so the unit job's clock is set by setup and the
+browser job rather than by any one file.
+
 **A spec file that grows past a few minutes should go parallel**, or it becomes
 the job's clock again however many shards there are. `tests/AGENTS.md` carries
 that rule.

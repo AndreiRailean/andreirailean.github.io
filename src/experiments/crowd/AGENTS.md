@@ -121,10 +121,25 @@ that statistic and on a lateral-only version. So the statistic mostly sees
 where re-entered walkers land. It was removed rather than kept as coverage; see
 "What is not here".
 
-**`structure.test.ts` still walks long** — the chase, the boulders and the stalls,
-three to four minutes each in a thinned world. They wait on decisions inside
-`throng.ts` (`flee`, `pickHide`, `keepCover`) that have not been lifted out the
-way the stroll's were, which is the next piece of this.
+**The chase is decisions too.** The person in red's were inside `throng.ts`'s
+closure; they are **`runaway.ts`** now — `flee` (the catch, the bolt, the
+re-arm, the run/dawdle switch), `pickHide` and `keepCover` (the boulder), and
+`junctionHeading` (the corner at an aisle crossing) — lifted out the same way,
+with the same seeded trace plus five chase variants byte-identical. The throng
+keeps one `RunawayState` and passes a `RunawayWorld` whose ground, settings and
+stream are getters, because each is replaced on a rebuild or reseed; a world
+captured by value would go stale silently. My side of the chase — the two-way
+gaze's `chaseSpell`, following their trail, being stopped by a stall, standing
+with them when caught — is checked in `tests/chase.test.ts` against a scripted
+person in red on empty ground, and theirs in `tests/runaway.test.ts`.
+
+**`structure.test.ts` walks seconds, not minutes.** It used to chase for two to
+four minutes at a time and walk hills and lanes for up to ninety seconds: 81 s.
+Tobler's pace, the lane push and my team's places are checked as functions
+(`hikingPace`, `lanePush`, `teamSlots`), with three to twenty seconds of the
+throng to show it calls them; my gait, my course round the loop and my gaze at
+a run are walked on the scene's own way with nobody else on it (`me` in that
+file). 3.4 s of test time, measured 2026-10-16.
 
 ## The gaze has two axes and a subject
 
@@ -647,8 +662,8 @@ but much larger and of black colour so the blend in with the background".
   replaced them in the market; the stalls stay because addresses already out
   there name them, the showcase's `catch me` among them. Their bounds are
   declared in `BOUNDS` directly, since a setting with no slider has no track.
-  `structure.test.ts` pins the stalls scene for the gaze and catch tests that
-  were measured on it.
+  `structure.test.ts` pins the stalls scene in its short chase through them, and
+  `chase.test.ts` builds one stall to be stopped by.
 - **A grid of boulders is a forest: it hides most of the crowd.** `layout` 1
   and 2 put nearly equal boulders exactly on a square or hexagonal lattice,
   `aisle` (as "passages") apart, origin at a crossing; `coverage` fills that
