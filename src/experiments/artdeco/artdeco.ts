@@ -50,9 +50,24 @@ const KINDS: Kind[] = ["straight", "branch", "fork", "turn", "echo", "stop"]
  * whether and where a circle lands on the stretch, `size` its radius. They come
  * from their own stream, so adding them moved no drawing an older seed made.
  */
-type Token = { kind: Kind; sign: 1 | -1; meet: number; corner: number; along: number; at: number; size: number }
+type Token = {
+  kind: Kind
+  sign: 1 | -1
+  meet: number
+  corner: number
+  along: number
+  at: number
+  size: number
+  /** The next decision repeats this one, `beat` rather than a step later. */
+  again: boolean
+  /** This one is the second or third of three. */
+  copy: boolean
+  /** Below `rise`, a turn leans back towards upright. */
+  lean: number
+}
 
-type Family = { rng: Rng; marks: Rng; tokens: Token[]; first: boolean }
+/** `threes` decides which decisions repeat; its own stream, so at `thrice` 0 nothing moved. */
+type Family = { rng: Rng; marks: Rng; threes: Rng; leans: Rng; tokens: Token[]; first: boolean }
 
 type Choice = "stop" | "cross" | "rebound"
 
@@ -61,7 +76,7 @@ type Circle = { x: number; y: number; size: number; born: number; gen: number; a
 type Halo = { x: number; y: number; r: number }
 
 /** One image under the symmetry: a linear map about the frame's centre, `turn` its rotation in radians. */
-type Xf = { xx: number; xy: number; yx: number; yy: number; flip: boolean; turn: number }
+type Xf = { xx: number; xy: number; yx: number; yy: number; flip: boolean; turn: number; ox: number; oy: number }
 
 type Seg = {
   id: number
@@ -73,6 +88,9 @@ type Seg = {
   gen: number
   /** On the centre line: drawn once, never mirrored. */
   axis: boolean
+  /** The segment this one carries on from at a turn or rebound, and the one carrying on from it; -1 for none. */
+  prev: number
+  next: number
 }
 
 type Echo = { left: number; toNext: number; side: 1 | -1; family: Family }
@@ -129,6 +147,10 @@ export type Stats = {
   rebounds: number
   offshoots: number
   circles: { corner: number; along: number }
+  /** Decisions taken as the second or third of three. */
+  repeated: number
+  /** Turns that `rise` held upright or turned back towards upright. */
+  leaned: number
   dropped: number
   fps: number
 }
@@ -140,6 +162,8 @@ const EPS = 1e-6
 /** A hit this close to the start of the tip's own segment is where it was born, not a meeting. */
 const ORIGIN = 0.75
 const REST = 1
+/** The one step growth is ever taken in, in seconds; see `tick`. */
+const TICK = 1 / 60
 
 const emptyDecisions = (): Record<Kind, number> => ({ straight: 0, branch: 0, fork: 0, turn: 0, echo: 0, stop: 0 })
 const emptyMeetings = () => ({ line: 0, mirror: 0, axis: 0, halo: 0, edge: 0, depth: 0, cap: 0 })
@@ -163,12 +187,16 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
   let last = 0
   let debug = false
   let fps = 0
+  /** Seconds of growth the frames have run up and the ticks not yet taken. */
+  let owed = 0
   let decisions = emptyDecisions()
   let meetings = emptyMeetings()
   let chose = emptyChoices()
   let rebounds = 0
   let offshoots = 0
   let circles = { corner: 0, along: 0 }
+  let repeated = 0
+  let leaned = 0
   let dropped = 0
   let stamp = 0
   let seen = new Uint32Array(MAX_SEGS + 1)
@@ -188,30 +216,42 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
   let imagesFor = ""
   /** The dihedral group of order 2n; index 0 is the identity and index 1 the left-right mirror. */
   function group(): Xf[] {
-    if (imagesFor === settings.fold) return images
+    const key = `${settings.fold} ${settings.reach} ${width} ${height}`
+    if (imagesFor === key) return images
     const n = Number(settings.fold)
     images = []
     for (let k = 0; k < n; k++) {
       const turn = (2 * Math.PI * k) / n
       const c = Math.cos(turn)
       const sn = Math.sin(turn)
-      images.push({ xx: c, xy: -sn, yx: sn, yy: c, flip: false, turn })
-      images.push({ xx: -c, xy: -sn, yx: -sn, yy: c, flip: true, turn })
+      // Edges: each copy slides out along its stem until the stem starts at the
+      // frame's edge, as the bottom one does, rather than on a circle of the height.
+      const ux = -sn
+      const uy = c
+      const edge = Math.min(
+        Math.abs(ux) > EPS ? width / 2 / Math.abs(ux) : Infinity,
+        Math.abs(uy) > EPS ? height / 2 / Math.abs(uy) : Infinity,
+      )
+      const push = settings.reach === "edges" ? edge - height / 2 : 0
+      const ox = ux * push
+      const oy = uy * push
+      images.push({ xx: c, xy: -sn, yx: sn, yy: c, flip: false, turn, ox, oy })
+      images.push({ xx: -c, xy: -sn, yx: -sn, yy: c, flip: true, turn, ox, oy })
     }
-    imagesFor = settings.fold
+    imagesFor = key
     return images
   }
 
   function image(f: Xf, x: number, y: number): [number, number] {
     const ox = x - centre()
     const oy = y - middle()
-    return [centre() + f.xx * ox + f.xy * oy, middle() + f.yx * ox + f.yy * oy]
+    return [centre() + f.xx * ox + f.xy * oy + f.ox, middle() + f.yx * ox + f.yy * oy + f.oy]
   }
 
   /** The inverse image: every map here is orthonormal, so its inverse is its transpose. */
   function unimage(f: Xf, x: number, y: number): [number, number] {
-    const ox = x - centre()
-    const oy = y - middle()
+    const ox = x - centre() - f.ox
+    const oy = y - middle() - f.oy
     return [centre() + f.xx * ox + f.yx * oy, middle() + f.xy * ox + f.yy * oy]
   }
 
@@ -248,6 +288,8 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     return {
       rng: makeRng(hashSeed(settings.seed, salt, tree.families)),
       marks: makeRng(hashSeed(settings.seed, salt, tree.families, 7)),
+      threes: makeRng(hashSeed(settings.seed, salt, tree.families, 11)),
+      leans: makeRng(hashSeed(settings.seed, salt, tree.families, 17)),
       tokens: [],
       first: tree.families === 1,
     }
@@ -273,9 +315,37 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
         }
       } else f.rng()
       const m = f.marks
-      f.tokens.push({ kind, sign: f.rng() < 0.5 ? -1 : 1, meet: m(), corner: m(), along: m(), at: m(), size: m() })
+      const tk: Token = {
+        kind,
+        sign: f.rng() < 0.5 ? -1 : 1,
+        meet: m(),
+        corner: m(),
+        along: m(),
+        at: m(),
+        size: m(),
+        again: false,
+        copy: false,
+        lean: f.leans(),
+      }
+      f.tokens.push(tk)
+      // The rule of threes: some decisions are made three times running, a beat apart.
+      if (settings.thrice > 0 && repeats(kind) && f.threes() < settings.thrice) {
+        tk.again = true
+        f.tokens.push({ ...tk, meet: m(), corner: m(), along: m(), at: m(), size: m(), again: true, copy: true })
+        f.tokens.push({ ...tk, meet: m(), corner: m(), along: m(), at: m(), size: m(), again: false, copy: true })
+      }
     }
     return f.tokens[n]!
+  }
+
+  function repeats(kind: Kind): boolean {
+    if (kind === "straight" || kind === "stop") return false
+    return settings.thriceOf === "any" || settings.thriceOf === kind
+  }
+
+  /** How far a line in direction `d` grows before deciding: longer upright, by `rise`. */
+  function stretch(d: number, stepLen: number): number {
+    return stepLen * (1 + 3 * settings.rise * Math.abs(dy(d)) ** 4)
   }
 
   function headPoint(seg: Seg): [number, number] {
@@ -301,7 +371,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
       dropped += 1
       return null
     }
-    const seg: Seg = { id: tree.segs.length, x0, y0, d: wrap(d), len: 0, born, gen, axis }
+    const seg: Seg = { id: tree.segs.length, x0, y0, d: wrap(d), len: 0, born, gen, axis, prev: -1, next: -1 }
     tree.segs.push(seg)
     register(tree, seg, 0, 0)
     return seg
@@ -494,7 +564,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
       n: 0,
       hand,
       depth: parent.depth,
-      toDecision: stepLen,
+      toDecision: stretch(d, stepLen),
       stepLen,
       echo: null,
       bead: Infinity,
@@ -540,6 +610,8 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     const [x, y] = headPoint(head.seg)
     const seg = newSeg(tree, x, y, d, head.seg.gen, at, false)
     if (!seg) return false
+    seg.prev = head.seg.id
+    head.seg.next = seg.id
     head.seg = seg
     head.echo = null
     head.past = -1
@@ -555,9 +627,15 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     const tk = token(head.family, head.n)
     head.n += 1
     head.depth += 1
-    head.toDecision = head.stepLen
     arm(head)
     decisions[tk.kind] += 1
+    if (tk.copy) repeated += 1
+    const alive = act(tree, head, tk, at)
+    head.toDecision = tk.again ? Math.max(1, settings.beat * head.stepLen) : stretch(head.seg.d, head.stepLen)
+    return alive
+  }
+
+  function act(tree: Tree, head: Head, tk: Token, at: number): boolean {
     const [x, y] = headPoint(head.seg)
     const d = head.seg.d
     const split = () => {
@@ -583,6 +661,18 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
         if (head.seg.axis) {
           split()
           return false
+        }
+        if (tk.lean < settings.rise) {
+          // Rising: an upright line keeps going, and a slanting one turns back towards upright.
+          const half = turns() / 2
+          const off = ((d % half) + half) % half
+          if (off === 0) {
+            leaned += 1
+            return true
+          }
+          leaned += 1
+          mark(tree, head, tk, "turns", at)
+          return bend(tree, head, d + (off <= half / 2 ? -1 : 1), at)
         }
         mark(tree, head, tk, "turns", at)
         return bend(tree, head, d + tk.sign * head.hand, at)
@@ -697,7 +787,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
       heads: [],
       cells: new Map(),
       circles: [],
-      halo: settings.halo > 0 ? { x: centre(), y: height - px(settings.haloAt), r: px(settings.halo) } : null,
+      halo: null,
       D: 0,
       delay: Infinity,
       grown: -1,
@@ -706,13 +796,22 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
       root: undefined as unknown as Family,
     }
     tree.root = family(tree)
+    // Where this drawing is born, and how big its circle is: the same every
+    // drawing at 0, otherwise drawn from the seed and the drawing's number.
+    const birth = makeRng(hashSeed(settings.seed, settings.vary === "new" ? tree.cycle : 0, 13))
+    const grown = 1 + settings.haloVary * (2 * birth() - 1)
+    if (settings.halo > 0) {
+      const r = px(settings.halo) * grown
+      tree.halo = { x: centre(), y: height - px(settings.haloAt), r }
+    }
     if (seen.length < MAX_SEGS + 1) seen = new Uint32Array(MAX_SEGS + 1)
     const cx = centre()
     const gap = px(settings.gap)
     const stems = Math.round(settings.stems)
     const xs: number[] = []
     if (stems % 2 === 1) xs.push(cx)
-    for (let k = 1; k <= Math.floor(stems / 2); k++) xs.push(cx + (stems % 2 === 1 ? k : k - 0.5) * gap)
+    for (let k = 1; k <= Math.floor(stems / 2); k++)
+      xs.push(cx + Math.max(0.25, (stems % 2 === 1 ? k : k - 0.5) + settings.wander * (2 * birth() - 1)) * gap)
     for (const x of xs) {
       const seg = newSeg(tree, x, height - inset(), 0, 0, 0, x === cx)
       if (!seg) continue
@@ -722,7 +821,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
         n: 0,
         hand: 1,
         depth: 0,
-        toDecision: stepPx(),
+        toDecision: stretch(0, stepPx()),
         stepLen: stepPx(),
         echo: null,
         bead: Infinity,
@@ -739,12 +838,15 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     trees = []
     cycle = 0
     restLeft = 0
+    owed = 0
     decisions = emptyDecisions()
     meetings = emptyMeetings()
     chose = emptyChoices()
     rebounds = 0
     offshoots = 0
     circles = { corner: 0, along: 0 }
+    repeated = 0
+    leaned = 0
     dropped = 0
     trees.push(plant())
   }
@@ -818,30 +920,36 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     const cx = centre()
     ctx.lineCap = "square"
     ctx.strokeStyle = `hsl(${hue} 62% 64%)`
-    const byGen = new Map<number, Seg[]>()
+    const byGen = new Map<number, { seg: Seg; tree: Tree; tail: number }[]>()
     for (const tree of trees)
       for (const seg of tree.segs) {
         const tail = Math.max(0, tree.D - tree.delay - seg.born)
         if (tail >= seg.len) continue
         let list = byGen.get(seg.gen)
         if (!list) byGen.set(seg.gen, (list = []))
-        list.push({ ...seg, x0: seg.x0 + dx(seg.d) * tail, y0: seg.y0 + dy(seg.d) * tail, len: seg.len - tail })
+        list.push({ seg, tree, tail })
       }
     const fs = group()
     for (const [gen, list] of byGen) {
       ctx.lineWidth = Math.max(0.35, settings.width * (1 - settings.taper) ** gen)
       ctx.beginPath()
-      const strands = Math.round(settings.strands)
-      for (const seg of list) {
+      const strands = strandsAt(gen)
+      for (const { seg, tree, tail } of list) {
         const ux = dx(seg.d)
         const uy = dy(seg.d)
+        // A strand meets the next one at a turn where their offset lines cross, as a mitre does.
+        const before = tail <= 0 && seg.prev >= 0 ? tree.segs[seg.prev]! : null
+        const after = seg.next >= 0 && tree.segs[seg.next]!.len > 0 ? tree.segs[seg.next]! : null
         for (let k = 0; k < strands; k++) {
           // Strands sit side by side across the line, centred on it.
           const o = (k - (strands - 1) / 2) * settings.spacing
-          const x0 = seg.x0 - uy * o
-          const y0 = seg.y0 + ux * o
-          const x1 = x0 + ux * seg.len
-          const y1 = y0 + uy * seg.len
+          const start = tail + (before ? mitre(before.d, seg.d, o)[1] : 0)
+          const end = seg.len + (after ? mitre(seg.d, after.d, o)[0] : 0)
+          if (end <= start) continue
+          const x0 = seg.x0 - uy * o + ux * start
+          const y0 = seg.y0 + ux * o + uy * start
+          const x1 = seg.x0 - uy * o + ux * end
+          const y1 = seg.y0 + ux * o + uy * end
           for (const f of fs) {
             // On the centre line a flip's image is a rotation's, already drawn.
             if (seg.axis && f.flip) continue
@@ -880,6 +988,34 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     }
   }
 
+  /** Strands drawn for a line of generation `gen`: bands on the stems only, if so set. */
+  function strandsAt(gen: number): number {
+    return settings.strandsOn === "stems" && gen > 0 ? 1 : Math.round(settings.strands)
+  }
+
+  /**
+   * Where the strand at offset `o` of a line turning from direction `a` to `b`
+   * should end on the first and start on the second, as distances along each
+   * from the corner: their offset lines' crossing. Nothing at a turn so sharp
+   * the mitre would spike, or none at all.
+   */
+  function mitre(a: number, b: number, o: number): [number, number] {
+    if (o === 0) return [0, 0]
+    const ax = dx(a)
+    const ay = dy(a)
+    const bx = dx(b)
+    const by = dy(b)
+    const denom = cross(ax, ay, bx, by)
+    if (Math.abs(denom) < 1e-6) return [0, 0]
+    // The offset moves the strand along (-uy, ux) for each line.
+    const wx = o * (-by + ay)
+    const wy = o * (bx - ax)
+    const s = cross(wx, wy, bx, by) / denom
+    const r = cross(wx, wy, ax, ay) / denom
+    const limit = 4 * Math.abs(o)
+    return Math.abs(s) > limit || Math.abs(r) > limit ? [0, 0] : [s, r]
+  }
+
   /**
    * One circle, and its reflection unless it sits on the centre line, drawn up
    * both sides from its lowest point as far as the clock has run since `born`
@@ -901,7 +1037,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
       if (at.some(([ox, oy]) => Math.hypot(ox - ix, oy - iy) < 0.5)) continue
       at.push([ix, iy, Math.PI / 2 + f.turn])
     }
-    const strands = Math.round(settings.strands)
+    const strands = strandsAt(gen)
     ctx.lineWidth = Math.max(0.35, settings.width * (1 - settings.taper) ** gen)
     if (how !== "ring") {
       // A disc is there whole or not at all, so it grows and shrinks with the outline instead.
@@ -932,7 +1068,16 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     const dt = last ? Math.min(0.1, (now - last) / 1000) : 0
     last = now
     if (dt > 0) fps = fps ? fps * 0.95 + 0.05 / dt : 1 / dt
-    if (!held && dt > 0) step(dt)
+    if (!held && dt > 0) {
+      // Growth runs in fixed ticks whatever the frame rate, so a drawing does
+      // not depend on how long each frame took: live, settled and replayed
+      // runs of one address grow the same drawing.
+      owed += dt
+      while (owed >= TICK) {
+        step(TICK)
+        owed -= TICK
+      }
+    }
     draw()
     frame = requestAnimationFrame(tick)
   }
@@ -944,8 +1089,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
   }
 
   function settle(seconds: number) {
-    const dt = 1 / 60
-    for (let t = 0; t < seconds; t += dt) step(dt)
+    for (let t = 0; t < seconds; t += TICK) step(TICK)
     draw()
   }
 
@@ -1005,6 +1149,8 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
         rebounds,
         offshoots,
         circles: { ...circles },
+        repeated,
+        leaned,
         dropped,
         fps: Math.round(fps),
       }
