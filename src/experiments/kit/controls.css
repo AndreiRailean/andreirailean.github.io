@@ -72,6 +72,18 @@
     transform var(--ui-fade, 0.35s) ease-out;
 }
 
+/* **Smaller below 1440 px** (#258). The panel's third column reached across
+   the presets at 1024–1366 px wide; Andrei chose this over narrower boxes and
+   over capping the columns, having seen all three. Every height inside `#ui` is
+   a percentage of `#ui` rather than of `vh` for this reason: `zoom` scales a
+   `vh` length with everything else, so a `100vh` panel stopped 15% short of
+   `about` while the presets, sized in `%`, still reached `all experiments`. */
+@media (max-width: 1439px) {
+  #ui {
+    zoom: 0.85;
+  }
+}
+
 /* The pointer and the controls go together, the way video chrome does. The
    cursor rule is on the document because there is nothing else to hang it on. */
 html[data-idle="true"] {
@@ -186,7 +198,7 @@ html[data-idle="true"] #ui > * {
 #ui .panel {
   top: 2.4rem;
   right: 0;
-  max-height: calc(100vh - 2.5rem - 2.4rem - 2.6rem - 1.6rem);
+  max-height: calc(100% - 2.4rem - 2.6rem - 1.6rem);
 }
 
 #ui > .about {
@@ -215,7 +227,7 @@ html[data-idle="true"] #ui > * {
   gap: 0.45rem;
   width: var(--ui-panel-min, 22rem);
   min-width: 0;
-  max-height: calc(100vh - 2.5rem - 2.4rem - 2.6rem);
+  max-height: calc(100% - 2.4rem - 2.6rem);
   padding: 0;
   overflow: visible;
   background: none;
