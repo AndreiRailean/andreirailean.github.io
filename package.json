@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "pnpm run runners && astro dev",
     "start": "pnpm run runners && astro dev",
-    "build": "pnpm run runners && pnpm run typecheck && astro build && pnpm run check:links",
+    "build": "pnpm run runners && pnpm run typecheck && NO_BRIDGE=1 astro build && pnpm run check:links && pnpm run check:bridge",
+    "bridge": "node scripts/bridge.ts",
+    "check:bridge": "node scripts/check-no-bridge.ts",
     "build:quick": "pnpm run runners && astro build",
     "check:links": "node scripts/check-links.mts",
     "preview": "node scripts/preview.ts",

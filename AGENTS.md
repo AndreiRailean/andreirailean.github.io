@@ -115,6 +115,12 @@ Never `astro dev`: it costs seven times the memory and has twice shown him stale
 work he then reported as broken. Invoked with `/preview`. See
 `docs/adr/20260912-previews-and-tests-run-against-a-static-build.md`.
 
+**What is on his screen can be read, not asked for.** A preview's pages post their
+scene, and under `?trace=1` an event trace, to `.astro/bridge.jsonl`. When he says
+"save what I have on screen as preset X", run `pnpm run bridge state <piece>` and
+add what it prints to that piece's presets. It never deploys: a check on `dist/`
+holds that. The `/preview` skill has the rest, and #305 the design.
+
 ### Wrapping up a session
 
 **Most of what a session leaves behind, it did not choose to start.** A poster

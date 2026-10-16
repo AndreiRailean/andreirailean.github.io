@@ -85,6 +85,12 @@ pnpm exec astro dev stop
 
 Both are no-ops when nothing is running, so neither needs a check first.
 
+The preview **bridge** (`scripts/bridge-sidecar.ts`, `.astro/bridge.json`) needs
+nothing of its own: it exits thirty seconds after this worktree's preview is
+gone and removes its state as it goes. A `bridge.json` naming a dead pid is a
+corpse from a kill, harmless, and `bridgePort()` already reads it as no bridge.
+`.astro/bridge.jsonl` is the log he may still want read; leave it.
+
 **Do not reach for `pkill`.** `pgrep`/`pkill -f` match this session's own Bash
 wrapper, so `pkill` exits 144 and a wait loop on `pgrep` never returns. If you
 genuinely need a pid, read it from the state file.

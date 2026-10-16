@@ -3,6 +3,8 @@ import { getCollection } from "astro:content"
 import "@/experiments/kit/controls.css"
 import Reel from "@/experiments/gallery/Reel.astro"
 import NoteOverlay, { type NoteTheme } from "@/experiments/gallery/NoteOverlay.astro"
+import BridgeClient from "@/experiments/gallery/BridgeClient.astro"
+import { bridgePort } from "@/experiments/gallery/bridge"
 
 /**
  * The page every piece is served in: the bare document, the chrome's mount,
@@ -46,6 +48,9 @@ const { slug, note = false, theme, backdrop } = Astro.props
 const entry = (await getCollection("experiments")).find(({ data }) => data.slug === slug)
 if (!entry) throw new Error(`${slug}: missing about.md`)
 const { title, summary } = entry.data
+
+// Null in anything that deploys: only a live preview sidecar turns this on. `bridge.ts`.
+const bridge = bridgePort()
 ---
 
 <!doctype html>
@@ -55,6 +60,7 @@ const { title, summary } = entry.data
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{note ? `${title} — about` : title}</title>
     <meta name="description" content={summary} />
+    {bridge !== null && <BridgeClient port={bridge} slug={slug} />}
   </head>
   <body>
     <slot />
