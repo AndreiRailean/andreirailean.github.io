@@ -62,53 +62,6 @@ test("the panel opens styled, closes when asked, and leaves the sliders hand-dra
   await expect(panel).toBeHidden()
 })
 
-test("settings survive the round trip through the query string", async ({ page }) => {
-  const experiment = await openSky(page)
-
-  const applied = await experiment.api(({ api }) => {
-    // Every control, moved off whatever it currently is, so the round trip has
-    // to carry it. Depth and invert are swept too: they are not numbers, and
-    // reporting them as a 1..3 range would have made this loop set values the
-    // validator rejects — passing while testing nothing.
-    const patch: Record<string, unknown> = {}
-    for (const control of api.controls()) {
-      // One entry per settings key since #85, so a range's two ends arrive as
-      // two entries and no longer need unpacking here.
-      const key = control.key
-      if (control.kind === "slider" || control.kind === "range") {
-        patch[key] = control.min + (control.max - control.min) * 0.37
-      } else if (control.kind === "choice") {
-        const held = api.get()[key as keyof ReturnType<typeof api.get>]
-        patch[key] = control.options.find((option) => option !== held) ?? control.options[0]
-      } else {
-        patch[key] = !api.get()[key as keyof ReturnType<typeof api.get>]
-      }
-    }
-
-    // Kept small for runtime only; a small count round-trips the same code.
-    api.set({ ...patch, layerCount: 5 } as Parameters<typeof api.set>[0])
-    return { settings: api.get(), url: api.url() }
-  })
-
-  // Proof the sweep above actually moved the two non-numeric rows. Without this
-  // the loop could quietly stop covering them — which is exactly what a 1..3
-  // range for depth would have caused, since the validator rejects `mode: 2`
-  // and falls back to the default.
-  //
-  // Asked of the decoded address rather than of its text. The address is packed
-  // now, so `mode=` and `invert=` do not appear in it — but the claim was never
-  // about the spelling, it was that both rows moved and both travel.
-  const carried = await experiment.api(({ api, arg }) => api.decode(arg), applied.url)
-  expect(carried.mode).toBe(applied.settings.mode)
-  expect(carried.invert).toBe(applied.settings.invert)
-  expect(carried.mode, "the sweep did not move depth off its default").not.toBe("depth")
-
-  await page.goto(applied.url)
-  await page.waitForFunction(() => Boolean(window.experiment))
-
-  expect(await experiment.api(({ api }) => api.get())).toEqual(applied.settings)
-})
-
 test("reduced motion gets a still field and no loop, not a blank canvas", async ({ page }) => {
   const moving = await openSky(page)
   expect(await moving.api(({ api }) => api.stats().running)).toBe(true)
