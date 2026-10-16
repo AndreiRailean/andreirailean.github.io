@@ -45,6 +45,14 @@ exports[`artdeco > has not edited a slot in place 1`] = `
   "haloMeets enum pass|meet",
   "haloMark enum ring|solid|cutout",
   "fold enum 1|2|3|4|6",
+  "reach enum centre|edges",
+  "wander num grid=0.05 origin=0 bits=5",
+  "rise num grid=0.05 origin=0 bits=5",
+  "thrice num grid=0.05 origin=0 bits=5",
+  "thriceOf enum any|branch|turn|echo",
+  "beat num grid=0.05 origin=0.05 bits=5",
+  "haloVary num grid=0.05 origin=0 bits=5",
+  "strandsOn enum all|stems",
 ]
 `;
 

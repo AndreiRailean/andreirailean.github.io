@@ -23,6 +23,9 @@ export { keysOf } from "@/experiments/kit/controls"
  */
 export type Angle = "15" | "30" | "45" | "60" | "90"
 export type Fold = "1" | "2" | "3" | "4" | "6"
+export type Reach = "centre" | "edges"
+export type ThriceOf = "any" | "branch" | "turn" | "echo"
+export type StrandsOn = "all" | "stems"
 export type Unison = "family" | "all"
 export type CornerAt = "turns" | "splits" | "both"
 export type Mark = "ring" | "solid" | "cutout"
@@ -33,6 +36,20 @@ export type Vary = "new" | "same"
 export type Settings = {
   /** Order of the symmetry: 1 mirrors left and right, 2 top and bottom too, 3 and up turn it round the centre. */
   fold: Fold
+  /** Centre: the copies are turned about the centre, stems on a circle of the height. Edges: each slides out until its stem starts at the frame's edge. */
+  reach: Reach
+  /** Share of the stem gap a pair of stems may stray by, drawn afresh for each drawing. */
+  wander: number
+  /** A tendency upwards: upright stretches grow up to four times as long, and at these odds a turn leans back towards upright. */
+  rise: number
+  /** Odds a decision is made three times running. */
+  thrice: number
+  /** Which decisions can come in threes. */
+  thriceOf: ThriceOf
+  /** Distance between the three, as a share of the step. */
+  beat: number
+  /** How far the big circle's radius strays from `halo`, drawn afresh for each drawing. */
+  haloVary: number
   /** Lines starting from the bottom, mirrored: an odd count puts one on the centre line. */
   stems: number
   /** Distance between neighbouring stems, as a share of the frame's height in per cent. */
@@ -88,6 +105,8 @@ export type Settings = {
   taper: number
   /** Lines drawn side by side for each line grown. */
   strands: number
+  /** Whether every line is drawn in strands, or only the stems. */
+  strandsOn: StrandsOn
   /** Distance between strands, in css px. */
   spacing: number
   /** Step multiplier for each generation of lines. */
@@ -109,7 +128,19 @@ export type Settings = {
   seed: number
 }
 
-type EnumKey = "fold" | "angle" | "unison" | "cornerAt" | "mark" | "haloMeets" | "haloMark" | "cycle" | "vary"
+type EnumKey =
+  | "strandsOn"
+  | "fold"
+  | "reach"
+  | "thriceOf"
+  | "angle"
+  | "unison"
+  | "cornerAt"
+  | "mark"
+  | "haloMeets"
+  | "haloMark"
+  | "cycle"
+  | "vary"
 export type NumericKey = Exclude<keyof Settings, EnumKey>
 
 export type Control = KitControl<string & keyof Settings>
@@ -117,6 +148,9 @@ export type NumericControl = SliderControl<NumericKey>
 
 export const ANGLES: Angle[] = ["15", "30", "45", "60", "90"]
 export const FOLDS: Fold[] = ["1", "2", "3", "4", "6"]
+export const REACHES: Reach[] = ["centre", "edges"]
+export const THRICE_OFS: ThriceOf[] = ["any", "branch", "turn", "echo"]
+export const STRANDS_ONS: StrandsOn[] = ["all", "stems"]
 export const UNISONS: Unison[] = ["family", "all"]
 export const CORNER_ATS: CornerAt[] = ["turns", "splits", "both"]
 export const MARKS: Mark[] = ["ring", "solid", "cutout"]
@@ -160,6 +194,18 @@ export const CONTROLS: Control[] = [
     hint: "The drawing's symmetry. 1: mirrored left and right. 2: top and bottom as well, so the stems come from both edges and meet in the middle. 3, 4, 6: that many copies turned round the centre, each mirrored, like a kaleidoscope. Lines meet every copy of every line. 3 sits best with 15°, 30° or 60°, whose lines stay on the angle when turned by a third.",
   },
   {
+    kind: "choice",
+    key: "reach",
+    label: "copies",
+    group: "growth",
+    options: [
+      { value: "centre", label: "round the centre" },
+      { value: "edges", label: "to the edges" },
+    ],
+    hint: "Round the centre: every copy's stems start as far from the centre as the bottom ones, so at 4 the drawing is a square. To the edges: each copy slides out until its stems start at the edge of the frame, so it fills a wide screen. Only differs at 3 and up.",
+    inert: (settings: Settings) => settings.fold === "1" || settings.fold === "2",
+  },
+  {
     kind: "slider",
     key: "stems",
     label: "stems",
@@ -181,6 +227,29 @@ export const CONTROLS: Control[] = [
     format: share,
     hint: "Distance between neighbouring stems, as a share of the frame's height.",
     inert: (settings: Settings) => settings.stems === 1,
+  },
+  {
+    kind: "slider",
+    key: "wander",
+    label: "wander",
+    group: "growth",
+    min: 0,
+    max: 1,
+    step: 0.05,
+    format: unit,
+    hint: "How far each pair of stems may stray from its place, as a share of the gap, drawn afresh for each drawing. 0 puts every drawing's stems in the same spots, so each new one grows into what the last left.",
+    inert: (settings: Settings) => settings.stems === 1,
+  },
+  {
+    kind: "slider",
+    key: "rise",
+    label: "rise",
+    group: "growth",
+    min: 0,
+    max: 1,
+    step: 0.05,
+    format: unit,
+    hint: "A tendency to build upwards. Upright lines grow further between decisions, up to four times the step at 1, and at these odds a turn leans back: an upright line keeps going, and a slanting one turns towards upright.",
   },
   {
     kind: "choice",
@@ -280,6 +349,37 @@ export const CONTROLS: Control[] = [
     "Odds of carrying on while growing offshoots, one after another at the same angle — parallel lines that then make the same decisions as each other.",
   ),
   /* @__PURE__ */ odds("stop", "stop", "Odds of stopping."),
+  /* @__PURE__ */ odds(
+    "thrice",
+    "in threes",
+    "Odds a decision is made three times running, a beat apart: an echo of one offshoot becomes three parallel lines, a turn a turn three times over, a branch three pairs. Straight on and stop never repeat.",
+  ),
+  {
+    kind: "choice",
+    key: "thriceOf",
+    label: "threes of",
+    group: "decisions",
+    options: [
+      { value: "any", label: "any" },
+      { value: "branch", label: "branch" },
+      { value: "turn", label: "turn" },
+      { value: "echo", label: "echo" },
+    ],
+    hint: "Which decisions can come in threes.",
+    inert: (settings: Settings) => settings.thrice === 0,
+  },
+  {
+    kind: "slider",
+    key: "beat",
+    label: "beat",
+    group: "decisions",
+    min: 0.05,
+    max: 1,
+    step: 0.05,
+    format: unit,
+    hint: "Distance between the three, as a share of the step.",
+    inert: (settings: Settings) => settings.thrice === 0,
+  },
   {
     kind: "slider",
     key: "echoes",
@@ -398,6 +498,18 @@ export const CONTROLS: Control[] = [
   },
   {
     kind: "slider",
+    key: "haloVary",
+    label: "circle varies",
+    group: "circles",
+    min: 0,
+    max: 1,
+    step: 0.05,
+    format: unit,
+    hint: "How far the big circle's radius strays from its size, as a share of it, drawn afresh for each drawing.",
+    inert: (settings: Settings) => settings.halo === 0,
+  },
+  {
+    kind: "slider",
     key: "haloAt",
     label: "big circle at",
     group: "circles",
@@ -465,6 +577,18 @@ export const CONTROLS: Control[] = [
     step: 1,
     format: (v) => String(Math.round(v)),
     hint: "Lines drawn side by side for every line grown, like an inline letter: two makes every line a double rule, three a band.",
+  },
+  {
+    kind: "choice",
+    key: "strandsOn",
+    label: "strands on",
+    group: "line",
+    options: [
+      { value: "all", label: "every line" },
+      { value: "stems", label: "stems only" },
+    ],
+    hint: "Every line: all of them are drawn in strands. Stems only: the stems are bands and everything that grows off them a single line.",
+    inert: (settings: Settings) => settings.strands === 1,
   },
   {
     kind: "slider",
@@ -539,6 +663,14 @@ export const CONTROLS: Control[] = [
 
 export const DEFAULT_SETTINGS: Settings = {
   fold: "1",
+  reach: "centre",
+  wander: 0,
+  rise: 0,
+  thrice: 0,
+  thriceOf: "echo",
+  beat: 0.25,
+  haloVary: 0,
+  strandsOn: "all",
   stems: 1,
   gap: 8,
   angle: "45",
@@ -605,6 +737,11 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   radius: { min: 0.5, max: 15, step: 0.5 },
   jitter: { min: 0, max: 1, step: 0.05 },
   halo: { min: 0, max: 45, step: 0.5 },
+  wander: { min: 0, max: 1, step: 0.05 },
+  rise: { min: 0, max: 1, step: 0.05 },
+  thrice: { min: 0, max: 1, step: 0.05 },
+  beat: { min: 0.05, max: 1, step: 0.05 },
+  haloVary: { min: 0, max: 1, step: 0.05 },
   haloAt: { min: 0, max: 100, step: 1 },
   width: { min: 0.5, max: 8, step: 0.25 },
   taper: { min: 0, max: 0.5, step: 0.05 },
@@ -662,6 +799,9 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
     ...merged,
     angle: oneOf(ANGLES, String(merged.angle), base.angle),
     fold: oneOf(FOLDS, String(merged.fold), base.fold),
+    reach: oneOf(REACHES, merged.reach, base.reach),
+    thriceOf: oneOf(THRICE_OFS, merged.thriceOf, base.thriceOf),
+    strandsOn: oneOf(STRANDS_ONS, merged.strandsOn, base.strandsOn),
     unison: oneOf(UNISONS, merged.unison, base.unison),
     cornerAt: oneOf(CORNER_ATS, merged.cornerAt, base.cornerAt),
     mark: oneOf(MARKS, merged.mark, base.mark),
@@ -683,6 +823,13 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
 /** Settings that change what gets drawn; a change to any of them starts the drawing again. */
 const GROWTH_KEYS = [
   "fold",
+  "reach",
+  "wander",
+  "rise",
+  "thrice",
+  "thriceOf",
+  "beat",
+  "haloVary",
   "stems",
   "gap",
   "angle",
@@ -763,6 +910,14 @@ export const REGISTRY: readonly Slot[] = [
   { key: "haloMeets", kind: "enum", options: ["pass", "meet"] },
   { key: "haloMark", kind: "enum", options: ["ring", "solid", "cutout"] },
   { key: "fold", kind: "enum", options: ["1", "2", "3", "4", "6"] },
+  { key: "reach", kind: "enum", options: ["centre", "edges"] },
+  { key: "wander", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "rise", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "thrice", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "thriceOf", kind: "enum", options: ["any", "branch", "turn", "echo"] },
+  { key: "beat", kind: "num", grid: 0.05, origin: 0.05, bits: 5 },
+  { key: "haloVary", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "strandsOn", kind: "enum", options: ["all", "stems"] },
 ]
 
 export function settingsToQuery(settings: Settings): URLSearchParams {
