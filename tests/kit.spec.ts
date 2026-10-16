@@ -136,8 +136,12 @@ for (const layout of LAYOUTS) {
         overflows: value.scrollWidth > value.clientWidth,
         lines: new Set([...range.getClientRects()].map((rect) => Math.round(rect.top))).size,
         right: value.getBoundingClientRect().right,
+        // Rects are in zoomed pixels and computed lengths are not, and below
+        // 1440 px the chrome is zoomed to 85% (#258): unscaled, the padding
+        // came off two pixels too wide and a fitting value read as overrunning.
         edge:
-          container.getBoundingClientRect().right - parseFloat(style.paddingRight) - parseFloat(style.borderRightWidth),
+          container.getBoundingClientRect().right -
+          (parseFloat(style.paddingRight) + parseFloat(style.borderRightWidth)) * container.currentCSSZoom,
       }
     })
     expect(measured.lines, "a long value wrapped").toBe(1)
@@ -195,7 +199,9 @@ test("the presets fill the left edge before they wrap", async ({ page }) => {
 test("a boxed panel does not scroll, and a fold survives a reload without touching the address", async ({ page }) => {
   // Short enough that the three boxes need two columns, tall enough that each
   // box fits one: a box taller than the window has nowhere to wrap to.
-  await page.setViewportSize({ width: 1280, height: 640 })
+  // 540 rather than 640 since the chrome is zoomed to 85% below 1440 px wide
+  // (#258), which made the three fit one column.
+  await page.setViewportSize({ width: 1280, height: 540 })
   const experiment = await openKit(page, { idle: false })
   await experiment.api(({ api }) => api.panel(true))
   const boxes = page.locator("#ui .panel.boxed > .box")
