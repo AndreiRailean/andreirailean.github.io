@@ -91,6 +91,14 @@ export type CrowdStats = ThrongStats & {
    * Filled while drawing, like `drawn`, `fills` and `largest`.
    */
   drawMs: number
+  /**
+   * The last frame's paint alone, unaveraged.
+   *
+   * For a check that has to survive a busy machine: a rolling mean carries every
+   * stall into the frames after it, while the fastest of several single frames
+   * is what the paint costs when nothing else is in the way.
+   */
+  lastDrawMs: number
   /** The ceiling on the population, so a reader can tell a budgeted world from a fogged one. */
   budget: number
   /** Rolling average, so a heavy setting shows up as a number. */
@@ -178,6 +186,7 @@ export function createCrowd(canvas: HTMLCanvasElement, initial: Settings): Crowd
   let fills = 0
   let largest = 0
   let drawMs = 0
+  let lastDrawMs = 0
   /** Set when the picture needs repainting without anybody having moved. */
   let dirty = true
 
@@ -236,7 +245,8 @@ export function createCrowd(canvas: HTMLCanvasElement, initial: Settings): Crowd
       scratch,
       boulders: nearby,
     })
-    drawMs += (performance.now() - started - drawMs) * 0.1
+    lastDrawMs = performance.now() - started
+    drawMs += (lastDrawMs - drawMs) * 0.1
     drawn = result.drawn
     fills = result.fills
     largest = result.largest
@@ -385,6 +395,7 @@ export function createCrowd(canvas: HTMLCanvasElement, initial: Settings): Crowd
         rocks,
         inBoulder: crowd.boulders.inside(me.x, me.y),
         drawMs,
+        lastDrawMs,
         budget: MAX_PEOPLE,
         fps,
         running,

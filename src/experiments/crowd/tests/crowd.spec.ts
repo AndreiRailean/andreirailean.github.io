@@ -123,8 +123,27 @@ test("the draw is a small part of the frame", async ({ page }) => {
   // capped by the display reports 60 whether a frame paints in 1ms or 10, so a
   // regression that doubled the paint would be invisible to every other
   // assertion here. Generous, because this runs headless without a GPU.
-  expect(stats.drawMs).toBeGreaterThan(0)
-  expect(stats.drawMs).toBeLessThan(8)
+  //
+  // **The fastest of thirty frames, not the rolling mean.** The mean read 12 ms
+  // in a fifteen-minute affected run on a shared box and passed alone straight
+  // after (#290): a stall elsewhere lands in it and stays for the frames after.
+  // A slower paint slows every frame, the fastest included, so a regression
+  // still shows; a busy neighbour only slows some of them.
+  const fastest = await experiment.api(
+    ({ api }) =>
+      new Promise<number>((done) => {
+        let best = Infinity
+        let left = 30
+        const sample = () => {
+          best = Math.min(best, api.stats().lastDrawMs)
+          if (--left > 0) requestAnimationFrame(sample)
+          else done(best)
+        }
+        requestAnimationFrame(sample)
+      }),
+  )
+  expect(fastest).toBeGreaterThan(0)
+  expect(fastest).toBeLessThan(8)
 })
 
 test("how tall the observer is decides who is above the horizon", async ({ page }) => {
