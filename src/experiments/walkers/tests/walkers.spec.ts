@@ -15,9 +15,9 @@ import { expect, openExperiment, test } from "../../../../tests/support/experime
  *
  * - the **canvas** actually has a crowd on it, and the ground is not the whole
  *   picture;
- * - the **camera** does what the geometry says — heads lean outward from their
- *   feet at a low camera and stop leaning at a high one, which is a claim about
- *   pixels and nothing else;
+ * - the **camera** height reaches the picture — where a head lands for a given
+ *   height is `placeHeads`, and `draw.test.ts` checks it against the pinhole
+ *   with one walker and no canvas;
  * - the chrome's **escape hatches** work for tools that cannot evaluate JS (a
  *   scene round-tripping through its URL is the shared address codec's, and is
  *   tested for every piece at once in `tests/unit/experiments-urls.test.ts`);
@@ -128,94 +128,35 @@ test("a crowd, on a ground", async ({ page }) => {
 })
 
 /**
- * The camera is a pinhole, and the only evidence for that is on the glass.
+ * The camera height reaches the picture.
  *
- * A head sits closer to the lens than the ground does, so it is displaced
- * outward from the centre of the frame. Asserted as the mean distance of every
- * lit pixel from the middle of the frame, at two camera heights on the same
- * crowd: a low camera throws the heads outward, so that mean has to grow.
+ * Wiring only. Where a head lands for a given camera is `placeHeads`, tested in
+ * `draw.test.ts` against camera / (camera − z) with one walker and no canvas.
+ * What a page adds is that the setting gets there, so this reads the height the
+ * last frame was projected from — `stats().camera`, off the view the renderer
+ * was handed. It used to be the mean radius of the bright pixels after a
+ * forty-five-second settle, which in a younger park counted grass as heads and
+ * failed 4 runs in 6 (#287).
  *
- * There is no way to measure this through `stats()`. The projection happens in
- * `draw.ts` and touches nothing the simulation knows about — which is exactly
- * the kind of thing the section's "assert on numbers" rule has to be read
- * carefully about. This is a number, read off the canvas, with no baseline.
+ * **Not a canvas comparison.** The height also sets the world's margin, so two
+ * heights are two casts, and their frames differ with the projection switched
+ * off — a version of this that compared fingerprints passed with the view's
+ * camera pinned at 120.
  */
-test("heads lean out over their own feet, and lean further from a lower camera", async ({ page }) => {
+test("the camera height reaches the picture, and does not reframe the park", async ({ page }) => {
   const experiment = await openWalkers(page, { settings: { ...MODEST, camera: 120 }, idle: true })
-  // **Forty-five, and not shorter.** The other canvas tests here settle two
-  // seconds, and this one was cut to two with them (#287): it failed 4 runs in
-  // 6, with the plan-view reading at about 0.38 — the whole canvas's mean
-  // radius, the grass-counting fault the docblock on `spread` below describes.
-  // Why a younger park trips the ground threshold was not chased. At 45 it
-  // passed 6 in 6.
-  await experiment.api(({ api }) => api.settle(45))
-
-  // Nearly frozen for the rest of the test. The two readings below are of the
-  // same crowd at two camera heights, and a crowd that walks between them is a
-  // second variable — which is what made this flaky in a full run and fine on
-  // its own.
-  await experiment.api(({ api }) => api.set({ playback: 0.01 }))
-
-  const leanAt = async (camera: number) => {
-    await experiment.api(({ api, arg }) => api.set({ camera: arg }), camera)
-    await painted(page)
-    return experiment.api(({ api }) => {
-      const stats = api.stats()
-      return stats.area
-    })
-  }
-
-  // The area in frame is set by span alone, so camera height must not move it —
-  // if it did, the two readings below would not be of the same crowd.
-  const wide = await leanAt(120)
-  const close = await leanAt(9)
-  expect(close).toBeCloseTo(wide, 5)
-
-  // And the lean itself, read off the canvas: a head at 1.7 m under a 9 m camera
-  // is magnified by 1.23 and thrown nearly a quarter of its distance from the
-  // centre outward, which puts light in the corners of the frame that a plan
-  // view leaves as ground.
-  /**
-   * The mean distance of a *dot* pixel from the middle of the frame.
-   *
-   * The threshold is derived from the ground, not written down. It was a fixed
-   * luminance of 150, which on this scene's ground counts the grass as well —
-   * so the measure came back as the mean radius of the whole canvas, 0.3828
-   * either way, and the test compared a number to itself and passed for two
-   * days.
-   */
-  const spread = async () => {
-    const { ground } = await inked(page)
-    return page.evaluate((floor) => {
-      const canvas = document.querySelector("canvas") as HTMLCanvasElement
-      const context = canvas.getContext("2d")!
-      const { width, height } = canvas
-      const { data } = context.getImageData(0, 0, width, height)
-      let sum = 0
-      let count = 0
-      for (let y = 0; y < height; y += 2) {
-        for (let x = 0; x < width; x += 2) {
-          const at = (y * width + x) * 4
-          const luminance = (data[at]! * 3 + data[at + 1]! * 6 + data[at + 2]!) / 10
-          if (luminance < floor) continue
-          sum += Math.hypot(x / width - 0.5, y / height - 0.5)
-          count++
-        }
-      }
-      return count > 0 ? sum / count : 0
-    }, ground + 14)
-  }
-
-  await experiment.api(({ api }) => api.set({ camera: 120 }))
   await painted(page)
-  const plan = await spread()
+  const high = await experiment.api(({ api }) => api.stats())
 
   await experiment.api(({ api }) => api.set({ camera: 9 }))
   await painted(page)
-  const leaning = await spread()
+  const low = await experiment.api(({ api }) => api.stats())
 
-  expect(plan).toBeGreaterThan(0)
-  expect(leaning, "a low camera did not throw the heads outward").toBeGreaterThan(plan)
+  expect(high.heads, "nothing was drawn").toBeGreaterThan(3)
+  expect(high.camera).toBe(120)
+  expect(low.camera, "the camera height never reached the picture").toBe(9)
+  // The area in frame is set by span alone, so the height must not reframe the park.
+  expect(low.area).toBeCloseTo(high.area, 5)
 })
 
 /**
