@@ -26,12 +26,6 @@ const LIT_THRESHOLD = 90
 /** Below this the sea has folded over itself; see `FlotsamStats.minJacobian`. */
 const FOLDED = 0
 
-/**
- * A uniform random scatter disperses at 1. The homes are drawn uniformly, so
- * anything meaningfully above this is the waves having gathered the flotsam.
- */
-const UNGATHERED = 1
-
 /** Small enough to run fast, dense enough for a dispersion reading to mean something. */
 const MODEST = { dots: 3000 }
 
@@ -192,138 +186,41 @@ test("draws flotsam on unfolded water", async ({ page }) => {
 })
 
 /**
- * The piece's thesis, and the one thing that must never break.
+ * **Wiring, not the physics.** That a sea with no current transports nothing, that
+ * a slow current does, that a steep sea gathers and eddies do not, and that wave
+ * drift moves the flotsam over a minute and not over a frame are all
+ * `water.test.ts`, against the water with no page around it (#287). What is
+ * left for a page is that the engine steps the water it draws and reports what
+ * that water measured — so one scene with a current, stepped through `run()`.
  *
- * A violent sea with no current at all: the flotsam swings by half a metre and
- * has to be exactly where it started, because the wave displacement is a closed
- * form recomputed from the rest position every frame and nothing about it
- * accumulates. Anything above zero here means a wave has started transporting,
- * which is what the whole piece says waves do not do.
+ * `run()` rather than a frame wait, and it is not interchangeable here.
+ * `transport` is the only stat written by stepping rather than by drawing — see
+ * the table in flotsam/AGENTS.md — and the `dirty` path of `tick()` draws
+ * without stepping, so a frame wait leaves it as stale as it was (#65, #107).
+ *
+ * **Under reduced motion, or this cannot see `run()` at all.** A scene with a
+ * current is animated, so the loop steps the water in real time between any
+ * two reads, and with `run()` emptied this passed anyway — seen 2026-10-16.
+ * Reduced motion parks the clock, so the only thing that can step the water
+ * here is the call under test.
  */
-test("a sea with no current takes the flotsam nowhere at all, however hard it shakes it", async ({ page }) => {
-  const experiment = await openFlotsam(page, {
-    settings: { ...MODEST, steepness: 0.9, trains: 1, drift: 0, eddies: 0, stokes: 0 },
-    idle: true,
-  })
-
-  await experiment.api(({ api }) => api.run(120))
-  const stats = await experiment.api(({ api }) => api.stats())
-
-  expect(stats.transport).toBe(0)
-  expect(stats.orbit).toBeGreaterThan(0.1)
-})
-
-/**
- * The other half of the same claim: a current a hundred times slower than the
- * swinging is the thing that actually moves flotsam.
- */
-test("a slow current transports where a fast sea does not", async ({ page }) => {
+test("the page steps the water it draws, and reports what the water measured", async ({ page }) => {
   const experiment = await openFlotsam(page, {
     settings: { ...MODEST, steepness: 0.9, drift: 0.2, bearing: 0, eddies: 0, stokes: 0 },
     idle: true,
-  })
-
-  const stats = await experiment.api(({ api }) => api.stats())
-  expect(stats.transport).toBeCloseTo(0.2, 3)
-})
-
-/**
- * The emergent behaviour the piece exists for, and there is no way to see it in
- * a still: a scatter that has gathered and one that has not both look like a
- * scatter of dots.
- */
-test("a steep sea gathers the flotsam into lines, and a flat one does not", async ({ page }) => {
-  const experiment = await openFlotsam(page, {
-    settings: { dots: 9000, trains: 1, shortest: 6, longest: 6, steepness: 0, drift: 0, eddies: 0, stokes: 0 },
-    idle: true,
-  })
-
-  const flat = await experiment.api(({ api }) => api.stats())
-  expect(flat.dispersion).toBeCloseTo(UNGATHERED, 0)
-
-  await experiment.api(({ api }) => api.set({ steepness: 0.85 }))
-  await experiment.api(({ api }) => api.run(4))
-  const steep = await experiment.api(({ api }) => api.stats())
-
-  expect(steep.dispersion).toBeGreaterThan(3)
-  // And it is genuinely the waves: the compression that did it is reported too.
-  expect(steep.minJacobian).toBeLessThan(0.2)
-  expect(steep.minJacobian).toBeGreaterThan(FOLDED)
-
-  await experiment.shot("gathered")
-})
-
-/**
- * The bug that cost an afternoon and looked like a triumph.
- *
- * The eddies are incompressible *and* periodic on the wrapped patch, which
- * together are what stop them concentrating anything — so that every clump on
- * screen is the waves' doing. Before the periodicity, one minute of this took
- * the dispersion from 1 to 134: it emptied most of the frame and swept
- * everything into a few clots, and it looked like a spectacular emergent result
- * rather than a torus with a seam in it.
- */
-test("eddies stir the flotsam without gathering any of it", async ({ page }) => {
-  // **Wiring, not the property.** That the field is divergence-free and
-  // periodic is `current.test.ts`; this asks that the engine advects through it
-  // on the wrapped patch. A third of the dots and a quarter of the minute it
-  // used to take: with the periodicity removed (cycles not rounded to whole
-  // numbers in `createCurrent`) this still fails, seen 2026-10-16.
-  const experiment = await openFlotsam(page, {
-    settings: { dots: 3000, steepness: 0, drift: 0, stokes: 0, eddies: 0.9, gyre: 3, span: 8 },
-    idle: true,
+    reducedMotion: true,
   })
 
   const before = await experiment.api(({ api }) => api.stats())
-  await experiment.api(({ api }) => api.run(15))
+  await experiment.api(({ api }) => api.run(1))
   const after = await experiment.api(({ api }) => api.stats())
 
-  // It really did stir: fifteen seconds at nearly a metre a second over
-  // three-metre gyres is several turnovers, not a nudge.
-  expect(after.transport).toBeGreaterThan(0.1)
-  expect(after.dispersion).toBeLessThan(1.25)
-  expect(Math.abs(after.dispersion - before.dispersion)).toBeLessThan(0.3)
-})
-
-/**
- * Wave drift is invisible on any single frame by construction — that is the
- * point of it — so the only way to check it exists is to skip a minute forward
- * and ask where everything went.
- */
-test("wave drift moves the flotsam over a minute and nothing over a frame", async ({ page }) => {
-  const experiment = await openFlotsam(page, {
-    settings: { ...MODEST, trains: 1, shortest: 8, longest: 8, steepness: 0.6, drift: 0, eddies: 0, stokes: 1 },
-    idle: true,
-  })
-
-  // `run(1/60)` rather than `painted()`, and it is not interchangeable here.
-  //
-  // `transport` is the only stat in this piece written by `advance()` rather
-  // than by `draw()` — see the table in flotsam/AGENTS.md. `tick()` has two
-  // paths, and the `dirty` one draws without integrating, so a frame wait
-  // refreshes every *other* stat and leaves this one exactly as stale as it was.
-  // Measured on a parked scene: five frame waits left it byte-identical at
-  // 1.2720048, and one `run(1/60)` took it to 0. `run()` calls `advance()`
-  // directly, so it does not depend on whether the scene happens to be animated.
-  //
-  // A step is also what the assertion means: "nothing over a frame" should say
-  // the sea was stepped and nothing transported, not that a stat was refreshed
-  // in time. Read straight after the `set()` this returned the *unchanged*
-  // value — 1.2720048 both sides, byte-identical, which is issue #65's exact
-  // signature and is what made it look like anything but a race. Issue #107.
-  //
-  // `RUN_STEP` is 1/60 and `run()` rounds `seconds / RUN_STEP`, so anything
-  // under about 0.008 rounds to zero steps and silently does nothing.
-  await experiment.api(({ api }) => api.run(1 / 60))
-  const stats = await experiment.api(({ api }) => api.stats())
-  // uₛ = Q²c, and an eight-metre wave runs at 3.5 m/s, so 0.36 × 3.5.
-  expect(stats.transport).toBeGreaterThan(0.5)
-  expect(stats.transport).toBeLessThan(2)
-
-  const off = await experiment.api(({ api }) => api.set({ stokes: 0 }))
-  expect(off.stokes).toBe(0)
-  await experiment.api(({ api }) => api.run(1 / 60))
-  expect((await experiment.api(({ api }) => api.stats())).transport).toBe(0)
+  expect(after.clock - before.clock).toBeCloseTo(1, 5)
+  expect(after.transport).toBeCloseTo(0.2, 3)
+  // Measured by the frame `run()` drew, not left over from the first one.
+  expect(after.orbit).toBeGreaterThan(0.1)
+  expect(after.dispersion).toBeGreaterThan(0)
+  expect(after.minJacobian).not.toBe(before.minJacobian)
 })
 
 /**
