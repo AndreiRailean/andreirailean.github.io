@@ -101,8 +101,21 @@ export const NECK_LIMIT = 1.15
  * a held offset reads as the direction you are facing, so the forward optical
  * flow then looks like the whole body has turned.
  */
-const SWEEP_WALKING = 0.3
-const SWEEP_STOPPED = 1.0
+export const SWEEP_WALKING = 0.3
+export const SWEEP_STOPPED = 1.0
+
+/** Below this, in m/s, I am standing and looking about rather than walking. */
+export const STOPPED_BELOW = 0.25
+
+/**
+ * How far one glance may swing, at this speed and this `looking`.
+ *
+ * **The decision a stopped head turns on**, pulled out so it is tested as a
+ * function rather than read off a 45-person walk's 90th percentile, which
+ * at density 5 measured 14.5 against a line of 20 with nothing wrong (#287).
+ */
+export const sweepFor = (speed: number, looking: number): number =>
+  (speed < STOPPED_BELOW ? SWEEP_STOPPED : SWEEP_WALKING) * Math.min(1.3, Math.max(0, looking))
 
 /**
  * Seconds a glance is held at its far point before the head comes back.
@@ -288,7 +301,11 @@ export const SPOT_AHEAD = [3.2, 8]
  * furthest. The floor keeps the walking case wide enough for the thing Andrei
  * described: at a market you do turn your head to look at a stall.
  */
-const SPOT_BEARING_MIN = 0.65
+export const SPOT_BEARING_MIN = 0.65
+
+/** How far either side of my course a spot is placed, given the sweep and how much of a run I am in. */
+export const spotSpread = (sweep: number, run: number): number =>
+  Math.min(NECK_LIMIT, Math.max(SPOT_BEARING_MIN, sweep)) * (1 - 0.6 * run)
 
 /** Seconds a chaser looks at the person in red before looking back at the way, walking. A run shortens both. */
 export const SPELL_ON_THEM = [0.7, 1.6]
@@ -778,7 +795,7 @@ export function createStroll(settings: Settings, seed: number) {
       // and near the line you are running on.
       const near = between(SPOT_AHEAD, rng())
       const range = near + (between(SPOT_FAR, rng()) - near) * run
-      const spread = Math.min(NECK_LIMIT, Math.max(SPOT_BEARING_MIN, sweep)) * (1 - 0.6 * run)
+      const spread = spotSpread(sweep, run)
       const bearing = course + (rng() - 0.5) * 2 * spread
       return {
         look: {
@@ -992,8 +1009,8 @@ export function createStroll(settings: Settings, seed: number) {
     // **The head: a glance is a departure and a return.** Between glances the
     // commanded offset is zero, which is straight ahead, so the rest state of the
     // head is the direction of travel and everything else is temporary.
-    const stopped = speed < 0.25
-    const sweep = (stopped ? SWEEP_STOPPED : SWEEP_WALKING) * Math.min(1.3, Math.max(0, current.looking))
+    const stopped = speed < STOPPED_BELOW
+    const sweep = sweepFor(speed, current.looking)
 
     // **A chaser looks two ways, and nowhere else.** "when running after
     // someone the head should face predominantly in one of 2 directions:

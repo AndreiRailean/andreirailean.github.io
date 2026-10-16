@@ -96,7 +96,8 @@ The checks used to walk the market — nine thousand people — for one to five
 minutes and read statistics off the result: 880 s of the unit job, one test
 alone 271 s. So each of the walk's decisions is now **a pure export of
 `stroll.ts`** that `createStroll` calls: `spellLength` (walking or stopped),
-`glanceKind` (what a glance is about), `aimAt` (where a look puts the head),
+`glanceKind` (what a glance is about), `sweepFor` and `spotSpread` (how far it
+goes), `aimAt` (where a look puts the head),
 `neckStep` and `courseStep` (the two springs), `facingTarget` (the sidestep),
 `turnsToLook` (a stop becoming a turn) and `confinement` (a corridor holding the
 line). They were lifted out with the arithmetic and the order of the random
@@ -151,8 +152,13 @@ is drawn with it (`tests/draw.test.ts`), and the runner's walk, which happens
 anyway, shows mine is. **Shrink a world only as far as its check can still
 fail.** Measured 2026-10-16 with the fault put back: companions keeping station
 needs a crowd that pushes — with the spring removed the median gap read 0.89 m
-among 45 people, a pass, and 2.66 among 136 — and the stopped gaze's p90 stops
-telling a stopped sweep from a walking one below about 45 people.
+among 45 people, a pass, and 2.66 among 136. **And where no size will do, find
+the decision.** How far a glance swings walking and stopped is **`sweepFor`**,
+and where that puts a spot is **`spotSpread`**; both were inline, and the only
+check was a 45-person walk's percentiles, which could not see them — the stopped
+p90 read 14.5 against its line of 20 at density 5 as shipped, and raising the
+walking sweep to the stopped one moved the walking p90 _down_. The walk that is
+left has two people in it and checks the neck's wiring.
 
 ## The gaze has two axes and a subject
 
