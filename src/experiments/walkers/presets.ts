@@ -54,7 +54,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     hint: "Far enough up that people are motile specks. Found by accident and kept.",
     settings: {
       flow: "wander",
-      palette: "kin",
+      palette: "crowd",
       dusk: true,
       heads: true,
       density: 34,

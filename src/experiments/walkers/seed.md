@@ -130,3 +130,25 @@ This exchange is the origin of the browser/unit split work and of #133.
 > speed up testing and reasoning about writing tests. do that only after you
 > finish the harness so the steward doesn't rederive this. i wrote this hours
 > ago. does 131 deal with this already?
+
+---
+
+## 2026-10-17 — colour is a randomness indicator, not a group
+
+Asked, after a review found every `set()` recoloured the whole crowd: whether
+to keep each person's colour draws from birth, so a slider that is not about
+colour leaves everyone as they were.
+
+> yes to walkers lifetime colour.
+
+Then, the same day, looking at `bacteria` on the live site:
+
+> i'm looking at bacteria now in prod and don't really caro for group colour.
+> i'm not looking for groups and even if walkers do walk together they don't
+> need colour to be understood as being together. colour is more of a
+> randomness indicator. do the simplest thing there. if colour of each walker
+> costs too much to maintain, we can simplify it further. merge walkers when
+> ready without waiting for my approval.
+
+`kin` and `teams` went; `bacteria` moved to `crowd`. Each person's colour is
+drawn once and rebuilt from the settings on every change.
