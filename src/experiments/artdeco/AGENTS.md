@@ -179,6 +179,12 @@ being found.
   this step included, and now holds at about 1200. No line-pen preset had
   reached the cap, so none moved.
 
+- **Every entry in `CONTROLS` must stay droppable from the runner.** `odds()`
+  calls carry `/* @__PURE__ */`, and wrapping one in an object spread
+  (`{ ...odds(...), inert }`) is not pure, so the bundler kept the whole list:
+  `runner-bundle.test` caught 59 of 59 hints shipping. Pass `inert` to `odds()`
+  instead.
+
 ## Checking a mechanism fired
 
 `experiment.stats()` counts every decision by kind, every meeting by kind

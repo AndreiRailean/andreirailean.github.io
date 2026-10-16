@@ -196,7 +196,13 @@ const seconds = (v: number) => `${v.toFixed(1)}s`
 const unit = (v: number) => v.toFixed(2)
 const share = (v: number) => `${v.toFixed(1)}%`
 
-const odds = (key: NumericKey, label: string, hint: string, group = "decisions"): Control => ({
+const odds = (
+  key: NumericKey,
+  label: string,
+  hint: string,
+  group = "decisions",
+  inert?: (settings: Settings) => boolean,
+): Control => ({
   kind: "slider",
   key,
   label,
@@ -206,6 +212,7 @@ const odds = (key: NumericKey, label: string, hint: string, group = "decisions")
   step: 0.05,
   format: unit,
   hint,
+  ...(inert ? { inert } : {}),
 })
 
 export const CONTROLS: Control[] = [
@@ -403,14 +410,13 @@ export const CONTROLS: Control[] = [
     ],
     hint: "Line: a line that stops is finished. Tips: stopping only lifts the pen. The tip flies on, still turning, splitting and echoing but drawing nothing and meeting nothing, until it lands and draws again. Tips then end only at the edge or at depth.",
   },
-  {
-    .../* @__PURE__ */ odds(
-      "land",
-      "land",
-      "Tips pen: odds a lifted tip puts the pen down at each decision, starting a new line there.",
-    ),
-    inert: (settings: Settings) => settings.pen !== "tips",
-  },
+  /* @__PURE__ */ odds(
+    "land",
+    "land",
+    "Tips pen: odds a lifted tip puts the pen down at each decision, starting a new line there.",
+    "decisions",
+    (settings: Settings) => settings.pen !== "tips",
+  ),
   {
     kind: "slider",
     key: "flight",
