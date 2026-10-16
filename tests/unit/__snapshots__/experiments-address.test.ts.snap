@@ -496,7 +496,12 @@ exports[`walkers > has not edited a slot in place 1`] = `
   "pastel num grid=0.02 origin=0 bits=6",
   "playback num grid=0.05 origin=0 bits=6",
   "seed num grid=1 origin=0 bits=17",
+  "palette enum crowd|quiet",
 ]
 `;
 
-exports[`walkers > retires a slot by appending to the retired list, never by editing one 1`] = `[]`;
+exports[`walkers > retires a slot by appending to the retired list, never by editing one 1`] = `
+[
+  "1 palette",
+]
+`;

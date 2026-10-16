@@ -31,7 +31,7 @@
 
 import { cadence, gaitOffset, makeBody, posturalSway, rngFor, type Body } from "@/experiments/walkers/body"
 import { clearGrid, createGrid, forNear, insert, type Grid } from "@/experiments/walkers/grid"
-import { skinOf, tonesFor, type Tones } from "@/experiments/walkers/palette"
+import { drawLooks, skinOf, tonesFor, type Looks, type Tones } from "@/experiments/walkers/palette"
 import type { Flow, Settings } from "@/experiments/walkers/settings"
 import {
   avoidance,
@@ -243,6 +243,8 @@ export type Walker = {
   until: number
   /** Where this person in particular is going, which is usually their slot. */
   slot: number
+  /** Their colour's draws, taken once at birth; `skin` is rebuilt from these. */
+  looks: Looks
   skin: { hue: number; lightness: number; saturation: number }
   tones: Tones
   /** Who they are chasing, in a game of tag. */
@@ -288,8 +290,6 @@ export type Group = {
   /** Who is talking, as an index into `members`, and until when. */
   talker: number
   talkUntil: number
-  hue: number
-  team: number
   /**
    * What the group has decided about its pace just now, and until when.
    *
@@ -602,6 +602,11 @@ export function createCrowd({ view: initialView, settings: initialSettings }: Op
   }
 
   function makeGroup(errand: Errand): Group {
+    // **A draw nobody reads, kept on purpose.** It was a group's team, for a
+    // palette that has gone (2026-10-17). Taking it out of the shared stream
+    // would shift every later draw and turn each seeded park — every preset, and
+    // every address anybody saved — into a different crowd.
+    stream()
     return {
       id: nextId++,
       members: [],
@@ -616,10 +621,6 @@ export function createCrowd({ view: initialView, settings: initialSettings }: Op
       sits: false,
       talker: 0,
       talkUntil: 0,
-      // Filled in by the caller, which is where the group's colour is drawn so
-      // that `kin` can hand the one hue to every member.
-      hue: 0,
-      team: stream() < 0.5 ? -1 : 1,
       urge: "steady",
       urgeUntil: 0,
       sprinting: false,
@@ -649,8 +650,6 @@ export function createCrowd({ view: initialView, settings: initialSettings }: Op
     const errand: Errand = placeInside ? (stops ? "resident" : "cross") : stops ? "visit" : "cross"
 
     const group = makeGroup(errand)
-    const skinRng = rngFor(settings.seed, group.id)
-    group.hue = (settings.hue + 160 + (skinRng() * 2 - 1) * settings.spread * 1.6) % 360
 
     const entryEdge = pickEdge()
     const entry = placeInside ? spotAnywhere() : edgePoint(entryEdge)
@@ -832,7 +831,8 @@ export function createCrowd({ view: initialView, settings: initialSettings }: Op
   function makeWalker(group: Group, age: "adult" | "child", pace: number, slot: number): Walker {
     const rng = rngFor(settings.seed, group.id, slot)
     const body = makeBody(rng, age, pace)
-    const skin = skinOf(settings.palette, settings, rng, group.hue, group.team)
+    const looks = drawLooks(rng)
+    const skin = skinOf(settings.palette, settings, looks)
 
     return {
       id: nextId++,
@@ -862,6 +862,7 @@ export function createCrowd({ view: initialView, settings: initialSettings }: Op
       activity: "walking",
       until: 0,
       slot,
+      looks,
       skin,
       tones: tonesFor(settings, skin),
       quarry: null,
@@ -1968,8 +1969,10 @@ export function createCrowd({ view: initialView, settings: initialSettings }: Op
 
     recolour(nextSettings) {
       settings = nextSettings
+      // From the draws each person was born with, never from `walker.rng`: that
+      // stream is their later choices, and a slider is not one of them.
       for (const walker of walkers) {
-        walker.skin = skinOf(settings.palette, settings, walker.rng, walker.group.hue, walker.group.team)
+        walker.skin = skinOf(settings.palette, settings, walker.looks)
         walker.tones = tonesFor(settings, walker.skin)
       }
     },

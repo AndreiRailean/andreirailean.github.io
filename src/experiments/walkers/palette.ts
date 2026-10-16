@@ -1,10 +1,14 @@
 /**
  * Colour: the ground, the light, and what everybody is wearing.
  *
- * The brief left one question open — whether a person's colour says who they are
- * with or only what they like — so it is a control with four answers rather than
- * a decision. `settings.palette` picks between them and everything else here is
- * shared machinery.
+ * **A person's colour is a randomness indicator, not a membership badge.** The
+ * brief left open whether colour said who somebody was with or only what they
+ * liked, and for a while the piece answered both — `kin` gave a group one hue
+ * and `teams` split the crowd in two. Andrei, 2026-10-17, looking at `bacteria`
+ * on the live site: "i'm not looking for groups and even if walkers do walk
+ * together they don't need colour to be understood as being together. colour is
+ * more of a randomness indicator." Both went. What is left is a hue per person
+ * scattered round the crowd's centre, and `quiet`, which nearly gives up on hue.
  *
  * ## Pastel is a place on two axes, not a hue
  *
@@ -35,53 +39,54 @@ export const crowdCentre = (settings: Settings): number => (settings.hue + 160) 
  */
 const PALE_GROUND = 62
 
-/** Where a team's two colours sit, either side of the centre. A third apart. */
-const TEAM_SEPARATION = 60
+/**
+ * The chances a person is drawn for what they wear: taken once, at birth, and
+ * kept, so their colour can be rebuilt from the settings without drawing again.
+ *
+ * `recolour` used to call `skinOf` with the walker's own generator on every
+ * `set()`, so moving any slider — speed, density, anything — gave the whole
+ * crowd new clothes, and took numbers out of the stream the walker's later
+ * choices are drawn from. Andrei, 2026-10-17: "yes to walkers lifetime colour".
+ * With the draws kept, a slider that is not about colour leaves everyone as they
+ * were, and one that is moves each person's colour a little rather than
+ * reshuffling the crowd.
+ */
+export type Looks = {
+  /** A standard normal, clamped: how far from the crowd's hue this person sits. */
+  normal: number
+  /** Uniform in [0, 1): their own lightness inside whatever band the scene sets. */
+  jitter: number
+}
+
+/**
+ * A person's draws, in the order `skinOf` once took them from the walker's own
+ * stream, so a seeded crowd is still the crowd it was — colours and every later
+ * choice.
+ */
+export function drawLooks(rng: Rng): Looks {
+  const normal = gaussian(rng)
+  const jitter = rng()
+  return { normal, jitter }
+}
 
 /**
  * A person's hue and lightness, before the light gets to them.
  *
- * `groupDraw` is a number in [0, 1) shared by everyone in a group and
- * `ownDraw` is theirs alone, which is what lets one policy colour by group and
- * another by person without either knowing how groups work.
+ * Pure in its draws: the same `looks` under the same settings is the same
+ * colour, and a small change to a setting is a small change to the colour.
  */
 export function skinOf(
   policy: PaletteName,
   settings: Settings,
-  rng: Rng,
-  groupHue: number,
-  groupTeam: number,
+  looks: Looks,
 ): { hue: number; lightness: number; saturation: number } {
   const centre = crowdCentre(settings)
   const spread = settings.spread
 
-  let hue: number
-  let saturationScale = 1
-
-  switch (policy) {
-    case "kin":
-      // The group's hue, exactly. Only lightness separates a family, which is
-      // what makes them legible as a family from the other side of the frame.
-      hue = groupHue
-      break
-    case "teams": {
-      // Two colours a third of the circle apart, and a few people in neither —
-      // there are always some. The spread applies at a fraction of its value,
-      // because a team colour that scatters is not a team colour.
-      const neutral = rng() < 0.14
-      hue = neutral
-        ? centre + gaussian(rng) * spread
-        : centre + groupTeam * TEAM_SEPARATION + gaussian(rng) * spread * 0.12
-      if (neutral) saturationScale = 0.3
-      break
-    }
-    case "quiet":
-      hue = centre + gaussian(rng) * spread * 0.4
-      saturationScale = 0.4
-      break
-    default:
-      hue = centre + gaussian(rng) * spread
-  }
+  // `quiet` nearly gives up on hue and lets size and movement carry the picture.
+  const quiet = policy === "quiet"
+  const hue = centre + looks.normal * spread * (quiet ? 0.4 : 1)
+  const saturationScale = quiet ? 0.4 : 1
 
   // Lightness carries the individual variation in every policy, so a crowd at
   // zero spread is still a crowd rather than a stencil.
@@ -115,7 +120,7 @@ export function skinOf(
         // which is what a night scene is for and what it could not do before.
         clamp(66 + settings.pastel * 14, 40, 92)
       : clamp(ground + 20 + settings.pastel * 8, 38, 88)
-  const lightness = clamp(base + (rng() - 0.5) * (below ? 20 : 26), 8, 95)
+  const lightness = clamp(base + (looks.jitter - 0.5) * (below ? 20 : 26), 8, 95)
   const saturation = clamp((64 - settings.pastel * 36) * saturationScale, 3, 80)
 
   return { hue: wrapHue(hue), lightness, saturation }

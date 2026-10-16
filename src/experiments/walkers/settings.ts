@@ -30,7 +30,7 @@ export { keysOf } from "@/experiments/kit/controls"
 export type Settings = {
   /** Where people are going: across, around, or to a spot they have in mind. */
   flow: Flow
-  /** How colour is handed out — by person, by group, by team, or barely at all. */
+  /** How much hue a person's colour carries — their own, or barely any. */
   palette: PaletteName
   /** Evening light: a darker, cooler ground and a warmer crowd on it. */
   dusk: boolean
@@ -94,17 +94,28 @@ export const isFlow = (value: unknown): value is Flow => FLOWS.includes(value as
 /**
  * What decides a person's colour.
  *
- * The brief left this open — group affinity or individual taste — so it is a
- * control rather than a decision, and the four options are four answers to it.
- * `crowd` gives everyone their own hue. `kin` gives a hue to a group and varies
- * only lightness within it, so a family reads as a family from across the frame.
- * `teams` pushes everyone toward one of two hues a third of the circle apart,
- * which is a match day. `quiet` nearly gives up on hue and lets size and motion
- * carry the picture.
+ * `crowd` gives everyone their own hue. `quiet` nearly gives up on hue and lets
+ * size and motion carry the picture.
+ *
+ * **There were four, and two were about groups.** `kin` gave a group one hue and
+ * `teams` split the crowd between two. Both went on 2026-10-17 — colour here is
+ * "more of a randomness indicator", in Andrei's words, and a group needs no
+ * colour to be seen walking together. See `palette.ts`.
  */
-export const PALETTES = ["crowd", "kin", "teams", "quiet"] as const
+export const PALETTES = ["crowd", "quiet"] as const
 export type PaletteName = (typeof PALETTES)[number]
 export const isPaletteName = (value: unknown): value is PaletteName => PALETTES.includes(value as PaletteName)
+
+/** The two palettes that coloured by group, still found in old addresses. */
+const RETIRED_PALETTES: readonly string[] = ["kin", "teams"]
+
+/**
+ * A palette from anything an address or a caller might hand over. A retired one
+ * is `crowd`, the per-person hue it was a variation on, rather than nothing — so
+ * a link to `bacteria` saved while it was `kin` still opens in colour.
+ */
+export const paletteFrom = (value: unknown): PaletteName | undefined =>
+  isPaletteName(value) ? value : RETIRED_PALETTES.includes(value as string) ? "crowd" : undefined
 
 export type NumericKey = Exclude<keyof Settings, "flow" | "palette" | "dusk" | "heads">
 
@@ -124,8 +135,6 @@ export const FLOW_LABELS: Record<Flow, string> = {
 
 export const PALETTE_LABELS: Record<PaletteName, string> = {
   crowd: "each",
-  kin: "kin",
-  teams: "teams",
   quiet: "quiet",
 }
 
@@ -325,7 +334,7 @@ export const CONTROLS: Control[] = [
     label: "colour by",
     group: "colour",
     options: /* @__PURE__ */ PALETTES.map((name) => ({ value: name, label: PALETTE_LABELS[name] })),
-    hint: "What decides what a person is wearing. Each gives everyone their own hue. Kin gives the hue to the group and varies only its lightness inside it, so a family reads as a family across the whole frame. Teams pushes everyone toward one of two hues a third of the circle apart, which is a match day or a concert. Quiet nearly gives up on hue and lets size and movement carry the picture.",
+    hint: "How much hue a person wears. Each gives everyone their own, scattered by the spread. Quiet nearly gives up on hue and lets size and movement carry the picture.",
   },
   {
     kind: "slider",
@@ -512,7 +521,7 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
   const settings: Settings = {
     ...merged,
     flow: isFlow(merged.flow) ? merged.flow : base.flow,
-    palette: isPaletteName(merged.palette) ? merged.palette : base.palette,
+    palette: paletteFrom(merged.palette) ?? base.palette,
     dusk: Boolean(merged.dusk),
     heads: Boolean(merged.heads),
   }
@@ -577,8 +586,8 @@ function settingsFromNamedQuery(params: URLSearchParams): Settings {
   const flow = params.get("flow")
   if (isFlow(flow)) patch.flow = flow
 
-  const palette = params.get("palette")
-  if (isPaletteName(palette)) patch.palette = palette
+  const palette = paletteFrom(params.get("palette"))
+  if (palette) patch.palette = palette
 
   const dusk = params.get("dusk")
   if (dusk !== null) patch.dusk = dusk !== "0" && dusk !== "false"
@@ -623,7 +632,10 @@ function settingsFromNamedQuery(params: URLSearchParams): Settings {
  */
 export const REGISTRY: readonly Slot[] = [
   { key: "flow", kind: "enum", options: ["through", "wander", "gather"] },
-  { key: "palette", kind: "enum", options: ["crowd", "kin", "teams", "quiet"] },
+  // Retired 2026-10-17, when the two group palettes went. Still read, and
+  // `paletteFrom` turns `kin` and `teams` into `crowd`; the two-way slot at the
+  // end is what is written now.
+  { key: "palette", kind: "enum", options: ["crowd", "kin", "teams", "quiet"], retired: true },
   { key: "dusk", kind: "bool" },
   { key: "heads", kind: "bool" },
   { key: "density", kind: "num", grid: 0.5, origin: 0.5, bits: 9 },
@@ -650,6 +662,7 @@ export const REGISTRY: readonly Slot[] = [
   { key: "pastel", kind: "num", grid: 0.02, origin: 0, bits: 6 },
   { key: "playback", kind: "num", grid: 0.05, origin: 0, bits: 6 },
   { key: "seed", kind: "num", grid: 1, origin: 0, bits: 17 },
+  { key: "palette", kind: "enum", options: ["crowd", "quiet"] },
 ]
 
 /**
@@ -678,7 +691,7 @@ export function namesASetting(params: URLSearchParams): boolean {
   // before any per-key test runs.
   const packed = params.get("s")
   if (packed !== null && packed !== "" && decodeScene(REGISTRY, packed)) return true
-  if (isFlow(params.get("flow")) || isPaletteName(params.get("palette"))) return true
+  if (isFlow(params.get("flow")) || paletteFrom(params.get("palette"))) return true
   if (params.get("dusk") !== null || params.get("heads") !== null) return true
   return (Object.keys(BOUNDS) as NumericKey[]).some((key) => {
     const raw = params.get(key)
