@@ -5,7 +5,7 @@ import { createWater, indexOfDispersion, RUN_STEP } from "@/experiments/flotsam/
 /**
  * The water's physics, with no page and no canvas.
  *
- * These five were browser tests until #287, reading the same numbers through
+ * These were browser tests until #287, reading the same numbers through
  * `window.experiment` after a build and a page load. Nothing in them was about
  * pixels: `transport`, `orbit`, `dispersion` and `minJacobian` are all computed
  * in `water.ts`, so they are asserted against it here, and the page keeps one
@@ -195,6 +195,32 @@ describe("what gathers the flotsam", () => {
     expect(after.transport).toBeGreaterThan(0.1)
     expect(after.dispersion).toBeLessThan(1.25)
     expect(Math.abs(after.dispersion - before)).toBeLessThan(0.3)
+  })
+})
+
+/**
+ * **The water moves each speck by its own response.** How the response falls
+ * with size is `waves.test.ts` ("size response"), and that a big speck is handed
+ * a smaller one than a small speck is `scatter.test.ts`. What is left is that
+ * the survey displaces each piece by its own entry in the table, which `orbit`
+ * reads. A browser test until #287; it read nothing but `orbit`. The ratio
+ * measured 51-52 at run(0.5), run(1) and run(3) on 2026-09-07; the bound is 20.
+ */
+describe("what a raft does on a chop", () => {
+  it("ignores the chop a speck beside it is tracing", () => {
+    const water = waterOf({ dots: 300, trains: 1, shortest: 1.2, longest: 1.2, steepness: 0.8, span: 6 })
+
+    const orbit = (sizes: { smallest: number; largest: number }) => {
+      water.setSettings({ ...water.settings, ...sizes })
+      water.run(0.5)
+      water.survey()
+      return water.stats().orbit
+    }
+
+    const specks = orbit({ smallest: 0.004, largest: 0.006 })
+    const rafts = orbit({ smallest: 1, largest: 1.2 })
+    expect(rafts).toBeGreaterThan(0)
+    expect(specks).toBeGreaterThan(rafts * 20)
   })
 })
 
