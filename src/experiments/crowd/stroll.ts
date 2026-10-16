@@ -48,18 +48,7 @@
  * and is why the looking never feels random.
  */
 
-import {
-  BOB_RISE,
-  BOB_SWAY,
-  bodyRadius,
-  cadence,
-  eyeHeight,
-  RUN_RISE,
-  RUN_SWAY,
-  runBounce,
-  runCadence,
-  runSpeed,
-} from "@/experiments/crowd/body"
+import { bodyRadius, type Bob, cadence, eyeHeight, headBob, runCadence, runSpeed } from "@/experiments/crowd/body"
 import { avoid } from "@/experiments/crowd/steering"
 import type { Person } from "@/experiments/crowd/throng"
 import type { Stalls } from "@/experiments/crowd/stalls"
@@ -619,6 +608,8 @@ export function createStroll(settings: Settings, seed: number) {
   let running = false
   /** How far the bob has moved from a walk's to a run's, 0 to 1. */
   let runMix = 0
+  /** Reused by `eye()`, which the frame asks for every frame. */
+  const gait: Bob = { rise: 0, sway: 0 }
   let clock = 0
 
   let stature = current.height
@@ -1170,29 +1161,16 @@ export function createStroll(settings: Settings, seed: number) {
     },
 
     /**
-     * Where the eye actually is this instant, bob included.
-     *
-     * The rise is one cycle per **step** and the sway one per **stride**, which
-     * is two steps — hence the half. Both amplitudes are measurements from
-     * `body.ts`, and `bob` is the one place in this piece where a measured
-     * quantity is scaled by a taste. It earns that: at 1 the motion is invisible
-     * and the control exists so it can be turned up far enough to see what it
-     * was doing.
-     *
-     * `moving` fades both out as the walk stops, because a standing person's
-     * head does not trace a gait it is not performing.
+     * Where the eye actually is this instant, bob included — `headBob`, the
+     * same one everybody else's head is drawn with, eased by `runMix`. Both
+     * amplitudes are measurements from `body.ts`, and `bob` is the one place in
+     * this piece where a measured quantity is scaled by a taste. It earns that:
+     * at 1 the motion is invisible and the control exists so it can be turned up
+     * far enough to see what it was doing.
      */
     eye(): { z: number; sway: number } {
-      const amount = current.bob
-      const moving = Math.min(1, Math.hypot(vx, vy) / 0.35)
-      const walkRise = Math.sin(phase) * BOB_RISE
-      const runRise = runBounce(phase / (Math.PI * 2)) * RUN_RISE
-      const rise = walkRise + (runRise - walkRise) * runMix
-      const sway = BOB_SWAY + (RUN_SWAY - BOB_SWAY) * runMix
-      return {
-        z: eyeHeight(stature) + rise * amount * moving,
-        sway: Math.sin(phase / 2) * sway * amount * moving,
-      }
+      const bob = headBob(phase, runMix, Math.hypot(vx, vy), current.bob, gait)
+      return { z: eyeHeight(stature) + bob.rise, sway: bob.sway }
     },
 
     step,

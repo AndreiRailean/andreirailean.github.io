@@ -141,6 +141,19 @@ throng to show it calls them; my gait, my course round the loop and my gaze at
 a run are walked on the scene's own way with nobody else on it (`me` in that
 file). 3.4 s of test time, measured 2026-10-16.
 
+**Behaviours that compose are tested apart.** Andrei, on #287: "if a static
+crowd can bob and a small crowd can walk in the same direction, we can assume
+that a walking crowd can bob. gazing around doesn't require a full infinity of
+people to be useful". The bob is **`headBob` in `body.ts`**, one function for
+everybody's head and mine; it is checked on a head going nowhere with its phase
+swept through a stride (`tests/body.test.ts`), one drawn frame shows the crowd
+is drawn with it (`tests/draw.test.ts`), and the runner's walk, which happens
+anyway, shows mine is. **Shrink a world only as far as its check can still
+fail.** Measured 2026-10-16 with the fault put back: companions keeping station
+needs a crowd that pushes — with the spring removed the median gap read 0.89 m
+among 45 people, a pass, and 2.66 among 136 — and the stopped gaze's p90 stops
+telling a stopped sweep from a walking one below about 45 people.
+
 ## The gaze has two axes and a subject
 
 - **`pitch` is a bias, not a lock**, and holding the vertical fixed while the
@@ -749,6 +762,12 @@ the control in its heading.
   control is the same crowd at `spacing: 0.3` — and probably a world with no
   boundary to re-enter through, since re-entry by direction sorts the crowd on
   its own.
+- **A check that I look at my companions.** One read the time my head was
+  within 20° of a companion and could not tell a look aimed at them from one
+  aimed four metres to their side (0.37 against 0.19, past a 0.05 line, and the
+  same with nobody else about). `glanceKind` and `aimAt` are each checked; that
+  a companion glance ends with the head on the companion is not. It needs the
+  walk to say what it is looking at, which it does not expose.
 - **Nobody is going anywhere in particular.** People carry a heading, not a
   destination, so nothing walks up to something, waits, and leaves. The standing
   people are standing where they happened to be.

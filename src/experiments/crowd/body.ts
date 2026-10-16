@@ -230,3 +230,41 @@ export function runBounce(u: number): number {
   }
   return -0.6 - 0.4 * Math.sin((Math.PI * (t - flight)) / STANCE)
 }
+
+/** Where a head is in its gait this instant: how far above its height, and how far to the side. */
+export type Bob = { rise: number; sway: number }
+
+/**
+ * A head's bob, from its gait alone: everybody's, mine included.
+ *
+ * The rise is one cycle per **step** and the sway one per **stride**, which is
+ * two steps — hence the half. `runMix` runs from a walk's shape at 0 to a run's
+ * at 1; the crowd switches outright and only I ease between them. `moving`
+ * fades both out below 0.35 m/s, because a standing person's head does not
+ * trace a gait it is not performing. `amount` is the `bob` setting.
+ *
+ * **One function, so the bob is tested once** (#287): a person standing still
+ * and a person stepping on the spot say everything about it, and a walk that
+ * calls this does not have to be watched to show that it bobs. Written into
+ * `out`, because the draw calls it for every head in every frame.
+ */
+export function headBob(phase: number, runMix: number, speed: number, amount: number, out: Bob): Bob {
+  const moving = Math.min(1, speed / 0.35)
+  let rise: number
+  let sway: number
+  if (runMix <= 0) {
+    rise = Math.sin(phase) * BOB_RISE
+    sway = BOB_SWAY
+  } else if (runMix >= 1) {
+    rise = runBounce(phase / (Math.PI * 2)) * RUN_RISE
+    sway = RUN_SWAY
+  } else {
+    const walkRise = Math.sin(phase) * BOB_RISE
+    const runRise = runBounce(phase / (Math.PI * 2)) * RUN_RISE
+    rise = walkRise + (runRise - walkRise) * runMix
+    sway = BOB_SWAY + (RUN_SWAY - BOB_SWAY) * runMix
+  }
+  out.rise = rise * amount * moving
+  out.sway = Math.sin(phase / 2) * sway * amount * moving
+  return out
+}

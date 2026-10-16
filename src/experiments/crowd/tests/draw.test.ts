@@ -76,4 +76,55 @@ describe("a frame of the crowd", () => {
     const near = frame(2)
     expect(near.fills).toBeLessThan(near.drawn * 0.6)
   })
+
+  /**
+   * The wiring for the bob, which is `headBob` in `body.test.ts`: one person two
+   * metres ahead, drawn at the top of a step, with the bob off and turned up.
+   * A walker's head is drawn higher and to one side; a standing one's is not.
+   * Break it: draw at `person.head` alone and the first line goes red.
+   */
+  it("draws a walker's head where its bob puts it, and a standing one's where it stands", () => {
+    const settings = normalizeSettings({ ...MARKET.settings, reach: 12 })
+    const me = createStroll(settings, settings.seed)
+    const crowd = createThrong(settings, me)
+    const at = me.stats()
+    const person = crowd.people[0]!
+    person.x = at.x + Math.cos(at.yaw) * 2
+    person.y = at.y + Math.sin(at.yaw) * 2
+    person.phase = Math.PI / 2
+    person.running = false
+    const camera = makeCamera(at.x, at.y, me.eye().z, at.yaw, me.pitch, settings.fov, settings.fade, 1280, 720)
+
+    const headAt = (speed: number, bob: number) => {
+      // Walking straight at me, so the sway is across the frame and the rise is up it.
+      person.vx = -Math.cos(at.yaw) * speed
+      person.vy = -Math.sin(at.yaw) * speed
+      const arcs: number[][] = []
+      const recording = new Proxy(
+        {},
+        {
+          get: (_target, key) => (key === "arc" ? (...args: number[]) => arcs.push(args) : noop),
+          set: () => true,
+        },
+      ) as unknown as CanvasRenderingContext2D
+      drawFrame(recording, {
+        people: [person],
+        camera,
+        ground: crowd.path.ground,
+        settings: { ...settings, bob },
+        width: 1280,
+        height: 720,
+        scratch: makeScratch(),
+        boulders: [],
+      })
+      expect(arcs).toHaveLength(1)
+      return arcs[0]!
+    }
+
+    const [swayed, risen] = headAt(1.3, 3)
+    const [level, flat] = headAt(1.3, 0)
+    expect(risen, "the bob did not lift the head").toBeLessThan(flat! - 1)
+    expect(Math.abs(swayed! - level!), "the bob did not sway the head").toBeGreaterThan(1)
+    expect(headAt(0, 3)).toEqual(headAt(0, 0))
+  })
 })
