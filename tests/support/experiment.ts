@@ -228,7 +228,7 @@ export async function openExperiment<Api extends BaseApi>(
   return experiment
 }
 
-async function callApi<Api, Arg, T>(
+export async function callApi<Api, Arg, T>(
   page: Page,
   fn: (handle: { api: Api; arg: Arg }) => T | Promise<T>,
   arg: Arg,
