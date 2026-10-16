@@ -26,7 +26,8 @@ import { toggleFullscreen } from "@/experiments/kit/fullscreen"
  * `.toggle`, `.copy`, `.index`, `.about` — plus `data-active` and `data-locked` on a mode.
  * A piece that uses a control kind it has no CSS for will render it unstyled and
  * nothing will say so — that has happened here twice now, and
- * `tests/kit.spec.ts` checks the range row's layout because of the second time.
+ * `tests/kit.spec.ts` checks the range row's layout, on its fixture, because of
+ * the second time.
  *
  * **Those names are the kit's, and a setting key must not be able to land in the
  * same namespace.** An individual slider carries its key as `data-key` rather

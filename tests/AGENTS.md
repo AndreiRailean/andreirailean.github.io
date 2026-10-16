@@ -23,6 +23,15 @@ See `src/experiments/docs/adr/20260928-a-piece-is-a-library-behind-three-files.m
 A check that reads specs as text lists them through `tests/unit/specs.ts`, never
 `readdirSync("tests")`, which would silently stop seeing every piece's.
 
+**The kit is tested once, as a library, and never per piece.** `tests/kit.spec.ts`
+drives a synthetic piece in `tests/kit/` that holds one of every control kind,
+served from `http://kit.test` by `tests/support/kit-fixture.ts`. It is never
+built into the site. A kit behaviour belongs there, not in a loop over the
+pieces and not in a piece's spec. What a piece owes the chrome is one test in
+`tests/experiments-wiring.spec.ts`: it boots, exposes the console API, and
+draws. That file finds pieces on its own. The note is tested the same way, on
+one host. See `src/experiments/docs/adr/20261016-the-kit-is-tested-as-a-library.md`.
+
 `pnpm test` runs both. The extensions are load-bearing — each runner is
 configured to collect only its own, or they collect each other's files and fail
 on the other's imports.
@@ -32,8 +41,8 @@ on the other's imports.
 a change inside `src/experiments/<slug>/` or its routes selects that piece,
 prose selects none, and **anything else selects everything**. Unit always runs
 `tests/unit/` plus each selected piece's `tests/`; browser runs each selected
-piece's spec, its `<slug>: ` slice of `kit.spec.ts` and `experiments-notes.spec.ts`,
-and the index spec. Every push to `main` runs both suites whole, so a mis-map
+piece's spec, its `<slug>: ` test in `experiments-wiring.spec.ts`, and the index
+spec. Every push to `main` runs both suites whole, so a mis-map
 fails one merge later. Run it locally with `pnpm run test:affected unit` —
 it diffs against `origin/main`, including uncommitted work — and add `--dry-run`
 to see the selection alone. `scripts/affected.ts` has the reasoning, and
@@ -325,8 +334,9 @@ timeout over.
 **So a test about the chrome should hold the piece.** `api.pause(true)` is in the
 minimum surface of every piece and parks the frame loop without tearing anything
 down — `stats().running` goes false. Do it before touching the panel, not after.
-`kit.spec.ts` does it for every test through `openHeld`, and that one change took
-the CI browser job from about 8.2 minutes to 6.0 (#234).
+`kit.spec.ts` did it for every test through `openHeld` when it drove real pieces,
+and that one change took the CI browser job from about 8.2 minutes to 6.0
+(#234). Its fixture now draws one rectangle, so it no longer needs holding.
 
 **More workers are not the lever; less work per test is.** Four CI workers
 with `fullyParallel` were measured against the default two and bought nothing,

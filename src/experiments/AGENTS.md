@@ -299,16 +299,19 @@ public face and still gives it nothing to inherit from, exactly as above.
 
 ## Adding a piece
 
-Four places outside the experiment's own folder know a slug, and three of them
-fail loudly while the fourth fails by silently leaving the piece out:
+Two places outside the experiment's own folder know a slug, and both fail
+loudly:
 
 - `scripts/posters.ts` — `SLUGS`, or `pnpm run posters <slug>` says the
   experiment does not exist.
-- `tests/kit.spec.ts` — `PIECES`, which runs the whole chrome suite against it.
 - `tests/experiments-index.spec.ts` — `EXPECTED`, which pins the index's
   contents.
-- `tests/experiments-notes.spec.ts` — `NOTES`, so a third note cannot quietly
-  become a third shape.
+
+`tests/experiments-wiring.spec.ts` finds the piece on its own, from its
+`runner.ts`, and checks it boots, hands over the console API and draws. The kit
+and the note are tested once each, not per piece, so there is nothing to
+register there — `docs/adr/20261016-the-kit-is-tested-as-a-library.md` in this
+section's records.
 
 A piece also needs `src/pages/experiments/<slug>/{index,about}.astro`, and an
 `about.md` whose `poster:` line is added _after_ the first capture — the
@@ -522,9 +525,10 @@ skipped and fails on a non-empty list, because narrowing and moving on is how a
 sweep quietly stops covering the control somebody just added.
 
 `tests/unit/experiments-controls-report.test.ts` holds the presence rule in
-milliseconds against every piece's real controls, and `tests/kit.spec.ts` holds
-whatever a piece actually returns at runtime — a piece may still write its own
-report and say why in a `kit-opt-out:` line. The reasoning, and what it reverses,
+milliseconds against every piece's real controls, along with every reported key
+naming a real setting. Every piece's `controls()` is the kit's report now — it
+is built in `gallery/boot.ts` — so there is no runtime shape left to hold
+separately. The reasoning, and what it reverses,
 is in `docs/adr/20260907-the-controls-report-is-the-kits.md`.
 
 **`pause()` is not the scene's `stop()`.** `stop()` is teardown — it drops the
