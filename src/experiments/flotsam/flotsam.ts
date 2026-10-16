@@ -22,6 +22,7 @@
  * stats are the two halves of it, separately measurable.
  */
 
+import { frameStep } from "@/experiments/flotsam/clock"
 import { createCurrent, currentAt, type Current } from "@/experiments/flotsam/current"
 import { GROUND, VIGNETTE } from "@/experiments/flotsam/palette"
 import { createScatter, tune, type Scatter } from "@/experiments/flotsam/scatter"
@@ -535,19 +536,12 @@ export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flo
   function tick(now: number): void {
     frame = requestAnimationFrame(tick)
 
-    const elapsed = previous === 0 ? 0 : Math.min(0.25, (now - previous) / 1000)
+    const { elapsed, step } = frameStep(previous, now, settings.playback)
     previous = now
     if (elapsed > 0) fps += (1 / elapsed - fps) * 0.1
 
     if (isAnimated()) {
-      // The one place `playback` is applied, and it has to stay the one place.
-      // Everything time-dependent in the piece reads `clock` or is integrated
-      // through `advance`, so scaling the step here slows the waves, the
-      // current, the gusts and the wind's veering by exactly the same factor —
-      // which is what makes it a clock rather than a claim about the water. A
-      // control that reached into the sea instead would be the wave-speed
-      // setting `waves.ts` refuses to have.
-      const step = elapsed * settings.playback
+      // `step` is the only place `playback` is applied — see `clock.ts`.
       clock += step
       advance(step)
       draw()

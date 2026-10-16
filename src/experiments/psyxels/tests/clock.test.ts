@@ -28,10 +28,11 @@ describe("frameAdvance", () => {
   })
 
   it("scales with playback in one place, and stops at playback 0", () => {
-    const at1 = frameAdvance(1000, 1016, 1, false)
-    expect(frameAdvance(1000, 1016, 2, false)).toBeCloseTo(at1 * 2)
-    expect(frameAdvance(1000, 1016, 0.25, false)).toBeCloseTo(at1 / 4)
-    expect(frameAdvance(1000, 1016, 0, false)).toBe(0)
+    const at1 = frameAdvance(1000, 1050, 1, false)
+    expect(at1).toBeCloseTo(0.05, 9)
+    expect(frameAdvance(1000, 1050, 2, false)).toBeCloseTo(at1 * 2, 9)
+    expect(frameAdvance(1000, 1050, 0.25, false)).toBeCloseTo(at1 / 4, 9)
+    expect(frameAdvance(1000, 1050, 0, false)).toBe(0)
   })
 
   it("holds still under reduced motion", () => {

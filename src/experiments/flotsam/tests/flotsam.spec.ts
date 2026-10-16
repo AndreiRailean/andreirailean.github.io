@@ -1,6 +1,4 @@
 import type { ExperimentApi } from "@/experiments/flotsam/runner"
-import { DEFAULT_SETTINGS } from "@/experiments/flotsam/settings"
-import { PRESETS } from "@/experiments/flotsam/presets"
 import { expect, openExperiment, test } from "../../../../tests/support/experiment"
 import { litPixels as countLit } from "../../../../tests/support/canvas.ts"
 
@@ -265,18 +263,23 @@ test("a steep sea gathers the flotsam into lines, and a flat one does not", asyn
  * everything into a few clots, and it looked like a spectacular emergent result
  * rather than a torus with a seam in it.
  */
-test("eddies stir the flotsam for a minute without gathering any of it", async ({ page }) => {
+test("eddies stir the flotsam without gathering any of it", async ({ page }) => {
+  // **Wiring, not the property.** That the field is divergence-free and
+  // periodic is `current.test.ts`; this asks that the engine advects through it
+  // on the wrapped patch. A third of the dots and a quarter of the minute it
+  // used to take: with the periodicity removed (cycles not rounded to whole
+  // numbers in `createCurrent`) this still fails, seen 2026-10-16.
   const experiment = await openFlotsam(page, {
-    settings: { dots: 9000, steepness: 0, drift: 0, stokes: 0, eddies: 0.9, gyre: 3, span: 8 },
+    settings: { dots: 3000, steepness: 0, drift: 0, stokes: 0, eddies: 0.9, gyre: 3, span: 8 },
     idle: true,
   })
 
   const before = await experiment.api(({ api }) => api.stats())
-  await experiment.api(({ api }) => api.run(60))
+  await experiment.api(({ api }) => api.run(15))
   const after = await experiment.api(({ api }) => api.stats())
 
-  // It really did stir: sixty seconds at nearly a metre a second over
-  // three-metre gyres is many turnovers, not a nudge.
+  // It really did stir: fifteen seconds at nearly a metre a second over
+  // three-metre gyres is several turnovers, not a nudge.
   expect(after.transport).toBeGreaterThan(0.1)
   expect(after.dispersion).toBeLessThan(1.25)
   expect(Math.abs(after.dispersion - before.dispersion)).toBeLessThan(0.3)
@@ -323,38 +326,33 @@ test("wave drift moves the flotsam over a minute and nothing over a frame", asyn
   expect((await experiment.api(({ api }) => api.stats())).transport).toBe(0)
 })
 
+/**
+ * **Wiring, not the property: the engine moves each speck by its own response.**
+ * How the response falls with size is `waves.test.ts` ("size response"), and that
+ * a big speck is handed a smaller one than a small speck is `scatter.test.ts`.
+ * Gathering on a steep sea is the test above. So this keeps only the orbit
+ * ratio, which does not depend on how many specks there are: 300 rather than
+ * 4000, whose cost was a metre-wide raft's arithmetic, not the run (see
+ * `tests/AGENTS.md`). The ratio measured 51-52 at run(0.5), run(1) and run(3)
+ * on 2026-09-07; the bound is 20. With `sizeResponse` returning 1 it fails,
+ * seen 2026-10-16.
+ */
 test("a raft ignores the chop a speck beside it is tracing", async ({ page }) => {
-  // The wave is deliberately long against the dispersion grid, not against the
-  // rafts: gathering finer than a grid cell is invisible to the statistic, and a
-  // first version of this test measured a 40cm wave through 30cm cells and read
-  // a real four-to-one compression as 1.4.
   const experiment = await openFlotsam(page, {
-    settings: { dots: 4000, trains: 1, shortest: 1.2, longest: 1.2, steepness: 0.8, span: 6 },
+    settings: { dots: 300, trains: 1, shortest: 1.2, longest: 1.2, steepness: 0.8, span: 6 },
     idle: true,
   })
 
-  // Everything tiny: all of it follows the ripple, so the water is compressed
-  // and the flotsam gathers.
-  await experiment.api(({ api }) => api.set({ smallest: 0.004, largest: 0.006 }))
-  await experiment.api(({ api }) => api.run(3))
-  const specks = await experiment.api(({ api }) => api.stats())
+  const orbit = (sizes: { smallest: number; largest: number }) =>
+    experiment.api(({ api, arg }) => {
+      api.set(arg)
+      api.run(0.5)
+      return api.stats().orbit
+    }, sizes)
 
-  // Everything a metre across: it spans the wave and barely notices it.
-  await experiment.api(({ api }) => api.set({ smallest: 1, largest: 1.2 }))
-  await experiment.api(({ api }) => api.run(3))
-  const rafts = await experiment.api(({ api }) => api.stats())
-
-  // **Twenty, against a measured fifty-one.** The threshold was 50 and the ratio
-  // comes out 51 to 52 — two per cent of headroom on the headline assertion of
-  // the piece's slowest test, which is a flake waiting for anything that touches
-  // wave sampling. The claim is qualitative and survives intact: a raft ignores
-  // the chop by more than an order of magnitude. Measured 2026-09-07 at
-  // run(0.5), run(1) and run(3), which all give 51-52 — see the note about
-  // simulated duration in `tests/AGENTS.md`.
-  expect(specks.orbit).toBeGreaterThan(rafts.orbit * 20)
-  expect(specks.dispersion).toBeGreaterThan(2)
-  // The rafts are left where a flat sea would have left them.
-  expect(rafts.dispersion).toBeCloseTo(UNGATHERED, 0)
+  const specks = await orbit({ smallest: 0.004, largest: 0.006 })
+  const rafts = await orbit({ smallest: 1, largest: 1.2 })
+  expect(specks).toBeGreaterThan(rafts * 20)
 })
 
 /**
@@ -538,97 +536,34 @@ test("softness takes a piece from an object with an edge to a soft blob", async 
  * slower together and every relationship between the waves, the current and the
  * wind is untouched.
  */
-test("playback slows everything by the same factor, and pauses at nothing", async ({ page }) => {
+/**
+ * **Wiring: playback 0 stops the clock and parks the loop**, the path reduced
+ * motion takes too. That playback scales the step, and is applied in one place,
+ * is `clock.test.ts`; this used to time 600 ms of a live page at two speeds.
+ * Seen red 2026-10-16 with `isAnimated` ignoring playback.
+ */
+test("playback at nothing stops the sea and parks the loop", async ({ page }) => {
   const experiment = await openFlotsam(page, { settings: { ...MODEST, playback: 1 }, idle: true })
+  await expect.poll(async () => (await experiment.api(({ api }) => api.stats())).clock).toBeGreaterThan(0)
 
-  const advanced = async (over: number) => {
-    const before = await experiment.api(({ api }) => api.stats())
-    await page.waitForTimeout(over)
-    const after = await experiment.api(({ api }) => api.stats())
-    return after.clock - before.clock
-  }
-
-  const full = await advanced(600)
-  expect(full).toBeGreaterThan(0.3)
-
-  await experiment.api(({ api }) => api.set({ playback: 0.25 }))
-  const quarter = await advanced(600)
-  // A quarter of the sea in the same wall-clock time. Loose bounds: this is a
-  // real browser and a real six hundred milliseconds.
-  expect(quarter).toBeGreaterThan(full * 0.12)
-  expect(quarter).toBeLessThan(full * 0.45)
-
-  // Nothing at all, and the loop parks rather than redrawing a still frame for
-  // ever — which is the same path reduced motion takes.
   await experiment.api(({ api }) => api.set({ playback: 0 }))
-  expect(await advanced(400)).toBe(0)
   await expect.poll(async () => (await experiment.api(({ api }) => api.stats())).running, { timeout: 5000 }).toBe(false)
+  const parked = (await experiment.api(({ api }) => api.stats())).clock
+  await page.waitForTimeout(200)
+  expect((await experiment.api(({ api }) => api.stats())).clock).toBe(parked)
 })
 
 test("run() is seconds of sea, not seconds of watching", async ({ page }) => {
   // A poster recipe asking for forty seconds wants forty seconds of water
-  // whatever rate someone happens to be viewing at.
+  // whatever rate someone happens to be viewing at. Five rather than thirty: at
+  // playback 0.1 a run that obeyed playback would come out at 0.5.
   const experiment = await openFlotsam(page, { settings: { ...MODEST, playback: 0.1 }, idle: true })
 
   const before = await experiment.api(({ api }) => api.stats())
-  await experiment.api(({ api }) => api.run(30))
+  await experiment.api(({ api }) => api.run(5))
   const after = await experiment.api(({ api }) => api.stats())
 
-  expect(after.clock - before.clock).toBeCloseTo(30, 0)
-})
-
-test("every setting has a control, so the panel and a shared URL cannot disagree", async ({ page }) => {
-  const experiment = await openFlotsam(page)
-
-  const uncontrolled = await experiment.api(({ api }) => {
-    const controlled = new Set(api.controls().map((control) => control.key))
-    return Object.keys(api.get()).filter((key) => !controlled.has(key))
-  })
-
-  // `seed` is the one setting with no slider; it has a re-roll button instead.
-  expect(uncontrolled).toEqual(["seed"])
-})
-
-test("a scene survives a round trip through its own URL", async ({ page }) => {
-  const experiment = await openFlotsam(page)
-
-  const scene = await experiment.api(({ api }) => api.preset("riptide"))
-  const url = await experiment.api(({ api }) => api.url())
-
-  await page.goto(url)
-  await page.waitForFunction(() => Boolean(window.experiment))
-  expect(await experiment.api(({ api }) => api.get())).toEqual(scene)
-})
-
-test("a bare URL lands on the featured scene and says so in the address bar", async ({ page }) => {
-  const experiment = await openFlotsam(page)
-
-  expect(await experiment.api(({ api }) => api.get())).toEqual(PRESETS[0]!.settings)
-
-  /*
-   * **The address is rewritten to the primary's full query, and that is the
-   * point of landing.** A visitor leaves with a link to *this* scene rather than
-   * to whatever is featured next month — `src/experiments/AGENTS.md`.
-   *
-   * This used to assert the opposite: that the address stays bare, because the
-   * defaults *were* the first preset here and the query therefore measured
-   * empty. It said in as many words that it would break if the two were ever
-   * allowed to drift apart, and it did, on the change that recorded `offing` as
-   * a scene of its own. Flotsam was the exception; the rewrite is the rule.
-   */
-  const landed = new URL(await experiment.api(({ api }) => api.url()))
-  expect(landed.search).not.toBe("")
-
-  // And the link is the scene: what the address carries reloads to what is on
-  // screen. A rewrite that named a scene nobody could get back to would satisfy
-  // the line above and be worth nothing.
-  await page.goto(landed.toString())
-  await page.waitForFunction(() => Boolean(window.experiment))
-  expect(await experiment.api(({ api }) => api.get())).toEqual(PRESETS[0]!.settings)
-
-  // The primary is a recorded scene, not the baseline it starts from. Pinned
-  // because the identity is what the assertion above was quietly resting on.
-  expect(PRESETS[0]!.settings).not.toEqual(DEFAULT_SETTINGS)
+  expect(after.clock - before.clock).toBeCloseTo(5, 0)
 })
 
 test("re-rolling changes the water and keeps the settings", async ({ page }) => {
@@ -702,40 +637,26 @@ test("survives a resize instead of vanishing", async ({ page }) => {
 })
 
 /**
- * The sub-pixel floor is about a real pixel grid, so it is stated in device
- * pixels and the canvas is backed at `dpr`.
- *
- * Two properties, and the second is the one that caught a wrong first attempt.
- *
- * A denser screen must **resolve more cores as points** — that is the whole
- * reason the floor exists, and stating it in css px meant a 2× screen was
- * spreading dots it could have drawn sharply. `simmer` is the scene where it
- * showed: on a phone every one of its four thousand specks fell under the old
- * floor and the brightest was drawn at 38% of its peak, so hard points inside a
- * haze became dull smudges in it.
- *
- * And the light must **not move**, because the floor trades size for alpha and
- * that trade is energy-preserving. The first fix lowered the floor and left one
- * alpha shared with the halo — which the floor never widens — and tripled the
- * haze on every 2× screen while looking, in the diff, like a units correction.
- * `light` is the only thing that says so.
+ * **Wiring: the canvas tells the specks how dense its pixels are.** The floor
+ * itself (halving on a 2× screen, keeping `a·r²`, leaving the glare alone) is
+ * `specks.test.ts`. This used to run `simmer` for 60 s in each context and
+ * compare the light as well. Seen red 2026-10-16 with `setScale` never called.
  */
-test("a denser screen resolves more cores, and makes no more light doing it", async ({ browser }) => {
+test("a denser screen resolves more cores", async ({ browser }) => {
   const read = async (deviceScaleFactor: number) => {
     const context = await browser.newContext({ viewport: { width: 900, height: 700 }, deviceScaleFactor })
     try {
       const page = await context.newPage()
       await page.goto("/experiments/flotsam/")
       await page.waitForFunction(() => Boolean(window.experiment), undefined, { timeout: 15_000 })
-      await page.evaluate(() => (window.experiment as ExperimentApi).preset("simmer"))
-      await page.evaluate(() => (window.experiment as ExperimentApi).run(60))
-      await page.waitForTimeout(300)
       // Awaited before the `finally` closes the context out from under it.
-      const stats = await page.evaluate(() => {
-        const reading = (window.experiment as ExperimentApi).stats()
-        return { light: reading.light, dimmed: reading.dimmedDots, dots: reading.dots }
+      return await page.evaluate(() => {
+        const api = window.experiment as ExperimentApi
+        api.preset("simmer")
+        api.run(0.1)
+        const reading = api.stats()
+        return { dimmed: reading.dimmedDots, dots: reading.dots }
       })
-      return stats
     } finally {
       await context.close()
     }
@@ -745,14 +666,5 @@ test("a denser screen resolves more cores, and makes no more light doing it", as
   const dense = await read(2)
 
   expect(plain.dots, "the two runs are not looking at the same scene").toBe(dense.dots)
-
-  // Strictly fewer, not merely different: halving the floor can only move cores
-  // from under it to over it.
   expect(dense.dimmed, "a 2× screen resolved no more cores than a 1× one").toBeLessThan(plain.dimmed)
-
-  // The scene makes the same light either way. A tenth is far tighter than the
-  // threefold the shared-alpha version produced, and loose enough for a
-  // population whose sizes are drawn from a seeded distribution.
-  expect(dense.light).toBeGreaterThan(plain.light * 0.9)
-  expect(dense.light).toBeLessThan(plain.light * 1.1)
 })

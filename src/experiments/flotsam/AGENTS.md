@@ -315,8 +315,10 @@ in order to work at all, and every one of them was learned by breaking it.
   by it, and giving both one alpha tripled the haze on every 2× screen the moment
   the floor moved to device pixels. The glare keeps a css-px reference, read as
   an area ratio — a smaller speck reflects less light — rather than as a
-  pixel-grid correction. `src/experiments/flotsam/tests/flotsam.spec.ts` pins both halves and each was
-  watched to fail. See #94.
+  pixel-grid correction. `floorCore` and `coreFloor` in `specks.ts` make the
+  decision, `tests/specks.test.ts` pins both halves, and each was watched to
+  fail. `flotsam.spec.ts` keeps only the wiring: a 2× page resolves more cores.
+  See #94.
 - **`stats().dimmedDots` says how much of the population is only haze.** `light`
   will not: it is dominated by a thirty-pixel halo, so it barely moves when every
   core in the scene goes under the floor. That is what "the specks lost their
@@ -383,7 +385,8 @@ in order to work at all, and every one of them was learned by breaking it.
   clock gives a still with all the shape and gathering intact.
 - **Settings round-trip through the query string.** Anything added to `Settings`
   needs a `Control`, or the panel and shared URLs quietly disagree — asserted in
-  `src/experiments/flotsam/tests/flotsam.spec.ts`.
+  `tests/settings.test.ts`, and for every piece in
+  `tests/unit/experiments-urls.test.ts`.
 
 ## Shape of the code
 
@@ -438,7 +441,12 @@ it.
   fast it is actually going anywhere.
 - **`src/experiments/flotsam/tests/flotsam.spec.ts` drives the API under `pnpm test`**, and every test in
   it is one of the traps above. Add to it rather than reaching for `webcheck`,
-  which cannot evaluate JS.
+  which cannot evaluate JS. **But add only what needs the page.** What a
+  function decides — the frame clock (`clock.ts`), the core floor (`specks.ts`),
+  a size response, an eddy field — is tested as that function; the spec keeps a
+  short check that the engine is wired to it. Andrei, 2026-10-16: "if we're
+  testing collision detection - limit to that." A raft against a speck needs
+  300 dots and half a second, not 4000 and three.
 
 **`src/experiments/flotsam/tests/` covers the physics, and you should run it after touching
 any of it** — `pnpm exec vitest run flotsam` for all of it, `pnpm exec vitest waves` while

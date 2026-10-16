@@ -92,6 +92,27 @@ export const MIN_CORE_DEVICE_PX = 0.7
  */
 const MIN_CORE_CSS_PX = 0.7
 
+/** The sub-pixel floor in css px, for a canvas backed at `dpr`. */
+export function coreFloor(dpr: number): number {
+  return MIN_CORE_DEVICE_PX / Math.max(1, dpr)
+}
+
+/**
+ * A core held at the floor, and the glare that goes with it. A core under the
+ * floor is drawn at the floor and its alpha scaled by the area given up, so
+ * `a·r²` is unchanged; the glare is dimmed against the fixed css-px reference
+ * instead, never by the floor — see the note in `draw`.
+ */
+export function floorCore(
+  coreRadius: number,
+  alpha: number,
+  floorPx: number,
+): { r: number; a: number; glareAlpha: number; dimmed: boolean } {
+  const glareAlpha = coreRadius < MIN_CORE_CSS_PX ? alpha * (coreRadius / MIN_CORE_CSS_PX) ** 2 : alpha
+  if (coreRadius >= floorPx) return { r: coreRadius, a: alpha, glareAlpha, dimmed: false }
+  return { r: floorPx, a: alpha * (coreRadius / floorPx) ** 2, glareAlpha, dimmed: true }
+}
+
 /** How much wider than the core a halo has to be before it is worth compositing. */
 const HALO_WORTH_DRAWING = 1.08
 
@@ -351,16 +372,8 @@ export function createSpecks(context: CanvasRenderingContext2D): Specks {
        * css-px reference it was tuned against and the body gets the device-pixel
        * floor it was always about.
        */
-      const glareAlpha = coreRadius < MIN_CORE_CSS_PX ? alpha * (coreRadius / MIN_CORE_CSS_PX) ** 2 : alpha
-
-      let r = coreRadius
-      let a = alpha
-
-      if (r < floorPx) {
-        a *= (r / floorPx) ** 2
-        r = floorPx
-        dimmedCount++
-      }
+      const { r, a, glareAlpha, dimmed } = floorCore(coreRadius, alpha, floorPx)
+      if (dimmed) dimmedCount++
       if (a <= 0.002 && glareAlpha <= 0.002) return
 
       const outer = Math.max(r, haloRadius)
@@ -400,7 +413,7 @@ export function createSpecks(context: CanvasRenderingContext2D): Specks {
     lit: () => light,
     dimmed: () => dimmedCount,
     setScale(dpr) {
-      floorPx = MIN_CORE_DEVICE_PX / Math.max(1, dpr)
+      floorPx = coreFloor(dpr)
     },
     reset: () => {
       filled = 0
