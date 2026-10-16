@@ -48,7 +48,7 @@
  * when you look at a crowd.
  */
 
-import { BOB_RISE, BOB_SWAY, RUN_RISE, RUN_SWAY, runBounce } from "@/experiments/crowd/body"
+import { headBob, type Bob } from "@/experiments/crowd/body"
 import type { Boulder } from "@/experiments/crowd/boulders"
 import { CULL_ALPHA, horizonFor, project, sightSphere, type Camera, type SphereSight } from "@/experiments/crowd/camera"
 import type { Person } from "@/experiments/crowd/throng"
@@ -215,20 +215,19 @@ export function drawFrame(
   context.fillRect(0, 0, width, height)
 
   const bob = settings.bob
+  const gait: Bob = { rise: 0, sway: 0 }
   let seen = 0
 
   for (let i = 0; i < people.length; i++) {
     const person = people[i]!
 
-    // The head's own gait. One cycle of rise per step, one of sway per stride —
-    // which is two steps, hence the half. Too small to notice on anybody at ten
+    // The head's own gait, `headBob`. Too small to notice on anybody at ten
     // metres, and the reason a crowd at three metres is not a set of gliding
-    // discs. `moving` fades it out as somebody stops.
+    // discs.
     const speed = Math.hypot(person.vx, person.vy)
-    const moving = Math.min(1, speed / 0.35)
-    const rise = person.running ? runBounce(person.phase / TAU) * RUN_RISE : Math.sin(person.phase) * BOB_RISE
-    const z = options.ground(person.x) + person.head + rise * bob * moving
-    const sway = Math.sin(person.phase / 2) * (person.running ? RUN_SWAY : BOB_SWAY) * bob * moving
+    headBob(person.phase, person.running ? 1 : 0, speed, bob, gait)
+    const z = options.ground(person.x) + person.head + gait.rise
+    const sway = gait.sway
     // Perpendicular to the way they are walking, which is where a sway goes.
     const nx = speed > 1e-4 ? -person.vy / speed : 0
     const ny = speed > 1e-4 ? person.vx / speed : 0

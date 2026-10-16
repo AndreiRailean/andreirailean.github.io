@@ -234,8 +234,9 @@ flatten` at first, which looks right on a letter — ink is 1 almost everywhere 
   square for twenty seconds against a mean of two — reported by eye against
   numbers that looked healthy. `PATIENCE_LIMIT` is a _deadline_, not a lean:
   leaning the odds by how long a psyx had waited halved every coarse life, which
-  is a different change from the one that was wanted. The test asserts the ratio
-  of the longest life to the mean.
+  is a different change from the one that was wanted. `longestWhole` in
+  `stack.ts` states the bound it gives, and `stack.test.ts` drives one square
+  turn by turn against it, alongside the ratio of the longest life to the mean.
 - **The knockout is capped, not simply bolder.** It is drawn wider than the mark
   so it reads as a hole rather than a scratch, and doubling the weight is fine
   until the weight is heavy: at `weight` 0.12 a doubled knockout is a quarter of
@@ -416,7 +417,8 @@ its name and range alone.
 | `subject.ts`                            | the only place that knows what the picture is, and which way round            |
 | `mask.ts`                               | the subject as coverage: summed-area tables, variance, the white point        |
 | `glyphs.ts`                             | the vocabulary, the walk between frames, the blend between them, the drawing  |
-| `field.ts`                              | the quadtree: splitting, merging, churn, and a psyx's own life                |
+| `stack.ts`                              | one square's change of mind: when it is asked, what it answers, the deadline  |
+| `field.ts`                              | the quadtree: splitting, merging, the grain kept under a merge, a psyx's life |
 | `pulse.ts`                              | how bright a psyx is, whether it is there at all, and its transition          |
 | `palette.ts`                            | the argument between the subject's colour, the psyx's, and the edge's         |
 | `psyxels.ts`                            | the engine: canvas, the clock, drawing, stats                                 |
@@ -485,7 +487,7 @@ reconsiders its size a handful of times a minute.
   page**: light on the frame, the glow and the afterglow, pictures arriving,
   and one wiring check each that churn, flicker and pause reach the engine.
   What a rate or a clock _does_ is a function and belongs in a unit test —
-  `field.test.ts` for the rates, `clock.test.ts` for the frame clock — and the
+  `stack.test.ts` for the rates, `clock.test.ts` for the frame clock — and the
   chrome is the kit's, tested once in `tests/kit.spec.ts`. Andrei, 2026-10-16:
   "testing a random number generator doesn't require a world built on that."
 
@@ -494,6 +496,19 @@ reconsiders its size a handful of times a minute.
 `Mask` interface rather than a canvas: the tests hand it a synthetic subject with
 an exactly known area, which is how the cover, the pruning and the churn rate are
 checked without a browser.
+
+**A psyx's life is the stack's, and is tested without a field.** The squares
+over one point are a stack, and the psyx there lasts until the first square at
+or above it changes its mind. When a square is asked and what it answers —
+`changeGap`, `decideSplit`, the deadline, `reconsider` — live in `stack.ts` with
+no mask and no tree, and `stack.test.ts` drives one square turn by turn: the
+churn proportion is arithmetic, the deadline is a rigged generator, and the bound
+is `longestWhole`. The field keeps only what the tree adds — that a fine psyx is
+ended by every clock above it — and watches it on `STACKS`, a few 80px roots,
+rather than a picture. These used to be ten minutes of a 640×480 field and six
+seconds of test; they are now under half a second. Andrei, 2026-10-16: "the
+primitive would ensure that the large psyxel's lifetime is bounded based on the
+decision at the stack level".
 
 **The glow's cost is a software-rasteriser cost.** Gathering it takes the
 landing scene from 6.7ms a frame to 25, and almost none of that is the blur —

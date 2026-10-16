@@ -352,27 +352,34 @@ describe("the walk, end to end, in a small world", () => {
     expect(swings[Math.floor(swings.length * 0.9)]).toBeLessThan(20)
   })
 
-  it("keeps companions beside me through a crowd, and looks at them", () => {
+  it("keeps companions beside me through a crowd", () => {
     // **A companion is the one person still there in a minute's time.** They
     // keep station in my own frame and are never re-entered at the boundary.
-    const { me, crowd } = walk({ ...SMALL, companions: 2, looking: 1 }, 0)
+    // **The crowd is what this is about**, so it has to be thick enough to push:
+    // with the companion's spring taken out, the median gap was 0.89 m among
+    // forty-five people — a pass — and 2.66 among the 136 here. The market's
+    // 217 cost 3.3 s and adds nothing (#287).
+    //
+    // **It used to say "and looks at them", and could not see that.** It
+    // counted the time my head was within 20° of a companion, against 0.05:
+    // 0.37 as shipped, and 0.19 with every look at a person aimed four metres
+    // to one side of them — and with nobody else about the two came out the
+    // same. Glancing about sweeps across a companion walking at 40° often
+    // enough on its own. Which glances go to a companion is `glanceKind`, and
+    // where a look puts the head is `aimAt`, both above; the wiring between them
+    // is not something this statistic can see.
+    const { me, crowd } = walk({ ...SMALL, density: 30, companions: 2, looking: 1 }, 5)
     const gaps: number[] = []
-    let atMate = 0
-    let samples = 0
-    for (let t = 0; t < 40; t += STEP) {
+    for (let t = 0; t < 35; t += STEP) {
       me.step(STEP, crowd)
       crowd.step(STEP)
-      if (t < 5) continue
-      samples++
       for (const mate of crowd.companions) gaps.push(Math.hypot(mate.x - me.x, mate.y - me.y))
-      const mate = crowd.companions[0]!
-      if (Math.abs(wrap(me.yaw - Math.atan2(mate.y - me.y, mate.x - me.x))) < 0.35) atMate++
     }
     gaps.sort((a, b) => a - b)
     expect(crowd.stats().companions).toBe(2)
+    expect(crowd.people.length).toBeGreaterThan(100)
     expect(gaps[Math.floor(gaps.length / 2)]).toBeGreaterThan(0.5)
     expect(gaps[Math.floor(gaps.length / 2)]).toBeLessThan(1.4)
     expect(gaps[gaps.length - 1]).toBeLessThan(6)
-    expect(atMate / samples).toBeGreaterThan(0.05)
   })
 })

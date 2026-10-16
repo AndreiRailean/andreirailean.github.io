@@ -392,6 +392,11 @@ describe("the runner", () => {
    * speed. So this asserts the gait, not the pace — and the gait is mine, so it
    * is run on the runner's way with nobody else on it. Not running into people
    * is the avoidance, which `steering.test.ts` checks.
+   *
+   * The bounce itself — how far a run rises against a walk — is `headBob`, on a
+   * head going nowhere, in `body.test.ts`. What is left here is that I break
+   * into a run and that my eye is drawn with a run's bob when I do, which this
+   * walk shows for nothing because it is walking anyway.
    */
   it("runs, bouncing twice as far as a walk, down the middle", () => {
     const runner = me("runner", {}, 20)
