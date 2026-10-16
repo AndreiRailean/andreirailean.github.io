@@ -56,7 +56,8 @@ import {
 import { corridorPoint, entryAngle, heading } from "@/experiments/crowd/random"
 import { createLoop, createPath, hikingPace, lanePush, type Frame, type Path } from "@/experiments/crowd/path"
 import { createStalls, type Stalls } from "@/experiments/crowd/stalls"
-import { createBoulders, type Boulder, type Boulders } from "@/experiments/crowd/boulders"
+import { createBoulders, type Boulders } from "@/experiments/crowd/boulders"
+import { createRunaway, flee, type RunawayWorld } from "@/experiments/crowd/runaway"
 import { avoid, CUTOFF } from "@/experiments/crowd/steering"
 import { hashSeed, makeRng, type Rng } from "@/experiments/random"
 import { BOUNDS, type Settings } from "@/experiments/crowd/settings"
@@ -141,27 +142,6 @@ function teamSlots(mates: number): (readonly [number, number])[] {
   }
   return slots
 }
-
-/** Metres. Close enough that I have caught the person in red: an arm's reach and a body. */
-const CAUGHT_AT = 1.1
-
-/** Share of their waits in which they do not notice me coming, so the chase ends in a catch. */
-const CAUGHT_SHARE = 0.6
-
-/** How far a runaway looks for a boulder to get behind, in metres. */
-const HIDE_REACH = 25
-
-/** Seconds a runaway keeps one boulder between us before breaking for another. */
-const COVER_FOR = [5, 14] as const
-
-/** Share of hidings in which they do not see me coming round, so hiding can still end in a catch. */
-const UNAWARE = 0.3
-
-/** Metres they must get away before they can be caught again. */
-const REARM_AT = 5
-
-/** Seconds we stand together once caught, before they bolt again. */
-const CAUGHT_FOR = [2.5, 5]
 
 /** How firmly a companion holds their place, per second squared. Stiffer than a crowd group's. */
 const COMPANION_SPRING = 3.4
@@ -530,10 +510,10 @@ export function createThrong(settings: Settings, observer: Observer) {
     // The person in red: the first walker who is not with me, put a little way
     // ahead so the chase starts in view rather than across the square.
     if (current.chase > 0 && walkers > wanted) {
-      fleeing = true
-      caughtFor = 0
-      armed = true
-      farGap = 9 + place() * 12
+      quarryState.fleeing = true
+      quarryState.caughtFor = 0
+      quarryState.armed = true
+      quarryState.farGap = 9 + place() * 12
       const runaway = people[wanted]!
       runaway.quarry = true
       runaway.standing = false
@@ -1117,255 +1097,28 @@ export function createThrong(settings: Settings, observer: Observer) {
     }
   }
 
-  /** Whether the person in red is running off, or dawdling and letting me close. */
-  let fleeing = true
   /**
-   * Seconds left of being caught, or 0. **Being caught is a state of its own**:
-   * "if i catch them we can stand together for a little bit, then they run away
-   * and I chase them again. tom and jerry style." Without it a catch was a
-   * runaway dawdling beside me while I circled them, which read as wrestling.
+   * The person in red's state, and what their decisions read from here. The
+   * decisions themselves are `runaway.ts`, tested there one at a time. The
+   * world is read through getters because the stream, the ground and the
+   * settings are all replaced on a reseed or a rebuild.
    */
-  let caughtFor = 0
-  /**
-   * Whether a catch can happen. Disarmed when they bolt and re-armed only once
-   * they are properly away: they bolt from within arm's reach, and without this
-   * the next step caught them again — measured at 55 catches in four minutes on
-   * one seed, a runaway who never got away at all.
-   */
-  let armed = true
-  /** How far they run before stopping, and how close they let me get before running again. Redrawn each time. */
-  let farGap = 14
-  let nearGap = 3
-  /**
-   * Where the runaway is making for when there are boulders: the far side of
-   * one, from me. **A runaway on open ground runs straight away from me**, which
-   * puts them dead ahead — the crosshair the stalls were built to break. With
-   * boulders the way to lose somebody is to get one between you, so that is
-   * what they run for, and then they are simply gone until they break cover.
-   */
-  let hiding = false
-  /** The boulder being kept between us, and how much longer before they break for another. */
-  let cover: Boulder | null = null
-  let coverFor = 0
-  /** Whether they have got round to the far side yet. Until then, me being close is why they are running, not a reason to break. */
-  let inCover = false
-  /** Some of the time they are not watching for me behind their boulder, and that is how I catch them. */
-  let unaware = false
-  const hideCandidates: Boulder[] = []
-
-  function pickHide(person: Person): void {
-    hiding = false
-    const previous = cover
-    cover = null
-    if (!boulders.active) return
-    const dx = person.x - observer.x
-    const dy = person.y - observer.y
-    const d = Math.max(1e-3, Math.sqrt(dx * dx + dy * dy))
-    let best = -Infinity
-    for (const b of boulders.within(person.x, person.y, HIDE_REACH, hideCandidates)) {
-      if (b === previous) continue
-      const bx = b.x - observer.x
-      const by = b.y - observer.y
-      const bd = Math.max(1e-3, Math.sqrt(bx * bx + by * by))
-      const hx = b.x + (bx / bd) * (b.r + 1.2)
-      const hy = b.y + (by / bd) * (b.r + 1.2)
-      const tx = hx - person.x
-      const ty = hy - person.y
-      const td = Math.max(1e-3, Math.sqrt(tx * tx + ty * ty))
-      // Not back past me to get there.
-      const away = (tx * dx + ty * dy) / (td * d)
-      if (away < -0.2 || bd < d * 0.8) continue
-      const score = away + place() * 0.6 - td / 40
-      if (score > best) {
-        best = score
-        cover = b
-        hiding = true
-      }
-    }
-    coverFor = COVER_FOR[0] + place() * (COVER_FOR[1] - COVER_FOR[0])
-    inCover = false
-    unaware = place() < UNAWARE
-  }
-
-  /**
-   * **Keeping a boulder between us, not running to a spot behind it.** A fixed
-   * spot was built first and hid them 0% of the time: I follow their trail, so
-   * I came round the boulder the same way they had and there they were. The
-   * far side is recomputed from where I am every step, so if I come round one
-   * way they go round the other — and they break for the next boulder when I
-   * get close or when they have been there a while.
-   */
-  function keepCover(person: Person, d: number, dt: number): void {
-    const b = cover!
-    coverFor -= dt
-    const bx = b.x - observer.x
-    const by = b.y - observer.y
-    const bd = Math.max(1e-3, Math.sqrt(bx * bx + by * by))
-    const hx = b.x + (bx / bd) * (b.r + 1.2)
-    const hy = b.y + (by / bd) * (b.r + 1.2)
-    const tx = hx - person.x
-    const ty = hy - person.y
-    const td = Math.sqrt(tx * tx + ty * ty)
-    if (td < 2) inCover = true
-    if (coverFor <= 0 && d > b.r + 8 && !unaware) {
-      // Waited long enough and I am nowhere near: a better boulder.
-      pickHide(person)
-      if (hiding) return
-    }
-    if (inCover && d < b.r * 0.6 + 3.5 && !unaware) {
-      // Found: bolt, straight away from me, and hide again once clear.
-      hiding = false
-      cover = null
-      fleeing = true
-      farGap = 9 + place() * 12
-      const away = Math.atan2(person.y - observer.y, person.x - observer.x)
-      person.gx = Math.cos(away)
-      person.gy = Math.sin(away)
-      return
-    }
-    if (unaware && inCover) {
-      // Not watching for me: they stay put and I come round and catch them.
-      person.preferred = 0
-      return
-    }
-    if (td > 1e-3) {
-      person.gx = tx / td
-      person.gy = ty / td
-    }
-    const mine = Math.max(0.6, current.walk)
-    // Hurry while out of position, settle once there.
-    person.preferred = mine * current.flee * Math.min(1, td / 3)
-  }
-
-  /**
-   * How the person in red wants to move: two states, and the switching between
-   * them is the chase.
-   *
-   * **A pace that varies smoothly with distance does not make a chase — it was
-   * built first and measured.** Any such law has a distance at which their pace
-   * equals mine, and the gap settles there: two minutes of the market ended on
-   * 4 m, 4 m, 4 m, 4 m, whatever the shape of the ramp. What a child who has
-   * run off actually does is a relaxation oscillator. They run until they are
-   * far enough away to feel safe, stop and dawdle — looking at something,
-   * looking back — until you are nearly on them, and run again. Two states with
-   * a gap between their thresholds cannot settle, which is the point.
-   *
-   * Both thresholds are redrawn at every switch, so the rhythm does not repeat.
-   * On open ground their heading wanders and bends away from me when I am
-   * close; in a corridor it is the way itself, like everybody's.
-   */
-  function flee(person: Person, dt: number): void {
-    const dx = person.x - observer.x
-    const dy = person.y - observer.y
-    const d = Math.sqrt(dx * dx + dy * dy)
-    // Caught: stand together, then bolt with a head start. The bolt goes down
-    // whichever way along their aisle is further from me.
-    if (caughtFor > 0) {
-      caughtFor -= dt
-      person.preferred = 0
-      if (caughtFor <= 0) {
-        caughtFor = 0
-        fleeing = true
-        farGap = 9 + place() * 12
-        const away = Math.atan2(dy, dx)
-        const quarter = Math.PI / 2
-        const heading = stalls.active ? Math.round(away / quarter) * quarter : away
-        person.gx = Math.cos(heading)
-        person.gy = Math.sin(heading)
-        person.preferred = Math.max(0.6, current.walk) * current.flee * 1.3
-        armed = false
-      }
-      return
-    }
-    if (!armed && d > REARM_AT) armed = true
-    if (armed && d < CAUGHT_AT) {
-      caughtFor = CAUGHT_FOR[0] + place() * (CAUGHT_FOR[1] - CAUGHT_FOR[0])
-      person.preferred = 0
-      hiding = false
-      return
-    }
-    if (hiding) {
-      keepCover(person, d, dt)
-      if (hiding) return
-    }
-    if (fleeing && d > farGap) {
-      fleeing = false
-      // Far enough ahead to lose me: behind the nearest boulder, rather than
-      // waiting in the open.
-      pickHide(person)
-      if (hiding) {
-        keepCover(person, d, dt)
-        return
-      }
-      // Some of the time they do not see me coming, and I catch them.
-      nearGap = place() < CAUGHT_SHARE ? 0 : 2 + place() * 2.5
-    } else if (!fleeing && d < nearGap) {
-      fleeing = true
-      farGap = 9 + place() * 12
-    }
-    let heading = Math.atan2(person.gy, person.gx)
-    if (stalls.active) {
-      // **In the aisles, a runaway picks a way at each crossing, and prefers a
-      // corner.** Scoring by distance from me alone was built first: from
-      // behind in the same aisle straight on always wins, so they ran down it
-      // dead ahead of me and sat in the middle of the frame 77% of the time —
-      // the crosshair the stalls were meant to break. A child trying to lose
-      // you ducks round corners, so a turn is favoured, and a way back toward
-      // me is never taken.
-      const crossing = stalls.junction(person.x, person.y)
-      if (crossing >= 0 && crossing !== person.junction) {
-        person.junction = crossing
-        const quarter = Math.PI / 2
-        const base = Math.round(heading / quarter) * quarter
-        let best = base
-        let bestScore = -Infinity
-        for (const turn of [0, quarter, -quarter]) {
-          const h = base + turn
-          const away = (Math.cos(h) * dx + Math.sin(h) * dy) / Math.max(1, d)
-          if (away < -0.3) continue
-          const score = away * 0.5 + place() + (turn === 0 ? 0 : 0.7)
-          if (score > bestScore) {
-            bestScore = score
-            best = h
-          }
-        }
-        heading = best
-      }
-      person.gx = Math.cos(heading)
-      person.gy = Math.sin(heading)
-      // Laid back along the aisle if a turn has carried them past the crossing.
-      const runs = stalls.runs(person.x, person.y)
-      if (runs === 1 && Math.abs(person.gx) < 0.7) {
-        person.gx = person.gx >= 0 ? 1 : -1
-        person.gy = 0
-      } else if (runs === 2 && Math.abs(person.gy) < 0.7) {
-        person.gx = 0
-        person.gy = person.gy >= 0 ? 1 : -1
-      }
-      const mine = Math.max(0.6, current.walk)
-      person.preferred = fleeing ? mine * current.flee : mine * 0.2
-      return
-    }
-    heading += (place() - 0.5) * (fleeing ? 0.9 : 3) * Math.sqrt(dt) * 2
-    if (!Number.isFinite(halfWidth) && d > 1e-3) {
-      // Away from me, harder the closer I am, and only while running: a child
-      // dawdling is not steering.
-      const away = Math.atan2(dy, dx)
-      let off = away - heading
-      while (off > Math.PI) off -= Math.PI * 2
-      while (off < -Math.PI) off += Math.PI * 2
-      if (fleeing) heading += off * Math.min(1, 4 / Math.max(1, d)) * dt * 2
-    } else {
-      // Along the way, forward: in a corridor nobody runs off sideways.
-      let off = heading
-      while (off > Math.PI) off -= Math.PI * 2
-      while (off < -Math.PI) off += Math.PI * 2
-      heading -= off * dt * 2
-    }
-    person.gx = Math.cos(heading)
-    person.gy = Math.sin(heading)
-    const mine = Math.max(0.6, current.walk)
-    person.preferred = fleeing ? mine * current.flee : mine * 0.2
+  const quarryState = createRunaway()
+  const runawayWorld: RunawayWorld = {
+    observer,
+    get boulders() {
+      return boulders
+    },
+    get stalls() {
+      return stalls
+    },
+    get halfWidth() {
+      return halfWidth
+    },
+    get current() {
+      return current
+    },
+    place: () => place(),
   }
 
   function wanted(person: Person, out: { x: number; y: number }): void {
@@ -1417,7 +1170,7 @@ export function createThrong(settings: Settings, observer: Observer) {
     for (let i = 0; i < people.length; i++) {
       const person = people[i]!
 
-      if (person.quarry) flee(person, dt)
+      if (person.quarry) flee(quarryState, person, dt, runawayWorld)
       // Once per person per step: where they are on the way, which the
       // heading, the walls and the lane all want.
       const here = path.frame(person.x, person.y, frameMine, person)
@@ -1665,7 +1418,7 @@ export function createThrong(settings: Settings, observer: Observer) {
 
     /** Whether I have just caught the one in red, and we are standing together. */
     get caught(): boolean {
-      return caughtFor > 0
+      return quarryState.caughtFor > 0
     },
 
     /** The one in red, if there is one. */
@@ -1765,7 +1518,7 @@ export function createThrong(settings: Settings, observer: Observer) {
         watchers: watching,
         teams: current.team >= 2 ? groups.length : 0,
         quarry: quarryDistance(),
-        hiding,
+        hiding: quarryState.hiding,
         minRadius: path.minRadius,
         steepestClimb: path.steepestClimb,
         closest: Number.isFinite(closest) ? closest : 0,
