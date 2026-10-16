@@ -112,6 +112,14 @@ describes the work.
 >   my screen, the pattern it produces is mesmerising. not sure what will happen
 >   on replay.
 
+## 2026-10-16 — four to the edges
+
+> interesting. by pushing 4 to the edges (instead of a square) i get 3 big
+> circles and strange cut-offs on where the up-down lines would meet. does the
+> left-right symmetry need to mirror the up-down one or can the left-right have
+> a life of its own? i'm looking at this
+> http://100.117.55.104:4627/experiments/artdeco/?s=___f_____2BQGcJEkaUiAKMIIMMC0AAHPUgUKYAAQBIyz0ERIq
+
 ## Open questions
 
 _Mine, not his — what I assumed and what would settle it._
@@ -182,3 +190,14 @@ _Mine, not his — what I assumed and what would settle it._
     ticks, so a replay is the same drawing. **The construct you saw was one of
     those frame-dependent drawings**; the preset now grows the fixed one, which
     may not be the exact picture you fell for.
+- **Four to the edges** (2026-10-16). The three circles were the big circle
+  slid out with each side copy; it now turns with the copies but never slides,
+  so one on the centre stays one. The cut-offs: with slid copies every copy
+  shares one growth, so a line stopping at the circle in one copy stops in the
+  others where nothing is drawn. That is not fixable while the sides are
+  copies. So, to your question: the left and right do not have to mirror the
+  up and down. `sides: their own` (at 4) grows stems in from the side edges
+  that decide for themselves, mirrored left to right and top to bottom, and
+  meet the bottom and top drawing. Preset 15, crossroads, is your scene that
+  way. Not built: sides with a different stem count, gap or angle from the
+  bottom.

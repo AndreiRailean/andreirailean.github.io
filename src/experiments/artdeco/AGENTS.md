@@ -113,6 +113,19 @@ being found.
   so an image of an image is no longer an image, and the copies stop meeting
   at the centre. Meetings are still between a tip and each image of each line,
   which does not need the group property; nothing else should assume it.
+- **The big circle never slides with `reach: "edges"`.** It is turned with the
+  copies but drawn and met at unshifted positions, so one on the centre stays
+  one (three, before). The price: all copies share one growth, so a line that
+  stops at the circle in the bottom copy stops in a slid side copy too, where
+  no circle is drawn. Not fixable while the sides are copies; `sides: "own"`
+  is the answer.
+- **`sides: "own"` is fold 2 plus a second planting.** At 4 the group used is
+  the four images of 2 (both mirrors and the half turn), and `plant` adds
+  stems at the right edge pointing left, with their own root family drawn
+  after the bottom one. Their images give the left edge. A side stem on the
+  horizontal centre line is its own top-to-bottom image and is drawn twice in
+  one place; nothing treats it as `axis`, which means the vertical centre line
+  only.
 - **Strand mitres follow `prev` and `next`,** which only a turn or a rebound
   sets (`bend`). A split's children start in the middle of their parent's band
   and are not joined to it. A mitre longer than four strand offsets, at a sharp
