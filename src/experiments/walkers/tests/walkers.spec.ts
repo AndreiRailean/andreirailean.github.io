@@ -132,43 +132,29 @@ test("a crowd, on a ground", async ({ page }) => {
  *
  * Wiring only. Where a head lands for a given camera is `placeHeads`, tested in
  * `draw.test.ts` against camera / (camera − z) with one walker and no canvas.
- * What a page adds is that the setting gets there: `set({ camera })` rebuilds
- * the view and repaints. It used to be asserted here as the mean radius of the
- * bright pixels after a forty-five-second settle, which in a younger park
- * counted grass as heads and failed 4 runs in 6 (#287).
+ * What a page adds is that the setting gets there, so this reads the height the
+ * last frame was projected from — `stats().camera`, off the view the renderer
+ * was handed. It used to be the mean radius of the bright pixels after a
+ * forty-five-second settle, which in a younger park counted grass as heads and
+ * failed 4 runs in 6 (#287).
  *
- * The clock is stopped, so nothing but the camera changes between frames — and
- * the paired control is the same frame painted twice, which has to come back
- * identical, or a difference between two cameras proves nothing.
+ * **Not a canvas comparison.** The height also sets the world's margin, so two
+ * heights are two casts, and their frames differ with the projection switched
+ * off — a version of this that compared fingerprints passed with the view's
+ * camera pinned at 120.
  */
-test("the camera height reaches the picture, and moves nothing but the picture", async ({ page }) => {
+test("the camera height reaches the picture, and does not reframe the park", async ({ page }) => {
   const experiment = await openWalkers(page, { settings: { ...MODEST, camera: 120 }, idle: true })
-  await experiment.api(({ api }) => api.settle(2))
-  await experiment.api(({ api }) => api.set({ playback: 0 }))
+  await painted(page)
+  const high = await experiment.api(({ api }) => api.stats())
 
-  /** A fingerprint of the canvas, after the repaint `set` asks for. */
-  const frameAt = async (camera: number) => {
-    await experiment.api(({ api, arg }) => api.set({ camera: arg }), camera)
-    await painted(page)
-    const print = await page.evaluate(() => {
-      const canvas = document.querySelector("canvas") as HTMLCanvasElement
-      const { data } = canvas.getContext("2d")!.getImageData(0, 0, canvas.width, canvas.height)
-      let hash = 2166136261
-      for (let index = 0; index < data.length; index++) hash = Math.imul(hash ^ data[index]!, 16777619)
-      return hash >>> 0
-    })
-    const stats = await experiment.api(({ api }) => api.stats())
-    return { print, area: stats.area, clock: stats.clock, inFrame: stats.inFrame }
-  }
+  await experiment.api(({ api }) => api.set({ camera: 9 }))
+  await painted(page)
+  const low = await experiment.api(({ api }) => api.stats())
 
-  const high = await frameAt(120)
-  const again = await frameAt(120)
-  const low = await frameAt(9)
-
-  expect(high.inFrame, "nobody in shot").toBeGreaterThan(3)
-  expect(again.clock, "the clock moved, so the frames are not of one crowd").toBe(high.clock)
-  expect(again.print, "the same frame painted twice came back different").toBe(high.print)
-  expect(low.print, "the camera height never reached the picture").not.toBe(high.print)
+  expect(high.heads, "nothing was drawn").toBeGreaterThan(3)
+  expect(high.camera).toBe(120)
+  expect(low.camera, "the camera height never reached the picture").toBe(9)
   // The area in frame is set by span alone, so the height must not reframe the park.
   expect(low.area).toBeCloseTo(high.area, 5)
 })
