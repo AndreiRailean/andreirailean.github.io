@@ -53,6 +53,14 @@ export type Settings = {
   beat: number
   /** How far the big circle's radius strays from `halo`, drawn afresh for each drawing. */
   haloVary: number
+  /** Visible lines near a point, counting every drawing and image, at which it counts as fully crowded. */
+  crowd: number
+  /** Extra odds of stopping, at decisions and meetings, where it is fully crowded. */
+  hush: number
+  /** Odds, where it is fully crowded, that a line a tip crosses starts dissolving from the crossing. */
+  infect: number
+  /** Odds dissolving passes into the next line at each joint or turn it reaches. */
+  contagion: number
   /** Lines starting from the bottom, mirrored: an odd count puts one on the centre line. */
   stems: number
   /** Distance between neighbouring stems, as a share of the frame's height in per cent. */
@@ -165,7 +173,7 @@ export const VARIES: Vary[] = ["new", "same"]
 
 const SEED_BOUNDS = { min: 0, max: 999_999 }
 
-export const GROUP_ORDER = ["growth", "decisions", "meeting", "circles", "line", "cycle"] as const
+export const GROUP_ORDER = ["growth", "decisions", "meeting", "busyness", "circles", "line", "cycle"] as const
 
 const seconds = (v: number) => `${v.toFixed(1)}s`
 const unit = (v: number) => v.toFixed(2)
@@ -446,6 +454,42 @@ export const CONTROLS: Control[] = [
     "Odds a tip reflects off the line it meets, which keeps it on the angle. Off the big circle it reflects to the nearest angle.",
     "meeting",
   ),
+  {
+    kind: "slider",
+    key: "crowd",
+    label: "crowded at",
+    group: "busyness",
+    min: 2,
+    max: 40,
+    step: 1,
+    format: (v) => `${Math.round(v)} lines`,
+    hint: "How many visible lines within a short reach of a point, from every drawing still on screen and every copy, make it fully crowded. Fewer counts as partly crowded, in proportion. Lower makes everything count as busy sooner.",
+    inert: (settings: Settings) => settings.hush === 0 && settings.infect === 0,
+  },
+  /* @__PURE__ */ odds(
+    "hush",
+    "hush",
+    "Extra odds of stopping where it is crowded, scaled by how crowded: at a decision the line stops instead, and at a meeting it stops rather than crossing or rebounding.",
+    "busyness",
+  ),
+  /* @__PURE__ */ odds(
+    "infect",
+    "infect",
+    "Odds, scaled by how crowded it is where the tip is, that a line it crosses starts dissolving from the crossing — any visible line, older drawings' included. The gap widens both ways along the line at the speed lines grow.",
+    "busyness",
+  ),
+  {
+    kind: "slider",
+    key: "contagion",
+    label: "contagion",
+    group: "busyness",
+    min: 0,
+    max: 1,
+    step: 0.05,
+    format: unit,
+    hint: "Odds that dissolving, reaching a turn, a split or a place where lines meet, carries on into the line there. Each joint decides once. At 1 a dissolving line takes everything joined to it.",
+    inert: (settings: Settings) => settings.infect === 0,
+  },
   /* @__PURE__ */ odds("corner", "at corners", "Odds a corner gets a circle centred on it.", "circles"),
   {
     kind: "choice",
@@ -689,6 +733,10 @@ export const DEFAULT_SETTINGS: Settings = {
   thriceOf: "echo",
   beat: 0.25,
   haloVary: 0,
+  crowd: 12,
+  hush: 0,
+  infect: 0,
+  contagion: 0.5,
   strandsOn: "all",
   stems: 1,
   gap: 8,
@@ -761,6 +809,10 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   thrice: { min: 0, max: 1, step: 0.05 },
   beat: { min: 0.05, max: 1, step: 0.05 },
   haloVary: { min: 0, max: 1, step: 0.05 },
+  crowd: { min: 2, max: 40, step: 1 },
+  hush: { min: 0, max: 1, step: 0.05 },
+  infect: { min: 0, max: 1, step: 0.05 },
+  contagion: { min: 0, max: 1, step: 0.05 },
   haloAt: { min: 0, max: 100, step: 1 },
   width: { min: 0.5, max: 8, step: 0.25 },
   taper: { min: 0, max: 0.5, step: 0.05 },
@@ -851,6 +903,10 @@ const GROWTH_KEYS = [
   "thriceOf",
   "beat",
   "haloVary",
+  "crowd",
+  "hush",
+  "infect",
+  "contagion",
   "stems",
   "gap",
   "angle",
@@ -940,6 +996,10 @@ export const REGISTRY: readonly Slot[] = [
   { key: "haloVary", kind: "num", grid: 0.05, origin: 0, bits: 5 },
   { key: "strandsOn", kind: "enum", options: ["all", "stems"] },
   { key: "sides", kind: "enum", options: ["copies", "own"] },
+  { key: "crowd", kind: "num", grid: 1, origin: 2, bits: 6 },
+  { key: "hush", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "infect", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "contagion", kind: "num", grid: 0.05, origin: 0, bits: 5 },
 ]
 
 export function settingsToQuery(settings: Settings): URLSearchParams {

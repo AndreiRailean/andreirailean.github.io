@@ -31,6 +31,11 @@
  * the stems from the bottom are grown; every segment and every circle is drawn
  * once per image, and a tip meets the images of every line, its own included.
  *
+ * **Busyness dissolves lines.** A crossing in a crowded place can start the
+ * line it crosses dissolving from that point, both ways along it at the speed
+ * lines grow, and where the dissolving reaches a joint (a turn, a split, a
+ * meeting) it decides by `contagion` whether to carry on into the line there.
+ *
  * **Circles keep the same clock.** One draws itself up both sides from its
  * lowest point, as far round as the clock has run since it was placed, so a
  * circle of radius r takes πr to close — the distance a tip covers in that
@@ -64,10 +69,12 @@ type Token = {
   copy: boolean
   /** Below `rise`, a turn leans back towards upright. */
   lean: number
+  /** Below `hush` times how crowded it is, the line stops here instead. */
+  quiet: number
 }
 
 /** `threes` decides which decisions repeat; its own stream, so at `thrice` 0 nothing moved. */
-type Family = { rng: Rng; marks: Rng; threes: Rng; leans: Rng; tokens: Token[]; first: boolean }
+type Family = { rng: Rng; marks: Rng; threes: Rng; leans: Rng; quiets: Rng; tokens: Token[]; first: boolean }
 
 type Choice = "stop" | "cross" | "rebound"
 
@@ -91,7 +98,17 @@ type Seg = {
   /** The segment this one carries on from at a turn or rebound, and the one carrying on from it; -1 for none. */
   prev: number
   next: number
+  /** Where on it dissolving began, and the tree's `D` then; NaN while whole. */
+  rot: number
+  rotAt: number
+  /** Where other segments join it, for dissolving to pass along. */
+  joints: Joint[]
+  /** Dissolving has passed its start, or its end, on to `prev` or `next`. */
+  passed: number
 }
+
+/** A place where segment `other`, at `ou` along it, touches this one at `u` along. */
+type Joint = { u: number; other: number; ou: number; done: boolean }
 
 type Echo = { left: number; toNext: number; side: 1 | -1; family: Family }
 
@@ -113,13 +130,23 @@ type Head = {
 }
 
 /** `out` is the direction a rebound leaves in, or null when there is none on the angle. */
-type Hit = { t: number; kind: "line" | "mirror" | "axis" | "halo"; out: number | null; id: number }
+type Hit = {
+  t: number
+  kind: "line" | "mirror" | "axis" | "halo"
+  out: number | null
+  id: number
+  /** The segment met and how far along it, or -1 for the axis and the big circle. */
+  seg: number
+  ou: number
+}
 
 type Tree = {
   cycle: number
   segs: Seg[]
   heads: Head[]
   cells: Map<number, number[]>
+  /** Segments dissolving, until the gap has passed everything joined to them. */
+  rotting: Seg[]
   circles: Circle[]
   halo: Halo | null
   D: number
@@ -149,6 +176,8 @@ export type Stats = {
   circles: { corner: number; along: number }
   /** Decisions taken as the second or third of three. */
   repeated: number
+  /** Lines stopped by crowding, lines set dissolving, and dissolving passed on at a joint or turn. */
+  busy: { hushed: number; dissolved: number; passedOn: number }
   /** Turns that `rise` held upright or turned back towards upright. */
   leaned: number
   dropped: number
@@ -196,6 +225,9 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
   let offshoots = 0
   let circles = { corner: 0, along: 0 }
   let repeated = 0
+  let hushed = 0
+  let dissolved = 0
+  let passedOn = 0
   let leaned = 0
   let dropped = 0
   let stamp = 0
@@ -297,6 +329,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
       marks: makeRng(hashSeed(settings.seed, salt, tree.families, 7)),
       threes: makeRng(hashSeed(settings.seed, salt, tree.families, 11)),
       leans: makeRng(hashSeed(settings.seed, salt, tree.families, 17)),
+      quiets: makeRng(hashSeed(settings.seed, salt, tree.families, 19)),
       tokens: [],
       first: tree.families === 1,
     }
@@ -333,6 +366,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
         again: false,
         copy: false,
         lean: f.leans(),
+        quiet: f.quiets(),
       }
       f.tokens.push(tk)
       // The rule of threes: some decisions are made three times running, a beat apart.
@@ -378,7 +412,22 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
       dropped += 1
       return null
     }
-    const seg: Seg = { id: tree.segs.length, x0, y0, d: wrap(d), len: 0, born, gen, axis, prev: -1, next: -1 }
+    const seg: Seg = {
+      id: tree.segs.length,
+      x0,
+      y0,
+      d: wrap(d),
+      len: 0,
+      born,
+      gen,
+      axis,
+      prev: -1,
+      next: -1,
+      rot: NaN,
+      rotAt: 0,
+      joints: [],
+      passed: 0,
+    }
     tree.segs.push(seg)
     register(tree, seg, 0, 0)
     return seg
@@ -431,13 +480,14 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
               if (t <= EPS || t > 1 || u < -EPS || u > 1 + EPS) continue
               // Erased already: the tail has passed the point.
               if (u * other.len < tree.D - tree.delay - other.born) continue
+              if (gone(tree, other, u * other.len)) continue
               const hx = ax + (bx - ax) * t
               const hy = ay + (by - ay) * t
               if (Math.hypot(hx - seg.x0, hy - seg.y0) < ORIGIN) continue
               const ox = dx(other.d)
               const oy = dy(other.d)
               const out = reflectOff(seg.d, f.xx * ox + f.xy * oy, f.yx * ox + f.yy * oy)
-              consider({ t, kind: which === 0 ? "line" : "mirror", out, id: tag })
+              consider({ t, kind: which === 0 ? "line" : "mirror", out, id: tag, seg: id, ou: u * other.len })
             }
           }
       }
@@ -460,7 +510,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
         const a = ax - centre()
         const b = bx - centre()
         if (!seg.axis && Math.abs(a) > ORIGIN && (a * b < 0 || b === 0))
-          consider({ t: a / (a - b), kind: "axis", out: -seg.d, id: -1 })
+          consider({ t: a / (a - b), kind: "axis", out: -seg.d, id: -1, seg: -1, ou: 0 })
         continue
       }
       // The tip meeting its own image, which the stored segments cannot show:
@@ -491,7 +541,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
       const mx = f.flip ? vx + wx : wx
       const my = f.flip ? vy + wy : wy
       const out = Math.hypot(mx, my) > EPS ? reflectOff(seg.d, mx, my) : seg.d + turns() / 2
-      consider({ t, kind: "axis", out, id: -1 })
+      consider({ t, kind: "axis", out, id: -1, seg: -1, ou: 0 })
     }
     if (settings.haloMeets === "meet")
       for (const halo of halos(tree)) {
@@ -514,7 +564,14 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
             const down = ((hx - halo.x) * -Math.sin(halo.turn) + (hy - halo.y) * Math.cos(halo.turn)) / halo.r
             const arc = halo.r * Math.acos(Math.max(-1, Math.min(1, down)))
             if (arc > tree.D || arc < tree.D - tree.delay) continue
-            consider({ t, kind: "halo", out: offCircle(seg.d, (hx - halo.x) / halo.r, (hy - halo.y) / halo.r), id: -1 })
+            consider({
+              t,
+              kind: "halo",
+              out: offCircle(seg.d, (hx - halo.x) / halo.r, (hy - halo.y) / halo.r),
+              id: -1,
+              seg: -1,
+              ou: 0,
+            })
           }
         }
       }
@@ -549,8 +606,169 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     return out
   }
 
+  /** Two segments of one tree touch here: dissolving can pass between them. */
+  function join(a: Seg, au: number, b: Seg, bu: number) {
+    a.joints.push({ u: au, other: b.id, ou: bu, done: false })
+    b.joints.push({ u: bu, other: a.id, ou: au, done: false })
+  }
+
+  /** Whether the point `l` along `seg` has dissolved already. */
+  function gone(tree: Tree, seg: Seg, l: number): boolean {
+    return !Number.isNaN(seg.rot) && Math.abs(l - seg.rot) <= tree.D - seg.rotAt
+  }
+
+  /** A uniform for a pair of segments, so a choice about them is the same every replay. */
+  function pairOdds(tree: Tree, a: number, b: number, salt: number): number {
+    return hashSeed(settings.seed, tree.cycle, a, b, salt) / 4294967296
+  }
+
+  /**
+   * How crowded it is round (x, y), from 0 to 1: the visible lines of every
+   * drawing within a cell or so, their images included, over `crowd`.
+   */
+  function busyAt(x: number, y: number): number {
+    const counted = new Set<number>()
+    const fs = group()
+    trees.forEach((tree, ti) => {
+      fs.forEach((f, which) => {
+        const [qx, qy] = unimage(f, x, y)
+        const cx = Math.floor(qx / CELL)
+        const cy = Math.floor(qy / CELL)
+        for (let ox = -1; ox <= 1; ox++)
+          for (let oy = -1; oy <= 1; oy++) {
+            const list = tree.cells.get(key(cx + ox, cy + oy))
+            if (!list) continue
+            for (const id of list) {
+              const seg = tree.segs[id]!
+              if (seg.axis && f.flip) continue
+              const tail = tree.D - tree.delay - seg.born
+              if (seg.len <= EPS || tail >= seg.len) continue
+              if (!Number.isNaN(seg.rot) && tree.D - seg.rotAt >= Math.max(seg.rot, seg.len - seg.rot)) continue
+              counted.add(((ti % 64) * 16 + which) * (MAX_SEGS + 1) + id)
+            }
+          }
+      })
+    })
+    return Math.min(1, counted.size / settings.crowd)
+  }
+
+  /**
+   * The tip grew `distance` from (ax, ay): every visible line of any drawing it
+   * crossed on the way may start dissolving there, the more likely the more
+   * crowded it is where the tip now stands.
+   */
+  function infectAlong(tree: Tree, tip: Seg, ax: number, ay: number, distance: number) {
+    const bx = ax + dx(tip.d) * distance
+    const by = ay + dy(tip.d) * distance
+    const odds = settings.infect * busyAt(bx, by)
+    if (odds <= 0) return
+    for (const other of trees) {
+      for (const f of group()) {
+        const [px0, py0] = unimage(f, ax, ay)
+        const [px1, py1] = unimage(f, bx, by)
+        const rx = px1 - px0
+        const ry = py1 - py0
+        const samples = Math.max(1, Math.ceil(Math.hypot(rx, ry) / (CELL / 2)))
+        const looked = new Set<number>()
+        for (let i = 0; i <= samples; i++) {
+          const sx = Math.floor((px0 + (rx * i) / samples) / CELL)
+          const sy = Math.floor((py0 + (ry * i) / samples) / CELL)
+          for (let ox = -1; ox <= 1; ox++)
+            for (let oy = -1; oy <= 1; oy++) {
+              const list = other.cells.get(key(sx + ox, sy + oy))
+              if (!list) continue
+              for (const id of list) {
+                if (looked.has(id)) continue
+                looked.add(id)
+                if (other === tree && id === tip.id) continue
+                const seg = other.segs[id]!
+                if (seg.len <= EPS || !Number.isNaN(seg.rot)) continue
+                const sxv = dx(seg.d) * seg.len
+                const syv = dy(seg.d) * seg.len
+                const denom = cross(rx, ry, sxv, syv)
+                if (Math.abs(denom) < 1e-9) continue
+                const qx = seg.x0 - px0
+                const qy = seg.y0 - py0
+                const t = cross(qx, qy, sxv, syv) / denom
+                const u = cross(qx, qy, rx, ry) / denom
+                if (t <= EPS || t > 1 + EPS || u < 0 || u > 1) continue
+                if (u * seg.len < other.D - other.delay - seg.born) continue
+                if (pairOdds(other, id, tip.id + (other === tree ? 0 : 1 << 20), 3) >= odds) continue
+                infect(other, seg, u * seg.len, other.D)
+              }
+            }
+        }
+      }
+    }
+  }
+
+  function infect(tree: Tree, seg: Seg, at: number, when: number) {
+    if (!Number.isNaN(seg.rot)) return
+    seg.rot = Math.max(0, Math.min(seg.len, at))
+    seg.rotAt = when
+    tree.rotting.push(seg)
+    dissolved += 1
+  }
+
+  /**
+   * Carries dissolving on: wherever a widening gap reaches a joint, or the
+   * turn at either end, it passes into the segment there by `contagion`.
+   * Segments infected on the way join the end of the list and are walked in
+   * the same pass.
+   */
+  function rot(tree: Tree) {
+    const still: Seg[] = []
+    for (let i = 0; i < tree.rotting.length; i++) {
+      const seg = tree.rotting[i]!
+      const r = tree.D - seg.rotAt
+      const lo = seg.rot - r
+      const hi = seg.rot + r
+      let open = false
+      const reach = (u: number) => tree.D - (r - Math.abs(u - seg.rot))
+      for (const j of seg.joints) {
+        if (j.done) continue
+        if (j.u < lo - EPS || j.u > hi + EPS) {
+          open = true
+          continue
+        }
+        j.done = true
+        if (pairOdds(tree, seg.id, j.other, 5) < settings.contagion) {
+          infect(tree, tree.segs[j.other]!, j.ou, reach(j.u))
+          passedOn += 1
+        }
+      }
+      if (seg.prev >= 0 && !(seg.passed & 1)) {
+        if (lo <= 0) {
+          seg.passed |= 1
+          const prev = tree.segs[seg.prev]!
+          if (pairOdds(tree, seg.id, prev.id, 7) < settings.contagion) {
+            infect(tree, prev, prev.len, reach(0))
+            passedOn += 1
+          }
+        } else open = true
+      }
+      if (seg.next >= 0 && !(seg.passed & 2)) {
+        if (hi >= seg.len) {
+          seg.passed |= 2
+          const next = tree.segs[seg.next]!
+          if (pairOdds(tree, seg.id, next.id, 7) < settings.contagion) {
+            infect(tree, next, 0, reach(seg.len))
+            passedOn += 1
+          }
+        } else open = true
+      }
+      // A segment whose tip may still be growing keeps its place until it has dissolved past its end.
+      if (open || lo > 0 || hi < seg.len) still.push(seg)
+    }
+    tree.rotting = still
+  }
+
   function grow(tree: Tree, head: Head, distance: number) {
     const from = head.seg.len
+    if (settings.infect > 0 && distance > EPS) {
+      const seg = head.seg
+      infectAlong(tree, seg, seg.x0 + dx(seg.d) * from, seg.y0 + dy(seg.d) * from, distance)
+    }
     head.seg.len += distance
     register(tree, head.seg, from, head.seg.len)
     head.toDecision -= distance
@@ -566,6 +784,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     }
     const seg = newSeg(tree, x, y, d, parent.seg.gen + 1, at, false)
     if (!seg) return
+    join(parent.seg, parent.seg.len, seg, 0)
     const stepLen = Math.max(4, parent.stepLen * settings.shrink)
     const head: Head = {
       seg,
@@ -636,6 +855,10 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     const tk = token(head.family, head.n)
     head.n += 1
     head.depth += 1
+    if (settings.hush > 0 && tk.quiet < settings.hush * busyAt(...headPoint(head.seg))) {
+      hushed += 1
+      return false
+    }
     arm(head)
     decisions[tk.kind] += 1
     if (tk.copy) repeated += 1
@@ -698,6 +921,12 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
   /** Returns false when the tip stops. */
   function meet(tree: Tree, head: Head, hit: Hit, at: number): boolean {
     meetings[hit.kind] += 1
+    if (hit.seg >= 0) join(head.seg, head.seg.len, tree.segs[hit.seg]!, hit.ou)
+    // Crowded: more likely to stop here, as at a decision.
+    if (settings.hush > 0 && token(head.family, head.n).quiet < settings.hush * busyAt(...headPoint(head.seg))) {
+      hushed += 1
+      return false
+    }
     const choice = choose(head)
     chose[choice] += 1
     if (choice === "cross") {
@@ -795,6 +1024,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
       segs: [],
       heads: [],
       cells: new Map(),
+      rotting: [],
       circles: [],
       halo: null,
       D: 0,
@@ -867,6 +1097,9 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     offshoots = 0
     circles = { corner: 0, along: 0 }
     repeated = 0
+    hushed = 0
+    dissolved = 0
+    passedOn = 0
     leaned = 0
     dropped = 0
     trees.push(plant())
@@ -876,6 +1109,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     const advance = speed() * dt
     const start = tree.D
     tree.D += advance
+    if (tree.rotting.length) rot(tree)
     if (settings.cycle === "flow") tree.delay = settings.life * speed()
     if (tree.grown < 0) {
       const queue = tree.heads
@@ -966,18 +1200,29 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
           const o = (k - (strands - 1) / 2) * settings.spacing
           const start = tail + (before ? mitre(before.d, seg.d, o)[1] : 0)
           const end = seg.len + (after ? mitre(seg.d, after.d, o)[0] : 0)
-          if (end <= start) continue
-          const x0 = seg.x0 - uy * o + ux * start
-          const y0 = seg.y0 + ux * o + uy * start
-          const x1 = seg.x0 - uy * o + ux * end
-          const y1 = seg.y0 + ux * o + uy * end
-          for (const f of fs) {
-            // On the centre line a flip's image is a rotation's, already drawn.
-            if (seg.axis && f.flip) continue
-            const [ix0, iy0] = image(f, x0, y0)
-            const [ix1, iy1] = image(f, x1, y1)
-            ctx.moveTo(ix0, iy0)
-            ctx.lineTo(ix1, iy1)
+          // Dissolving cuts a gap out of the middle, widening both ways.
+          const r = Number.isNaN(seg.rot) ? -1 : tree.D - seg.rotAt
+          const pieces: [number, number][] =
+            r < 0
+              ? [[start, end]]
+              : [
+                  [start, Math.min(end, seg.rot - r)],
+                  [Math.max(start, seg.rot + r), end],
+                ]
+          for (const [from, to] of pieces) {
+            if (to <= from) continue
+            const x0 = seg.x0 - uy * o + ux * from
+            const y0 = seg.y0 + ux * o + uy * from
+            const x1 = seg.x0 - uy * o + ux * to
+            const y1 = seg.y0 + ux * o + uy * to
+            for (const f of fs) {
+              // On the centre line a flip's image is a rotation's, already drawn.
+              if (seg.axis && f.flip) continue
+              const [ix0, iy0] = image(f, x0, y0)
+              const [ix1, iy1] = image(f, x1, y1)
+              ctx.moveTo(ix0, iy0)
+              ctx.lineTo(ix1, iy1)
+            }
           }
         }
       }
@@ -1181,6 +1426,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
         offshoots,
         circles: { ...circles },
         repeated,
+        busy: { hushed, dissolved, passedOn },
         leaned,
         dropped,
         fps: Math.round(fps),
