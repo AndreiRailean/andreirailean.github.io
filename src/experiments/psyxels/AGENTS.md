@@ -130,8 +130,10 @@ flatten` at first, which looks right on a letter — ink is 1 almost everywhere 
   them does not scatter the field, it silently swaps in a mark the scene may
   never have chosen, and the swap is invisible because both marks are legal.
   `paintGlyph` applies `turn` only where `shape.paint` exists, and
-  `src/experiments/psyxels/tests/psyxels.spec.ts` pins it by asking the canvas rather than the painter:
-  a field of built marks must be pixel-identical at `spin: 0` and `spin: 1`.
+  `glyphs.test.ts` pins it per mark with a context that records every call: a
+  built mark makes the same calls at any `turn`. (It was five screenshots of a
+  running field until 2026-10-16; the decision is the painter's, so it is asked
+  of the painter.)
   A psyx's bearing is its own and is held for its life — both halves of a
   cross-fade read it, or a mark jumps as it morphs.
 - **A drawn mark answers to `weight` itself, and the specimen sheet is what
@@ -455,7 +457,9 @@ be read across origins.
 
 **Typing into the panel is not a shortcut.** The kit's text control stands the
 single-key shortcuts down while it has the focus, or the `1` in what is typed
-loads preset one over it. `psyxels.spec.ts` has the test, seen failing.
+loads preset one over it. That is the kit's guarantee and `tests/kit.spec.ts`
+tests it once, on the kit's own fixture
+(`../docs/adr/20261016-the-kit-is-tested-as-a-library.md`).
 
 ## Verifying a change
 
@@ -477,7 +481,13 @@ reconsiders its size a handful of times a minute.
   `changes` and `flicks` say whether anything is alive; `drawMs` and `fill` say
   what it costs.
 - **`src/experiments/psyxels/tests/psyxels.spec.ts` drives the API under `pnpm test`**, and every test in
-  it is one of the traps above.
+  it is one of the traps above. **It holds only what needs a canvas or a live
+  page**: light on the frame, the glow and the afterglow, pictures arriving,
+  and one wiring check each that churn, flicker and pause reach the engine.
+  What a rate or a clock _does_ is a function and belongs in a unit test —
+  `field.test.ts` for the rates, `clock.test.ts` for the frame clock — and the
+  chrome is the kit's, tested once in `tests/kit.spec.ts`. Andrei, 2026-10-16:
+  "testing a random number generator doesn't require a world built on that."
 
 **`src/experiments/psyxels/tests/` covers everything that is a function and a number** —
 `pnpm exec vitest run psyxels`. The field is unit-testable because `packField` takes a

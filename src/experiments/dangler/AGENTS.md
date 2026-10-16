@@ -257,6 +257,10 @@ anything above about 1e-2 means the strands are stretching or crumpling.
   it is one of the traps above. Add to it rather than reaching for `webcheck`,
   which cannot evaluate JS. It asserts the settled constraint error rather than
   trusting a still, so the rule above is enforced there rather than remembered.
+  It holds only what needs the page. The address and the panel's coverage of
+  `Settings` are data, checked in `tests/settings.test.ts` and for every piece
+  in `tests/unit/experiments-urls.test.ts`; the chrome is the kit's
+  (`../docs/adr/20261016-the-kit-is-tested-as-a-library.md`).
 
 **`src/experiments/dangler/tests/` covers the physics, and you should run it after touching
 any of it** — `pnpm exec vitest run` for all of it, `pnpm exec vitest rope` while editing the
