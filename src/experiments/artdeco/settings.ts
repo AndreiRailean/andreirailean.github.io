@@ -22,6 +22,7 @@ export { keysOf } from "@/experiments/kit/controls"
  * parallel through every turn they take. See `artdeco.ts`.
  */
 export type Angle = "15" | "30" | "45" | "60" | "90"
+export type Fold = "1" | "2" | "3" | "4" | "6"
 export type Unison = "family" | "all"
 export type CornerAt = "turns" | "splits" | "both"
 export type Mark = "ring" | "solid" | "cutout"
@@ -30,6 +31,8 @@ export type Cycle = "hold" | "flow"
 export type Vary = "new" | "same"
 
 export type Settings = {
+  /** Order of the symmetry: 1 mirrors left and right, 2 top and bottom too, 3 and up turn it round the centre. */
+  fold: Fold
   /** Lines starting from the bottom, mirrored: an odd count puts one on the centre line. */
   stems: number
   /** Distance between neighbouring stems, as a share of the frame's height in per cent. */
@@ -106,13 +109,14 @@ export type Settings = {
   seed: number
 }
 
-type EnumKey = "angle" | "unison" | "cornerAt" | "mark" | "haloMeets" | "haloMark" | "cycle" | "vary"
+type EnumKey = "fold" | "angle" | "unison" | "cornerAt" | "mark" | "haloMeets" | "haloMark" | "cycle" | "vary"
 export type NumericKey = Exclude<keyof Settings, EnumKey>
 
 export type Control = KitControl<string & keyof Settings>
 export type NumericControl = SliderControl<NumericKey>
 
 export const ANGLES: Angle[] = ["15", "30", "45", "60", "90"]
+export const FOLDS: Fold[] = ["1", "2", "3", "4", "6"]
 export const UNISONS: Unison[] = ["family", "all"]
 export const CORNER_ATS: CornerAt[] = ["turns", "splits", "both"]
 export const MARKS: Mark[] = ["ring", "solid", "cutout"]
@@ -141,6 +145,20 @@ const odds = (key: NumericKey, label: string, hint: string, group = "decisions")
 })
 
 export const CONTROLS: Control[] = [
+  {
+    kind: "choice",
+    key: "fold",
+    label: "fold",
+    group: "growth",
+    options: [
+      { value: "1", label: "1" },
+      { value: "2", label: "2" },
+      { value: "3", label: "3" },
+      { value: "4", label: "4" },
+      { value: "6", label: "6" },
+    ],
+    hint: "The drawing's symmetry. 1: mirrored left and right. 2: top and bottom as well, so the stems come from both edges and meet in the middle. 3, 4, 6: that many copies turned round the centre, each mirrored, like a kaleidoscope. Lines meet every copy of every line. 3 sits best with 15°, 30° or 60°, whose lines stay on the angle when turned by a third.",
+  },
   {
     kind: "slider",
     key: "stems",
@@ -520,6 +538,7 @@ export const CONTROLS: Control[] = [
 ]
 
 export const DEFAULT_SETTINGS: Settings = {
+  fold: "1",
   stems: 1,
   gap: 8,
   angle: "45",
@@ -642,6 +661,7 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
   const settings: Settings = {
     ...merged,
     angle: oneOf(ANGLES, String(merged.angle), base.angle),
+    fold: oneOf(FOLDS, String(merged.fold), base.fold),
     unison: oneOf(UNISONS, merged.unison, base.unison),
     cornerAt: oneOf(CORNER_ATS, merged.cornerAt, base.cornerAt),
     mark: oneOf(MARKS, merged.mark, base.mark),
@@ -662,6 +682,7 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
 
 /** Settings that change what gets drawn; a change to any of them starts the drawing again. */
 const GROWTH_KEYS = [
+  "fold",
   "stems",
   "gap",
   "angle",
@@ -741,6 +762,7 @@ export const REGISTRY: readonly Slot[] = [
   { key: "haloAt", kind: "num", grid: 1, origin: 0, bits: 7 },
   { key: "haloMeets", kind: "enum", options: ["pass", "meet"] },
   { key: "haloMark", kind: "enum", options: ["ring", "solid", "cutout"] },
+  { key: "fold", kind: "enum", options: ["1", "2", "3", "4", "6"] },
 ]
 
 export function settingsToQuery(settings: Settings): URLSearchParams {

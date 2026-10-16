@@ -25,6 +25,12 @@
  * second clock running `delay` behind the first, and changing the speed
  * mid-drawing moves both together.
  *
+ * **Symmetry is a group, not a mirror.** `fold` n gives the 2n rotations and
+ * reflections of the dihedral group about the frame's centre: 1 is the left
+ * and right mirror, 2 adds top and bottom, 3 is a kaleidoscope of threes. Only
+ * the stems from the bottom are grown; every segment and every circle is drawn
+ * once per image, and a tip meets the images of every line, its own included.
+ *
  * **Circles keep the same clock.** One draws itself up both sides from its
  * lowest point, as far round as the clock has run since it was placed, so a
  * circle of radius r takes πr to close — the distance a tip covers in that
@@ -53,6 +59,9 @@ type Choice = "stop" | "cross" | "rebound"
 type Circle = { x: number; y: number; size: number; born: number; gen: number; axis: boolean }
 
 type Halo = { x: number; y: number; r: number }
+
+/** One image under the symmetry: a linear map about the frame's centre, `turn` its rotation in radians. */
+type Xf = { xx: number; xy: number; yx: number; yy: number; flip: boolean; turn: number }
 
 type Seg = {
   id: number
@@ -173,6 +182,63 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
   const speed = () => px(settings.speed)
   const stepPx = () => px(settings.step)
   const centre = () => width / 2
+  const middle = () => height / 2
+
+  let images: Xf[] = []
+  let imagesFor = ""
+  /** The dihedral group of order 2n; index 0 is the identity and index 1 the left-right mirror. */
+  function group(): Xf[] {
+    if (imagesFor === settings.fold) return images
+    const n = Number(settings.fold)
+    images = []
+    for (let k = 0; k < n; k++) {
+      const turn = (2 * Math.PI * k) / n
+      const c = Math.cos(turn)
+      const sn = Math.sin(turn)
+      images.push({ xx: c, xy: -sn, yx: sn, yy: c, flip: false, turn })
+      images.push({ xx: -c, xy: -sn, yx: -sn, yy: c, flip: true, turn })
+    }
+    imagesFor = settings.fold
+    return images
+  }
+
+  function image(f: Xf, x: number, y: number): [number, number] {
+    const ox = x - centre()
+    const oy = y - middle()
+    return [centre() + f.xx * ox + f.xy * oy, middle() + f.yx * ox + f.yy * oy]
+  }
+
+  /** The inverse image: every map here is orthonormal, so its inverse is its transpose. */
+  function unimage(f: Xf, x: number, y: number): [number, number] {
+    const ox = x - centre()
+    const oy = y - middle()
+    return [centre() + f.xx * ox + f.yx * oy, middle() + f.xy * ox + f.yy * oy]
+  }
+
+  /**
+   * The direction on the angle nearest to direction `d` reflected off a line
+   * running along (ux, uy), or null if none of the nearest three leaves on the
+   * far side of where it came from. Exact when the line is on the angle.
+   */
+  function reflectOff(d: number, ux: number, uy: number): number | null {
+    const l = Math.hypot(ux, uy)
+    if (l < EPS) return null
+    ux /= l
+    uy /= l
+    const vx = dx(d)
+    const vy = dy(d)
+    const dot = vx * ux + vy * uy
+    const nx = -uy
+    const ny = ux
+    return snap(2 * dot * ux - vx, 2 * dot * uy - vy, nx, ny, vx * nx + vy * ny < 0 ? 1 : -1)
+  }
+
+  /** The direction on the angle nearest (rx, ry) whose component along (nx, ny) has the sign `side`. */
+  function snap(rx: number, ry: number, nx: number, ny: number, side: number): number | null {
+    const k = Math.round(Math.atan2(rx, -ry) / ((unit() * Math.PI) / 180))
+    for (const c of [k, k + 1, k - 1]) if ((dx(c) * nx + dy(c) * ny) * side > 0.05) return c
+    return null
+  }
   const inset = () => px(settings.margin)
 
   function family(tree: Tree): Family {
@@ -248,13 +314,12 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
   /** Earliest meeting along A→B, as a share of it, or null. */
   function firstHit(tree: Tree, head: Head, ax: number, ay: number, bx: number, by: number): Hit | null {
     const seg = head.seg
-    const cx = centre()
     let best: Hit | null = null
     const consider = (hit: Hit) => {
       if (!best || hit.t < best.t) best = hit
     }
 
-    const test = (px0: number, py0: number, px1: number, py1: number, mirrored: boolean) => {
+    const test = (px0: number, py0: number, px1: number, py1: number, which: number, f: Xf) => {
       stamp += 1
       if (stamp === 0xffffffff) {
         seen.fill(0)
@@ -274,7 +339,8 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
             for (const id of list) {
               if (seen[id] === stamp) continue
               seen[id] = stamp
-              if (id === seg.id || head.past === (mirrored ? -(id + 1) : id)) continue
+              const tag = which === 0 ? id : -(which * (MAX_SEGS + 1) + id + 1)
+              if ((which === 0 && id === seg.id) || head.past === tag) continue
               const other = tree.segs[id]!
               if (other.len <= EPS) continue
               const sxv = dx(other.d) * other.len
@@ -291,44 +357,90 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
               const hx = ax + (bx - ax) * t
               const hy = ay + (by - ay) * t
               if (Math.hypot(hx - seg.x0, hy - seg.y0) < ORIGIN) continue
-              const s = mirrored ? -other.d : other.d
-              consider({ t, kind: mirrored ? "mirror" : "line", out: 2 * s - seg.d, id: mirrored ? -(id + 1) : id })
+              const ox = dx(other.d)
+              const oy = dy(other.d)
+              const out = reflectOff(seg.d, f.xx * ox + f.xy * oy, f.yx * ox + f.yy * oy)
+              consider({ t, kind: which === 0 ? "line" : "mirror", out, id: tag })
             }
           }
       }
     }
 
-    test(ax, ay, bx, by, false)
-    if (!seg.axis) {
-      test(2 * cx - ax, ay, 2 * cx - bx, by, true)
-      const a = ax - cx
-      const b = bx - cx
-      if (Math.abs(a) > ORIGIN && (a * b < 0 || b === 0))
-        consider({ t: a / (a - b), kind: "axis", out: -seg.d, id: -1 })
+    const fs = group()
+    const vx = bx - ax
+    const vy = by - ay
+    for (let which = 0; which < fs.length; which++) {
+      const f = fs[which]!
+      // On the centre line a flip is the line itself, drawn once; it is never met.
+      if (seg.axis && f.flip && Math.abs(f.turn) < EPS) continue
+      const [qx0, qy0] = unimage(f, ax, ay)
+      const [qx1, qy1] = unimage(f, bx, by)
+      test(qx0, qy0, qx1, qy1, which, f)
+      if (which === 0) continue
+      if (which === 1) {
+        // The plain mirror, kept exactly as it was before the other images, so
+        // every seed drawn at fold 1 still draws what it drew.
+        const a = ax - centre()
+        const b = bx - centre()
+        if (!seg.axis && Math.abs(a) > ORIGIN && (a * b < 0 || b === 0))
+          consider({ t: a / (a - b), kind: "axis", out: -seg.d, id: -1 })
+        continue
+      }
+      // The tip meeting its own image, which the stored segments cannot show:
+      // the image of where it is going is not stored anywhere yet.
+      const [ix0, iy0] = image(f, ax, ay)
+      const [ix1, iy1] = image(f, bx, by)
+      const wx = ix1 - ix0
+      const wy = iy1 - iy0
+      const denom = cross(vx, vy, wx, wy)
+      let t = -1
+      if (Math.abs(denom) > 1e-9) {
+        const t1 = cross(ix0 - ax, iy0 - ay, wx, wy) / denom
+        const u1 = cross(ix0 - ax, iy0 - ay, vx, vy) / denom
+        if (u1 >= -EPS && u1 <= 1 + EPS) t = t1
+      } else if (
+        Math.hypot(ix0 - ax, iy0 - ay) > ORIGIN &&
+        Math.abs(cross(ix0 - ax, iy0 - ay, vx, vy)) < 1e-6 * (1 + Math.hypot(vx, vy))
+      ) {
+        // Head on, along one line: the two tips grow at one speed, so they meet halfway.
+        const l2 = vx * vx + vy * vy
+        if (l2 > 0) t = (((ix0 - ax) / 2) * vx + ((iy0 - ay) / 2) * vy) / l2
+      }
+      if (t <= EPS || t > 1) continue
+      const hx = ax + vx * t
+      const hy = ay + vy * t
+      if (Math.hypot(hx - ax, hy - ay) < 0.01 || Math.hypot(hx - seg.x0, hy - seg.y0) < ORIGIN) continue
+      // A reflection's image meets it on the reflection's own line, and it rebounds off that.
+      const mx = f.flip ? vx + wx : wx
+      const my = f.flip ? vy + wy : wy
+      const out = Math.hypot(mx, my) > EPS ? reflectOff(seg.d, mx, my) : seg.d + turns() / 2
+      consider({ t, kind: "axis", out, id: -1 })
     }
-    const halo = tree.halo
-    if (halo && settings.haloMeets === "meet") {
-      const rx = bx - ax
-      const ry = by - ay
-      const fx = ax - halo.x
-      const fy = ay - halo.y
-      const a = rx * rx + ry * ry
-      const b = 2 * (fx * rx + fy * ry)
-      const disc = b * b - 4 * a * (fx * fx + fy * fy - halo.r * halo.r)
-      if (a > 0 && disc >= 0) {
-        for (const sign of [-1, 1]) {
-          const t = (-b + sign * Math.sqrt(disc)) / (2 * a)
-          if (t <= EPS || t > 1) continue
-          const hx = ax + rx * t
-          const hy = ay + ry * t
-          if (Math.hypot(rx * t, ry * t) < 0.01 || Math.hypot(hx - seg.x0, hy - seg.y0) < ORIGIN) continue
-          // Only where the circle has been drawn and not yet erased.
-          const arc = halo.r * Math.acos(Math.max(-1, Math.min(1, (hy - halo.y) / halo.r)))
-          if (arc > tree.D || arc < tree.D - tree.delay) continue
-          consider({ t, kind: "halo", out: offCircle(seg.d, (hx - halo.x) / halo.r, (hy - halo.y) / halo.r), id: -1 })
+    if (settings.haloMeets === "meet")
+      for (const halo of halos(tree)) {
+        const rx = bx - ax
+        const ry = by - ay
+        const fx = ax - halo.x
+        const fy = ay - halo.y
+        const a = rx * rx + ry * ry
+        const b = 2 * (fx * rx + fy * ry)
+        const disc = b * b - 4 * a * (fx * fx + fy * fy - halo.r * halo.r)
+        if (a > 0 && disc >= 0) {
+          for (const sign of [-1, 1]) {
+            const t = (-b + sign * Math.sqrt(disc)) / (2 * a)
+            if (t <= EPS || t > 1) continue
+            const hx = ax + rx * t
+            const hy = ay + ry * t
+            if (Math.hypot(rx * t, ry * t) < 0.01 || Math.hypot(hx - seg.x0, hy - seg.y0) < ORIGIN) continue
+            // Only where the circle has been drawn and not yet erased, measured
+            // round from its lowest point, which turns with its image.
+            const down = ((hx - halo.x) * -Math.sin(halo.turn) + (hy - halo.y) * Math.cos(halo.turn)) / halo.r
+            const arc = halo.r * Math.acos(Math.max(-1, Math.min(1, down)))
+            if (arc > tree.D || arc < tree.D - tree.delay) continue
+            consider({ t, kind: "halo", out: offCircle(seg.d, (hx - halo.x) / halo.r, (hy - halo.y) / halo.r), id: -1 })
+          }
         }
       }
-    }
     return best
   }
 
@@ -341,12 +453,21 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     const vx = dx(d)
     const vy = dy(d)
     const dot = vx * nx + vy * ny
-    const rx = vx - 2 * dot * nx
-    const ry = vy - 2 * dot * ny
-    const k = Math.round(Math.atan2(rx, -ry) / ((unit() * Math.PI) / 180))
-    const side = dot < 0 ? 1 : -1
-    for (const c of [k, k + 1, k - 1]) if ((dx(c) * nx + dy(c) * ny) * side > 0.05) return c
-    return null
+    return snap(vx - 2 * dot * nx, vy - 2 * dot * ny, nx, ny, dot < 0 ? 1 : -1)
+  }
+
+  /** The big circle under every rotation, once each: on the centre point they are all one. */
+  function halos(tree: Tree): (Halo & { turn: number })[] {
+    const halo = tree.halo
+    if (!halo) return []
+    const out: (Halo & { turn: number })[] = []
+    for (const f of group()) {
+      if (f.flip) continue
+      const [x, y] = image(f, halo.x, halo.y)
+      if (out.some((h) => Math.hypot(h.x - x, h.y - y) < 0.5)) continue
+      out.push({ x, y, r: halo.r, turn: f.turn })
+    }
+    return out
   }
 
   function grow(tree: Tree, head: Head, distance: number) {
@@ -706,6 +827,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
         if (!list) byGen.set(seg.gen, (list = []))
         list.push({ ...seg, x0: seg.x0 + dx(seg.d) * tail, y0: seg.y0 + dy(seg.d) * tail, len: seg.len - tail })
       }
+    const fs = group()
     for (const [gen, list] of byGen) {
       ctx.lineWidth = Math.max(0.35, settings.width * (1 - settings.taper) ** gen)
       ctx.beginPath()
@@ -720,11 +842,13 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
           const y0 = seg.y0 + ux * o
           const x1 = x0 + ux * seg.len
           const y1 = y0 + uy * seg.len
-          ctx.moveTo(x0, y0)
-          ctx.lineTo(x1, y1)
-          if (!seg.axis) {
-            ctx.moveTo(2 * cx - x0, y0)
-            ctx.lineTo(2 * cx - x1, y1)
+          for (const f of fs) {
+            // On the centre line a flip's image is a rotation's, already drawn.
+            if (seg.axis && f.flip) continue
+            const [ix0, iy0] = image(f, x0, y0)
+            const [ix1, iy1] = image(f, x1, y1)
+            ctx.moveTo(ix0, iy0)
+            ctx.lineTo(ix1, iy1)
           }
         }
       }
@@ -769,8 +893,14 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     const to = Math.min(Math.PI, drawn / r)
     const from = Math.max(0, tail / r)
     if (to <= from) return
-    const cx = centre()
-    const xs = axis ? [x] : [x, 2 * cx - x]
+    // Every image, once: its lowest point turns with it, and on the centre point they are all one.
+    const at: [number, number, number][] = []
+    for (const f of group()) {
+      if (axis && f.flip) continue
+      const [ix, iy] = image(f, x, y)
+      if (at.some(([ox, oy]) => Math.hypot(ox - ix, oy - iy) < 0.5)) continue
+      at.push([ix, iy, Math.PI / 2 + f.turn])
+    }
     const strands = Math.round(settings.strands)
     ctx.lineWidth = Math.max(0.35, settings.width * (1 - settings.taper) ** gen)
     if (how !== "ring") {
@@ -778,22 +908,21 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
       const share = Math.min(to, Math.PI - from) / Math.PI
       ctx.fillStyle = how === "solid" ? `hsl(${settings.hue} 62% 64%)` : `hsl(${settings.hue} 22% 4%)`
       ctx.beginPath()
-      for (const ox of xs) {
-        ctx.moveTo(ox + r * share, y)
-        ctx.arc(ox, y, r * share, 0, 2 * Math.PI)
+      for (const [ox, oy] of at) {
+        ctx.moveTo(ox + r * share, oy)
+        ctx.arc(ox, oy, r * share, 0, 2 * Math.PI)
       }
       ctx.fill()
     }
     ctx.beginPath()
-    for (const ox of xs)
+    for (const [ox, oy, bottom] of at)
       for (let k = 0; k < strands; k++) {
         const rr = r + (k - (strands - 1) / 2) * settings.spacing
         if (rr <= 0.25) continue
-        const bottom = Math.PI / 2
-        ctx.moveTo(ox + rr * Math.cos(bottom - from), y + rr * Math.sin(bottom - from))
-        ctx.arc(ox, y, rr, bottom - from, bottom - to, true)
-        ctx.moveTo(ox + rr * Math.cos(bottom + from), y + rr * Math.sin(bottom + from))
-        ctx.arc(ox, y, rr, bottom + from, bottom + to)
+        ctx.moveTo(ox + rr * Math.cos(bottom - from), oy + rr * Math.sin(bottom - from))
+        ctx.arc(ox, oy, rr, bottom - from, bottom - to, true)
+        ctx.moveTo(ox + rr * Math.cos(bottom + from), oy + rr * Math.sin(bottom + from))
+        ctx.arc(ox, oy, rr, bottom + from, bottom + to)
       }
     ctx.stroke()
   }
