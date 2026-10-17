@@ -14,7 +14,7 @@
  * creeping in from the edge. `clear()` is there to watch the creep.
  */
 
-import { gaussian, hashSeed, makeRng, type Rng } from "@/experiments/random"
+import { gaussian, hashSeed, makeRng, signed, type Rng } from "@/experiments/random"
 import { needsRebuild, type Settings } from "@/experiments/streakers/settings"
 
 type Line = {
@@ -140,7 +140,7 @@ function buildLines(settings: Settings, width: number, height: number): Line[] {
       // crosses the picture and none is wasted off a corner.
       const along = Math.abs(cx * hx) + Math.abs(cy * hy)
       const across = Math.abs(cx * hy) + Math.abs(cy * hx)
-      const u = settings.placement === "even" ? ((i + 0.5) / n) * 2 - 1 : place() * 2 - 1
+      const u = settings.placement === "even" ? ((i + 0.5) / n) * 2 - 1 : signed(place)
       ox = cx - hx * (along + pad) - hy * u * across
       oy = cy - hy * (along + pad) + hx * u * across
       aim = theta
@@ -152,12 +152,12 @@ function buildLines(settings: Settings, width: number, height: number): Line[] {
       aim = phi + Math.PI + settings.twist * DEG
     }
 
-    aim += (pick() * 2 - 1) * settings.spread * DEG
+    aim += signed(pick) * settings.spread * DEG
     const dx = Math.cos(aim)
     const dy = Math.sin(aim)
     const speed = slow * Math.pow(fast / slow, pick())
     const radius = settings.size * spreadFactor(settings.lineSizes, pick())
-    const hue = Math.round(((pick() * 2 - 1) * settings.hues) / 2) * 2
+    const hue = Math.round((signed(pick) * settings.hues) / 2) * 2
     const meanGap = (settings.gapBy === "distance" ? settings.gap / speed : settings.gap / reference) || 1
 
     const crossing = clip(ox, oy, dx, dy, -pad, -pad, width + pad, height + pad)

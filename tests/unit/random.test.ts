@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { gaussian, hashSeed, makeRng } from "@/experiments/random"
+import { gaussian, hashSeed, makeRng, shuffle, signed } from "@/experiments/random"
 
 /**
  * The seeded generators everything else in the piece is built on. If these are
@@ -55,5 +55,66 @@ describe("gaussian", () => {
     const { mean, sd } = distribution()
     expect(Math.abs(mean)).toBeLessThan(0.03)
     expect(Math.abs(sd - 1)).toBeLessThan(0.06)
+  })
+})
+
+describe("signed", () => {
+  it("is the same bits as the expression it replaced", () => {
+    // Eight pieces wrote `rng() * 2 - 1` inline. Adopting `signed` must not move a
+    // seeded scene, so the comparison is exact, not approximate.
+    const a = makeRng(hashSeed(11, 2))
+    const b = makeRng(hashSeed(11, 2))
+    for (let i = 0; i < 1000; i++) expect(signed(a)).toBe(b() * 2 - 1)
+  })
+
+  it("covers both sides of zero within [-1, 1)", () => {
+    const rng = makeRng(3)
+    const draws = Array.from({ length: 2000 }, () => signed(rng))
+    expect(Math.min(...draws)).toBeGreaterThanOrEqual(-1)
+    expect(Math.max(...draws)).toBeLessThan(1)
+    expect(draws.some((v) => v < -0.9) && draws.some((v) => v > 0.9)).toBe(true)
+  })
+})
+
+describe("shuffle", () => {
+  /** The loop bubbles, dotfield and hexgrid each carried before it was hoisted. */
+  function inline(rng: () => number, items: number[]): number[] {
+    for (let i = items.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1))
+      ;[items[i], items[j]] = [items[j]!, items[i]!]
+    }
+    return items
+  }
+
+  it("draws in the order the inline copies did, so no seeded scene moves", () => {
+    for (const seed of [1, 7, 42, 9001]) {
+      for (const length of [0, 1, 2, 17, 256, 391]) {
+        const order = Array.from({ length }, (_, i) => i)
+        const expected = inline(makeRng(seed), [...order])
+        expect(shuffle(makeRng(seed), [...order])).toEqual(expected)
+      }
+    }
+  })
+
+  it("shuffles a typed array's prefix in place and leaves the rest", () => {
+    // Bubbles' permutation table is 512 long and shuffles its first half, then doubles it.
+    const table = new Uint8Array(512)
+    for (let i = 0; i < 256; i++) table[i] = i
+    shuffle(makeRng(5), table.subarray(0, 256))
+    const expected = inline(
+      makeRng(5),
+      Array.from({ length: 256 }, (_, i) => i),
+    )
+    expect([...table.subarray(0, 256)]).toEqual(expected)
+    expect(table.subarray(256).every((v) => v === 0)).toBe(true)
+  })
+
+  it("returns a permutation, not a resample", () => {
+    const shuffled = shuffle(
+      makeRng(8),
+      Array.from({ length: 100 }, (_, i) => i),
+    )
+    expect([...shuffled].sort((a, b) => a - b)).toEqual(Array.from({ length: 100 }, (_, i) => i))
+    expect(shuffled).not.toEqual(Array.from({ length: 100 }, (_, i) => i))
   })
 })

@@ -1,4 +1,4 @@
-import { gaussian, hashSeed, makeRng } from "@/experiments/random"
+import { gaussian, hashSeed, makeRng, signed } from "@/experiments/random"
 import { indexOfGlyph, nextGlyph, type GlyphName } from "@/experiments/psyxels/glyphs"
 // The arrival ease's own length. This file decides when a psyx was born and
 // `pulse.ts` decides what being newly born looks like, so the constant lives
@@ -192,8 +192,8 @@ function breatheLife(node: Node, time: number, allowed: readonly number[]): void
   node.phase = rng()
   node.swing = 0.55 + 0.9 * rng()
   node.luck = rng()
-  node.offsetX = rng() * 2 - 1
-  node.offsetY = rng() * 2 - 1
+  node.offsetX = signed(rng)
+  node.offsetY = signed(rng)
   node.turn = rng()
   node.born = time
   node.flicked = time
