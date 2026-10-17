@@ -1,5 +1,6 @@
 /**
- * Seeded randomness: a mixer, a generator, and a normal draw.
+ * Seeded randomness: a mixer, a generator, and the draws more than two pieces
+ * make from it — signed, shuffled, normal.
  *
  * **In the kit because a third piece wanted it**, which is the only condition
  * the section allows a thing to be hoisted on — ADR-0002 as narrowed by
@@ -55,6 +56,35 @@ export function makeRng(seed: number): Rng {
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296
   }
+}
+
+/**
+ * A uniform draw on [-1, 1): a jitter, a lean, an offset either side of zero.
+ *
+ * Hoisted at the eighth copy of `rng() * 2 - 1`, and written that way rather
+ * than as `(rng() - 0.5) * 2` so every caller that adopted it kept its exact
+ * bits — a seeded scene must not move because its arithmetic was tidied.
+ */
+export function signed(rng: Rng): number {
+  return rng() * 2 - 1
+}
+
+/**
+ * Fisher-Yates, in place, from the last element down, one draw per swap.
+ *
+ * The draw order is the contract: three pieces carried this loop and each
+ * seeded scene depends on exactly which `rng()` lands on which index. A typed
+ * array's `subarray` shuffles a prefix in place, which is how a permutation
+ * table that is doubled afterwards uses it.
+ */
+export function shuffle<T extends { length: number; [index: number]: unknown }>(rng: Rng, items: T): T {
+  for (let i = items.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1))
+    const swap = items[i]
+    items[i] = items[j]
+    items[j] = swap
+  }
+  return items
 }
 
 /**

@@ -34,7 +34,7 @@
  * miss the column.
  */
 
-import { gaussian, hashSeed, makeRng, type Rng } from "@/experiments/random"
+import { gaussian, hashSeed, makeRng, signed, type Rng } from "@/experiments/random"
 import type { Air } from "@/experiments/embers/air"
 import type { Settings } from "@/experiments/embers/settings"
 
@@ -129,7 +129,7 @@ export function createBed(initial: Settings, seed: number): Bed {
    */
   function acrossBed(): number {
     for (let tries = 0; tries < 8; tries++) {
-      const s = (rng() * 2 - 1) * 1.9
+      const s = signed(rng) * 1.9
       const th = Math.tanh(s)
       if (rng() < 1 - th * th) return s * half()
     }

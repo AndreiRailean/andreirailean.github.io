@@ -25,7 +25,7 @@
  * does not need to be: what it is used for is walls, which are soft.
  */
 
-import type { Rng } from "@/experiments/random"
+import { signed, type Rng } from "@/experiments/random"
 import { bandEntry, bandPoint } from "@/experiments/crowd/random"
 
 /**
@@ -384,7 +384,7 @@ export function createLoop(
   const scratch: Frame = { lateral: 0, cos: 1, sin: 0 }
 
   const across = (rng: Rng, inner: number, outer: number) =>
-    inner > 0 ? (rng() < 0.5 ? -1 : 1) * (inner + rng() * (outer - inner)) : (rng() * 2 - 1) * outer
+    inner > 0 ? (rng() < 0.5 ? -1 : 1) * (inner + rng() * (outer - inner)) : signed(rng) * outer
 
   const at2 = (i: number, lateral: number) => ({ x: px[i]! - ty[i]! * lateral, y: py[i]! + tx[i]! * lateral })
 

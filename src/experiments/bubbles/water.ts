@@ -39,7 +39,7 @@
  * water — and leaves the small one as texture on top.
  */
 
-import { hashSeed, makeRng } from "@/experiments/random"
+import { hashSeed, makeRng, shuffle } from "@/experiments/random"
 
 /** Quintic fade: zero first *and* second derivative at the ends, so cells do not crease. */
 const fade = (t: number): number => t * t * t * (t * (t * 6 - 15) + 10)
@@ -75,12 +75,7 @@ function usePerm(seed: number): void {
   for (let i = 0; i < 256; i++) PERM[i] = i
   // Fisher-Yates, so every ordering is equally likely and no corner's gradient
   // correlates with its neighbour's.
-  for (let i = 255; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1))
-    const swap = PERM[i]!
-    PERM[i] = PERM[j]!
-    PERM[j] = swap
-  }
+  shuffle(rng, PERM.subarray(0, 256))
   PERM.copyWithin(256, 0, 256)
 }
 

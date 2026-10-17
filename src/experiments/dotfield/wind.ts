@@ -25,7 +25,7 @@
  * dragging a rate changes how fast things move and never jumps them.
  */
 
-import { hashSeed, makeRng, type Rng } from "@/experiments/random"
+import { hashSeed, makeRng, shuffle, signed, type Rng } from "@/experiments/random"
 import type { Settings } from "@/experiments/dotfield/settings"
 
 const TAU = Math.PI * 2
@@ -56,10 +56,7 @@ export function gustEnvelope(since: number): number {
 export function makeNoise3(rng: Rng) {
   const perm = new Uint8Array(512)
   const p = Array.from({ length: 256 }, (_, i) => i)
-  for (let i = 255; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1))
-    ;[p[i], p[j]] = [p[j]!, p[i]!]
-  }
+  shuffle(rng, p)
   for (let i = 0; i < 512; i++) perm[i] = p[i & 255]!
   // The twelve edge directions of a cube: Perlin's improved gradients.
   const G = [
@@ -199,7 +196,7 @@ export function createWind(seed: number) {
         start,
         // Never a sequence of identical shoves.
         strength: 0.5 + 0.5 * rng(),
-        offset: (rng() * 2 - 1) * s.gustSpread * DEG,
+        offset: signed(rng) * s.gustSpread * DEG,
         across: rng(),
       }
       const angle = prevailing + gust.offset

@@ -50,7 +50,7 @@
  * rebuilt when the span changes or the window is resized.
  */
 
-import { hashSeed, makeRng } from "@/experiments/random"
+import { hashSeed, makeRng, signed } from "@/experiments/random"
 import { heading } from "@/experiments/flotsam/waves"
 
 /**
@@ -157,7 +157,7 @@ export function createCurrent(spec: CurrentSpec, patchWidth: number, patchHeight
       // anything and `gyre` would read as a speed control.
       amplitude: 1 / k,
       phase: rng() * Math.PI * 2,
-      wander: (rng() * 2 - 1) * WANDER * k,
+      wander: signed(rng) * WANDER * k,
     })
   }
 

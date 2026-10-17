@@ -19,7 +19,7 @@
  * toward the ground.
  */
 
-import { hashSeed, makeRng, type Rng } from "@/experiments/random"
+import { hashSeed, makeRng, shuffle, signed, type Rng } from "@/experiments/random"
 import { needsRebuild, type Lattice, type Settings } from "@/experiments/dotfield/settings"
 import { createWind } from "@/experiments/dotfield/wind"
 
@@ -126,10 +126,7 @@ function span(
 function makeNoise(rng: Rng) {
   const perm = new Uint8Array(512)
   const p = Array.from({ length: 256 }, (_, i) => i)
-  for (let i = 255; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1))
-    ;[p[i], p[j]] = [p[j]!, p[i]!]
-  }
+  shuffle(rng, p)
   for (let i = 0; i < 512; i++) perm[i] = p[i & 255]!
   const gx = new Float32Array(256)
   const gy = new Float32Array(256)
@@ -285,7 +282,7 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
       // light damping that put neighbours 2.8x apart in rate, so they rang out
       // of step and the field read as random. `sway` is the rate of a column
       // of the nominal height.
-      omega[c] = (1 + settings.variety * (rng() * 2 - 1)) / Math.pow(tall[c]!, settings.heightSway)
+      omega[c] = (1 + settings.variety * signed(rng)) / Math.pow(tall[c]!, settings.heightSway)
     }
     // A neighbour per column, found through a hash of cells one spacing wide.
     const cell = settings.spacing
