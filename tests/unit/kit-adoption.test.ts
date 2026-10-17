@@ -60,6 +60,22 @@ function definitions(source: string): string[] {
 }
 
 /**
+ * What a piece's file defines at its top level, **exported or not**.
+ *
+ * Reading only exports was the blind spot that hid twelve copies of the
+ * settings plumbing for a month: `snap`, `clamp` and `oneOf` were private to
+ * each `settings.ts`, so a piece could carry the shared code under its own
+ * name forever and this file would call it clean. The shared side is still
+ * read by `definitions` — what a module exports is what it offers — but a
+ * piece's private copy is just as much a copy.
+ */
+const DEFINES_ANY = /^(?:export\s+)?(?:async\s+)?(?:function|const|let|class)\s+([A-Za-z0-9_$]+)/gm
+
+function ownDefinitions(source: string): string[] {
+  return [...source.matchAll(DEFINES_ANY)].map((match) => match[1]!)
+}
+
+/**
  * Everything shared, which is two places rather than one.
  *
  * `kit/` is the control surface and only that. Shared code which is not the
@@ -198,7 +214,7 @@ describe.each(slugs)("%s", (slug) => {
     for (const file of readdirSync(`${EXPERIMENTS}/${slug}`).filter((name) => name.endsWith(".ts"))) {
       const source = readFileSync(`${EXPERIMENTS}/${slug}/${file}`, "utf8")
       if (optsOutOfFile(source)) continue
-      for (const symbol of definitions(source)) {
+      for (const symbol of ownDefinitions(source)) {
         const where = kitSymbols.get(symbol)
         // The label carries the folder, because the two shared layers are not
         // interchangeable and the message used to send every reader to `kit/`.

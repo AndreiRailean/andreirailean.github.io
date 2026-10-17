@@ -1,12 +1,6 @@
-import { decodeScene, encodeScene, type Slot } from "@/experiments/address"
-import {
-  gridAt,
-  snapToGrid,
-  type Control as KitControl,
-  type RangeControl,
-  type SliderControl,
-  type Track,
-} from "@/experiments/kit/controls"
+import { clamp, namesANumber, onTracks, packedAddress, reroller } from "@/experiments/settings-plumbing"
+import type { Slot } from "@/experiments/address"
+import type { Control as KitControl, RangeControl, SliderControl, Track } from "@/experiments/kit/controls"
 import type { Chrome } from "@/experiments/piece"
 
 /** Re-exported so a consumer needs one import for a control and its keys. */
@@ -825,17 +819,10 @@ export const BOUNDS: Record<NumericKey, { min: number; max: number }> = {
  * the piece rather than re-derive it — re-deriving is how a test ends up
  * asserting its own copy of the rule.
  */
-export function gridFor(key: NumericKey, value: number): number {
-  const track = TRACKS[key]
-  return track ? gridAt(track, value) : 0
-}
+const tracks = onTracks(TRACKS, { untracked: "keep" })
+export const gridFor = tracks.gridFor
 
-function snap(key: NumericKey, value: number): number {
-  const track = TRACKS[key]
-  return track ? snapToGrid(track, value) : value
-}
-
-const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
+const snap = tracks.snap
 
 /**
  * Fills gaps from `base` and forces every value into legal bounds.
@@ -984,23 +971,6 @@ export function reconcile(next: Settings, changed: keyof Settings): Settings {
   return next
 }
 
-/**
- * Reads settings from a query string, in either form.
- *
- * The packed parameter wins when it is there and readable. Anything else falls
- * through to the named-parameter reader, which is why a link written by hand
- * still restores its own scene — and why a corrupt `s` degrades to the defaults
- * rather than throwing in a page's first statement.
- */
-export function settingsFromQuery(params: URLSearchParams): Settings {
-  const packed = params.get("s")
-  if (packed !== null && packed !== "") {
-    const scene = decodeScene(REGISTRY, packed)
-    if (scene) return normalizeSettings(fromOlder(scene as Partial<Settings>))
-  }
-  return settingsFromNamedQuery(params)
-}
-
 function settingsFromNamedQuery(params: URLSearchParams): Settings {
   const patch: Partial<Settings> = {}
   for (const key of Object.keys(BOUNDS) as NumericKey[]) {
@@ -1102,33 +1072,15 @@ export const REGISTRY: readonly Slot[] = [
  * `experiment.decode()` expands an address back to a plain object, which is
  * where readability went.
  */
-export function settingsToQuery(settings: Settings): URLSearchParams {
-  const params = new URLSearchParams()
-  params.set("s", encodeScene(REGISTRY, settings))
-  return params
-}
-
-/**
- * Whether a query string names any setting at all.
- *
- * The same rule `settingsFromQuery` applies, and it has to stay the same rule:
- * absent, blank and unparseable are all "not a setting" there, so an address
- * made only of those is one the piece would read as carrying nothing.
- */
-export function namesASetting(params: URLSearchParams): boolean {
-  const packed = params.get("s")
-  if (packed !== null && packed !== "" && decodeScene(REGISTRY, packed)) return true
-  return (Object.keys(BOUNDS) as NumericKey[]).some((key) => {
-    const raw = params.get(key)
-    return raw !== null && raw.trim() !== "" && Number.isFinite(Number(raw))
-  })
-}
-
-/** The address that restores exactly these settings. */
-export function urlForSettings(settings: Settings, pathname: string): string {
-  const query = settingsToQuery(settings).toString()
-  return `${pathname}${query ? `?${query}` : ""}`
-}
+export const { settingsToQuery, urlForSettings, settingsFromQuery, namesASetting } = packedAddress<Settings>({
+  registry: REGISTRY,
+  normalize: normalizeSettings,
+  upgrade: fromOlder,
+  legacy: {
+    read: settingsFromNamedQuery,
+    names: (params) => namesANumber(params, BOUNDS),
+  },
+})
 
 /**
  * Settings that decide who is out there, so changing one starts the walk again.
@@ -1243,6 +1195,4 @@ export const CHROME: Chrome<Settings> = {
  * may take is this piece's to say. The frame knows only that a rerollable piece
  * has a `seed`.
  */
-export function reroll(settings: Settings, seed?: number): Settings {
-  return normalizeSettings({ ...settings, seed: seed ?? Math.floor(Math.random() * (SEED_BOUNDS.max + 1)) })
-}
+export const reroll = reroller(normalizeSettings, SEED_BOUNDS)
