@@ -189,6 +189,14 @@ two overlapping in a chain along a line.)_
 > hyper cube
 > http://100.117.55.104:4627/experiments/artdeco/?s=___f________cAOZQYmYwzDMIwghQwLQAAEJQBQAAACgADLQAAowERZFUACsiG2M
 
+## 2026-10-17 — frames
+
+> i was wondering if we could make artdeco frames. so the pattern would evolve
+> only on the edges of the screen and avoid coming into the center. it's like
+> the margin setting only in reverse. i am thinking that I may use it as an
+> overlay for videos or other things. or it could be embedded as a background
+> on a web page.
+
 ## Open questions
 
 _Mine, not his — what I assumed and what would settle it._
@@ -318,3 +326,18 @@ _Mine, not his — what I assumed and what would settle it._
   splits from a stem are drawn as dots). On pen up in flow, flying tips peaked
   at 1143 with none of them, 113 with toll 2, and exactly 60 with flock 60.
   Snowflake is preset 20, as you made it.
+- **Frames** (2026-10-17). A group of its own, first in the panel. _frame_ is
+  the margin turned inside out: a band that wide round the edges, as a share
+  of the height, and the middle stays empty. Lines meet the middle's edge as
+  they meet the screen's, and the middle is clipped, so a turned copy or a
+  circle cannot carry anything into it. _shape_ is a box or the oval inside
+  it. _at the middle_: stop, rebound, or rebound off the screen's edge too, so
+  lines zigzag along the band. _backdrop: clear_ draws only the lines, for an
+  overlay. Presets 22 and 23. On the construct at frame 15: stop leaves 8
+  segments, rebound 33, edges too 61, and 156 with depth 30, against 175
+  unframed. Not built: the band a different width on the sides than top and
+  bottom; stems planted along the band rather than in the middle of each edge
+  (the corners fill last); a soft edge to the middle rather than a hard clip;
+  a page that serves the clear frame alone for embedding, with no chrome.
+  Tips that are flying ignore the middle, so a tips-pen drawing can land in it
+  and draw lines nobody sees.

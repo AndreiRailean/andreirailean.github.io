@@ -194,7 +194,16 @@ export type Stats = {
   segments: number
   families: number
   decisions: Record<Kind, number>
-  meetings: { line: number; mirror: number; axis: number; halo: number; edge: number; depth: number; cap: number }
+  meetings: {
+    line: number
+    mirror: number
+    axis: number
+    halo: number
+    edge: number
+    frame: number
+    depth: number
+    cap: number
+  }
   /** What the lines chose at those meetings. */
   chose: Record<Choice, number>
   rebounds: number
@@ -227,7 +236,7 @@ const FLOCK_OFF = 1200
 const TICK = 1 / 60
 
 const emptyDecisions = (): Record<Kind, number> => ({ straight: 0, branch: 0, fork: 0, turn: 0, echo: 0, stop: 0 })
-const emptyMeetings = () => ({ line: 0, mirror: 0, axis: 0, halo: 0, edge: 0, depth: 0, cap: 0 })
+const emptyMeetings = () => ({ line: 0, mirror: 0, axis: 0, halo: 0, edge: 0, frame: 0, depth: 0, cap: 0 })
 const emptyChoices = (): Record<Choice, number> => ({ stop: 0, cross: 0, rebound: 0 })
 
 export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
@@ -358,6 +367,96 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     return null
   }
   const inset = () => px(settings.margin)
+
+  /** The empty middle a frame leaves, as half its width and height about the centre, or null with no frame. */
+  function hole(): { hx: number; hy: number } | null {
+    if (settings.frame <= 0) return null
+    const band = px(settings.frame)
+    const hx = width / 2 - band
+    const hy = height / 2 - band
+    return hx > 1 && hy > 1 ? { hx, hy } : null
+  }
+
+  /**
+   * How far along (tx, ty) from (ax, ay) a tip enters the empty middle, and
+   * the direction of the edge it enters by; null if it does not. 0 if it is
+   * already inside, which only a margin wider than the frame allows.
+   */
+  function toHole(ax: number, ay: number, tx: number, ty: number): { t: number; ux: number; uy: number } | null {
+    const h = hole()
+    if (!h) return null
+    const ox = ax - centre()
+    const oy = ay - middle()
+    if (settings.frameShape === "oval") {
+      const u = ox / h.hx
+      const v = oy / h.hy
+      const du = tx / h.hx
+      const dv = ty / h.hy
+      const a = du * du + dv * dv
+      const b = 2 * (u * du + v * dv)
+      const c = u * u + v * v - 1
+      if (c < 0) return { t: 0, ux: 1, uy: 0 }
+      const disc = b * b - 4 * a * c
+      if (disc < 0 || a < EPS) return null
+      const t = (-b - Math.sqrt(disc)) / (2 * a)
+      if (t <= 1e-6) return null
+      // The tangent there: square to the normal, which is (x / hx², y / hy²).
+      const nx = (ox + tx * t) / (h.hx * h.hx)
+      const ny = (oy + ty * t) / (h.hy * h.hy)
+      return { t, ux: -ny, uy: nx }
+    }
+    // A box: where the ray is inside both slabs at once.
+    let enter = -Infinity
+    let exit = Infinity
+    let vertical = true
+    for (const [o, d, half, side] of [
+      [ox, tx, h.hx, true],
+      [oy, ty, h.hy, false],
+    ] as [number, number, number, boolean][]) {
+      if (Math.abs(d) < EPS) {
+        if (Math.abs(o) >= half) return null
+        continue
+      }
+      const t1 = (-half - o) / d
+      const t2 = (half - o) / d
+      const near = Math.min(t1, t2)
+      if (near > enter) {
+        enter = near
+        vertical = side
+      }
+      exit = Math.min(exit, Math.max(t1, t2))
+    }
+    if (enter > exit || exit <= 1e-6) return null
+    if (enter <= 0) return { t: 0, ux: 1, uy: 0 }
+    return vertical ? { t: enter, ux: 0, uy: 1 } : { t: enter, ux: 1, uy: 0 }
+  }
+
+  /** A tip at the empty middle's edge: it stops, or rebounds off it. Returns false when the tip stops. */
+  function atHole(tree: Tree, head: Head, ux: number, uy: number, at: number): boolean {
+    meetings.frame += 1
+    if (settings.atFrame === "stop") return lift(head, at)
+    return atWall(tree, head, ux, uy, at)
+  }
+
+  /** Rebounds off a wall running along (ux, uy): the middle's edge, or the screen's. False when the tip stops. */
+  function atWall(tree: Tree, head: Head, ux: number, uy: number, at: number): boolean {
+    const out = reflectOff(head.seg.d, ux, uy)
+    if (out === null) return lift(head, at)
+    if (head.depth >= settings.depth) {
+      meetings.depth += 1
+      return false
+    }
+    head.depth += 1
+    rebounds += 1
+    if (head.seg.axis) {
+      // Alone on the centre line it cannot turn; it rebounds as a pair, as off a line.
+      const [x, y] = headPoint(head.seg)
+      const d = dx(out) > EPS ? out : dx(out) < -EPS ? -out : out + rightward(out)
+      spawn(tree, head, d, 1, family(tree), x, y, at)
+      return lift(head, at)
+    }
+    return bend(tree, head, out, at)
+  }
 
   function family(tree: Tree): Family {
     if (settings.unison === "all" && tree.families > 0) return tree.root
@@ -1185,15 +1284,31 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
       const bx = ax + dx(head.seg.d) * ev
       const by = ay + dy(head.seg.d) * ev
       if (ev > EPS) {
+        const wall = head.lifted ? null : toHole(ax, ay, dx(head.seg.d), dy(head.seg.d))
+        if (wall && wall.t <= ev) {
+          // Grow to the empty middle, short of it by a hair so the next search starts outside.
+          const reach = Math.max(0, wall.t - 0.01)
+          const tx = dx(head.seg.d)
+          const ty = dy(head.seg.d)
+          const hit = firstHit(tree, head, ax, ay, ax + tx * reach, ay + ty * reach)
+          if (hit) {
+            grow(tree, head, hit.t * reach)
+            if (!meet(tree, head, hit, at())) return false
+            continue
+          }
+          grow(tree, head, reach)
+          if (!atHole(tree, head, wall.ux, wall.uy, at())) return false
+          continue
+        }
         if (offscreen(bx, by)) {
           // Grow to the edge and stop there.
           const tx = dx(head.seg.d)
           const ty = dy(head.seg.d)
-          let reach = ev
-          if (tx > EPS) reach = Math.min(reach, (width - inset() + 2 - ax) / tx)
-          if (tx < -EPS) reach = Math.min(reach, (inset() - 2 - ax) / tx)
-          if (ty > EPS) reach = Math.min(reach, (height - inset() + 2 - ay) / ty)
-          if (ty < -EPS) reach = Math.min(reach, (inset() - 2 - ay) / ty)
+          const toSide = tx > EPS ? (width - inset() + 2 - ax) / tx : tx < -EPS ? (inset() - 2 - ax) / tx : Infinity
+          const toEnd = ty > EPS ? (height - inset() + 2 - ay) / ty : ty < -EPS ? (inset() - 2 - ay) / ty : Infinity
+          const reach = Math.min(ev, toSide, toEnd)
+          // Which edge it reaches, for a rebound off it: a side one runs up and down.
+          const vertical = toSide <= toEnd
           const hit = head.lifted ? null : firstHit(tree, head, ax, ay, ax + tx * reach, ay + ty * reach)
           if (hit) {
             grow(tree, head, hit.t * reach)
@@ -1202,6 +1317,10 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
           }
           grow(tree, head, Math.max(0, reach))
           meetings.edge += 1
+          if (settings.atFrame === "both" && hole()) {
+            if (!atWall(tree, head, vertical ? 0 : 1, vertical ? 1 : 0, at())) return false
+            continue
+          }
           return false
         }
         const hit = head.lifted ? null : firstHit(tree, head, ax, ay, bx, by)
@@ -1410,8 +1529,24 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
   function draw() {
     const hue = settings.hue
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    ctx.fillStyle = `hsl(${hue} 22% 4%)`
-    ctx.fillRect(0, 0, width, height)
+    if (settings.backdrop === "clear") ctx.clearRect(0, 0, width, height)
+    else {
+      ctx.fillStyle = `hsl(${hue} 22% 4%)`
+      ctx.fillRect(0, 0, width, height)
+    }
+    // Nothing is drawn in the empty middle: a turned copy or a circle can carry
+    // a line into it that the grown copy stopped short of.
+    const h = hole()
+    ctx.save()
+    if (h) {
+      ctx.beginPath()
+      ctx.rect(0, 0, width, height)
+      if (settings.frameShape === "oval") {
+        ctx.moveTo(centre() + h.hx, middle())
+        ctx.ellipse(centre(), middle(), h.hx, h.hy, 0, 0, 2 * Math.PI)
+      } else ctx.rect(centre() - h.hx, middle() - h.hy, 2 * h.hx, 2 * h.hy)
+      ctx.clip("evenodd")
+    }
     const cx = centre()
     ctx.lineCap = "square"
     ctx.strokeStyle = `hsl(${hue} 62% 64%)`
@@ -1500,6 +1635,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
         }
       ctx.fill()
     }
+    ctx.restore()
     if (debug) {
       ctx.setLineDash([4, 6])
       ctx.lineWidth = 1
@@ -1584,12 +1720,15 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
       // A disc is there whole or not at all, so it grows and shrinks with the outline instead.
       const share = Math.min(to, Math.PI - from) / Math.PI
       ctx.fillStyle = how === "solid" ? `hsl(${settings.hue} 62% 64%)` : `hsl(${settings.hue} 22% 4%)`
+      // On a clear backdrop a cutout cuts through to whatever is behind.
+      if (how === "cutout" && settings.backdrop === "clear") ctx.globalCompositeOperation = "destination-out"
       ctx.beginPath()
       for (const [ox, oy] of at) {
         ctx.moveTo(ox + r * share, oy)
         ctx.arc(ox, oy, r * share, 0, 2 * Math.PI)
       }
       ctx.fill()
+      ctx.globalCompositeOperation = "source-over"
     }
     // A dissolving gap, in angle from the lowest point, cuts each side in two.
     const spans: [number, number][] = gap

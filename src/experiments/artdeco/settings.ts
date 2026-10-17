@@ -34,6 +34,9 @@ export type Mark = "ring" | "solid" | "cutout"
 export type HaloMeets = "pass" | "meet"
 export type Cycle = "hold" | "flow"
 export type Vary = "new" | "same"
+export type FrameShape = "box" | "oval"
+export type AtFrame = "stop" | "rebound" | "both"
+export type Backdrop = "dark" | "clear"
 
 export type Settings = {
   /** Order of the symmetry: 1 mirrors left and right, 2 top and bottom too, 3 and up turn it round the centre. */
@@ -147,6 +150,14 @@ export type Settings = {
   spread: number
   /** Frame inset, in per cent of the height. */
   margin: number
+  /** Width of the band the drawing keeps to, in per cent of the height; the middle inside it stays empty. 0: no frame. */
+  frame: number
+  /** The empty middle's shape: a box, or the oval inside it. */
+  frameShape: FrameShape
+  /** What a line does on reaching the empty middle. */
+  atFrame: AtFrame
+  /** Dark: the piece's own ground. Clear: nothing behind the lines, for an overlay. */
+  backdrop: Backdrop
   /** Hold: draw, hold, undraw in the order it was drawn. Flow: a tail follows every tip `life` seconds behind. */
   cycle: Cycle
   /** Flow only: seconds a piece of line lasts before the tail that follows it erases it. */
@@ -175,6 +186,9 @@ type EnumKey =
   | "haloMark"
   | "cycle"
   | "vary"
+  | "frameShape"
+  | "atFrame"
+  | "backdrop"
 export type NumericKey = Exclude<keyof Settings, EnumKey>
 
 export type Control = KitControl<string & keyof Settings>
@@ -193,10 +207,13 @@ export const MARKS: Mark[] = ["ring", "solid", "cutout"]
 export const HALO_MEETS: HaloMeets[] = ["pass", "meet"]
 export const CYCLES: Cycle[] = ["hold", "flow"]
 export const VARIES: Vary[] = ["new", "same"]
+export const FRAME_SHAPES: FrameShape[] = ["box", "oval"]
+export const AT_FRAMES: AtFrame[] = ["stop", "rebound", "both"]
+export const BACKDROPS: Backdrop[] = ["dark", "clear"]
 
 const SEED_BOUNDS = { min: 0, max: 999_999 }
 
-export const GROUP_ORDER = ["growth", "decisions", "meeting", "busyness", "circles", "line", "cycle"] as const
+export const GROUP_ORDER = ["frame", "growth", "decisions", "meeting", "busyness", "circles", "line", "cycle"] as const
 
 const seconds = (v: number) => `${v.toFixed(1)}s`
 const unit = (v: number) => v.toFixed(2)
@@ -222,6 +239,53 @@ const odds = (
 })
 
 export const CONTROLS: Control[] = [
+  {
+    kind: "slider",
+    key: "frame",
+    label: "frame",
+    group: "frame",
+    min: 0,
+    max: 45,
+    step: 0.5,
+    format: (v) => (v > 0 ? share(v) : "off"),
+    hint: "The margin turned inside out: the drawing keeps to a band this wide round the edges, as a share of the height, and the middle stays empty. Lines meet the middle's edge as they meet the frame's, and anything a copy carries into it is not drawn. 0: no frame, the whole screen.",
+  },
+  {
+    kind: "choice",
+    key: "frameShape",
+    label: "shape",
+    group: "frame",
+    options: [
+      { value: "box", label: "box" },
+      { value: "oval", label: "oval" },
+    ],
+    hint: "The empty middle: a box, its corners square, or the oval that fits inside the box. At 3 and 6 an oval suits the turned copies better.",
+    inert: (settings: Settings) => settings.frame <= 0,
+  },
+  {
+    kind: "choice",
+    key: "atFrame",
+    label: "at the middle",
+    group: "frame",
+    options: [
+      { value: "stop", label: "stop" },
+      { value: "rebound", label: "rebound" },
+      { value: "both", label: "rebound, edges too" },
+    ],
+    hint: "Stop: a line reaching the empty middle ends there, as at the frame's edge. Rebound: it bounces off, on the angle, so lines run along the band instead of dying at it. Edges too: it bounces off the screen's edge as well, so a line keeps zigzagging along the band until its depth runs out. Every rebound spends one of depth.",
+    inert: (settings: Settings) => settings.frame <= 0,
+  },
+  {
+    kind: "choice",
+    key: "backdrop",
+    label: "backdrop",
+    group: "frame",
+    options: [
+      { value: "dark", label: "dark" },
+      { value: "clear", label: "clear" },
+    ],
+    hint: "Dark: the piece's own ground. Clear: nothing but the lines, so whatever is behind the canvas shows through — a video, a page. Cutout circles cut through to it.",
+  },
   {
     kind: "choice",
     key: "fold",
@@ -919,6 +983,10 @@ export const DEFAULT_SETTINGS: Settings = {
   shrink: 1,
   spread: 1,
   margin: 0,
+  frame: 0,
+  frameShape: "box",
+  atFrame: "stop",
+  backdrop: "dark",
   cycle: "hold",
   life: 12,
   hold: 6,
@@ -976,6 +1044,7 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   shrink: { min: 0.5, max: 1, step: 0.05 },
   spread: { min: 1, max: 4, step: 1 },
   margin: { min: 0, max: 25, step: 0.5 },
+  frame: { min: 0, max: 45, step: 0.5 },
   life: { min: 1, max: 120, step: 0.5 },
   hold: { min: 0, max: 60, step: 0.5 },
   hue: { min: 0, max: 360, step: 1 },
@@ -1037,6 +1106,9 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
     haloMark: oneOf(MARKS, merged.haloMark, base.haloMark),
     cycle: oneOf(CYCLES, merged.cycle, base.cycle),
     vary: oneOf(VARIES, merged.vary, base.vary),
+    frameShape: oneOf(FRAME_SHAPES, merged.frameShape, base.frameShape),
+    atFrame: oneOf(AT_FRAMES, merged.atFrame, base.atFrame),
+    backdrop: oneOf(BACKDROPS, merged.backdrop, base.backdrop),
   }
 
   for (const [key, bound] of Object.entries(BOUNDS) as [NumericKey, { min: number; max: number }][]) {
@@ -1099,6 +1171,9 @@ const GROWTH_KEYS = [
   "shrink",
   "spread",
   "margin",
+  "frame",
+  "frameShape",
+  "atFrame",
   "seed",
 ] as const satisfies readonly (keyof Settings)[]
 
@@ -1174,6 +1249,10 @@ export const REGISTRY: readonly Slot[] = [
   { key: "toll", kind: "num", grid: 1, origin: 0, bits: 4 },
   { key: "flock", kind: "num", grid: 10, origin: 10, bits: 7 },
   { key: "dotsTo", kind: "num", grid: 1, origin: 0, bits: 4 },
+  { key: "frame", kind: "num", grid: 0.5, origin: 0, bits: 7 },
+  { key: "frameShape", kind: "enum", options: ["box", "oval"] },
+  { key: "atFrame", kind: "enum", options: ["stop", "rebound", "both"] },
+  { key: "backdrop", kind: "enum", options: ["dark", "clear"] },
 ]
 
 export function settingsToQuery(settings: Settings): URLSearchParams {
