@@ -124,7 +124,7 @@ export function bitsOf(slot: Slot): number {
   }
 }
 
-type Scene = Record<string, unknown>
+export type Scene = Record<string, unknown>
 
 function toBits(slot: Exclude<Slot, { kind: "text" }>, value: unknown): number {
   switch (slot.kind) {

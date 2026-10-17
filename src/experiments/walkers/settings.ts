@@ -1,12 +1,6 @@
-import { decodeScene, encodeScene, type Slot } from "@/experiments/address"
-import {
-  gridAt,
-  snapToGrid,
-  type Control as KitControl,
-  type RangeControl,
-  type SliderControl,
-  type Track,
-} from "@/experiments/kit/controls"
+import { clamp, namesANumber, onTracks, packedAddress, reroller } from "@/experiments/settings-plumbing"
+import type { Slot } from "@/experiments/address"
+import type { Control as KitControl, RangeControl, SliderControl, Track } from "@/experiments/kit/controls"
 import type { Chrome } from "@/experiments/piece"
 
 /** Re-exported so a consumer needs one import for a control and its keys. */
@@ -496,18 +490,11 @@ const FINER_GRID: Partial<Record<NumericKey, number>> = { settling: 0.01 }
  * asserting its own copy of the rule. It is also the column a slot registry
  * would need if the address ever stops being readable.
  */
-export function gridFor(key: NumericKey, value: number): number {
-  const track = TRACKS[key]
-  return track ? gridAt(track, value, FINER_GRID[key]) : 0
-}
+const tracks = onTracks(TRACKS, { finer: FINER_GRID, untracked: "keep" })
+export const gridFor = tracks.gridFor
 
 /** Snaps one setting, leaving alone any key with no track — `seed` has none. */
-function snap(key: NumericKey, value: number): number {
-  const track = TRACKS[key]
-  return track ? snapToGrid(track, value, FINER_GRID[key]) : value
-}
-
-const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
+const snap = tracks.snap
 
 /**
  * Fills gaps from `base` and forces every value into legal bounds.
@@ -554,23 +541,6 @@ export function reconcile(next: Settings, changed: keyof Settings): Settings {
   if (changed === "paceLow" && next.paceLow > next.paceHigh) return { ...next, paceHigh: next.paceLow }
   if (changed === "paceHigh" && next.paceHigh < next.paceLow) return { ...next, paceLow: next.paceHigh }
   return next
-}
-
-/**
- * Reads settings from a query string, in either form.
- *
- * The packed parameter wins when it is there and readable. Anything else falls
- * through to the named-parameter reader below, which is why every link written
- * before the packed form still restores its own scene — and why a corrupt `s`
- * degrades to the defaults rather than throwing in a page's first statement.
- */
-export function settingsFromQuery(params: URLSearchParams): Settings {
-  const packed = params.get("s")
-  if (packed !== null && packed !== "") {
-    const scene = decodeScene(REGISTRY, packed)
-    if (scene) return normalizeSettings(scene as Partial<Settings>)
-  }
-  return settingsFromNamedQuery(params)
 }
 
 /**
@@ -673,11 +643,14 @@ export const REGISTRY: readonly Slot[] = [
  * longer written. `experiment.decode()` expands an address back to a plain
  * object, which is where readability went.
  */
-export function settingsToQuery(settings: Settings): URLSearchParams {
-  const params = new URLSearchParams()
-  params.set("s", encodeScene(REGISTRY, settings))
-  return params
-}
+export const { settingsToQuery, urlForSettings, settingsFromQuery, namesASetting } = packedAddress<Settings>({
+  registry: REGISTRY,
+  normalize: normalizeSettings,
+  legacy: {
+    read: settingsFromNamedQuery,
+    names: namesALegacySetting,
+  },
+})
 
 /**
  * Whether a query string names any setting at all.
@@ -686,23 +659,10 @@ export function settingsToQuery(settings: Settings): URLSearchParams {
  * absent, blank and unparseable are all "not a setting" there, so an address
  * made only of those is one the piece would read as carrying nothing.
  */
-export function namesASetting(params: URLSearchParams): boolean {
-  // The packed form names the whole scene by definition, so it settles this
-  // before any per-key test runs.
-  const packed = params.get("s")
-  if (packed !== null && packed !== "" && decodeScene(REGISTRY, packed)) return true
+function namesALegacySetting(params: URLSearchParams): boolean {
   if (isFlow(params.get("flow")) || paletteFrom(params.get("palette"))) return true
   if (params.get("dusk") !== null || params.get("heads") !== null) return true
-  return (Object.keys(BOUNDS) as NumericKey[]).some((key) => {
-    const raw = params.get(key)
-    return raw !== null && raw.trim() !== "" && Number.isFinite(Number(raw))
-  })
-}
-
-/** The address that restores exactly these settings. */
-export function urlForSettings(settings: Settings, pathname: string): string {
-  const query = settingsToQuery(settings).toString()
-  return `${pathname}${query ? `?${query}` : ""}`
+  return namesANumber(params, BOUNDS)
 }
 
 /**
@@ -782,6 +742,4 @@ export const CHROME: Chrome<Settings> = {
  * may take is this piece's to say. The frame knows only that a rerollable piece
  * has a `seed`.
  */
-export function reroll(settings: Settings, seed?: number): Settings {
-  return normalizeSettings({ ...settings, seed: seed ?? Math.floor(Math.random() * (SEED_BOUNDS.max + 1)) })
-}
+export const reroll = reroller(normalizeSettings, SEED_BOUNDS)

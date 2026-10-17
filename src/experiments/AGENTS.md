@@ -678,6 +678,22 @@ exercised in both directions:
   level** rather than into `kit/`: the kit is the control surface, whose parts
   travel together, and the generators travel alone and need no browser. See
   `docs/adr/20260829-a-third-copy-of-the-generators-moves-to-the-section.md`.
+- **`signed` and `shuffle`** joined them at the eighth and third copies of
+  `rng() * 2 - 1` and the Fisher-Yates loop. Both keep the exact draw order
+  their copies had, so no seeded scene moved; `tests/unit/random.test.ts` holds
+  `shuffle` to the inline loop it replaced.
+- The **settings plumbing** — `clamp`, `oneOf`, `onTracks` (a piece's `gridFor`
+  and `snap`), `packedAddress` (`settingsToQuery`, `urlForSettings`,
+  `settingsFromQuery`, `namesASetting`), `namesANumber` and `reroller` — moved
+  to `settings-plumbing.ts` at the twelfth copy. Each copy's variant is an
+  option, not a fork. A piece's `normalizeSettings` and its legacy
+  named-parameter reader stay with the piece and are handed in, because they
+  are that piece's rules and history. See
+  `docs/adr/20261017-the-settings-plumbing-moves-to-the-section.md`.
+- **Noise did not**, though five pieces carry one: Bubbles' and Dotfield's
+  Perlin, Dotfield's random-gradient 2D, Embers' hashed lattice and Dangler's
+  value noise are five different algorithms, and unifying them changes what
+  each piece draws. That is a visual question, so it is Andrei's, not a hoist.
 - The **placement strategies** built on them did **not**, and each piece keeps
   its own. Copying one copies a choice about scale that does not travel:
   Dangler's R2 sequence is right for eighty anchors and is a visible lattice at
@@ -856,13 +872,16 @@ unless it has said why. It requires that not adopting be legible. Until #238 it
 read a route's one-line `index.astro` for those selectors and so could not fail;
 it reads `Piece.astro` now.
 
-**Its blind spot is worth knowing, because it is where the last two faults
-lived.** The symbol check compares what a piece `export`s against what the
-shared layers export, so anything that is not a top-level `export` is invisible
-to it — a method on an object literal most of all. That is exactly how ten
-duplicated console-API methods sat in four pieces unremarked, and #85 was a
+**Its blind spot is worth knowing, because it is where the last three faults
+lived.** The symbol check compares what a piece defines at its top level against
+what the shared layers export, so anything that is not a top-level definition is
+invisible to it — a method on an object literal most of all. That is exactly how
+ten duplicated console-API methods sat in four pieces unremarked, and #85 was a
 divergence among them. That class of fault is closed by construction now: the
-handle is built once, in `gallery/boot.ts`.
+handle is built once, in `gallery/boot.ts`. It read only a piece's _exports_
+until 2026-10-17, which hid the settings plumbing below in twelve copies, because
+`snap`, `clamp` and `oneOf` were private to each `settings.ts`; a private copy is
+read now too.
 
 The class names are the kit's namespace — `.bar`, `.panel`, `.group`, `.row`,
 `.label`, `.value`, `.span`, `.modes`, `.mode`, `.preset`, `.toggle`, `.copy`,
