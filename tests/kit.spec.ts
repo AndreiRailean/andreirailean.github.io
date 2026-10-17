@@ -624,3 +624,68 @@ test("the bar's copy button is labelled and reports back", async ({ page }) => {
   await expect(copy).not.toHaveText("copy link")
   await expect(copy).toHaveText("copy link", { timeout: 4000 })
 })
+
+/**
+ * **The chrome stays while the pointer rests on it, whatever the boundary
+ * events said.** Leaving the window and coming back lost a `pointerenter`, so
+ * the kit believed the pointer was over the piece while it rested on a slider,
+ * and the panel faded 2.5 s after the last move — just as Andrei reached to
+ * drag it. No headless browser can leave the window, so the lost event is
+ * stood in for by a stray `pointerleave`, which leaves the same belief behind.
+ *
+ * The paired half is resting over the piece, which must still hide it: without
+ * it, a timer that never ran would pass as readily as one that was cleared.
+ */
+test("a pointer resting on the panel keeps it, even after a boundary event went astray", async ({ page }) => {
+  const experiment = await openKit(page)
+  await experiment.api(({ api }) => api.panel(true))
+  const idle = () => page.evaluate(() => document.documentElement.dataset.idle)
+  const row = await page.locator("#ui .panel .row").first().boundingBox()
+  if (!row) throw new Error("no row to rest on")
+  const x = row.x + row.width / 2
+  const y = row.y + row.height / 2
+
+  await page.mouse.move(x - 40, y, { steps: 4 })
+  await page.mouse.move(x, y, { steps: 4 })
+  await page.evaluate(() => document.getElementById("ui")!.dispatchEvent(new PointerEvent("pointerleave")))
+  await page.mouse.move(x + 2, y, { steps: 2 })
+  await page.waitForTimeout(3200)
+  expect(await idle(), "the panel faded under a resting pointer").toBe("false")
+
+  const size = page.viewportSize()!
+  await page.mouse.move(size.width / 2, size.height - 40, { steps: 4 })
+  await page.waitForTimeout(3200)
+  expect(await idle(), "resting over the piece never hid the chrome, so the half above measured nothing").toBe("true")
+})
+
+/**
+ * **A window without the focus never hides the chrome by itself.** Traced on
+ * Andrei's machine coming back from another app: one `mousemove` on entering,
+ * a `mouseleave` ten milliseconds later with the pointer still inside, then
+ * nothing while he moved over the panel — so the timer ran out under his hand.
+ * The page cannot see the pointer then, so it must not guess it has gone.
+ *
+ * Headless windows always have the focus, so `hasFocus` is stood in for. The
+ * paired half: given the focus back, the timer runs again and the chrome hides.
+ */
+test("an unfocused window keeps the chrome it woke, and the focus hands it back to the timer", async ({ page }) => {
+  await page.addInitScript(() => {
+    ;(window as unknown as { __focused: boolean }).__focused = false
+    document.hasFocus = () => (window as unknown as { __focused: boolean }).__focused
+  })
+  const experiment = await openKit(page)
+  await experiment.api(({ api }) => api.panel(true))
+  const idle = () => page.evaluate(() => document.documentElement.dataset.idle)
+  const size = page.viewportSize()!
+
+  await page.mouse.move(size.width / 2, size.height - 40, { steps: 2 })
+  await page.waitForTimeout(3200)
+  expect(await idle(), "the chrome hid itself in a window that could not see the pointer").toBe("false")
+
+  await page.evaluate(() => {
+    ;(window as unknown as { __focused: boolean }).__focused = true
+    window.dispatchEvent(new FocusEvent("focus"))
+  })
+  await page.waitForTimeout(3200)
+  expect(await idle(), "the focus came back and the chrome never hid, so the half above measured nothing").toBe("true")
+})
