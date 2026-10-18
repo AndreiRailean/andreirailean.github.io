@@ -1,5 +1,6 @@
-import { readFileSync, readdirSync, statSync } from "node:fs"
+import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
+import { pieces } from "../support/pieces.ts"
 
 /**
  * A runner must not carry the panel's prose it will never draw.
@@ -33,11 +34,7 @@ import { describe, expect, it } from "vitest"
  */
 
 const EXPERIMENTS = "src/experiments"
-const NOT_A_PIECE = new Set(["docs", "gallery", "kit"])
-
-const slugs = readdirSync(EXPERIMENTS)
-  .filter((name) => !NOT_A_PIECE.has(name) && statSync(`${EXPERIMENTS}/${name}`).isDirectory())
-  .sort()
+const slugs = [...pieces]
 
 const source = (slug: string) => readFileSync(`${EXPERIMENTS}/${slug}/settings.ts`, "utf8")
 

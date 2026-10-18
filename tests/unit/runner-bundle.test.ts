@@ -1,7 +1,7 @@
-import { readdirSync, statSync } from "node:fs"
 import { resolve } from "node:path"
 import { build, type BuildOptions } from "esbuild"
 import { describe, expect, it } from "vitest"
+import { pieces } from "../support/pieces.ts"
 
 /**
  * **A runner ships no panel, read off the bundle it actually builds — #243.**
@@ -23,11 +23,7 @@ import { describe, expect, it } from "vitest"
  */
 
 const EXPERIMENTS = resolve("src/experiments")
-const NOT_A_PIECE = new Set(["docs", "gallery", "kit"])
-
-const slugs = readdirSync(EXPERIMENTS)
-  .filter((name) => !NOT_A_PIECE.has(name) && statSync(`${EXPERIMENTS}/${name}`).isDirectory())
-  .sort()
+const slugs = [...pieces]
 
 /** `scripts/runners.ts`'s options, so this measures the artefact that is published. */
 const OPTIONS: BuildOptions = {

@@ -1,6 +1,6 @@
-import { readdirSync, statSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 import { settingsForLanding as landing } from "@/experiments/piece"
+import { pieces } from "../support/pieces.ts"
 
 /**
  * A shared address states the whole scene, in every piece.
@@ -31,14 +31,7 @@ import { settingsForLanding as landing } from "@/experiments/piece"
  * a bare visit gets the primary, via `settingsForLanding`.
  */
 
-const EXPERIMENTS = "src/experiments"
-
-/** Not pieces: shared code, and the section's own docs. */
-const NOT_A_PIECE = new Set(["docs", "gallery", "kit"])
-
-const slugs = readdirSync(EXPERIMENTS)
-  .filter((name) => !NOT_A_PIECE.has(name) && statSync(`${EXPERIMENTS}/${name}`).isDirectory())
-  .sort()
+const slugs = [...pieces]
 
 type Settings = Record<string, unknown>
 

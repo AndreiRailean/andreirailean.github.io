@@ -1,7 +1,7 @@
-import { readdirSync, statSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 import { reportControls, type ControlReport } from "@/experiments/kit/api"
 import type { Control } from "@/experiments/kit/controls"
+import { pieces } from "../support/pieces.ts"
 
 /**
  * **A control reports the bound it has, and nothing where it has none.**
@@ -42,14 +42,7 @@ import type { Control } from "@/experiments/kit/controls"
  * all three faults above were, and where the next one would be.
  */
 
-const EXPERIMENTS = "src/experiments"
-
-/** Not pieces: shared code, and the section's own docs. */
-const NOT_A_PIECE = new Set(["docs", "gallery", "kit"])
-
-const slugs = readdirSync(EXPERIMENTS)
-  .filter((name) => !NOT_A_PIECE.has(name) && statSync(`${EXPERIMENTS}/${name}`).isDirectory())
-  .sort()
+const slugs = [...pieces]
 
 /**
  * The kinds that own a track, which is where a bound may come from.

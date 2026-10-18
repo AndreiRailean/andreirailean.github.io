@@ -1,6 +1,6 @@
-import { readdirSync, statSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 import { bitsOf, decodeScene, encodeScene, type Slot } from "@/experiments/address"
+import { pieces } from "../support/pieces.ts"
 
 /**
  * The address registry is append-only, and that is the one thing this whole
@@ -47,12 +47,7 @@ import { bitsOf, decodeScene, encodeScene, type Slot } from "@/experiments/addre
  * assertion about addresses changing meaning.
  */
 
-const EXPERIMENTS = "src/experiments"
-const NOT_A_PIECE = new Set(["docs", "gallery", "kit"])
-
-const slugs = readdirSync(EXPERIMENTS)
-  .filter((name) => !NOT_A_PIECE.has(name) && statSync(`${EXPERIMENTS}/${name}`).isDirectory())
-  .sort()
+const slugs = [...pieces]
 
 async function registryOf(slug: string) {
   const module = (await import(`../../src/experiments/${slug}/settings.ts`)) as {
