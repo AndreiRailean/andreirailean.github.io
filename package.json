@@ -64,7 +64,7 @@
     "@types/react-dom": "^19.2.3",
     "@typescript-eslint/eslint-plugin": "^8.53.1",
     "@typescript-eslint/parser": "^8.53.1",
-    "astro-eslint-parser": "^3.1.0",
+    "astro-eslint-parser": "^3.2.0",
     "baseline-browser-mapping": "^2.9.16",
     "esbuild": "^0.28.2",
     "eslint": "^10.8.1",
