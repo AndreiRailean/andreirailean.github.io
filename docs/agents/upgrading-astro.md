@@ -53,6 +53,12 @@ version:
    pnpm dlx @astrojs/upgrade
    ```
 
+   **It asks before an integration with breaking changes, and a session cannot
+   answer it.** Run without a terminal, it lists what it would do and then
+   exits 0 having changed nothing, which reads as success. Use its list to
+   choose the versions, then pin them as below. That is what the 7.2.8 → 7.4.0
+   upgrade did, with `@astrojs/react` 6 → 7 being the one that asked.
+
    To pin a version instead of taking the latest:
 
    ```bash

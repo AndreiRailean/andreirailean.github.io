@@ -31,7 +31,7 @@
     "shot": "node scripts/shot.ts"
   },
   "dependencies": {
-    "@astrojs/react": "^6.0.3",
+    "@astrojs/react": "^7.1.0",
     "@fontsource-variable/archivo": "^5.3.0",
     "@fontsource-variable/exo": "^5.2.8",
     "@fontsource-variable/inter": "^5.2.8",
@@ -40,7 +40,7 @@
     "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@radix-ui/react-slot": "^1.2.4",
     "@tailwindcss/vite": "^4.1.18",
-    "astro": "^7.2.8",
+    "astro": "^7.4.0",
     "astro-icon": "^1.1.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
