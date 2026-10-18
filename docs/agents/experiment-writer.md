@@ -345,9 +345,10 @@ doc records that this is how #168 got fixed properly instead of worked around.
 
 ## `seed.md`: the record of what he actually said
 
-**Every piece keeps `src/experiments/<slug>/seed.md`**, holding his own words:
-the seed instruction that started it, then each round of corrective feedback,
-each dated and appended. You write it; he never has to.
+**Every piece keeps `src/experiments/<slug>/seed.md`**, holding his artistic
+direction in his own words: the seed instruction that started it, then each
+later statement of what the piece should be, each dated and appended. You write
+it; he never has to.
 
 **Write the seed in before you write any code.** It is the first file, ahead of
 `settings.ts`, and the reason is the one this repo keeps rediscovering: **a
@@ -368,17 +369,32 @@ yours.
 What goes in:
 
 - **The seed**, in full, as the first entry.
-- **Each piece of corrective feedback**, as it arrives, dated. These are
-  reliably about how natural the piece reads and what would make it feel more
-  organic — the recurring shape of what he notices, which is worth being able to
-  re-read across pieces rather than only within one.
+- **Each piece of artistic direction**, as it arrives, dated: what the piece
+  should look like, feel like or become. These are reliably about how natural
+  the piece reads and what would make it feel more organic — the recurring
+  shape of what he notices, which is worth being able to re-read across pieces
+  rather than only within one.
 - **An address he pastes, without its host.** Keep `/experiments/<slug>/?s=…`
   and drop `http://` and the host: the path and scene are what the record
   needs, and the host names the machines he works from, which he asked not to
-  have in a record this long. The one edit his quoted words get.
+  have in a record this long. The one edit inside a quoted sentence.
   `tests/unit/experiments-seeds.test.ts` holds it.
 - **Questions you could not answer**, since you are not going to ask him: what
   you assumed, and what would settle it. He reads them when he chooses.
+
+What stays out, though he typed it, because he said so: **feedback on the
+implementation and bug reports, his questions about how something works, and
+requests to save a preset or move a control.** Each is answered by the work —
+the fix and its commit, a trap in the piece's `AGENTS.md`, the preset with its
+label and hint — and a record of them buries the direction it sits beside.
+
+**The test, per sentence: would it still matter if the piece were rebuilt from
+nothing?** "Rather than being always cut-off, the lines would draw shapes and
+allow for insets" would; "the circles on the border are cut off" would not,
+once fixed, and neither would "save it as frame of progress". A message that
+mixes the two gets only its direction quoted, still verbatim — trim whole
+sentences, never reword one.
+
 - **Nothing else.** Not decisions — those are ADRs. Not traps — those are the
   piece's `AGENTS.md`. Not the visitor-facing write-up — that is `about.md`, and
   the two are easy to confuse because both are prose about the piece. `seed.md`
