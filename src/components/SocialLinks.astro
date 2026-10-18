@@ -21,12 +21,10 @@ const socials = [
 ---
 
 <span class="inline-flex gap-6">
-  {
-    socials.map(({ icon, url, title }) => (
-      <a href={url} class="social-icon group" target="_blank">
-        <Icon name={icon} title={title} />
-        <span class="social-icon-tooltip group-hover:scale-100">{title}</span>
-      </a>
-    ))
-  }
+  {socials.map(({ icon, url, title }) => (
+    <a href={url} class="social-icon group" target="_blank">
+      <Icon name={icon} title={title} />
+      <span class="social-icon-tooltip group-hover:scale-100">{title}</span>
+    </a>
+  ))}
 </span>

@@ -384,60 +384,56 @@ const [opened] = experiments.map(({ data }) => data.started).sort((a, b) => a.va
         Programmed graphics, made to be left running. Nothing here repeats, and every piece hands you the controls it
         was found with.
       </p>
-      {
-        opened && (
-          <p class="run">
-            {experiments.length} {experiments.length === 1 ? "piece" : "pieces"} · since{" "}
-            <time datetime={opened.toISOString()}>{formatDate(opened)}</time>
-          </p>
-        )
-      }
+      {opened && (
+        <p class="run">
+          {experiments.length} {experiments.length === 1 ? "piece" : "pieces"} · since{" "}
+          <time datetime={opened.toISOString()}>{formatDate(opened)}</time>
+        </p>
+      )}
     </header>
 
-    {
-      experiments.length === 0 ? (
-        <p class="empty">Nothing here yet.</p>
-      ) : (
-        <ul class="wall">
-          {experiments.map(({ data }, index) => (
-            <li class="plate">
-              {data.poster && (
-                <Image
-                  src={data.poster}
-                  alt=""
-                  widths={[560, 1120]}
-                  sizes="(min-width: 58rem) 37rem, 100vw"
-                  loading={index === 0 ? "eager" : "lazy"}
-                />
-              )}
-              <a class="open" href={`/experiments/${data.slug}/`}>
-                <span>Open {data.title}</span>
-              </a>
-              <div class="placard">
-                <div class="head">
-                  <h2 class="title">{data.title}</h2>
-                  <span class="dateline">
-                    <time datetime={data.started.toISOString()}>{formatDate(data.started)}</time>
-                    {formatDate(data.updated) !== formatDate(data.started) && (
-                      <>
-                        {"–"}
-                        <time datetime={data.updated.toISOString()}>{formatDate(data.updated)}</time>
-                      </>
-                    )}
-                  </span>
-                </div>
-                <p class="summary">{data.summary}</p>
-                <p class="medium">
-                  <span class="facts">{data.tags.join(" · ")}</span>
-                  <a class="note" href={`/experiments/${data.slug}/about/`}>
-                    about
-                  </a>
-                </p>
+    {experiments.length === 0 ? (
+      <p class="empty">Nothing here yet.</p>
+    ) : (
+      <ul class="wall">
+        {experiments.map(({ data }, index) => (
+          <li class="plate">
+            {data.poster && (
+              <Image
+                src={data.poster}
+                alt=""
+                widths={[560, 1120]}
+                sizes="(min-width: 58rem) 37rem, 100vw"
+                loading={index === 0 ? "eager" : "lazy"}
+              />
+            )}
+            <a class="open" href={`/experiments/${data.slug}/`}>
+              <span>Open {data.title}</span>
+            </a>
+            <div class="placard">
+              <div class="head">
+                <h2 class="title">{data.title}</h2>
+                <span class="dateline">
+                  <time datetime={data.started.toISOString()}>{formatDate(data.started)}</time>
+                  {formatDate(data.updated) !== formatDate(data.started) && (
+                    <>
+                      {"–"}
+                      <time datetime={data.updated.toISOString()}>{formatDate(data.updated)}</time>
+                    </>
+                  )}
+                </span>
               </div>
-            </li>
-          ))}
-        </ul>
-      )
-    }
+              <p class="summary">{data.summary}</p>
+              <p class="medium">
+                <span class="facts">{data.tags.join(" · ")}</span>
+                <a class="note" href={`/experiments/${data.slug}/about/`}>
+                  about
+                </a>
+              </p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    )}
   </body>
 </html>
