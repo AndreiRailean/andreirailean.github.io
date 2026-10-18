@@ -116,3 +116,13 @@ did not exist yet.
 > ok. we're done here. thank you. you're doing excellent work. i am happy with
 > the level of research you do and how you interpret and adopt my realism
 > requirements. keep it up!
+
+## 2026-10-18 — 1× is the speed worth watching
+
+> speed is the crudest level of control that slows down the whole piece. on
+> pieces where the presets are mostly at the lowest end of the range, it's an
+> indication that there's nothing interesting at the high end for the experiment
+> and the scale can be adjusted for finer adjustments within the interesting
+> range rather than having a generic multiplier. for flotsam, the 0.2 is
+> probably the 100% speed that we're interested. and that is what we want to
+> speed up and slow down.

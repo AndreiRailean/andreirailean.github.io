@@ -31,6 +31,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       tint: 0,
       hues: 0,
       seed: 11,
+      timescale: 1,
     },
   },
   {
@@ -58,6 +59,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       tint: 0,
       hues: 0,
       seed: 7,
+      timescale: 1,
     },
   },
   {
@@ -83,6 +85,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       tint: 0.6,
       hues: 30,
       seed: 9,
+      timescale: 1,
     },
   },
   {
@@ -108,6 +111,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       tint: 0,
       hues: 0,
       seed: 1,
+      timescale: 1,
     },
   },
   {
@@ -133,6 +137,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       tint: 0,
       hues: 0,
       seed: 7,
+      timescale: 1,
     },
   },
   {
@@ -158,6 +163,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       tint: 0.5,
       hues: 0,
       seed: 3,
+      timescale: 1,
     },
   },
   {
@@ -183,6 +189,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       tint: 0,
       hues: 0,
       seed: 5,
+      timescale: 1,
     },
   },
   {
@@ -208,6 +215,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       tint: 0,
       hues: 0,
       seed: 17,
+      timescale: 1,
     },
   },
   {
@@ -233,6 +241,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       tint: 0.55,
       hues: 60,
       seed: 21,
+      timescale: 1,
     },
   },
   {
@@ -258,6 +267,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       tint: 1,
       hues: 180,
       seed: 21,
+      timescale: 1,
     },
   },
 ]

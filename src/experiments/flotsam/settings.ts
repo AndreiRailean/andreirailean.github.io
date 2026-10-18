@@ -1,7 +1,14 @@
+import { fromPlayback, TIMESCALE_SLOT, timescaleControl, timescaleTrack } from "@/experiments/kit/speed"
 import { clamp, namesANumber, onTracks, packedAddress, reroller } from "@/experiments/settings-plumbing"
 import type { Slot } from "@/experiments/address"
 import type { RangeControl, SliderControl, Track } from "@/experiments/kit/controls"
 import type { Chrome } from "@/experiments/piece"
+
+/**
+ * The clock rate this piece's 1× stands for, as a multiple of real time. The
+ * kit's speed control scales it — `kit/speed.ts`.
+ */
+export const CLOCK_RATE = 0.2
 
 /**
  * Everything about the sea that is tunable at runtime.
@@ -48,7 +55,8 @@ export type Settings = {
   gleam: number
   softness: number
   span: number
-  playback: number
+  /** The speed control's value: a multiple of `CLOCK_RATE`. The kit's — `kit/speed.ts`. */
+  timescale: number
 }
 
 export type NumericKey = keyof Settings
@@ -100,17 +108,6 @@ export const CONTROLS: Control[] = [
     scale: "log",
     format: metres,
     hint: "How much water is in the frame, measured across its shorter side. This is the piece's main dial and it does more than magnify: because a wave's speed is fixed by its length, a frame full of centimetre ripples is frantic and a frame full of ocean swell is slow, and the same settings give you both. Everything floating stays where it is on screen as you drag it, so this zooms rather than rearranges.",
-  },
-  {
-    kind: "slider",
-    group: "view",
-    key: "playback",
-    label: "playback",
-    min: 0,
-    max: 2,
-    step: 0.01,
-    format: (v) => (v === 0 ? "paused" : `${v.toFixed(2)}x`),
-    hint: "How fast you are watching, the way a video player means it. Not how fast the water is: a wave's speed is fixed by its length and stays fixed, and this slows the waves, the current, the gusts and the wind's veering by exactly the same factor — so every relationship between them is untouched and what you are looking at is the same sea, in slow motion. At 0 it holds still, which is the way to look properly at a gathering line. Above 1 a long swell stops being a thing you have to wait for.",
   },
   {
     kind: "slider",
@@ -391,6 +388,7 @@ export const CONTROLS: Control[] = [
     format: (v) => v.toFixed(2),
     hint: "How sharply a piece's edge falls off. At 0 it is an object with a boundary you can see, which is what lets two of them overlap visibly. At 1 it has no edge at all and is a soft ball of its own colour — a point of light, whatever size it happens to be. Between them the glare comes in from the rim toward the centre with it. This is the control to reach for when large pieces look hard against the fuzz of the small ones: raising it makes the whole size range read as one family instead of two.",
   },
+  /* @__PURE__ */ timescaleControl(),
 ]
 
 /**
@@ -486,7 +484,7 @@ export const DEFAULT_SETTINGS: Settings = {
   // cross a wide frame — but it shrinks the flotsam with it, and the whole
   // subject goes to dust. Large pieces on slow water is only available through
   // the clock.
-  playback: 0.2,
+  timescale: 1,
 }
 
 /**
@@ -507,7 +505,7 @@ export const DEFAULT_SETTINGS: Settings = {
  */
 export const TRACKS: Partial<Record<NumericKey, Track>> = {
   span: { min: 1.5, max: 320, step: 0.01, scale: "log" },
-  playback: { min: 0, max: 2, step: 0.01 },
+  timescale: timescaleTrack(),
   trains: { min: 1, max: 9, step: 1 },
   shortest: { min: 0.1, max: 60, step: 0.01, scale: "log" },
   longest: { min: 0.1, max: 60, step: 0.01, scale: "log" },
@@ -702,7 +700,9 @@ export const REGISTRY: readonly Slot[] = [
   { key: "gleam", kind: "num", grid: 0.5, origin: 0, bits: 7 },
   { key: "softness", kind: "num", grid: 0.01, origin: 0, bits: 7 },
   { key: "span", kind: "num", grid: 0.01, origin: 1.5, bits: 15 },
-  { key: "playback", kind: "num", grid: 0.01, origin: 0, bits: 8 },
+  { key: "playback", kind: "num", grid: 0.01, origin: 0, bits: 8, retired: true },
+  // The kit's speed control, appended — `kit/speed.ts`.
+  TIMESCALE_SLOT,
 ]
 
 /**
@@ -716,6 +716,7 @@ export const REGISTRY: readonly Slot[] = [
 export const { settingsToQuery, urlForSettings, settingsFromQuery, namesASetting } = packedAddress<Settings>({
   registry: REGISTRY,
   normalize: normalizeSettings,
+  upgrade: (scene) => fromPlayback(scene, CLOCK_RATE),
   legacy: {
     read: settingsFromNamedQuery,
     names: (params) => namesANumber(params, BOUNDS),

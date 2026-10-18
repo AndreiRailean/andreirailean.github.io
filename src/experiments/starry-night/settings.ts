@@ -1,8 +1,15 @@
+import { TIMESCALE_SLOT, timescaleControl, timescaleTrack } from "@/experiments/kit/speed"
 import { clamp, namesANumber, onTracks, packedAddress } from "@/experiments/settings-plumbing"
 import type { Slot } from "@/experiments/address"
 import type { Control as KitControl, RangeControl, SliderControl, Track } from "@/experiments/kit/controls"
 import { isMode, MODES, type Mode } from "@/experiments/starry-night/character"
 import type { Chrome } from "@/experiments/piece"
+
+/**
+ * The clock rate this piece's 1× stands for, as a multiple of real time. The
+ * kit's speed control scales it — `kit/speed.ts`.
+ */
+export const CLOCK_RATE = 1
 
 /** Re-exported so a consumer needs one import for a control and its keys. */
 export { keysOf } from "@/experiments/kit/controls"
@@ -37,6 +44,8 @@ export type Settings = {
   hue: number
   minLifetimeMs: number
   maxLifetimeMs: number
+  /** The speed control's value: a multiple of `CLOCK_RATE`. The kit's — `kit/speed.ts`. */
+  timescale: number
 }
 
 export type NumericKey = Exclude<keyof Settings, "mode" | "invert">
@@ -211,6 +220,7 @@ export const CONTROLS: Control[] = [
     format: (from, to) => `${(from / 1000).toFixed(1)}–${(to / 1000).toFixed(1)}s`,
     hint: "How long a layer takes to fade in and back out. Every layer draws its own lifespan from between these two, which is what keeps them out of step — a wider gap makes them scatter faster. Dragging one handle past the other carries it along.",
   },
+  /* @__PURE__ */ timescaleControl(),
 ]
 
 /** Button text for the depth policies. The URL keeps the underlying names. */
@@ -230,6 +240,7 @@ export const DEFAULT_SETTINGS: Settings = {
   hue: 247,
   minLifetimeMs: 6_000,
   maxLifetimeMs: 26_000,
+  timescale: 1,
 }
 
 /**
@@ -262,6 +273,7 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   glimmersPerSecond: { min: 0, max: 6, step: 0.05 },
   minLifetimeMs: { min: 1000, max: 60000, step: 500 },
   maxLifetimeMs: { min: 1000, max: 60000, step: 500 },
+  timescale: timescaleTrack(),
 }
 
 /**
@@ -444,6 +456,8 @@ export const REGISTRY: readonly Slot[] = [
   { key: "hue", kind: "num", grid: 1, origin: 0, bits: 9 },
   { key: "minLifetimeMs", kind: "num", grid: 500, origin: 1000, bits: 7 },
   { key: "maxLifetimeMs", kind: "num", grid: 500, origin: 1000, bits: 7 },
+  // The kit's speed control, appended — `kit/speed.ts`.
+  TIMESCALE_SLOT,
 ]
 
 /**

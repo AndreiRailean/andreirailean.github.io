@@ -25,7 +25,7 @@ describe("a person's colour", () => {
     const before = skins(p)
     expect(before.length).toBeGreaterThan(10)
 
-    p.set({ playback: 0.5 }).set({ paceLow: 0.8 }).set({ density: 13 })
+    p.set({ timescale: 0.5 }).set({ paceLow: 0.8 }).set({ density: 13 })
     // `density` can add people, so compare only the ones who were there.
     expect(skins(p).slice(0, before.length)).toEqual(before)
   })
@@ -33,7 +33,7 @@ describe("a person's colour", () => {
   it("leaves the walker's own stream where it was, however often the settings move", () => {
     const quiet = park(SCENE)
     const busy = park(SCENE)
-    for (let i = 0; i < 5; i++) busy.set({ playback: 0.4 + i / 10 })
+    for (let i = 0; i < 5; i++) busy.set({ timescale: 0.5 + i / 10 })
 
     const next = (p: ReturnType<typeof park>) => p.crowd.walkers.map((walker) => walker.rng())
     expect(next(busy)).toEqual(next(quiet))

@@ -44,6 +44,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       saturation: 70,
       cap: 0.35,
       seed: 1,
+      timescale: 1,
     },
   },
   {
@@ -82,6 +83,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       saturation: 0,
       cap: 1,
       seed: 5,
+      timescale: 1,
     },
   },
   {
@@ -120,6 +122,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       saturation: 65,
       cap: 0.5,
       seed: 3,
+      timescale: 1,
     },
   },
   {
@@ -158,6 +161,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       saturation: 80,
       cap: 0.3,
       seed: 7,
+      timescale: 1,
     },
   },
   {
@@ -196,6 +200,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       saturation: 70,
       cap: 0.25,
       seed: 12,
+      timescale: 1,
     },
   },
   {
@@ -234,6 +239,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       saturation: 75,
       cap: 0.4,
       seed: 21,
+      timescale: 1,
     },
   },
   {
@@ -272,6 +278,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       saturation: 70,
       cap: 0.45,
       seed: 5,
+      timescale: 1,
     },
   },
   {
@@ -310,6 +317,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       saturation: 75,
       cap: 0.8,
       seed: 9,
+      timescale: 1,
     },
   },
 ]

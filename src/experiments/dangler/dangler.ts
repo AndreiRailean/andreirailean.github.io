@@ -425,7 +425,9 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
 
   const loop = parkingLoop({
     clamp: 0.25,
-    frame(elapsed) {
+    frame(wall) {
+      // The scene's seconds, which the speed control scales.
+      const elapsed = wall * settings.timescale
       let moved = false
       if (isAnimated()) {
         clock += elapsed

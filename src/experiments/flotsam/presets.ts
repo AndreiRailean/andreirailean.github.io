@@ -51,7 +51,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       gleam: 3,
       softness: 0,
       span: 6.21,
-      playback: 0.2,
+      timescale: 1,
     },
   },
   {
@@ -96,7 +96,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       gleam: 2,
       softness: 0,
       span: 16,
-      playback: 0.3,
+      timescale: 1.5,
     },
   },
   {
@@ -135,7 +135,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       gleam: 5,
       softness: 0,
       span: 30,
-      playback: 0.75,
+      timescale: 3.75,
     },
   },
   {
@@ -173,7 +173,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       gleam: 2.5,
       softness: 0,
       span: 8,
-      playback: 0.2,
+      timescale: 1,
     },
   },
   {
@@ -221,7 +221,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       gleam: 9,
       softness: 0,
       span: 4,
-      playback: 0.6,
+      timescale: 3,
     },
   },
   {
@@ -272,7 +272,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       gleam: 2,
       softness: 0,
       span: 7.66,
-      playback: 0.2,
+      timescale: 1,
     },
   },
   {
@@ -335,7 +335,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       // around them comes and goes, so there is no pattern for speed to give
       // away and slowing it only stops the breathing. The same reasoning as
       // everywhere else, arriving at the opposite number.
-      playback: 2,
+      timescale: 10,
     },
   },
   {
@@ -391,7 +391,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       gleam: 0,
       softness: 0.42,
       span: 7.66,
-      playback: 0.6,
+      timescale: 3,
     },
   },
 ]

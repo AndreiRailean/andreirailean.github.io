@@ -473,7 +473,7 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
     step(dt) {
       if (dt <= 0) return
       const began = performance.now()
-      step(dt)
+      step(dt * settings.timescale)
       stepMs = stepMs ? stepMs * 0.9 + (performance.now() - began) * 0.1 : performance.now() - began
     },
     draw,

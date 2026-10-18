@@ -67,7 +67,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       edgeHue: -138,
       wildness: 0.81,
       saturation: 0.69,
-      playback: 1.15,
+      timescale: 1.15,
     },
   },
   {
@@ -111,7 +111,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       edgeHue: 125,
       wildness: 0.61,
       saturation: 1,
-      playback: 0.26,
+      timescale: 0.26,
     },
   },
   {
@@ -155,7 +155,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       edgeHue: 125,
       wildness: 1,
       saturation: 0.35,
-      playback: 1,
+      timescale: 1,
     },
   },
   {
@@ -199,7 +199,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       edgeHue: -180,
       wildness: 0.03,
       saturation: 0.22,
-      playback: 1.92,
+      timescale: 1.92,
     },
   },
   {
@@ -243,7 +243,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       edgeHue: -180,
       wildness: 0.89,
       saturation: 0.26,
-      playback: 0.89,
+      timescale: 0.89,
     },
   },
   {
@@ -287,7 +287,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       edgeHue: 125,
       wildness: 0.85,
       saturation: 0.8,
-      playback: 1,
+      timescale: 1,
     },
   },
   {
@@ -331,7 +331,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       edgeHue: -109,
       wildness: 0.63,
       saturation: 0.75,
-      playback: 0.14,
+      timescale: 0.14,
     },
   },
   {
@@ -375,7 +375,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       edgeHue: -180,
       wildness: 0.89,
       saturation: 0.26,
-      playback: 0.89,
+      timescale: 0.89,
     },
   },
   {
@@ -419,7 +419,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       edgeHue: -138,
       wildness: 0.81,
       saturation: 0.69,
-      playback: 0.4,
+      timescale: 0.4,
     },
   },
   {
@@ -463,7 +463,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       edgeHue: -109,
       wildness: 0.63,
       saturation: 0.75,
-      playback: 0.14,
+      timescale: 0.14,
     },
   },
 ]

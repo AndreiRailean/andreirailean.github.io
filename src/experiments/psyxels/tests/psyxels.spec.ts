@@ -199,7 +199,7 @@ test("winding the life controls anywhere leaves the packing exactly as it was", 
       afterglow: 1,
       edge: 1,
       edgeHue: -180,
-      playback: 2,
+      timescale: 2,
     })
     return api.stats()
   })
@@ -444,7 +444,7 @@ test("bloom and overlap fill the ground around a large psyx without repacking", 
     churn: 0,
     flicker: 0,
     pulse: 0,
-    playback: 1,
+    timescale: 1,
   }
 
   const bare = await paint(PLAIN)
@@ -594,7 +594,7 @@ test("the afterglow leaves light where the psyx no longer is", async ({ page }) 
         api.pause(true)
         // A long trail on a field that is repacking, given time to settle: the
         // buffer has to hold several field states for there to be a trail at all.
-        api.set({ glow: 1, afterglow: 0.95, churn: 40, playback: 1 })
+        api.set({ glow: 1, afterglow: 0.95, churn: 40, timescale: 1 })
         api.run(6)
         const trailing = mask()
 
@@ -639,7 +639,7 @@ test("a repacked field does not keep the light of the one before it", async ({ p
 
   // A long trail on a still field, given time to reach its resting value.
   await experiment.api(({ api }) => {
-    api.set({ glow: 1, afterglow: 0.95, churn: 0, flicker: 0, playback: 1 })
+    api.set({ glow: 1, afterglow: 0.95, churn: 0, flicker: 0, timescale: 1 })
     api.run(6)
   })
   const before = (await light(page)).lit

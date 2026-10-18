@@ -60,6 +60,12 @@ for (const slug of PIECES) {
     expect((await experiment.api(({ api }) => api.presets())).length, `${slug} has no presets`).toBeGreaterThan(0)
     expect(await experiment.api(({ api }) => api.panel(true))).toBe(true)
     await expect(page.locator("#ui .panel .row").first(), `${slug}'s panel has no rows`).toBeVisible()
+    // The kit's playback group closes the panel, with speed as its last row —
+    // #312. The kit orders it, so this reads the panel rather than `CONTROLS`.
+    await expect(page.locator("#ui .panel .group").last(), `${slug}'s last group is not playback`).toHaveText(
+      "playback",
+    )
+    await expect(page.locator("#ui .panel .row .label").last(), `${slug}'s last row is not speed`).toHaveText("speed")
 
     // And the piece draws, through its runner.
     await expect.poll(() => litPixels(page, LIT_THRESHOLD, 0), { timeout: 15_000 }).toBeGreaterThan(0)

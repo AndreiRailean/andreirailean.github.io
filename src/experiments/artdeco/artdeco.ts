@@ -1803,7 +1803,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
       // Growth runs in fixed ticks whatever the frame rate, so a drawing does
       // not depend on how long each frame took: live, settled and replayed
       // runs of one address grow the same drawing.
-      owed += dt
+      owed += dt * settings.timescale
       while (owed >= TICK) {
         step(TICK)
         owed -= TICK

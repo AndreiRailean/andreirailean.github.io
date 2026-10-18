@@ -177,7 +177,7 @@ export function createCrowd(canvas: HTMLCanvasElement, initial: Settings): Crowd
   let drawMs = 0
   let lastDrawMs = 0
 
-  const isAnimated = () => !stillOnly.matches && settings.playback > 0
+  const isAnimated = () => !stillOnly.matches
 
   function resize(): void {
     const next = fitCanvas(canvas, { width, height, dpr })
@@ -261,7 +261,7 @@ export function createCrowd(canvas: HTMLCanvasElement, initial: Settings): Crowd
     clamp: 0.25,
     frame(elapsed) {
       if (!isAnimated()) return "idle"
-      carry += elapsed * settings.playback
+      carry += elapsed * settings.timescale
       let steps = 0
       while (carry >= STEP && steps < MAX_STEPS) {
         advance(STEP)

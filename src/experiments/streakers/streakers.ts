@@ -322,7 +322,7 @@ export function createStreakers(canvas: HTMLCanvasElement, initial: Settings) {
     drawn = count
   }
 
-  const loop = steadyLoop({ clamp: 0.1, step, draw })
+  const loop = steadyLoop({ clamp: 0.1, step: (dt) => step(dt * settings.timescale), draw })
 
   function onResize() {
     size()

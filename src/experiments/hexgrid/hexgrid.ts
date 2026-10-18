@@ -756,7 +756,7 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
     }
   }
 
-  const loop = steadyLoop({ clamp: 0.1, step: advance, draw })
+  const loop = steadyLoop({ clamp: 0.1, step: (dt) => advance(dt * settings.timescale), draw })
 
   function onResize() {
     size()

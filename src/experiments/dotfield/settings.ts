@@ -1,7 +1,14 @@
+import { TIMESCALE_SLOT, timescaleControl, timescaleTrack } from "@/experiments/kit/speed"
 import { clamp, onTracks, oneOf, packedAddress, reroller } from "@/experiments/settings-plumbing"
 import type { Slot } from "@/experiments/address"
 import type { Control as KitControl, SliderControl, Track } from "@/experiments/kit/controls"
 import type { Chrome } from "@/experiments/piece"
+
+/**
+ * The clock rate this piece's 1× stands for, as a multiple of real time. The
+ * kit's speed control scales it — `kit/speed.ts`.
+ */
+export const CLOCK_RATE = 1
 
 /** Re-exported so a consumer needs one import for a control and its keys. */
 export { keysOf } from "@/experiments/kit/controls"
@@ -78,6 +85,8 @@ export type Settings = {
   /** How far a column's top is lifted toward white. */
   cap: number
   seed: number
+  /** The speed control's value: a multiple of `CLOCK_RATE`. The kit's — `kit/speed.ts`. */
+  timescale: number
 }
 
 export type NumericKey = Exclude<keyof Settings, "lattice">
@@ -447,6 +456,7 @@ export const CONTROLS: Control[] = [
     format: /* @__PURE__ */ fixed(2),
     hint: "How far the top of each column is lifted toward white. 0 gives it the stalk's colour, 1 makes every dot white.",
   },
+  /* @__PURE__ */ timescaleControl(),
 ]
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -482,6 +492,7 @@ export const DEFAULT_SETTINGS: Settings = {
   saturation: 70,
   cap: 0.35,
   seed: 1,
+  timescale: 1,
 }
 
 /** Written out rather than derived from `CONTROLS`; see `src/experiments/AGENTS.md` under Presets. */
@@ -516,6 +527,7 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   islands: { min: 0, max: 1, step: 0.01 },
   saturation: { min: 0, max: 100, step: 1 },
   cap: { min: 0, max: 1, step: 0.01 },
+  timescale: timescaleTrack(),
 }
 
 export const BOUNDS: Record<NumericKey, { min: number; max: number }> = {
@@ -607,6 +619,8 @@ export const REGISTRY: readonly Slot[] = [
   { key: "heightSway", kind: "num", grid: 0.05, origin: 0, bits: 6 },
   { key: "hinge", kind: "num", grid: 0.01, origin: 0, bits: 7 },
   { key: "segments", kind: "num", grid: 1, origin: 1, bits: 4 },
+  // The kit's speed control, appended — `kit/speed.ts`.
+  TIMESCALE_SLOT,
 ]
 
 export const { settingsToQuery, urlForSettings, settingsFromQuery, namesASetting } = packedAddress<Settings>({

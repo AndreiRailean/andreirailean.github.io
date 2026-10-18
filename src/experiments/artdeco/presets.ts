@@ -88,6 +88,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       vary: "new",
       hue: 45,
       seed: 7,
+      timescale: 1,
     },
   },
   {
@@ -170,6 +171,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       vary: "new",
       hue: 45,
       seed: 1,
+      timescale: 1,
     },
   },
   {
@@ -252,6 +254,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       vary: "new",
       hue: 45,
       seed: 1,
+      timescale: 1,
     },
   },
   {
@@ -334,6 +337,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       vary: "new",
       hue: 40,
       seed: 22,
+      timescale: 1,
     },
   },
   {
@@ -416,6 +420,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       vary: "new",
       hue: 48,
       seed: 3,
+      timescale: 1,
     },
   },
   {
@@ -498,6 +503,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       vary: "new",
       hue: 170,
       seed: 11,
+      timescale: 1,
     },
   },
   {
@@ -580,6 +586,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       vary: "new",
       hue: 42,
       seed: 5,
+      timescale: 1,
     },
   },
   {
@@ -662,6 +669,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       vary: "new",
       hue: 38,
       seed: 21,
+      timescale: 1,
     },
   },
   {
@@ -744,6 +752,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       vary: "new",
       hue: 30,
       seed: 4,
+      timescale: 1,
     },
   },
   {
@@ -826,6 +835,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       vary: "new",
       hue: 45,
       seed: 14,
+      timescale: 1,
     },
   },
   {
@@ -908,6 +918,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       vary: "new",
       hue: 48,
       seed: 3,
+      timescale: 1,
     },
   },
   {
@@ -990,6 +1001,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       vary: "new",
       hue: 45,
       seed: 1,
+      timescale: 1,
     },
   },
   {
@@ -1072,6 +1084,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       vary: "new",
       hue: 45,
       seed: 5,
+      timescale: 1,
     },
   },
   {
@@ -1154,6 +1167,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       vary: "new",
       hue: 45,
       seed: 7,
+      timescale: 1,
     },
   },
   {
@@ -1236,6 +1250,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       vary: "new",
       hue: 45,
       seed: 3,
+      timescale: 1,
     },
   },
   {
@@ -1318,6 +1333,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       vary: "new",
       hue: 45,
       seed: 7,
+      timescale: 1,
     },
   },
   {
@@ -1400,6 +1416,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       vary: "new",
       hue: 45,
       seed: 7,
+      timescale: 1,
     },
   },
   {
@@ -1482,6 +1499,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       vary: "new",
       hue: 45,
       seed: 7,
+      timescale: 1,
     },
   },
   {
@@ -1564,6 +1582,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       vary: "new",
       hue: 45,
       seed: 7,
+      timescale: 1,
     },
   },
   {
@@ -1646,6 +1665,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       vary: "new",
       hue: 45,
       seed: 1,
+      timescale: 1,
     },
   },
   {
@@ -1728,6 +1748,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       vary: "new",
       hue: 45,
       seed: 1,
+      timescale: 1,
     },
   },
   {
@@ -1810,6 +1831,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       vary: "new",
       hue: 45,
       seed: 7,
+      timescale: 1,
     },
   },
   {
@@ -1892,6 +1914,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       vary: "new",
       hue: 45,
       seed: 7,
+      timescale: 1,
     },
   },
   {
@@ -1974,6 +1997,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       vary: "new",
       hue: 45,
       seed: 7,
+      timescale: 1,
     },
   },
   {
@@ -2056,6 +2080,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       vary: "new",
       hue: 45,
       seed: 7,
+      timescale: 1,
     },
   },
   {
@@ -2138,6 +2163,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       vary: "new",
       hue: 45,
       seed: 7,
+      timescale: 1,
     },
   },
 ]
