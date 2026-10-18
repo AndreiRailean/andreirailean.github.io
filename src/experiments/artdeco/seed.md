@@ -197,6 +197,16 @@ two overlapping in a chain along a line.)_
 > overlay for videos or other things. or it could be embedded as a background
 > on a web page.
 
+## 2026-10-18 — frames, first look
+
+> thanks. it's looking good. you're a good implementer of patterns.
+> i wouldn't put the "frame" box as the first control. maybe the last.
+> pull latest main so you can see what I'm looking at
+> i see that the circles that appear on the border are cut off. would be good
+> for them to not be cut off. if the border is implemented by occlusion of the
+> middle section, we are drawing a lot of hidden lines. perhaps they all need
+> to bounce of the border
+
 ## Open questions
 
 _Mine, not his — what I assumed and what would settle it._
