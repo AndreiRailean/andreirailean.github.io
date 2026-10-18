@@ -159,7 +159,7 @@ Multi-context. `CONTEXT-MAP.md` at the root names each context and points at its
 
 **pnpm, not npm.** `pnpm install`, `pnpm run <script>`, `pnpm exec <tool>`. `packageManager` makes pnpm refuse to run in a project it thinks belongs to another manager, so there is nothing to get wrong once pnpm is on `PATH` — but a dependency with an install script needs declaring in `pnpm-workspace.yaml` before it will install, and a version published in the last 24 hours will not install at all. See `docs/adr/20260902-pnpm-is-the-package-manager.md`.
 
-**Upgrading Astro** is `pnpm dlx @astrojs/upgrade` from a branch, with the changelog read first, the runners checked unchanged, Andrei shown a preview, and `pnpm install` in every worktree after the merge — installed packages do not follow the lockfile. See `docs/agents/upgrading-astro.md`.
+**Upgrading dependencies** is a steward task, filed monthly by `.github/workflows/outdated.yml`. Patch and minor go together in one PR, and majors go one PR each, migration guide first. Anything that reaches the site gets Andrei's preview before merge. Astro upgrades go through `pnpm dlx @astrojs/upgrade`, given a terminal. Run `pnpm install` in every worktree after the merge, because installed packages do not follow the lockfile. See `docs/agents/upgrading-dependencies.md`.
 
 ### Working with branches
 
