@@ -53,11 +53,22 @@ version:
    pnpm dlx @astrojs/upgrade
    ```
 
-   **It asks before an integration with breaking changes, and a session cannot
-   answer it.** Run without a terminal, it lists what it would do and then
-   exits 0 having changed nothing, which reads as success. Use its list to
-   choose the versions, then pin them as below. That is what the 7.2.8 → 7.4.0
-   upgrade did, with `@astrojs/react` 6 → 7 being the one that asked.
+   **It asks before an integration with breaking changes, so give it a
+   terminal.** Run plainly from a session, it lists what it would do, then
+   exits 0 having changed nothing, which reads as success. It needs a
+   pseudo-terminal, and an Enter to take the default "Yes":
+
+   ```bash
+   (for i in $(seq 40); do sleep 3; printf '\r'; done) |
+     timeout 200 script -qec "pnpm dlx @astrojs/upgrade" /dev/null
+   git diff --stat package.json pnpm-lock.yaml   # must not be empty
+   ```
+
+   The `git diff` is the check, not the exit status. Only answer Yes having
+   read the changelog of whatever it says has breaking changes: for 7.2.8 →
+   7.4.0 that was `@astrojs/react` 6 → 7. Its result was byte-identical, both
+   files, to `pnpm add` of the versions it listed. So the pinned form below is
+   an equivalent way to do the same thing.
 
    To pin a version instead of taking the latest:
 
