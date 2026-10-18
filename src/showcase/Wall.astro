@@ -352,30 +352,41 @@ const entry = WALL[start]!
       <div class="counter"></div>
 
       <div class="placard">
-        <span class="scene">{entry.title}</span><span class="piece">{entry.pieceTitle}</span>
+        <span class="scene">{entry.title}</span>
+        <span class="piece">{entry.pieceTitle}</span>
         <p class="note">{entry.note}</p>
       </div>
 
       <div class="arrows" data-showcase-furniture>
-        <button type="button" data-go="-1" aria-label="Previous">↑</button>
-        <button type="button" data-go="1" aria-label="Next">↓</button>
+        <button type="button" data-go="-1" aria-label="Previous">
+          ↑
+        </button>
+        <button type="button" data-go="1" aria-label="Next">
+          ↓
+        </button>
       </div>
 
-      <button type="button" data-frame-toggle data-showcase-furniture aria-label="Toggle frame">frame</button>
+      <button type="button" data-frame-toggle data-showcase-furniture aria-label="Toggle frame">
+        frame
+      </button>
       <button
         type="button"
         data-fullscreen-toggle
         data-showcase-furniture
         aria-label="Toggle fullscreen (f)"
-        title="Fullscreen (f)">⛶</button
+        title="Fullscreen (f)"
       >
+        ⛶
+      </button>
 
-      {
-        /* Both marks, in one slot. Whichever is shown replaces the other rather
-          than racing it, so a fast double-tap cannot leave both up. */
-      }
-      <div class="mark held" hidden><span>❙❙</span></div>
-      <div class="mark playing" hidden><span>▶</span></div>
+      {/* Both marks, in one slot. Whichever is shown replaces the other rather
+          than racing it, so a fast double-tap cannot leave both up. */}
+      <div class="mark held" hidden>
+        <span>❙❙</span>
+      </div>
+      <div class="mark playing" hidden>
+        <span>▶</span>
+      </div>
 
       <div class="trouble" hidden>
         <div>
@@ -385,13 +396,10 @@ const entry = WALL[start]!
       </div>
     </div>
 
-    {
-      /* The wall travels as data rather than as a global: a JSON script tag is
+    {/* The wall travels as data rather than as a global: a JSON script tag is
         inert, needs no declaration merged into `Window`, and is the same shape
-        whether the page was prerendered or served. */
-    }
+        whether the page was prerendered or served. */}
     <script type="application/json" id="showcase-data" set:html={JSON.stringify({ wall: WALL, start, front })} />
-
     <script>
       import { mountViewer } from "@/showcase/viewer"
 

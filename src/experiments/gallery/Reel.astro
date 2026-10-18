@@ -50,20 +50,18 @@ const titleOf = (want: string | null) => order.find((entry) => entry.data.slug =
     </svg>
   </a>
 
-  {
-    /*
-     * One slot in the middle of the screen, for everything that is about the
-     * view rather than about the work: which piece this is, that it has just
-     * been held or let go, and that there is nothing past this end of the wall.
-     *
-     * They share the slot because they are never worth saying at once, and each
-     * shows and then goes on its own — the same bargain the chrome makes.
-     * Nothing here is a persistent state readout.
-     *
-     * The spans wrap their icons rather than being hidden directly: `hidden` is
-     * an HTML attribute and an inline SVG is not an HTML element.
-     */
-  }
+  {/*
+   * One slot in the middle of the screen, for everything that is about the
+   * view rather than about the work: which piece this is, that it has just
+   * been held or let go, and that there is nothing past this end of the wall.
+   *
+   * They share the slot because they are never worth saying at once, and each
+   * shows and then goes on its own — the same bargain the chrome makes.
+   * Nothing here is a persistent state readout.
+   *
+   * The spans wrap their icons rather than being hidden directly: `hidden` is
+   * an HTML attribute and an inline SVG is not an HTML element.
+   */}
   <div class="middle" hidden>
     <p class="name" hidden></p>
     <span class="mark held" hidden>
@@ -83,7 +81,9 @@ const titleOf = (want: string | null) => order.find((entry) => entry.data.slug =
   <div class="placard">
     <p class="scene"></p>
     <ol class="dots" aria-hidden="true"></ol>
-    <p class="hint" hidden>← scenes → &nbsp;·&nbsp; ↑ pieces ↓</p>
+    <p class="hint" hidden>
+      ← scenes → &nbsp;·&nbsp; ↑ pieces ↓
+    </p>
   </div>
 </div>
 
