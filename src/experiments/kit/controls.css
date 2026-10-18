@@ -206,6 +206,28 @@ html[data-idle="true"] #ui > * {
   bottom: 0;
 }
 
+/* Play and pause hold the corner itself, the way a video player has them, and
+   `about` steps left of it. A fixed width is what lets `about` know where. */
+#ui > .play {
+  right: 0;
+  bottom: 0;
+  display: grid;
+  place-items: center;
+  width: var(--ui-play, 2.4rem);
+  padding-inline: 0;
+}
+
+#ui > .play svg {
+  width: 0.9em;
+  height: 0.9em;
+  /* A line of text tall, so it matches `about` beside it. */
+  margin-block: calc((1lh - 0.9em) / 2);
+}
+
+#ui > .play ~ .about {
+  right: calc(var(--ui-play, 2.4rem) + 0.35rem);
+}
+
 #ui > .index {
   left: 0;
   bottom: 0;

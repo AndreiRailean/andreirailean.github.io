@@ -104,6 +104,10 @@ export function boot<S extends object, V extends Verbs, T>(piece: Piece<S, V, T>
       applyTheme(chrome, next)
       scene.setSettings(next)
     },
+    // Through the handle, so the button and `experiment.pause()` are one verb.
+    onPause: () => {
+      call("pause")
+    },
   })
 
   // Left running deliberately, so hold the display on.

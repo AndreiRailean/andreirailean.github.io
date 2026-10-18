@@ -151,7 +151,7 @@ The other three are each a mechanism that is absent rather than mistuned:
 > jet only spits out tiny dots like it's congested. i think it's natural for jets
 > to have variability, but we're not modelling a clogged pipe here.
 >
-> http://10.1.11.11:4456/experiments/bubbles/?s=_7___7t4QJgwwaAAFPDwwMKzWiCUMIkAQXw2AY2ARw2y6-I
+> /experiments/bubbles/?s=_7___7t4QJgwwaAAFPDwwMKzWiCUMIkAQXw2AY2ARw2y6-I
 
 **My reading, marked as mine.** The second paragraph is a plain bug and the first
 is a missing mechanism that happens to produce the same complaint from two
@@ -233,7 +233,7 @@ was false while that stood, including the one in `about.md`.
 > another before they join or pop. in watter, bubbles tend to stick together and
 > move together. here we have them apearing on top of one another.
 >
-> http://10.1.11.11:4456/experiments/bubbles/?s=_4_977vfeEBYUGAg0YoWCCOYoniCgEsQqdMgRgwDpfBAF6PHHda
+> /experiments/bubbles/?s=_4_977vfeEBYUGAg0YoWCCOYoniCgEsQqdMgRgwDpfBAF6PHHda
 
 **My reading, marked as mine.** The last sentence is the mechanism and the rest
 is what it looks like. Bubbles in this piece can only do two things to each
@@ -274,7 +274,7 @@ visible teleport rather than a break-up.
 
 > i'm not seeing any clinging here.
 >
-> http://10.1.11.11:4456/experiments/bubbles/?s=_4_977vffEBYUGAg0YoWCCOYoniCgEsQqdMgRgwDpfBAFlCHHdZk
+> /experiments/bubbles/?s=_4_977vffEBYUGAg0YoWCCOYoniCgEsQqdMgRgwDpfBAFlCHHdZk
 >
 > a few more observations:
 >
@@ -321,7 +321,7 @@ a raft to cling to and nothing could accumulate.
 > this is an interesting one. i'm not sure how "frame" preset can turn into a
 > ring, but I like it.
 >
-> http://10.1.11.11:4456/experiments/bubbles/?s=_4_177vX_0BiMTEhQBGtRgESTRIAZ0zEKnQA0aI-eCQDLZxg-4gfiAQA
+> /experiments/bubbles/?s=_4_177vX_0BiMTEhQBGtRgESTRIAZ0zEKnQA0aI-eCQDLZxg-4gfiAQA
 
 ## 2026-09-20 — answering the sixth round
 
@@ -350,7 +350,7 @@ the arithmetic says the two flows cancel, over a range of `return`: 1.005 agains
 
 > Make this preset number one "Time bubbles"
 >
-> http://10.1.11.11:4456/experiments/bubbles/?s=_4_177vX_0BiMTEjANGtCgUSTRIAZybEKnQA0aIK6CADLZzA-4gfiAQA
+> /experiments/bubbles/?s=_4_177vX_0BiMTEjANGtCgUSTRIAZybEKnQA0aIK6CADLZzA-4gfiAQA
 
 ## 2026-09-20 — promoting it, and the warning that came due
 

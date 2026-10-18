@@ -32,6 +32,45 @@ const pieces = readdirSync(EXPERIMENTS, { withFileTypes: true })
   .map((entry) => entry.name)
   .sort()
 
+/**
+ * A machine's address: an IP literal, localhost, a tailnet name, or any host
+ * with a port. Andrei pastes the preview URL he has open, and the host part
+ * names the machines he works from — he asked for it not to live in a record
+ * this long. The path and the `?s=` scene are what the record needs, so those
+ * stay; only the scheme and host go.
+ */
+const HOST = /https?:\/\/(?:\d{1,3}(?:\.\d{1,3}){3}|localhost|[^\s/]*\.ts\.net|[^\s/:]+:\d+)/
+
+describe("a seed records the scene, not the machine it was on", () => {
+  it("knows a host when it sees one", () => {
+    // The pattern is tested against cases the seeds no longer contain, so a
+    // pattern that stopped matching anything cannot pass for clean seeds.
+    for (const line of [
+      "> http://100.117.55.104:4627/experiments/artdeco/?s=abc",
+      "> http://10.1.11.11:4456/experiments/bubbles/?s=abc",
+      '> add this as "club" http://localhost:4321/experiments/streakers?s=abc',
+      "> https://box.tail1234.ts.net/experiments/crowd/",
+      "> http://zenith:4627/experiments/crowd/",
+    ])
+      expect(line).toMatch(HOST)
+    for (const line of ["> /experiments/artdeco/?s=abc", "> like https://en.wikipedia.org/wiki/Art_Deco"])
+      expect(line).not.toMatch(HOST)
+  })
+
+  it.each(pieces)("%s's seed names no host", (slug) => {
+    const path = `${EXPERIMENTS}/${slug}/seed.md`
+    if (!existsSync(path)) return
+    const hosts = readFileSync(path, "utf8")
+      .split("\n")
+      .flatMap((line, k) => (HOST.test(line) ? [`${path}:${k + 1}`] : []))
+    expect(
+      hosts,
+      `Keep the path and the ?s= scene of an address Andrei pastes, and drop the scheme and host: ` +
+        `it names his machines, and he asked for it not to live in a long record.`,
+    ).toEqual([])
+  })
+})
+
 describe("every piece keeps its seed", () => {
   it("finds the pieces at all, so an empty run cannot pass for a clean one", () => {
     // Without this the `it.each` below would vanish silently if the predicate

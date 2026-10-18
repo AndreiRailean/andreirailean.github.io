@@ -285,6 +285,9 @@ export function createBaseApi<S>({
     pause(held) {
       paused = held ?? !paused
       scene.setPaused(paused)
+      // The corner button, the console and a tap on a phone all come through
+      // here, so the button cannot show a state the scene is not in.
+      controls.setPaused(paused)
       return paused
     },
 
