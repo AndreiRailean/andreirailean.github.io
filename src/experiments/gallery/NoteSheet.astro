@@ -35,14 +35,12 @@ const formatDate = (date: Date) => date.toLocaleDateString("en-GB", { day: "nume
       <p class="summary">{summary}</p>
       <p class="dates">
         <time datetime={started.toISOString()}>{formatDate(started)}</time>
-        {
-          formatDate(updated) !== formatDate(started) && (
-            <>
-              {" · last changed "}
-              <time datetime={updated.toISOString()}>{formatDate(updated)}</time>
-            </>
-          )
-        }
+        {formatDate(updated) !== formatDate(started) && (
+          <>
+            {" · last changed "}
+            <time datetime={updated.toISOString()}>{formatDate(updated)}</time>
+          </>
+        )}
       </p>
       <Content />
     </div>

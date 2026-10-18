@@ -7,8 +7,7 @@ import avatar from "@/assets/avatar.jpg"
 ---
 
 <Layout title="Andrei Railean" description="Experienced web developer ready to help you and your team">
-  {
-    /* A published scene, running as this page's background.
+  {/* A published scene, running as this page's background.
 
       This is a **pasted embed**, and the point is that it looks like one. The
       snippet pins a runner by content hash and carries its scene as the packed
@@ -32,15 +31,13 @@ import avatar from "@/assets/avatar.jpg"
 
       Two scenes, because this page has a light and a dark mode. Pairing them is
       the host's job: a copy-embed button gives one scene, and an embed offers
-      the switch as a convenience rather than deciding it. */
-  }
+      the switch as a convenience rather than deciding it. */}
   <div
     id="showcase-bg"
     data-showcase-runner="/showcase/runners/starry-night.490e5f9452c8.js"
     data-showcase-scene="__9ALCzBTyq1YkAPAyI"
     data-showcase-scene-dark="__9ADCzBTyq1YkAPAyI"
-  >
-  </div>
+  ></div>
 
   <style is:global>
     #showcase-bg {
@@ -81,8 +78,7 @@ import avatar from "@/assets/avatar.jpg"
     }
   </style>
 
-  {
-    /* A module, deliberately, and that is the whole fix for a flash.
+  {/* A module, deliberately, and that is the whole fix for a flash.
 
       `<Footer>` carries the script that puts `.dark` on the document, and the
       footer renders *after* this slot. A classic inline script here therefore
@@ -90,8 +86,7 @@ import avatar from "@/assets/avatar.jpg"
       mounts wrong; whether it then corrects itself depends on a race with the
       theme toggle hydrating. A module runs after parsing, by which time the
       class is settled, and modules execute in document order so this one is
-      guaranteed to be ahead of the loader below. */
-  }
+      guaranteed to be ahead of the loader below. */}
   <script>
     const scheme = () => (document.documentElement.classList.contains("dark") ? "dark" : "light")
     document.getElementById("showcase-bg")!.dataset.showcaseVariant = scheme()
@@ -103,9 +98,7 @@ import avatar from "@/assets/avatar.jpg"
       attributeFilter: ["class"],
     })
   </script>
-
   <script is:inline type="module" src="/showcase/embed.js"></script>
-
   <main class="m-0 flex grow flex-col items-center justify-center px-6 py-8 md:px-10 md:py-10">
     <div class="flex flex-col space-y-3 md:w-[40rem] md:space-y-5">
       <div class="flex justify-center">
