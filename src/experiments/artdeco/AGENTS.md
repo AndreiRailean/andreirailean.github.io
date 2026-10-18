@@ -195,12 +195,29 @@ being found.
 - **Toll costs depth for every pen**, and flight as well for a flying tip, so
   it changes line-pen drawings too when above 0.
 
+- **The frame's middle is tested in every image, not clipped.** It is mirrored
+  both ways but a turned copy does not map it onto itself, so `toHole` tests
+  each image of a tip's ray and turns the edge it meets back into the grown
+  copy. Clipping alone was the first build: copies grew lines and circles
+  nobody saw, and circles on the border were cut in half. The clip remains as
+  a safety net and is off under `debug`, which is how to see an intrusion.
+- **A copy that starts inside the middle ends at once** (`t` 0). Rebounding
+  from inside found no edge and bounced in place: hyper cube round the centre
+  took 13,806 frame meetings and drew nothing.
+- **A flying tip rebounds off the middle even with `at the middle: stop`.**
+  Lifting an already lifted tip changes nothing, so it would fly in and land
+  there.
+- **`frame.ts` builds the middle one side at a time with the same profile**,
+  so its symmetry is by construction; its test checks it, and was seen to
+  fail with one inset vertex moved. An inset is band reaching in, so from
+  outside it makes the middle start further away, not sooner.
+
 ## Checking a mechanism fired
 
 `experiment.stats()` counts every decision by kind, every meeting by kind
-(`line`, `mirror`, `axis`, `halo`, `edge`, `depth`, `cap`), what the lines
+(`line`, `mirror`, `axis`, `halo`, `edge`, `frame`, `depth`, `cap`), what the lines
 `chose` at them, rebounds, offshoots, circles by placement (`corner`,
-`along`), `busy` (lines hushed, set dissolving, and dissolving passed on), `halos`
+`along`) and those left out for reaching the frame's middle (`framed`), `busy` (lines hushed, set dissolving, and dissolving passed on), `halos`
 (big circles showing, and dissolving), `circles.shied`, `pen` (lifts, lands,
 tips grounded by `flight`, splits and lifts refused by `flock`, tips flying
 now),

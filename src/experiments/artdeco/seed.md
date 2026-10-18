@@ -69,7 +69,7 @@ describes the work.
 ## 2026-10-16 — playing with it, and "the construct"
 
 > I'm playing with this:
-> http://100.117.55.104:4627/experiments/artdeco/?s=___f____QEnZwkSRpSCAowggwwLQAAcdSBQpgABAEjLE
+> /experiments/artdeco/?s=___f____QEnZwkSRpSCAowggwwLQAAcdSBQpgABAEjLE
 >
 > Observations: the stems all come from the same location, which pegs the
 > birth to always be in the same spot. i wonder if allowing variability beyond
@@ -106,7 +106,7 @@ describes the work.
 > undershoot. hard to control and kinda gets boring really quickly.
 >
 > save this one as "the construct"
-> http://100.117.55.104:4627/experiments/artdeco/?s=___f____QEnZwkSRpSCAowggwwLQAAcdSBQpgABAEjLE
+> /experiments/artdeco/?s=___f____QEnZwkSRpSCAowggwwLQAAcdSBQpgABAEjLE
 >
 > - it's the same one as above, only the stems are a little further apart. on
 >   my screen, the pattern it produces is mesmerising. not sure what will happen
@@ -118,12 +118,12 @@ describes the work.
 > circles and strange cut-offs on where the up-down lines would meet. does the
 > left-right symmetry need to mirror the up-down one or can the left-right have
 > a life of its own? i'm looking at this
-> http://100.117.55.104:4627/experiments/artdeco/?s=___f_____2BQGcJEkaUiAKMIIMMC0AAHPUgUKYAAQBIyz0ERIq
+> /experiments/artdeco/?s=___f_____2BQGcJEkaUiAKMIIMMC0AAHPUgUKYAAQBIyz0ERIq
 
 ## 2026-10-16 — clockwork
 
 > save this as clockwork
-> http://100.117.55.104:4627/experiments/artdeco/?s=___f_____3AwGoJEkOUhREMIIMMC0AAHPUgCEIAAQAmyzqCRJT
+> /experiments/artdeco/?s=___f_____3AwGoJEkOUhREMIIMMC0AAHPUgCEIAAQAmyzqCRJT
 
 ## 2026-10-17 — busyness
 
@@ -143,7 +143,7 @@ describes the work.
 > go. there's something to its permanence, but i'd like to know how to control
 > it.
 >
-> http://100.117.55.104:4627/experiments/artdeco/?s=___f_____39J2cJEkaUggKMIJMMC0AAHHUgUKYYAQBIyxAADIAMYRQ
+> /experiments/artdeco/?s=___f_____39J2cJEkaUggKMIJMMC0AAHHUgUKYYAQBIyxAADIAMYRQ
 >
 > I started playing with circles and it appears that busyness controlls allow
 > me to find them manageable again, though i do find places of
@@ -182,12 +182,40 @@ two overlapping in a chain along a line.)_
 >
 > here, i turned off the tips and am quite enjoying the constant
 > re-generation. let's call this a snowflake
-> http://100.117.55.104:4627/experiments/artdeco/?s=___f______9_A5lBiZjDMMwjCCFDAtAAAQlAFAAAAKAAMtAACjARFkVQAKwI
+> /experiments/artdeco/?s=___f______9_A5lBiZjDMMwjCCFDAtAAAQlAFAAAAKAAMtAACjARFkVQAKwI
 
 ## 2026-10-17 — hyper cube
 
 > hyper cube
-> http://100.117.55.104:4627/experiments/artdeco/?s=___f________cAOZQYmYwzDMIwghQwLQAAEJQBQAAACgADLQAAowERZFUACsiG2M
+> /experiments/artdeco/?s=___f________cAOZQYmYwzDMIwghQwLQAAEJQBQAAACgADLQAAowERZFUACsiG2M
+
+## 2026-10-17 — frames
+
+> i was wondering if we could make artdeco frames. so the pattern would evolve
+> only on the edges of the screen and avoid coming into the center. it's like
+> the margin setting only in reverse. i am thinking that I may use it as an
+> overlay for videos or other things. or it could be embedded as a background
+> on a web page.
+
+## 2026-10-18 — frames, first look
+
+> thanks. it's looking good. you're a good implementer of patterns.
+> i wouldn't put the "frame" box as the first control. maybe the last.
+> pull latest main so you can see what I'm looking at
+> i see that the circles that appear on the border are cut off. would be good
+> for them to not be cut off. if the border is implemented by occlusion of the
+> middle section, we are drawing a lot of hidden lines. perhaps they all need
+> to bounce of the border
+
+> i would also like to add a bit of complexity to the frame so it's not just a
+> band around, but also, in the spirit of art deco, allows for ornamentation on
+> the edges and in the corners. ao rather than being always cut-off, the lines
+> would draw shapes and allow for insets
+
+## 2026-10-18 — frame of progress
+
+> if you see what i have open, save it as "frame of progress"
+> /experiments/artdeco/?s=___f_________3-m2cTTkaUggKMIIoMC0AAHHUgUKYiAAEAyztMPKBKIENAQjFAk8PKkECg
 
 ## Open questions
 
@@ -318,3 +346,40 @@ _Mine, not his — what I assumed and what would settle it._
   splits from a stem are drawn as dots). On pen up in flow, flying tips peaked
   at 1143 with none of them, 113 with toll 2, and exactly 60 with flock 60.
   Snowflake is preset 20, as you made it.
+- **Frames** (2026-10-17). A group of its own, first in the panel. _frame_ is
+  the margin turned inside out: a band that wide round the edges, as a share
+  of the height, and the middle stays empty. Lines meet the middle's edge as
+  they meet the screen's, and the middle is clipped, so a turned copy or a
+  circle cannot carry anything into it. _shape_ is a box or the oval inside
+  it. _at the middle_: stop, rebound, or rebound off the screen's edge too, so
+  lines zigzag along the band. _backdrop: clear_ draws only the lines, for an
+  overlay. Presets 22 and 23. On the construct at frame 15: stop leaves 8
+  segments, rebound 33, edges too 61, and 156 with depth 30, against 175
+  unframed. Not built: the band a different width on the sides than top and
+  bottom; stems planted along the band rather than in the middle of each edge
+  (the corners fill last); a soft edge to the middle rather than a hard clip;
+  a page that serves the clear frame alone for embedding, with no chrome.
+  Tips that are flying ignore the middle, so a tips-pen drawing can land in it
+  and draw lines nobody sees.
+- **Frames, first look** (2026-10-18). The frame group is last in the panel.
+  The cut-off circles and the hidden lines were one fault: the middle was
+  clipped, and turned copies grew into it. Now every image of a tip is tested
+  against the middle and rebounds off it (a flying tip too), a circle that
+  would reach into it is left out (`circles.framed`), and the clip is only a
+  safety net, off under debug so an intrusion shows. Measured with the clip
+  off: no lit pixel in the middle at folds 2, 3, 4 and 6, box and oval. At 3,
+  and 4 with turned copies, a copy round the centre starts inside the middle
+  and ends at once; copies to the edges fixes it (hyper cube: 12 segments
+  round the centre, 143 to the edges).
+- **Ornament** (2026-10-18). The middle is now a shape, built in `frame.ts`
+  one side at a time so it is mirrored both ways by construction: _corners_
+  square, cut, stepped (with _steps_), rounded or notched, at _corner size_;
+  _insets_ per side, at _inset depth_, as a box, a ziggurat or a chevron;
+  and _outline_, the middle's edge drawn as a rule or a double rule so lines
+  that end or rebound there meet a line. Lines rebound off every facet, so
+  they grow into the insets and round the corners. Presets 24, frame, stepped
+  and 25, frame, notched. Not built: ornament on the oval; insets with
+  different spacing, or alternating shapes; ornament at the screen's outer
+  edge rather than the middle's; the outline growing in rather than standing
+  from the start; insets reaching out of the middle into the band (the
+  middle growing into the band) as well as in.
