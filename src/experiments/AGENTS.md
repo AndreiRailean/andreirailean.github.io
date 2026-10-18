@@ -903,6 +903,6 @@ read now too.
 
 The class names are the kit's namespace — `.bar`, `.panel`, `.group`, `.row`,
 `.label`, `.value`, `.span`, `.modes`, `.mode`, `.preset`, `.toggle`, `.copy`,
-`.about` — and **a setting key must not be able to land in it**. A slider carries
+`.about`, `.play` — and **a setting key must not be able to land in it**. A slider carries
 its key as `data-key`, not as a class, because Flotsam has a setting called `span`
 and a class of that name pulled the two-handled-track rules onto a plain slider.

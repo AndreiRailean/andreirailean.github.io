@@ -61,12 +61,17 @@ for (const layout of LAYOUTS) {
     const panel = await box("#ui .panel")
     const about = await box("#ui > .about")
     const index = await box("#ui > .index")
+    const play = await box("#ui > .play")
 
     expect(presets.x, "the presets are not on the left").toBeLessThan(width / 4)
     expect(presets.y, "the presets do not start at the top").toBeLessThan(height / 8)
     expect(bar.x + bar.width, "the bar is not on the right").toBeGreaterThan(width * 0.9)
     expect(bar.y, "the bar is not at the top").toBeLessThan(height / 8)
-    expect(about.x + about.width, "about is not on the right").toBeGreaterThan(width * 0.9)
+    expect(play.x + play.width, "play is not in the right corner").toBeGreaterThan(width * 0.97)
+    expect(play.y + play.height, "play is not at the bottom").toBeGreaterThan(height * 0.9)
+    expect(about.x + about.width, "about does not stop short of play").toBeLessThanOrEqual(play.x)
+    expect(Math.abs(about.height - play.height), "about and play are not one height").toBeLessThan(2)
+    expect(about.x + about.width, "about is not on the right").toBeGreaterThan(width * 0.85)
     expect(about.y + about.height, "about is not at the bottom").toBeGreaterThan(height * 0.9)
     expect(panel.y, "the panel is not beneath the bar").toBeGreaterThanOrEqual(bar.y + bar.height - 1)
     expect(panel.y + panel.height, "the panel runs over about").toBeLessThanOrEqual(about.y + 1)
@@ -323,6 +328,72 @@ test("text typed into the panel is the setting, and no key in it is a shortcut",
   expect(await experiment.api(({ api }) => api.decode()), "the address does not carry the text").toMatchObject({
     words: "c2 nr",
   })
+})
+
+/**
+ * **Play and pause, the way a video has them — #313.** Space and the corner
+ * button are one verb with `experiment.pause()`, so each shows what the others
+ * did. Pausing holds the scene and moves no setting: Andrei, 2026-10-18, "we
+ * def do not want to meddle with any speed settings when pausing". The preset
+ * click is the case the arrows' comment names: the focus stays on that button,
+ * and a Space that clicked it again would load the preset instead of pausing.
+ */
+test("Space and the corner button pause and resume, and no setting moves", async ({ page }) => {
+  const experiment = await openKit(page, { idle: false })
+  const paused = () =>
+    experiment.api(({ api }) => (api as unknown as { stats: () => { paused: boolean } }).stats().paused)
+  const play = page.locator("#ui > .play")
+
+  await expect(play).toHaveAttribute("aria-label", "pause")
+  const before = { settings: await settings(page), url: page.url() }
+
+  await page.keyboard.press(" ")
+  expect(await paused(), "Space did not pause").toBe(true)
+  await expect(play).toHaveAttribute("aria-label", "play")
+  expect(await settings(page), "pausing moved a setting").toEqual(before.settings)
+  expect(page.url(), "pausing rewrote the address").toBe(before.url)
+
+  await play.click()
+  expect(await paused(), "the button did not resume").toBe(false)
+  await expect(play).toHaveAttribute("aria-label", "pause")
+
+  // Focus on the button itself: its own click on keyup would undo the toggle.
+  await play.click()
+  expect(await paused()).toBe(true)
+  await page.keyboard.press(" ")
+  expect(await paused(), "Space on the focused play button toggled twice").toBe(false)
+
+  // Focus on a preset, then a scene that is no longer that preset: a Space
+  // that clicked the button would load it again.
+  await page.locator("#ui .presets .preset").nth(1).click()
+  await experiment.api(({ api }) => api.set({ seed: 4242 } as never))
+  await page.keyboard.press(" ")
+  expect(await paused(), "Space on a focused preset did not pause").toBe(true)
+  expect((await settings(page)).seed, "Space on a focused preset clicked it").toBe(4242)
+  await page.keyboard.press(" ")
+  expect(await paused()).toBe(false)
+
+  // A slider has no use for Space, so the press after a drag pauses.
+  await experiment.api(({ api }) => api.panel(true))
+  await page.locator("#ui .panel input[type=range]").first().focus()
+  await page.keyboard.press(" ")
+  expect(await paused(), "Space on a focused slider did not pause").toBe(true)
+  await play.click()
+
+  await experiment.api(({ api }) => api.pause(false))
+  await expect(play, "the button missed a pause from the console").toHaveAttribute("aria-label", "pause")
+})
+
+test("Space typed into a field is text, not a pause", async ({ page }) => {
+  const experiment = await openKit(page, { idle: false })
+  await experiment.api(({ api }) => api.panel(true))
+  await page.locator("#ui .panel input.text").fill("")
+  await page.locator("#ui .panel input.text").click()
+  await page.keyboard.type("a b")
+  expect((await settings(page)).words).toBe("a b")
+  expect(
+    await experiment.api(({ api }) => (api as unknown as { stats: () => { paused: boolean } }).stats().paused),
+  ).toBe(false)
 })
 
 /**
