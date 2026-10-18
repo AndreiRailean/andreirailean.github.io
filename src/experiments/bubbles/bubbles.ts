@@ -79,6 +79,8 @@
  * at a size where coalescence and drainage balance instead of running away.
  */
 
+import { settleSeconds } from "@/experiments/simulation/loop"
+import { context2d } from "@/experiments/simulation/canvas"
 import { gaussian, hashSeed, makeRng } from "@/experiments/random"
 import { curlAt } from "@/experiments/bubbles/water"
 import { needsPool, type Settings } from "@/experiments/bubbles/settings"
@@ -359,8 +361,7 @@ export type Bubbles = {
 }
 
 export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bubbles {
-  const context = canvas.getContext("2d", { alpha: false })
-  if (!context) throw new Error("Bubbles: no 2d context")
+  const context = context2d(canvas, "Bubbles", { alpha: false })
   const ctx = context
 
   let settings = initial
@@ -1346,7 +1347,7 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
     },
 
     settle(seconds) {
-      const bounded = Math.max(0, Math.min(600, seconds))
+      const bounded = settleSeconds(seconds)
       // The tail is drawn frame by frame rather than stepped past, so a scene
       // with a wake arrives with its wake. See `WAKE_FRAMES`.
       const drawn = settings.trail > 0 ? Math.min(bounded, WAKE_FRAMES * STEP) : 0

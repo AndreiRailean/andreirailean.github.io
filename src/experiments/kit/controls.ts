@@ -42,6 +42,9 @@ import { toggleFullscreen } from "@/experiments/kit/fullscreen"
 /** Idle gap before the pointer and the controls both disappear, video-player style. */
 const IDLE_MS = 2500
 
+/** How long after the window regains the focus a click is taken as the one that gave it. */
+const REFOCUS_MS = 400
+
 type Shared = {
   label: string
   /** Shown as a tooltip on the row. */
@@ -561,19 +564,25 @@ export function createControls<S extends object>(options: Options<S>): Controls<
       setIdle(pinnedIdle)
       return
     }
+    // **A window without the focus stays chromeless.** It cannot see the
+    // pointer: traced on Andrei's machine, coming back from another app gave one
+    // mousemove, a mouseleave ten milliseconds later with the pointer still
+    // inside, and nothing after it. So waking here could only be undone by a
+    // timer guessing the pointer had gone, which either faded the panel under
+    // his hand or, with no timer, left the chrome up over a piece on a screen
+    // nobody was using. Andrei: "when screen is not focused it can go to
+    // chromeless and when it's back in focus it restores its state". The panel
+    // stays open while hidden, so `onFocus` has nothing to restore but that.
+    if (!document.hasFocus()) {
+      setIdle(true)
+      return
+    }
     setIdle(false)
     // Nor while somebody is typing into the panel: the chrome fading under a
     // caret reads as the field having lost what was typed.
     const focused = document.activeElement
     if (pointerOverUi || (focused instanceof HTMLInputElement && focused.type === "text" && root.contains(focused)))
       return
-    // **Nor while the window does not have the focus**, because then the page
-    // cannot see the pointer. Traced on Andrei's machine coming back from
-    // another app: one mousemove on entering, a mouseleave ten milliseconds
-    // later with the pointer still inside, and no further events while he moved
-    // over the panel — so the timer ran out under his hand. A first click
-    // reaches the page and gives it the focus, and `focus` starts the timer.
-    if (!document.hasFocus()) return
     idleTimer = window.setTimeout(() => setIdle(true), IDLE_MS)
   }
 
@@ -1116,9 +1125,28 @@ export function createControls<S extends object>(options: Options<S>): Controls<
 
   const onPointerDownAway = (event: PointerEvent) => {
     if (!panelOpen) return
+    // The click that gives the window its focus lands while the chrome is
+    // hidden, so on the piece — and closing the panel with it would undo the
+    // restore it is about to trigger. Whichever of the two events comes first.
+    if (!document.hasFocus() || performance.now() - focusedAt < REFOCUS_MS) return
     const target = event.target
     if (target instanceof Node && root.contains(target)) return
     setPanelOpen(false)
+  }
+
+  let focusedAt = -Infinity
+
+  /** Losing the focus hides the chrome at once; nothing the page sees could tell it when to. */
+  const onBlur = () => {
+    if (pinnedIdle !== null) return
+    window.clearTimeout(idleTimer)
+    setIdle(true)
+  }
+
+  /** An open panel comes back with the focus; a closed one waits for the pointer, as it would anyway. */
+  const onFocus = () => {
+    focusedAt = performance.now()
+    if (panelOpen) goActive()
   }
 
   const onPointerEnter = () => {
@@ -1132,7 +1160,8 @@ export function createControls<S extends object>(options: Options<S>): Controls<
 
   window.addEventListener("mousemove", onMouse)
   window.addEventListener("mousedown", onMouse)
-  window.addEventListener("focus", onActivity)
+  window.addEventListener("focus", onFocus)
+  window.addEventListener("blur", onBlur)
   window.addEventListener("wheel", onActivity, { passive: true })
   window.addEventListener("touchstart", onActivity, { passive: true })
   window.addEventListener("keydown", onKeyDown)
@@ -1153,7 +1182,8 @@ export function createControls<S extends object>(options: Options<S>): Controls<
       window.clearTimeout(idleTimer)
       window.removeEventListener("mousemove", onMouse)
       window.removeEventListener("mousedown", onMouse)
-      window.removeEventListener("focus", onActivity)
+      window.removeEventListener("focus", onFocus)
+      window.removeEventListener("blur", onBlur)
       window.removeEventListener("wheel", onActivity)
       window.removeEventListener("touchstart", onActivity)
       window.removeEventListener("keydown", onKeyDown)

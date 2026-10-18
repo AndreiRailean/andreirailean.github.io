@@ -7,6 +7,10 @@
  * hex's intensity is read off that clock and its distance. Patterns overlap,
  * so more than one may be live at once.
  */
+import { wrapHue } from "@/experiments/simulation/colour"
+import { radialSprite } from "@/experiments/simulation/sprite"
+import { context2d, fitCanvas } from "@/experiments/simulation/canvas"
+import { steadyLoop } from "@/experiments/simulation/loop"
 import { hashSeed, makeRng, shuffle, signed, type Rng } from "@/experiments/random"
 import { needsRebuild, type Gamut, type Settings } from "@/experiments/hexgrid/settings"
 
@@ -130,7 +134,7 @@ function to255(rgb: [number, number, number]): [number, number, number] {
 const key = (q: number, r: number) => `${q},${r}`
 
 /** Wraps a hue into 0–360. */
-const wrap = (h: number) => ((h % 360) + 360) % 360
+const wrap = wrapHue
 
 /**
  * One pattern. Cycle 0 is the seed's own, so an address always opens on the same
@@ -537,8 +541,7 @@ type Pattern = ReturnType<typeof buildPattern> & {
 }
 
 export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
-  const context = canvas.getContext("2d")
-  if (!context) throw new Error("hexgrid: no 2d context")
+  const context = context2d(canvas, "hexgrid")
   const ctx = context
 
   let settings = initial
@@ -548,12 +551,7 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
   /** Live patterns, oldest first. Every one is laid on the same hexes. */
   let patterns: Pattern[] = []
   let clock = 0
-  let held = false
-  let running = false
-  let frame = 0
-  let last = 0
   let debug = false
-  let fps = 0
   /** The dark middle at each size from none to swallowed; `openings[REST]` is at rest. */
   let openings: HTMLCanvasElement[] = []
   /** The dark beyond the colour's edge, from the middle to just short of the corners. */
@@ -587,11 +585,7 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
   }
 
   function size() {
-    dpr = Math.min(2, window.devicePixelRatio || 1)
-    width = canvas.clientWidth || window.innerWidth
-    height = canvas.clientHeight || window.innerHeight
-    canvas.width = Math.round(width * dpr)
-    canvas.height = Math.round(height * dpr)
+    ;({ width, height, dpr } = fitCanvas(canvas))
   }
 
   /**
@@ -621,17 +615,13 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
     const inner = ((SQRT3 / 2) * r) / reach
     const STOPS = 48
     const sprite = (alpha: (x: number) => number) => {
-      const canvas = document.createElement("canvas")
-      canvas.width = px
-      canvas.height = px
-      const s = canvas.getContext("2d")!
-      const g = s.createRadialGradient(px / 2, px / 2, 0, px / 2, px / 2, px / 2)
+      const stops: [number, string][] = []
       for (let j = 0; j <= STOPS; j++) {
         const x = j / STOPS
-        g.addColorStop(x, `rgba(0,0,0,${alpha(x / inner)})`)
+        stops.push([x, `rgba(0,0,0,${alpha(x / inner)})`])
       }
-      s.fillStyle = g
-      s.fillRect(0, 0, px, px)
+      const canvas = radialSprite(px, stops)
+      const s = canvas.getContext("2d")!
       // Clip to the hex. A resting hole is clear by the sprite's corners, but a
       // growing one is not, and the square's dark corners land on neighbours.
       s.globalCompositeOperation = "destination-in"
@@ -766,14 +756,7 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
     }
   }
 
-  function tick(time: number) {
-    frame = requestAnimationFrame(tick)
-    const dt = last ? Math.min(0.1, (time - last) / 1000) : 0
-    last = time
-    if (dt > 0) fps = fps ? fps * 0.95 + (1 / dt) * 0.05 : 1 / dt
-    if (!held) advance(dt)
-    draw()
-  }
+  const loop = steadyLoop({ clamp: 0.1, step: advance, draw })
 
   function onResize() {
     size()
@@ -877,9 +860,9 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
         }
       })(),
       frame: { width, height },
-      fps: Math.round(fps),
-      running,
-      held,
+      fps: Math.round(loop.fps()),
+      running: loop.running(),
+      held: loop.held(),
     }
   }
 
@@ -888,15 +871,12 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
 
   return {
     start() {
-      if (running) return
-      running = true
-      last = 0
+      if (loop.running()) return
       window.addEventListener("resize", onResize)
-      frame = requestAnimationFrame(tick)
+      loop.start()
     },
     stop() {
-      running = false
-      cancelAnimationFrame(frame)
+      loop.stop()
       window.removeEventListener("resize", onResize)
     },
     setSettings(next: Settings) {
@@ -906,7 +886,7 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
       else for (const p of patterns) p.line = timeline(settings, p.maxSteps)
     },
     setPaused(on: boolean) {
-      held = on
+      loop.setHeld(on)
     },
     settle(seconds: number) {
       advance(seconds)

@@ -15,7 +15,9 @@
  * without disturbing the water.
  */
 
-import { frameStep } from "@/experiments/flotsam/clock"
+import { context2d, fitCanvas } from "@/experiments/simulation/canvas"
+import { parkingLoop } from "@/experiments/simulation/loop"
+import { MAX_FRAME, seaStep } from "@/experiments/flotsam/clock"
 import { currentAt } from "@/experiments/flotsam/current"
 import { GROUND, VIGNETTE } from "@/experiments/flotsam/palette"
 import { createSpecks, type Specks } from "@/experiments/flotsam/specks"
@@ -116,14 +118,8 @@ export type Flotsam = {
  * every draw routine below is one — so the guard has to produce a non-null type
  * rather than assert one at the call site.
  */
-function require2d(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
-  const context = canvas.getContext("2d")
-  if (!context) throw new Error("Flotsam: no 2d context")
-  return context
-}
-
 export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flotsam {
-  const context = require2d(canvas)
+  const context = context2d(canvas, "Flotsam")
 
   const stillOnly = window.matchMedia("(prefers-reduced-motion: reduce)")
 
@@ -135,13 +131,7 @@ export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flo
   let dpr = 1
   let background: HTMLCanvasElement | null = null
 
-  let frame = 0
-  let running = false
   let debug = false
-  let previous = 0
-  let fps = 0
-  /** Set when the picture needs repainting without anything having moved. */
-  let dirty = true
 
   /** Reused by the debug overlay, so drawing the current allocates nothing. */
   const flow = { x: 0, y: 0 }
@@ -169,16 +159,9 @@ export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flo
   }
 
   function resize(): void {
-    const nextWidth = canvas.clientWidth || window.innerWidth
-    const nextHeight = canvas.clientHeight || window.innerHeight
-    const nextDpr = Math.min(window.devicePixelRatio || 1, 2)
-    if (nextWidth === width && nextHeight === height && nextDpr === dpr) return
-
-    width = nextWidth
-    height = nextHeight
-    dpr = nextDpr
-    canvas.width = Math.round(width * dpr)
-    canvas.height = Math.round(height * dpr)
+    const next = fitCanvas(canvas, { width, height, dpr })
+    if (!next) return
+    ;({ width, height, dpr } = next)
     water.resize(width, height)
     background = null
   }
@@ -318,48 +301,17 @@ export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flo
     }
   }
 
-  function tick(now: number): void {
-    frame = requestAnimationFrame(tick)
-
-    const { elapsed, step } = frameStep(previous, now, water.settings.playback)
-    previous = now
-    if (elapsed > 0) fps += (1 / elapsed - fps) * 0.1
-
-    if (isAnimated()) {
-      // `step` is the only place `playback` is applied — see `clock.ts`.
-      water.step(step)
-      draw()
-      dirty = false
-      return
-    }
-
-    // `dirty` covers everything that changes the picture without the sea moving:
-    // a resize, the debug overlay, a colour. Without it the loop parks and the
-    // canvas keeps whatever was last on it — and setting `canvas.width` on a
-    // resize clears it, so the piece would simply vanish when the window changed
-    // size or a screenshot was taken. That happened in Dangler; it is the same
-    // loop and it would happen here.
-    if (dirty) {
-      dirty = false
-      draw()
-      return
-    }
-
-    // Genuinely nothing moving and nothing to redraw. Park until something asks
-    // for a frame again — which is also the reduced-motion path, so that needs
-    // no separate one.
-    cancelAnimationFrame(frame)
-    frame = 0
-    running = false
-  }
-
-  function wake(): void {
-    dirty = true
-    if (running) return
-    running = true
-    previous = 0
-    frame = requestAnimationFrame(tick)
-  }
+  const loop = parkingLoop({
+    clamp: MAX_FRAME,
+    frame(elapsed) {
+      if (!isAnimated()) return "idle"
+      // `seaStep` is the only place `playback` is applied — see `clock.ts`.
+      water.step(seaStep(elapsed, water.settings.playback))
+      return "moved"
+    },
+    draw,
+  })
+  const wake = loop.wake
 
   const onResize = () => {
     background = null
@@ -378,9 +330,7 @@ export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flo
     },
 
     stop() {
-      if (frame) cancelAnimationFrame(frame)
-      frame = 0
-      running = false
+      loop.hold()
       window.removeEventListener("resize", onResize)
       // Both of them, or the one left behind holds this whole closure alive —
       // canvas, settings and 8,500 specks — for every mount that is ever torn
@@ -393,9 +343,7 @@ export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flo
         wake()
         return
       }
-      if (frame) cancelAnimationFrame(frame)
-      frame = 0
-      running = false
+      loop.hold()
     },
 
     setSettings(next) {
@@ -424,8 +372,8 @@ export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flo
         dimmedDots: specks.dimmed(),
         light: Math.round((specks.lit() / Math.max(1, width * height)) * 1000) / 1000,
         clock: measured.clock,
-        fps: Math.round(fps * 10) / 10,
-        running,
+        fps: Math.round(loop.fps() * 10) / 10,
+        running: loop.running(),
       }
     },
 

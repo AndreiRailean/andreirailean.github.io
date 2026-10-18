@@ -36,6 +36,8 @@
  * a bit off" and is untraceable.
  */
 
+import { wrapHue } from "@/experiments/simulation/colour"
+
 /** Coolest an ember is tracked to. Below this it emits nothing anyone can see. */
 export const TEMP_MIN = 650
 /** Hottest. Above this the mark is clipped white and the chromaticity stops moving. */
@@ -211,12 +213,12 @@ function toHsl(r: number, g: number, b: number): [number, number, number] {
   if (max === r) hue = ((g - b) / chroma) % 6
   else if (max === g) hue = (b - r) / chroma + 2
   else hue = (r - g) / chroma + 4
-  return [(((hue * 60) % 360) + 360) % 360, saturation, lightness]
+  return [wrapHue(hue * 60), saturation, lightness]
 }
 
 function fromHsl(hue: number, saturation: number, lightness: number): [number, number, number] {
   const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation
-  const h = (((hue % 360) + 360) % 360) / 60
+  const h = wrapHue(hue) / 60
   const x = chroma * (1 - Math.abs((h % 2) - 1))
   const [r, g, b] =
     h < 1

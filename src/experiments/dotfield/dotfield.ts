@@ -19,6 +19,8 @@
  * toward the ground.
  */
 
+import { context2d, fitCanvas } from "@/experiments/simulation/canvas"
+import { steadyLoop } from "@/experiments/simulation/loop"
 import { hashSeed, makeRng, shuffle, signed, type Rng } from "@/experiments/random"
 import { needsRebuild, type Lattice, type Settings } from "@/experiments/dotfield/settings"
 import { createWind } from "@/experiments/dotfield/wind"
@@ -173,19 +175,13 @@ function sharpen(v: number, islands: number): number {
 }
 
 export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
-  const context = canvas.getContext("2d")
-  if (!context) throw new Error("dotfield: no 2d context")
+  const context = context2d(canvas, "dotfield")
   const ctx = context
 
   let settings = initial
   let width = 0
   let height = 0
   let dpr = 1
-  let held = false
-  let running = false
-  let frame = 0
-  let last = 0
-  let fps = 0
   let debug = false
   let now = 0
 
@@ -214,11 +210,7 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
   let capFill: string[] = []
 
   function size() {
-    dpr = Math.min(2, window.devicePixelRatio || 1)
-    width = canvas.clientWidth || window.innerWidth
-    height = canvas.clientHeight || window.innerHeight
-    canvas.width = Math.round(width * dpr)
-    canvas.height = Math.round(height * dpr)
+    ;({ width, height, dpr } = fitCanvas(canvas))
   }
 
   function rebuildColours() {
@@ -476,18 +468,16 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
     }
   }
 
-  function tick(time: number) {
-    frame = requestAnimationFrame(tick)
-    const dt = last ? Math.min(0.1, (time - last) / 1000) : 0
-    last = time
-    if (dt > 0) fps = fps ? fps * 0.95 + (1 / dt) * 0.05 : 1 / dt
-    if (!held && dt > 0) {
+  const loop = steadyLoop({
+    clamp: 0.1,
+    step(dt) {
+      if (dt <= 0) return
       const began = performance.now()
       step(dt)
       stepMs = stepMs ? stepMs * 0.9 + (performance.now() - began) * 0.1 : performance.now() - began
-    }
-    draw()
-  }
+    },
+    draw,
+  })
 
   function onResize() {
     size()
@@ -599,10 +589,10 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
       wind: wind.report(),
       buckets: bucketHues.length,
       seconds: round(now, 1),
-      fps: Math.round(fps),
+      fps: Math.round(loop.fps()),
       ms: { step: round(stepMs, 1), draw: round(drawMs, 1) },
-      running,
-      held,
+      running: loop.running(),
+      held: loop.held(),
     }
   }
 
@@ -611,15 +601,12 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
 
   return {
     start() {
-      if (running) return
-      running = true
-      last = 0
+      if (loop.running()) return
       window.addEventListener("resize", onResize)
-      frame = requestAnimationFrame(tick)
+      loop.start()
     },
     stop() {
-      running = false
-      cancelAnimationFrame(frame)
+      loop.stop()
       window.removeEventListener("resize", onResize)
     },
     setSettings(next: Settings) {
@@ -641,7 +628,7 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
       }
     },
     setPaused(on: boolean) {
-      held = on
+      loop.setHeld(on)
     },
     settle(seconds: number) {
       let left = seconds

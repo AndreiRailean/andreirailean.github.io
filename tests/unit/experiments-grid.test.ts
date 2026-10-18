@@ -1,6 +1,6 @@
-import { readdirSync, statSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 import { positionOf, snapToGrid, valueAtPosition, type Track } from "@/experiments/kit/controls"
+import { pieces } from "../support/pieces.ts"
 
 /**
  * Every numeric setting lives on a grid, whichever way it was reached.
@@ -25,12 +25,7 @@ import { positionOf, snapToGrid, valueAtPosition, type Track } from "@/experimen
  * were recorded before their control was cut as it is now.
  */
 
-const EXPERIMENTS = "src/experiments"
-const NOT_A_PIECE = new Set(["docs", "gallery", "kit"])
-
-const slugs = readdirSync(EXPERIMENTS)
-  .filter((name) => !NOT_A_PIECE.has(name) && statSync(`${EXPERIMENTS}/${name}`).isDirectory())
-  .sort()
+const slugs = [...pieces]
 
 type Settings = Record<string, unknown>
 

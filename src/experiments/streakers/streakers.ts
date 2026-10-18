@@ -14,6 +14,8 @@
  * creeping in from the edge. `clear()` is there to watch the creep.
  */
 
+import { context2d, fitCanvas } from "@/experiments/simulation/canvas"
+import { steadyLoop } from "@/experiments/simulation/loop"
 import { gaussian, hashSeed, makeRng, signed, type Rng } from "@/experiments/random"
 import { needsRebuild, type Settings } from "@/experiments/streakers/settings"
 
@@ -216,8 +218,7 @@ const dotRadius = (line: Line, dotSizes: number) =>
   dotSizes > 0 ? line.radius * spreadFactor(dotSizes, line.rng()) : line.radius
 
 export function createStreakers(canvas: HTMLCanvasElement, initial: Settings) {
-  const context = canvas.getContext("2d")
-  if (!context) throw new Error("streakers: no 2d context")
+  const context = context2d(canvas, "streakers")
   const ctx = context
 
   let settings = initial
@@ -227,20 +228,11 @@ export function createStreakers(canvas: HTMLCanvasElement, initial: Settings) {
   let lines: Line[] = []
   let shape = 1
   let now = 0
-  let held = false
-  let running = false
-  let frame = 0
-  let last = 0
   let debug = false
   let drawn = 0
-  let fps = 0
 
   function size() {
-    dpr = Math.min(2, window.devicePixelRatio || 1)
-    width = canvas.clientWidth || window.innerWidth
-    height = canvas.clientHeight || window.innerHeight
-    canvas.width = Math.round(width * dpr)
-    canvas.height = Math.round(height * dpr)
+    ;({ width, height, dpr } = fitCanvas(canvas))
   }
 
   function rebuild(empty = false) {
@@ -330,14 +322,7 @@ export function createStreakers(canvas: HTMLCanvasElement, initial: Settings) {
     drawn = count
   }
 
-  function tick(time: number) {
-    frame = requestAnimationFrame(tick)
-    const dt = last ? Math.min(0.1, (time - last) / 1000) : 0
-    last = time
-    if (dt > 0) fps = fps ? fps * 0.95 + (1 / dt) * 0.05 : 1 / dt
-    if (!held) step(dt)
-    draw()
-  }
+  const loop = steadyLoop({ clamp: 0.1, step, draw })
 
   function onResize() {
     size()
@@ -389,9 +374,9 @@ export function createStreakers(canvas: HTMLCanvasElement, initial: Settings) {
       },
       colours: new Set(live.map((line) => line.hue)).size,
       frame: { width, height },
-      fps: Math.round(fps),
-      running,
-      held,
+      fps: Math.round(loop.fps()),
+      running: loop.running(),
+      held: loop.held(),
     }
   }
 
@@ -400,15 +385,12 @@ export function createStreakers(canvas: HTMLCanvasElement, initial: Settings) {
 
   return {
     start() {
-      if (running) return
-      running = true
-      last = 0
+      if (loop.running()) return
       window.addEventListener("resize", onResize)
-      frame = requestAnimationFrame(tick)
+      loop.start()
     },
     stop() {
-      running = false
-      cancelAnimationFrame(frame)
+      loop.stop()
       window.removeEventListener("resize", onResize)
     },
     setSettings(next: Settings) {
@@ -417,7 +399,7 @@ export function createStreakers(canvas: HTMLCanvasElement, initial: Settings) {
       if (needsRebuild(before, next) || before.size !== next.size) rebuild()
     },
     setPaused(on: boolean) {
-      held = on
+      loop.setHeld(on)
     },
     settle(seconds: number) {
       step(seconds)

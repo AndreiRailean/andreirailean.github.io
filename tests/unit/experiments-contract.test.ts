@@ -1,6 +1,7 @@
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs"
+import { existsSync, readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 import { describe, expect, it } from "vitest"
+import { pieces } from "../support/pieces.ts"
 
 /**
  * **A piece is a library behind three files**, and this holds the shape.
@@ -30,11 +31,7 @@ import { describe, expect, it } from "vitest"
  */
 
 const EXPERIMENTS = "src/experiments"
-const NOT_A_PIECE = new Set(["docs", "gallery", "kit"])
-
-const slugs = readdirSync(EXPERIMENTS)
-  .filter((name) => !NOT_A_PIECE.has(name) && statSync(join(EXPERIMENTS, name)).isDirectory())
-  .sort()
+const slugs = [...pieces]
 
 /**
  * The files a consumer outside a piece may import from it.

@@ -1,6 +1,7 @@
-import { readdirSync, readFileSync, statSync } from "node:fs"
+import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 import { optsOutOf, optsOutOfFile } from "./opt-out.ts"
+import { pieces } from "../support/pieces.ts"
 
 /**
  * Whether every preset still carries a hue the presentation surfaces can use.
@@ -43,9 +44,6 @@ import { optsOutOf, optsOutOfFile } from "./opt-out.ts"
 const EXPERIMENTS = "src/experiments"
 const PAGES = "src/pages/experiments"
 
-/** Not pieces: shared code, and the section's own docs. */
-const NOT_A_PIECE = new Set(["docs", "gallery", "kit"])
-
 /**
  * The marker, for the messages. `tests/unit/opt-out.ts` owns what satisfies it.
  *
@@ -62,9 +60,7 @@ const OPT_OUT = "kit-opt-out:"
 const OPT_OUT_PRIMARY = "kit-opt-out(primary):"
 const OPT_OUT_HUE = "kit-opt-out(hue):"
 
-const slugs = readdirSync(EXPERIMENTS)
-  .filter((name) => !NOT_A_PIECE.has(name) && statSync(`${EXPERIMENTS}/${name}`).isDirectory())
-  .sort()
+const slugs = [...pieces]
 
 type Preset = { label: string; settings: Record<string, unknown> }
 

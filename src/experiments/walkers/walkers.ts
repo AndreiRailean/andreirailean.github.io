@@ -30,6 +30,8 @@
  * rather than a different afternoon.
  */
 
+import { context2d, fitCanvas } from "@/experiments/simulation/canvas"
+import { parkingLoop, settleSeconds } from "@/experiments/simulation/loop"
 import { createCrowd, type Crowd, type CrowdStats } from "@/experiments/walkers/crowd"
 import { drawDebug, drawFrame, makeTrail, paintGround, paintTrails, type Layers } from "@/experiments/walkers/draw"
 import { groundOf, type Ground } from "@/experiments/walkers/palette"
@@ -134,14 +136,8 @@ const MAX_WARM = 30
 /** How long the crowd is run before a reduced-motion still is taken. */
 const STILL_SECONDS = 12
 
-function require2d(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
-  const context = canvas.getContext("2d")
-  if (!context) throw new Error("Walkers: no 2d context")
-  return context
-}
-
 export function createWalkers(canvas: HTMLCanvasElement, initial: Settings): Walkers {
-  const context = require2d(canvas)
+  const context = context2d(canvas, "Walkers")
   const stillOnly = window.matchMedia("(prefers-reduced-motion: reduce)")
 
   let settings = initial
@@ -171,29 +167,16 @@ export function createWalkers(canvas: HTMLCanvasElement, initial: Settings): Wal
    */
   let crowd: Crowd = createCrowd({ view, settings })
 
-  let frame = 0
-  let running = false
-  let previous = 0
   let carry = 0
-  let fps = 0
   let heads = 0
   let debug = false
-  /** Set when the picture needs repainting without anything having moved. */
-  let dirty = true
 
   const isAnimated = () => !stillOnly.matches && settings.playback > 0
 
   function resize(): void {
-    const nextWidth = canvas.clientWidth || window.innerWidth
-    const nextHeight = canvas.clientHeight || window.innerHeight
-    const nextDpr = Math.min(window.devicePixelRatio || 1, 2)
-    if (nextWidth === width && nextHeight === height && nextDpr === dpr) return
-
-    width = nextWidth
-    height = nextHeight
-    dpr = nextDpr
-    canvas.width = Math.round(width * dpr)
-    canvas.height = Math.round(height * dpr)
+    const next = fitCanvas(canvas, { width, height, dpr })
+    if (!next) return
+    ;({ width, height, dpr } = next)
 
     remeasure()
     layers.ground = null
@@ -263,7 +246,7 @@ export function createWalkers(canvas: HTMLCanvasElement, initial: Settings): Wal
    * and nothing looked broken; it just was.
    */
   function advance(seconds: number): void {
-    const total = Math.max(0, Math.min(600, seconds))
+    const total = settleSeconds(seconds)
     const steps = Math.round(total / STEP)
 
     // The last stretch of it is walked over the trail as well as simulated, so
@@ -290,14 +273,10 @@ export function createWalkers(canvas: HTMLCanvasElement, initial: Settings): Wal
     drawnAt = crowd.clock
   }
 
-  function tick(now: number): void {
-    frame = requestAnimationFrame(tick)
-
-    const elapsed = previous === 0 ? 0 : Math.min(0.25, (now - previous) / 1000)
-    previous = now
-    if (elapsed > 0) fps += (1 / elapsed - fps) * 0.1
-
-    if (isAnimated()) {
+  const loop = parkingLoop({
+    clamp: 0.25,
+    frame(elapsed) {
+      if (!isAnimated()) return "idle"
       carry += elapsed * settings.playback
       let steps = 0
       while (carry >= STEP && steps < MAX_STEPS) {
@@ -308,33 +287,11 @@ export function createWalkers(canvas: HTMLCanvasElement, initial: Settings): Wal
       // Whatever is left over after the ceiling is dropped rather than banked:
       // a tab returning from the background should resume, not fast-forward.
       if (steps === MAX_STEPS) carry = 0
-      draw()
-      dirty = false
-      return
-    }
-
-    // Everything that changes the picture without the crowd moving: a resize, a
-    // colour, the overlay. Without this the loop parks and the canvas keeps
-    // whatever was last on it — and setting `canvas.width` on a resize clears
-    // it, so the piece would simply vanish when the window changed size.
-    if (dirty) {
-      dirty = false
-      draw()
-      return
-    }
-
-    cancelAnimationFrame(frame)
-    frame = 0
-    running = false
-  }
-
-  function wake(): void {
-    dirty = true
-    if (running) return
-    running = true
-    previous = 0
-    frame = requestAnimationFrame(tick)
-  }
+      return "moved"
+    },
+    draw,
+  })
+  const wake = loop.wake
 
   const onResize = () => {
     resize()
@@ -356,9 +313,7 @@ export function createWalkers(canvas: HTMLCanvasElement, initial: Settings): Wal
     },
 
     stop() {
-      if (frame) cancelAnimationFrame(frame)
-      frame = 0
-      running = false
+      loop.hold()
       window.removeEventListener("resize", onResize)
       stillOnly.removeEventListener("change", wake)
     },
@@ -368,20 +323,16 @@ export function createWalkers(canvas: HTMLCanvasElement, initial: Settings): Wal
         wake()
         return
       }
-      if (frame) cancelAnimationFrame(frame)
-      frame = 0
-      running = false
+      loop.hold()
     },
 
     settle(seconds) {
-      advance(Math.max(0, Math.min(600, seconds)))
-      dirty = true
+      advance(settleSeconds(seconds))
       wake()
     },
 
     setDebug(on) {
       debug = on
-      dirty = true
       wake()
     },
 
@@ -427,15 +378,13 @@ export function createWalkers(canvas: HTMLCanvasElement, initial: Settings): Wal
         heads,
         area: view.area,
         camera: drawnFrom,
-        fps,
-        running,
+        fps: loop.fps(),
+        running: loop.running(),
       }
     },
 
     destroy() {
-      if (frame) cancelAnimationFrame(frame)
-      frame = 0
-      running = false
+      loop.hold()
       window.removeEventListener("resize", onResize)
       stillOnly.removeEventListener("change", wake)
     },

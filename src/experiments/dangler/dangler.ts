@@ -8,6 +8,8 @@
  * it with a fresh one.
  */
 
+import { context2d, fitCanvas } from "@/experiments/simulation/canvas"
+import { parkingLoop } from "@/experiments/simulation/loop"
 import { buildArrangement, flickerAt, type Arrangement } from "@/experiments/dangler/arrangement"
 import { createBeads, type Beads } from "@/experiments/dangler/beads"
 import { makeCamera, nearFade, project, type Camera } from "@/experiments/dangler/camera"
@@ -97,14 +99,8 @@ const CARRY_ABOVE = 0.1
  * every draw routine below is one — so the guard has to produce a non-null type
  * rather than assert one at the call site.
  */
-function require2d(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
-  const context = canvas.getContext("2d")
-  if (!context) throw new Error("Dangler: no 2d context")
-  return context
-}
-
 export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dangler {
-  const context = require2d(canvas)
+  const context = context2d(canvas, "Dangler")
 
   const stillOnly = window.matchMedia("(prefers-reduced-motion: reduce)")
 
@@ -120,16 +116,10 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
   let background: HTMLCanvasElement | null = null
   let camera: Camera = makeCamera(settings.fieldOfView, settings.pitch, 1, 1)
 
-  let frame = 0
-  let running = false
   let debug = false
   let clock = 0
-  let previous = 0
   let accumulator = 0
-  let fps = 0
   let drawnBeads = 0
-  /** Set when the picture needs repainting without anything having moved. */
-  let dirty = true
   const wind = createWind()
   const sway = createSway()
   /** Reused, so sampling the wind allocates nothing however many strands there are. */
@@ -149,16 +139,9 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
   const isAnimated = () => settings.breeze > 0 || settings.gust > 0 || settings.tremble > 0 || settings.flicker > 0
 
   function resize(): void {
-    const nextWidth = canvas.clientWidth || window.innerWidth
-    const nextHeight = canvas.clientHeight || window.innerHeight
-    const nextDpr = Math.min(window.devicePixelRatio || 1, 2)
-    if (nextWidth === width && nextHeight === height && nextDpr === dpr) return
-
-    width = nextWidth
-    height = nextHeight
-    dpr = nextDpr
-    canvas.width = Math.round(width * dpr)
-    canvas.height = Math.round(height * dpr)
+    const next = fitCanvas(canvas, { width, height, dpr })
+    if (!next) return
+    ;({ width, height, dpr } = next)
     camera = makeCamera(settings.fieldOfView, settings.pitch, width, height)
     background = null
   }
@@ -440,56 +423,31 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
     return steps > 0
   }
 
-  function tick(now: number): void {
-    frame = requestAnimationFrame(tick)
-
-    const elapsed = previous === 0 ? 0 : Math.min(0.25, (now - previous) / 1000)
-    previous = now
-    if (elapsed > 0) fps += (1 / elapsed - fps) * 0.1
-
-    let moved = false
-    if (isAnimated()) {
-      clock += elapsed
-      wind.update(settings, clock)
-      updateAnchors(elapsed)
-      moved = advance(elapsed, wind.blowing())
-    } else if (!ropes.atRest()) {
-      moved = advance(elapsed, false)
-    }
-
-    // `dirty` covers everything that changes the picture without moving a
-    // particle: a resize, the debug overlay, a hue. Without it the loop parks
-    // and the canvas keeps whatever was last on it — and setting `canvas.width`
-    // on a resize clears it, so the piece simply vanished when the window
-    // changed size or a screenshot was taken.
-    if (moved || dirty) {
-      dirty = false
-      draw()
-      return
-    }
-
-    // A tick that advanced nothing is not the same as a scene with nothing left
-    // to do. `advance` only steps once the accumulator reaches FIXED_DT, so a
-    // frame shorter than 1/480s legitimately does no substep — and parking there
-    // strands an animated scene with nothing left to wake it.
-    if (isAnimated() || !ropes.atRest()) return
-
-    // Genuinely nothing moving and nothing to redraw. Park until something asks
-    // for a frame again — this is also the reduced-motion path, which is why
-    // that needs no separate one.
-    cancelAnimationFrame(frame)
-    frame = 0
-    running = false
-  }
-
-  function wake(): void {
-    dirty = true
-    if (running) return
-    running = true
-    previous = 0
-    accumulator = 0
-    frame = requestAnimationFrame(tick)
-  }
+  const loop = parkingLoop({
+    clamp: 0.25,
+    frame(elapsed) {
+      let moved = false
+      if (isAnimated()) {
+        clock += elapsed
+        wind.update(settings, clock)
+        updateAnchors(elapsed)
+        moved = advance(elapsed, wind.blowing())
+      } else if (!ropes.atRest()) {
+        moved = advance(elapsed, false)
+      }
+      if (moved) return "moved"
+      // A tick that advanced nothing is not a scene with nothing left to do:
+      // `advance` only steps once the accumulator reaches FIXED_DT, so a frame
+      // shorter than 1/480s does no substep, and parking there would strand an
+      // animated scene with nothing left to wake it.
+      return isAnimated() || !ropes.atRest() ? "waiting" : "idle"
+    },
+    draw,
+    onWake: () => {
+      accumulator = 0
+    },
+  })
+  const wake = loop.wake
 
   const onResize = () => {
     background = null
@@ -518,9 +476,7 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
     },
 
     stop() {
-      if (frame) cancelAnimationFrame(frame)
-      frame = 0
-      running = false
+      loop.hold()
       window.removeEventListener("resize", onResize)
       // Both of them, or the one left behind holds this whole closure alive —
       // canvas, settings and the ropes — for every mount that is ever torn
@@ -533,9 +489,7 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
         wake()
         return
       }
-      if (frame) cancelAnimationFrame(frame)
-      frame = 0
-      running = false
+      loop.hold()
     },
 
     setSettings(next) {
@@ -597,8 +551,8 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
       fillPx: Math.round(beads.fill()),
       dimmedBeads: beads.dimmed(),
       maxConstraintError: ropes.maxError(),
-      fps: Math.round(fps * 10) / 10,
-      running,
+      fps: Math.round(loop.fps() * 10) / 10,
+      running: loop.running(),
     }),
 
     setDebug(on) {

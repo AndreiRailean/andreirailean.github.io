@@ -659,33 +659,83 @@ test("a pointer resting on the panel keeps it, even after a boundary event went 
 })
 
 /**
- * **A window without the focus never hides the chrome by itself.** Traced on
- * Andrei's machine coming back from another app: one `mousemove` on entering,
- * a `mouseleave` ten milliseconds later with the pointer still inside, then
- * nothing while he moved over the panel — so the timer ran out under his hand.
- * The page cannot see the pointer then, so it must not guess it has gone.
+ * **A window without the focus is chromeless, and the focus restores it.**
+ * Unfocused, the page cannot see the pointer — traced on Andrei's machine as one
+ * `mousemove`, a false `mouseleave` and then nothing — so neither waking nor a
+ * timer can be right. Andrei: "when screen is not focused it can go to
+ * chromeless and when it's back in focus it restores its state from the
+ * session. if controls were open, they behave like they should. if they were
+ * closed, they stay hidden".
  *
- * Headless windows always have the focus, so `hasFocus` is stood in for. The
- * paired half: given the focus back, the timer runs again and the chrome hides.
+ * Headless windows always have the focus, so `hasFocus` and the two events are
+ * stood in for.
  */
-test("an unfocused window keeps the chrome it woke, and the focus hands it back to the timer", async ({ page }) => {
+/** Read, not toggled: `api.panel()` with no argument flips it. */
+const panelOpen = (page: Page) => page.locator("#ui .panel").evaluate((panel) => !(panel as HTMLElement).hidden)
+
+const unfocusable = async (page: Page) => {
   await page.addInitScript(() => {
-    ;(window as unknown as { __focused: boolean }).__focused = false
-    document.hasFocus = () => (window as unknown as { __focused: boolean }).__focused
+    const w = window as unknown as { __focused: boolean }
+    w.__focused = true
+    document.hasFocus = () => w.__focused
   })
+  const focus = (focused: boolean) =>
+    page.evaluate((to) => {
+      ;(window as unknown as { __focused: boolean }).__focused = to
+      window.dispatchEvent(new FocusEvent(to ? "focus" : "blur"))
+    }, focused)
+  const idle = () => page.evaluate(() => document.documentElement.dataset.idle)
+  return { focus, idle }
+}
+
+test("losing the focus hides an open panel, the pointer cannot wake it, and the focus brings it back", async ({
+  page,
+}) => {
+  const { focus, idle } = await unfocusable(page)
   const experiment = await openKit(page)
   await experiment.api(({ api }) => api.panel(true))
-  const idle = () => page.evaluate(() => document.documentElement.dataset.idle)
   const size = page.viewportSize()!
-
   await page.mouse.move(size.width / 2, size.height - 40, { steps: 2 })
-  await page.waitForTimeout(3200)
-  expect(await idle(), "the chrome hid itself in a window that could not see the pointer").toBe("false")
+  expect(await idle(), "the pointer did not wake the chrome in a focused window").toBe("false")
 
-  await page.evaluate(() => {
-    ;(window as unknown as { __focused: boolean }).__focused = true
-    window.dispatchEvent(new FocusEvent("focus"))
-  })
-  await page.waitForTimeout(3200)
-  expect(await idle(), "the focus came back and the chrome never hid, so the half above measured nothing").toBe("true")
+  await focus(false)
+  expect(await idle(), "losing the focus left the chrome up").toBe("true")
+  await page.mouse.move(size.width / 2 + 30, size.height - 60, { steps: 4 })
+  expect(await idle(), "the pointer woke the chrome in a window without the focus").toBe("true")
+
+  await focus(true)
+  expect(await idle(), "the focus did not bring an open panel back").toBe("false")
+  expect(await panelOpen(page), "the panel closed while the window was away").toBe(true)
+})
+
+test("a closed panel stays hidden when the focus comes back, until the pointer moves", async ({ page }) => {
+  const { focus, idle } = await unfocusable(page)
+  await openKit(page)
+  const size = page.viewportSize()!
+  await page.mouse.move(size.width / 2, size.height - 40, { steps: 2 })
+  await focus(false)
+  await focus(true)
+  expect(await idle(), "the focus brought back chrome that nobody had asked for").toBe("true")
+  await page.mouse.move(size.width / 2 + 30, size.height - 60, { steps: 4 })
+  expect(await idle(), "the pointer no longer wakes the chrome once focused").toBe("false")
+})
+
+test("the click that gives the window its focus does not close the panel", async ({ page }) => {
+  const { focus } = await unfocusable(page)
+  const experiment = await openKit(page)
+  await experiment.api(({ api }) => api.panel(true))
+  await focus(false)
+  // On the piece, since the hidden chrome takes no pointer: before the focus
+  // arrives, and straight after it, which are the two orders a platform uses.
+  const size = page.viewportSize()!
+  await page.mouse.click(size.width / 2, size.height - 40)
+  expect(await panelOpen(page), "a click before the focus closed the panel").toBe(true)
+  await focus(true)
+  await page.mouse.click(size.width / 2, size.height - 40)
+  expect(await panelOpen(page), "a click just after the focus closed the panel").toBe(true)
+
+  // The paired half: a click on the piece once settled still closes it.
+  await page.waitForTimeout(500)
+  await page.mouse.click(size.width / 2, size.height - 40)
+  expect(await panelOpen(page), "a click away no longer closes the panel").toBe(false)
 })

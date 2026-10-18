@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync } from "node:fs"
+import { readdirSync, readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 
 /**
@@ -75,15 +75,11 @@ import { describe, expect, it } from "vitest"
  */
 
 import { optsOutOfFile } from "./opt-out.ts"
+import { pieces } from "../support/pieces.ts"
 
 const EXPERIMENTS = "src/experiments"
 
-/** Not pieces: shared code, and the section's own docs. */
-const NOT_A_PIECE = new Set(["docs", "gallery", "kit"])
-
-const slugs = readdirSync(EXPERIMENTS)
-  .filter((name) => !NOT_A_PIECE.has(name) && statSync(`${EXPERIMENTS}/${name}`).isDirectory())
-  .sort()
+const slugs = [...pieces]
 
 /**
  * `target.addEventListener("event", handler` — the target, the event, and

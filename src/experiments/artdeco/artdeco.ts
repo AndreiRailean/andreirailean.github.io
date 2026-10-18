@@ -47,6 +47,7 @@
  * time — and the tail erases it in the same order.
  */
 
+import { context2d, fitCanvas } from "@/experiments/simulation/canvas"
 import { hashSeed, makeRng, type Rng } from "@/experiments/random"
 import { distance, enter, inside, outline, type Point, type Shape } from "@/experiments/artdeco/frame"
 import { needsRebuild, type Mark, type Settings } from "@/experiments/artdeco/settings"
@@ -241,8 +242,7 @@ const emptyMeetings = () => ({ line: 0, mirror: 0, axis: 0, halo: 0, edge: 0, fr
 const emptyChoices = (): Record<Choice, number> => ({ stop: 0, cross: 0, rebound: 0 })
 
 export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
-  const context = canvas.getContext("2d")
-  if (!context) throw new Error("artdeco: no 2d context")
+  const context = context2d(canvas, "artdeco")
   const ctx = context
 
   let settings = initial
@@ -1543,11 +1543,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
   }
 
   function size() {
-    dpr = Math.min(2, window.devicePixelRatio || 1)
-    width = canvas.clientWidth || window.innerWidth
-    height = canvas.clientHeight || window.innerHeight
-    canvas.width = Math.round(width * dpr)
-    canvas.height = Math.round(height * dpr)
+    ;({ width, height, dpr } = fitCanvas(canvas))
   }
 
   function draw() {
