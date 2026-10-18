@@ -68,6 +68,17 @@ exports[`artdeco > has not edited a slot in place 1`] = `
   "toll num grid=1 origin=0 bits=4",
   "flock num grid=10 origin=10 bits=7",
   "dotsTo num grid=1 origin=0 bits=4",
+  "frame num grid=0.5 origin=0 bits=7",
+  "frameShape enum box|oval",
+  "atFrame enum stop|rebound|both",
+  "backdrop enum dark|clear",
+  "frameCorner enum square|chamfer|steps|round|notch",
+  "frameCornerSize num grid=0.5 origin=0 bits=6",
+  "frameSteps num grid=1 origin=1 bits=3",
+  "insets num grid=1 origin=0 bits=3",
+  "insetDepth num grid=0.5 origin=0 bits=6",
+  "insetShape enum box|steps|chevron",
+  "outline enum none|line|double",
 ]
 `;
 
