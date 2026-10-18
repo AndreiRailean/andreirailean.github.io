@@ -67,6 +67,8 @@ point where anything added is wanted.
 code**: his seed instruction verbatim, then each round of corrective feedback,
 dated and appended. Verbatim rather than summarised — a paraphrase looks tidier
 and discards exactly the thing that made it worth keeping.
+_Narrowed on 2026-10-18 by `20261018-a-seed-records-direction-not-everything-he-typed.md`:
+artistic direction only, and a pasted address without its host._
 
 **The role covers amending a piece as well as starting one, and the gate differs
 between them.** Starting: the gate is literal, get it on screen with a panel.
