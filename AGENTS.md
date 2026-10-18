@@ -159,6 +159,8 @@ Multi-context. `CONTEXT-MAP.md` at the root names each context and points at its
 
 **pnpm, not npm.** `pnpm install`, `pnpm run <script>`, `pnpm exec <tool>`. `packageManager` makes pnpm refuse to run in a project it thinks belongs to another manager, so there is nothing to get wrong once pnpm is on `PATH` — but a dependency with an install script needs declaring in `pnpm-workspace.yaml` before it will install, and a version published in the last 24 hours will not install at all. See `docs/adr/20260902-pnpm-is-the-package-manager.md`.
 
+**Upgrading Astro** is `pnpm dlx @astrojs/upgrade` from a branch, with the changelog read first, the runners checked unchanged, Andrei shown a preview, and `pnpm install` in every worktree after the merge — installed packages do not follow the lockfile. See `docs/agents/upgrading-astro.md`.
+
 ### Working with branches
 
 `main` moves often and nothing forces a branch to keep up. Fetch and branch from `origin/main`, never from local `main`; fetch and merge `origin/main` before opening a PR. Nothing in between. See `docs/agents/working-with-branches.md`.
