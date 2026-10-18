@@ -27,6 +27,7 @@
  * like.
  */
 
+import { wrapHue } from "@/experiments/simulation/colour"
 import { gaussian, type Rng } from "@/experiments/random"
 import { clamp } from "@/experiments/settings-plumbing"
 import type { PaletteName, Settings } from "@/experiments/walkers/settings"
@@ -227,8 +228,6 @@ export function groundOf(settings: Settings): Ground {
     mottleOut: hsla(settings.hue + 12, saturation * 1.2, lightness + (settings.dusk ? 5 : -6), 0),
   }
 }
-
-const wrapHue = (hue: number) => ((hue % 360) + 360) % 360
 
 /**
  * Comma syntax rather than the modern space-separated form, which is fussier

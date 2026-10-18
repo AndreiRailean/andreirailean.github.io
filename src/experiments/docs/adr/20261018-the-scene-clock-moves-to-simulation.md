@@ -64,3 +64,19 @@ piece in all ten.
 stops holding the loop open. A fake-clock, seeded fingerprint of every preset of
 the eight converted pieces matched `origin/main` on every stats hash; the
 screenshots that differed also differed between runs of `main`.
+
+## Later the same day: glows and hues
+
+A read of every piece's rendering found two more things carried by three or more
+pieces with identical calls: the radial-gradient glow sprite (Dangler, Flotsam,
+Embers, Hexgrid) and the alpha dither that breaks its banding (Dangler, Flotsam,
+Starry Night). They are `simulation/sprite.ts`. The hue fold
+`((h % 360) + 360) % 360` was in six pieces and is `simulation/colour.ts`.
+Colour quantisation, colour-string formatting, trail fades and glow profiles
+each differ between pieces and stayed put.
+
+A read of vicinity and collision found nothing to hoist. The four spatial grids
+visit neighbours in different orders and bound space differently, so sharing
+one would re-sum forces in a different order — different floats, different
+trajectories. Crowd and Walkers share `timeToCollision` and an angle wrap, which
+waits for a third piece.
