@@ -372,6 +372,11 @@ What goes in:
   reliably about how natural the piece reads and what would make it feel more
   organic — the recurring shape of what he notices, which is worth being able to
   re-read across pieces rather than only within one.
+- **An address he pastes, without its host.** Keep `/experiments/<slug>/?s=…`
+  and drop `http://` and the host: the path and scene are what the record
+  needs, and the host names the machines he works from, which he asked not to
+  have in a record this long. The one edit his quoted words get.
+  `tests/unit/experiments-seeds.test.ts` holds it.
 - **Questions you could not answer**, since you are not going to ask him: what
   you assumed, and what would settle it. He reads them when he chooses.
 - **Nothing else.** Not decisions — those are ADRs. Not traps — those are the

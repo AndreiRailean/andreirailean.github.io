@@ -489,7 +489,7 @@ answered in the session and left open here: his call.
 > this becomes obvious when boulder shading is adjusted up and down and
 > whatever is supposed to be occluded by them is shining right through them.
 > here's an example
-> http://100.117.55.104:4718/experiments/crowd/?s=_-__7___fF8syctZLJ4JCqihtGAAAo-hVSe4AABoAAkABQ6oCkAAACxQQs
+> /experiments/crowd/?s=_-__7___fF8syctZLJ4JCqihtGAAAo-hVSe4AABoAAkABQ6oCkAAACxQQs
 
 Measured on that address, offline and by tracing the paint calls in the
 browser: no head behind a boulder was drawn. About 70% of the heads on screen
@@ -505,7 +505,7 @@ nearest. Fixed by fogging the shade and painting boulders far to near; at shade
 > through. i'm judging it by the size of head relative to size of boulder. only
 > the first two rows of boulders in this scene (honeycomb with grey boulders)
 > are opaque.
-> http://100.117.55.104:4718/experiments/crowd/?s=_-__7___fF8syctZLJ4JCqihtGAAAo-hVSe4AABoAAkABQ6oCkAAACxQR8
+> /experiments/crowd/?s=_-__7___fF8syctZLJ4JCqihtGAAAo-hVSe4AABoAAkABQ6oCkAAACxQR8
 
 He was right and the last round's answer was incomplete. Only the detail
 radius (24 m, his "first two rows") is pushed off boulders; past it people walk

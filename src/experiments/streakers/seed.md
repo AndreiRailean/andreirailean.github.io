@@ -34,7 +34,7 @@ describes the work.
 
 > looking good. hue, line sizes and dot sizes don't appear to be doing much. i
 > like this one.
-> http://100.117.55.104:4573/experiments/streakers/?s=__94CZR5aALAID4IDAhgO0AAH
+> /experiments/streakers/?s=__94CZR5aALAID4IDAhgO0AAH
 
 > call that one "saturn"
 
@@ -59,5 +59,5 @@ describes the work.
 ## 2026-10-06 — third round
 
 > add 1,2,3,7,9 to showcase
-> add this as "club" http://100.117.55.104:4573/experiments/streakers?s=-_-fQJ3ACzWkgDEKVgJ0ugACtKUtA
+> add this as "club" /experiments/streakers?s=-_-fQJ3ACzWkgDEKVgJ0ugACtKUtA
 > add club to showcase as well

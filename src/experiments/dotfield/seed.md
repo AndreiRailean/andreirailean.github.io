@@ -32,11 +32,11 @@ describes the work.
 > all the time and gusts also not "more wind" from the same direction.
 > i'm looking at this. thin dots and rigid stalks in white at this spacing looks
 > good to me.
-> http://100.117.55.104:4624/experiments/dotfield/?s=____cCsABRVkwYpQyeAghoCIAKhNokkKAZAAAUAA
+> /experiments/dotfield/?s=____cCsABRVkwYpQyeAghoCIAKhNokkKAZAAAUAA
 > increasing height appears to make the springing action appear random. with
 > this setting it's hard to tell that the stalks are together at all - some
 > bend a lot, others appear to not bend at all.
-> http://100.117.55.104:4624/experiments/dotfield/?s=____cCsABFVkwYpQyeAghoCIAKhNokkKAZAAAVKA
+> /experiments/dotfield/?s=____cCsABFVkwYpQyeAghoCIAKhNokkKAZAAAVKA
 
 ## 2026-10-10 — second round
 
@@ -47,9 +47,9 @@ describes the work.
 ## 2026-10-10 — third round
 
 > meadow:
-> http://100.117.55.104:4624/experiments/dotfield/?s=vov___9wLjQmSXxGDcXKlh4qgUjIwAAEAAKsiEZNcDwhNVCRGAAG
+> /experiments/dotfield/?s=vov___9wLjQmSXxGDcXKlh4qgUjIwAAEAAKsiEZNcDwhNVCRGAAG
 > white:
-> http://100.117.55.104:4624/experiments/dotfield/?s=vov___9wOgBcqyaCCIAKhNokkKAZAAAUAAJQOYZPANBaFGRRaApi
+> /experiments/dotfield/?s=vov___9wOgBcqyaCCIAKhNokkKAZAAAUAAJQOYZPANBaFGRRaApi
 >
 > add all presets to showcase. open PR and merge when green
 
