@@ -1,10 +1,10 @@
-name: Astro upgrade check
+name: Dependency upgrade check
 
 # Monthly, because Andrei asked for it to be a steward task "on a regular basis
 # ... once a month is probably enough", and the steward has no clock of its own
 # (`docs/adr/20260901-prompting-is-the-stewards-trigger.md`). So this is the
 # clock: it files the task as a `steward` issue, which the next steward finds in
-# its queue. `scripts/astro-outdated.ts` decides; `docs/agents/upgrading-astro.md`
+# its queue. `scripts/outdated.ts` decides; `docs/agents/upgrading-dependencies.md`
 # is how to act on it.
 #
 # **One issue, edited in place.** A month with an upgrade still open rewrites
@@ -36,21 +36,32 @@ jobs:
           install: false
 
       - name: Ask the registry
-        run: node scripts/astro-outdated.ts > upgrade.md
+        run: node scripts/outdated.ts > upgrade.md
 
       - name: File or update the steward issue
         env:
           GH_TOKEN: ${{ github.token }}
-          TITLE: "Astro upgrade available"
+          TITLE: "Dependency upgrades available"
+          # This check watched Astro alone until 2026-10-18, under this title.
+          # An issue left open under it is this one's, so it is closed in favour
+          # of the new title rather than left to read as current.
+          OLD_TITLE: "Astro upgrade available"
         run: |
-          existing=$(gh issue list --state open --label steward --search "\"$TITLE\" in:title" --json number,title \
-            --jq "map(select(.title == env.TITLE)) | .[0].number // empty")
+          find_open() {
+            gh issue list --state open --label steward --search "\"$1\" in:title" --json number,title \
+              --jq "map(select(.title == \"$1\")) | .[0].number // empty"
+          }
+          old=$(find_open "$OLD_TITLE")
+          if [ -n "$old" ]; then
+            gh issue close "$old" --comment "Superseded by \"$TITLE\", which covers every dependency."
+          fi
+          existing=$(find_open "$TITLE")
           # Nothing to upgrade closes a leftover issue, so an upgrade merged
           # without closing it does not read as still to do.
           if [ ! -s upgrade.md ]; then
-            echo "Everything watched is current."
+            echo "Everything is current."
             if [ -n "$existing" ]; then
-              gh issue close "$existing" --comment "Everything watched is current, checked by the monthly run."
+              gh issue close "$existing" --comment "Everything is current, checked by the monthly run."
             fi
             exit 0
           fi
