@@ -217,21 +217,41 @@ every PR you opened is merged or reported with its check status.
 
 Read back over the session for anything that exists only in the conversation,
 because the next session cannot read this one. Each item is named to Andrei with
-its capture:
+its capture.
 
-| Found in the session                                        | Capture                                                        |
-| ----------------------------------------------------------- | -------------------------------------------------------------- |
-| A decision agreed in chat, or an approach tried and dropped | an ADR, via `/record-decision`                                 |
-| A defect or gap noticed and not fixed                       | a GitHub issue — labelled `steward` if no visitor would see it |
-| A promise ("I'll do that next") or work in flight           | an issue, or the PR description it belongs to                  |
-| A standing instruction or correction from Andrei            | a memory                                                       |
+**Start with the signals** — places where how the session worked cost
+something, which nobody checking whether the work got done will see. Count them
+against what you examined, so the count is checkable:
 
-Issues are part of finishing and need no agreement. Name an ADR or a memory,
-and make it once he agrees. A capture made in the repo is a change like any
-other, so after making one, step 4's **Done when** is checked again.
+- a **correction** from Andrei, quoted;
+- a **claim you retracted** after making it;
+- **work done twice** — a revert, a redo, a fix-up commit (`git log --oneline origin/main..`);
+- a **check that passed, or failed, for the wrong reason**;
+- a **rule obeyed in letter and missed in spirit**, which is where the useful ones are.
 
-**Done when:** every item is captured, or named in the report with its suggested
-capture.
+Several signals with one cause are one finding: say what happened with its
+evidence, and the cause in the method rather than in the code. **No signals is a
+valid result**, and then the review is one line:
+
+```
+signals: 0 (4 commits, 0 redos · 0 corrections · 0 retractions · 0 wrong-reason checks)
+```
+
+| Found in the session                                        | Capture                                                                          |
+| ----------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| A finding from the signals above                            | a check if one can hold it; else the `AGENTS.md` nearest the code; else a memory |
+| A finding a rule or memory already covered, and was missed  | widen or sharpen that rule — it did not fire, so its wording is the defect       |
+| A decision agreed in chat, or an approach tried and dropped | an ADR, via `/record-decision`                                                   |
+| A defect or gap noticed and not fixed                       | a GitHub issue — labelled `steward` if no visitor would see it                   |
+| A promise ("I'll do that next") or work in flight           | an issue, or the PR description it belongs to                                    |
+| A standing instruction or correction from Andrei            | a memory                                                                         |
+
+Issues are part of finishing and need no agreement. Name an ADR, a memory or a
+rule change, and make it once he agrees. A capture made in the repo is a change
+like any other, so after making one, step 4's **Done when** is checked again.
+
+**Done when:** the signals are counted, and every finding and item is captured or
+named in the report with its suggested capture.
 
 ## The report
 
@@ -252,7 +272,8 @@ background: 0 · astro processes: 0 · preview: stopped | left for review | anot
 open PRs: <numbers and checks, or 0> · main checkout: fast-forwarded to <sha> | untouched, why
 branches deleted: <names> · stash: <n, none mine> · worktrees: <n>
 untracked runners: 0 (or: named but unpublished, listed)
-not captured: <items from step 5, each with its suggested capture>
+signals: <n> (<what was examined, with counts>) · findings: <n>
+not captured: <findings and items from step 5, each with its suggested capture>
 available: 13.3 GB
 left running on purpose: <what, and why>
 ```
