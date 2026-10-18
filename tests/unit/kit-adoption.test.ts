@@ -1,6 +1,7 @@
-import { readdirSync, readFileSync, statSync } from "node:fs"
+import { readdirSync, readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 import { optsOutOf, optsOutOfFile } from "./opt-out.ts"
+import { pieces } from "../support/pieces.ts"
 
 /**
  * Whether each piece is using the kit, or has said out loud that it is not.
@@ -26,9 +27,6 @@ import { optsOutOf, optsOutOfFile } from "./opt-out.ts"
  */
 
 const EXPERIMENTS = "src/experiments"
-
-/** Not pieces: shared code, and the section's own docs. */
-const NOT_A_PIECE = new Set(["docs", "gallery", "kit"])
 
 /**
  * What the kit defines, by symbol rather than by filename.
@@ -85,9 +83,13 @@ function ownDefinitions(source: string): string[] {
  * things a piece must not quietly reimplement, so both are read here.
  */
 const shared = [
-  ...readdirSync(`${EXPERIMENTS}/kit`)
-    .filter((name) => name.endsWith(".ts"))
-    .map((name) => [`kit/${name}`, `${EXPERIMENTS}/kit/${name}`] as const),
+  // `simulation/` is the scene's shared clock, canvas and generators — section
+  // level like the files below, and as much a thing not to copy.
+  ...["kit", "simulation"].flatMap((folder) =>
+    readdirSync(`${EXPERIMENTS}/${folder}`)
+      .filter((name) => name.endsWith(".ts"))
+      .map((name) => [`${folder}/${name}`, `${EXPERIMENTS}/${folder}/${name}`] as const),
+  ),
   ...readdirSync(EXPERIMENTS)
     .filter((name) => name.endsWith(".ts"))
     .map((name) => [name, `${EXPERIMENTS}/${name}`] as const),
@@ -133,9 +135,7 @@ const KIT_SELECTORS = [
 const OPT_OUT = "kit-opt-out:"
 const OPT_OUT_PRESETS = "kit-opt-out(presets):"
 
-const slugs = readdirSync(EXPERIMENTS)
-  .filter((name) => !NOT_A_PIECE.has(name) && statSync(`${EXPERIMENTS}/${name}`).isDirectory())
-  .sort()
+const slugs = [...pieces]
 
 const read = (path: string) => {
   try {

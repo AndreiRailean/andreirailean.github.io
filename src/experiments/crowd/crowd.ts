@@ -40,6 +40,8 @@
  * and the note's backdrop want and for the same reason.
  */
 
+import { context2d, fitCanvas } from "@/experiments/simulation/canvas"
+import { parkingLoop, settleSeconds } from "@/experiments/simulation/loop"
 import type { Boulder } from "@/experiments/crowd/boulders"
 import { horizonFor, makeCamera, type Camera } from "@/experiments/crowd/camera"
 import { drawFrame, makeScratch, type Scratch } from "@/experiments/crowd/draw"
@@ -131,9 +133,6 @@ const STEP = 1 / 120
 /** Never catch up on more than this in one frame. */
 const MAX_STEPS = 4
 
-/** The longest any one `settle` will run, in seconds of walk. */
-const MAX_SETTLE = 600
-
 /**
  * How long the walk is run before a reduced-motion still is taken.
  *
@@ -152,14 +151,8 @@ const MAX_SETTLE = 600
  */
 const STILL_SECONDS = 2
 
-function require2d(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
-  const context = canvas.getContext("2d")
-  if (!context) throw new Error("Crowd: no 2d context")
-  return context
-}
-
 export function createCrowd(canvas: HTMLCanvasElement, initial: Settings): Crowd {
-  const context = require2d(canvas)
+  const context = context2d(canvas, "Crowd")
   const stillOnly = window.matchMedia("(prefers-reduced-motion: reduce)")
 
   let settings = initial
@@ -177,32 +170,19 @@ export function createCrowd(canvas: HTMLCanvasElement, initial: Settings): Crowd
   let quarryHidden = false
   let rocks = 0
 
-  let frame = 0
-  let running = false
-  let previous = 0
   let carry = 0
-  let fps = 0
   let drawn = 0
   let fills = 0
   let largest = 0
   let drawMs = 0
   let lastDrawMs = 0
-  /** Set when the picture needs repainting without anybody having moved. */
-  let dirty = true
 
   const isAnimated = () => !stillOnly.matches && settings.playback > 0
 
   function resize(): void {
-    const nextWidth = canvas.clientWidth || window.innerWidth
-    const nextHeight = canvas.clientHeight || window.innerHeight
-    const nextDpr = Math.min(window.devicePixelRatio || 1, 2)
-    if (nextWidth === width && nextHeight === height && nextDpr === dpr) return
-
-    width = nextWidth
-    height = nextHeight
-    dpr = nextDpr
-    canvas.width = Math.round(width * dpr)
-    canvas.height = Math.round(height * dpr)
+    const next = fitCanvas(canvas, { width, height, dpr })
+    if (!next) return
+    ;({ width, height, dpr } = next)
   }
 
   /**
@@ -272,19 +252,15 @@ export function createCrowd(canvas: HTMLCanvasElement, initial: Settings): Crowd
    * nothing that errored.
    */
   function runForward(seconds: number): void {
-    const total = Math.max(0, Math.min(MAX_SETTLE, seconds))
+    const total = settleSeconds(seconds)
     const steps = Math.round(total / STEP)
     for (let i = 0; i < steps; i++) advance(STEP)
   }
 
-  function tick(now: number): void {
-    frame = requestAnimationFrame(tick)
-
-    const elapsed = previous === 0 ? 0 : Math.min(0.25, (now - previous) / 1000)
-    previous = now
-    if (elapsed > 0) fps += (1 / elapsed - fps) * 0.1
-
-    if (isAnimated()) {
+  const loop = parkingLoop({
+    clamp: 0.25,
+    frame(elapsed) {
+      if (!isAnimated()) return "idle"
       carry += elapsed * settings.playback
       let steps = 0
       while (carry >= STEP && steps < MAX_STEPS) {
@@ -295,33 +271,11 @@ export function createCrowd(canvas: HTMLCanvasElement, initial: Settings): Crowd
       // Whatever is left after the ceiling is dropped rather than banked: a tab
       // coming back should resume, not fast-forward.
       if (steps === MAX_STEPS) carry = 0
-      draw()
-      dirty = false
-      return
-    }
-
-    // Everything that changes the picture without anybody moving: a resize, a
-    // colour, a field of view. Without this the loop parks and the canvas keeps
-    // whatever was last on it — and setting `canvas.width` on a resize clears
-    // it, so the piece would simply vanish when the window changed size.
-    if (dirty) {
-      dirty = false
-      draw()
-      return
-    }
-
-    cancelAnimationFrame(frame)
-    frame = 0
-    running = false
-  }
-
-  function wake(): void {
-    dirty = true
-    if (running) return
-    running = true
-    previous = 0
-    frame = requestAnimationFrame(tick)
-  }
+      return "moved"
+    },
+    draw,
+  })
+  const wake = loop.wake
 
   const onResize = () => {
     resize()
@@ -332,9 +286,7 @@ export function createCrowd(canvas: HTMLCanvasElement, initial: Settings): Crowd
   stillOnly.addEventListener("change", wake)
 
   function teardown(): void {
-    if (frame) cancelAnimationFrame(frame)
-    frame = 0
-    running = false
+    loop.hold()
     window.removeEventListener("resize", onResize)
     stillOnly.removeEventListener("change", wake)
   }
@@ -356,14 +308,11 @@ export function createCrowd(canvas: HTMLCanvasElement, initial: Settings): Crowd
         wake()
         return
       }
-      if (frame) cancelAnimationFrame(frame)
-      frame = 0
-      running = false
+      loop.hold()
     },
 
     settle(seconds) {
       runForward(seconds)
-      dirty = true
       wake()
     },
 
@@ -397,8 +346,8 @@ export function createCrowd(canvas: HTMLCanvasElement, initial: Settings): Crowd
         drawMs,
         lastDrawMs,
         budget: MAX_PEOPLE,
-        fps,
-        running,
+        fps: loop.fps(),
+        running: loop.running(),
       }
     },
 

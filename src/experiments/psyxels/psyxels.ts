@@ -1,3 +1,4 @@
+import { context2d } from "@/experiments/simulation/canvas"
 import { frameAdvance } from "@/experiments/psyxels/clock"
 import { packField, type Field, type Psyx } from "@/experiments/psyxels/field"
 import { paintGlyph } from "@/experiments/psyxels/glyphs"
@@ -131,8 +132,7 @@ export type Psyxels = {
 }
 
 export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings): Psyxels {
-  const context = canvas.getContext("2d")
-  if (!context) throw new Error("Psyxels: no 2d context")
+  const context = context2d(canvas, "Psyxels")
   const ctx = context
 
   /**

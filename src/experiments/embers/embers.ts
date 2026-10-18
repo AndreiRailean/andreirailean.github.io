@@ -40,6 +40,8 @@
  * route, through `settle`.
  */
 
+import { context2d, fitCanvas } from "@/experiments/simulation/canvas"
+import { parkingLoop, settleSeconds } from "@/experiments/simulation/loop"
 import { gaussian, hashSeed, makeRng } from "@/experiments/random"
 import { createAir, type Air } from "@/experiments/embers/air"
 import { createBed, type Bed, type Spawn } from "@/experiments/embers/bed"
@@ -159,14 +161,8 @@ export type Embers = {
   destroy: () => void
 }
 
-function require2d(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
-  const context = canvas.getContext("2d")
-  if (!context) throw new Error("Embers: no 2d context")
-  return context
-}
-
 export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embers {
-  const context = require2d(canvas)
+  const context = context2d(canvas, "Embers")
   const stillOnly = window.matchMedia("(prefers-reduced-motion: reduce)")
 
   let settings = initial
@@ -193,18 +189,12 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
   /** Three wide: the field hands back a velocity and the gas temperature together. */
   const sample = new Float64Array(3)
 
-  let frame = 0
-  let running = false
-  let previous = 0
-  let fps = 0
   let drawMs = 0
   let clock = 0
   let drawn = 0
   let clipped = 0
   let peak = 0
   let debug = false
-  /** Set when the picture needs repainting without the fire having moved. */
-  let dirty = true
 
   const isAnimated = () => !stillOnly.matches && settings.playback > 0
 
@@ -322,16 +312,9 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
   }
 
   function resize(): void {
-    const nextWidth = canvas.clientWidth || window.innerWidth
-    const nextHeight = canvas.clientHeight || window.innerHeight
-    const nextDpr = Math.min(window.devicePixelRatio || 1, 2)
-    if (nextWidth === width && nextHeight === height && nextDpr === dpr) return
-
-    width = nextWidth
-    height = nextHeight
-    dpr = nextDpr
-    canvas.width = Math.round(width * dpr)
-    canvas.height = Math.round(height * dpr)
+    const next = fitCanvas(canvas, { width, height, dpr })
+    if (!next) return
+    ;({ width, height, dpr } = next)
     view = makeView(settings.span, settings.hearth, width || 1, height || 1)
     air.setBounds(view.halfWidth + view.flank, view.ceilingY + view.margin)
   }
@@ -406,7 +389,7 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
     const readout = [
       `${alive} alive  ${drawn} drawn  ${clipped} clipped`,
       `${air.vortices.length} vortices  vigour ${air.vigour().toFixed(2)}  wind ${air.crosswind().toFixed(2)}m/s`,
-      `${fps.toFixed(0)} fps  ${drawMs.toFixed(1)}ms draw  peak ${peak.toFixed(1)}`,
+      `${loop.fps().toFixed(0)} fps  ${drawMs.toFixed(1)}ms draw  peak ${peak.toFixed(1)}`,
       `${view.halfWidth.toFixed(2)}m half-width  ${(view.ceilingY - view.floorY).toFixed(2)}m tall`,
     ]
     context.font = "12px ui-monospace, monospace"
@@ -427,19 +410,15 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
    * those are filled by stepping.
    */
   function advance(seconds: number): void {
-    const total = Math.max(0, Math.min(600, seconds))
+    const total = settleSeconds(seconds)
     const steps = Math.round(total / STEP)
     for (let at = 0; at < steps; at++) step(STEP)
   }
 
-  function tick(now: number): void {
-    frame = requestAnimationFrame(tick)
-
-    const elapsed = previous === 0 ? 0 : Math.min(0.25, (now - previous) / 1000)
-    previous = now
-    if (elapsed > 0) fps += (1 / elapsed - fps) * 0.1
-
-    if (isAnimated()) {
+  const loop = parkingLoop({
+    clamp: 0.25,
+    frame(elapsed) {
+      if (!isAnimated()) return "idle"
       // **The one place playback is applied.** Everything time-dependent in the
       // piece — the plume's own clock, the shedding, the gusts, the burning, the
       // shutter — is integrated through this step or reads the clock it advances,
@@ -450,33 +429,11 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
       const plan = framePlan(elapsed, settings.playback)
       for (let at = 0; at < plan.substeps; at++) step(plan.dt)
       // Seconds of *fire* drawn, which is what the shutter is quoted in.
-      draw()
-      dirty = false
-      return
-    }
-
-    // Everything that changes the picture without the fire moving: a resize, a
-    // colour, the overlay. Without this the loop parks and the canvas keeps
-    // whatever was last on it — and setting `canvas.width` on a resize clears
-    // it, so the piece would simply vanish when the window changed size.
-    if (dirty) {
-      dirty = false
-      draw()
-      return
-    }
-
-    cancelAnimationFrame(frame)
-    frame = 0
-    running = false
-  }
-
-  function wake(): void {
-    dirty = true
-    if (running) return
-    running = true
-    previous = 0
-    frame = requestAnimationFrame(tick)
-  }
+      return "moved"
+    },
+    draw,
+  })
+  const wake = loop.wake
 
   const onResize = () => {
     resize()
@@ -500,9 +457,7 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
     },
 
     stop() {
-      if (frame) cancelAnimationFrame(frame)
-      frame = 0
-      running = false
+      loop.hold()
       window.removeEventListener("resize", onResize)
       stillOnly.removeEventListener("change", wake)
     },
@@ -512,9 +467,7 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
         wake()
         return
       }
-      if (frame) cancelAnimationFrame(frame)
-      frame = 0
-      running = false
+      loop.hold()
     },
 
     settle(seconds) {
@@ -535,7 +488,6 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
        * wants the picture it arrived at, not the one before.
        */
       draw()
-      dirty = true
       wake()
     },
 
@@ -546,7 +498,6 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
 
     setDebug(on) {
       debug = on
-      dirty = true
       wake()
     },
 
@@ -579,16 +530,14 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
         crosswind: air.crosswind(),
         bursts: bed.bursts,
         clock,
-        fps,
+        fps: loop.fps(),
         drawMs,
-        running,
+        running: loop.running(),
       }
     },
 
     destroy() {
-      if (frame) cancelAnimationFrame(frame)
-      frame = 0
-      running = false
+      loop.hold()
       window.removeEventListener("resize", onResize)
       stillOnly.removeEventListener("change", wake)
       pool = []

@@ -13,6 +13,7 @@
  * it in `stop()`, so `destroy` is `stop` and no new method was needed.
  */
 
+import { settleSeconds } from "@/experiments/simulation/loop"
 import { decodeScene } from "@/experiments/address"
 import { createBubbles } from "@/experiments/bubbles/bubbles"
 import { normalizeSettings, REGISTRY, type Settings } from "@/experiments/bubbles/settings"
@@ -63,7 +64,7 @@ export function start(canvas: HTMLCanvasElement, settings: Settings) {
     destroy: water.stop,
     verbs: {
       // Clamped: a console call asking for an hour would hold the tab for it.
-      settle: (seconds: number) => water.settle(Math.max(0, Math.min(600, Number(seconds) || 0))),
+      settle: (seconds: number) => water.settle(settleSeconds(seconds)),
       clear: () => water.clear(),
     },
   } satisfies Live<Settings>
