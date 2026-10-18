@@ -47,6 +47,7 @@
  * that is a shutter and not an accumulator, and `poster.ts` for what it costs.
  */
 
+import { radialSprite } from "@/experiments/simulation/sprite"
 import { hashSeed, makeRng } from "@/experiments/random"
 import { makeRamp, RAMP_STEPS, rampStep, SEEN, type Ramp } from "@/experiments/embers/palette"
 import { SHAPES, type Ember } from "@/experiments/embers/ember"
@@ -116,25 +117,16 @@ const WHITE_KNEE = 3
 export const whiteness = (raw: number): number => (raw <= 1 ? 0 : (raw - 1) / (raw - 1 + WHITE_KNEE))
 
 function makeSprite(r: number, g: number, b: number): HTMLCanvasElement {
-  const canvas = document.createElement("canvas")
-  canvas.width = SPRITE
-  canvas.height = SPRITE
-  const context = canvas.getContext("2d")!
-  const mid = SPRITE / 2
-
   // A bright core with wide, faint wings — the shape of a point spread rather
   // than a linear ramp, which reads as a soft disc and not as a light.
-  const gradient = context.createRadialGradient(mid, mid, 0, mid, mid, mid)
   const colour = `${r} ${g} ${b}`
-  gradient.addColorStop(0, `rgb(${colour} / 100%)`)
-  gradient.addColorStop(0.1, `rgb(${colour} / 62%)`)
-  gradient.addColorStop(0.26, `rgb(${colour} / 24%)`)
-  gradient.addColorStop(0.55, `rgb(${colour} / 6%)`)
-  gradient.addColorStop(1, `rgb(${colour} / 0%)`)
-
-  context.fillStyle = gradient
-  context.fillRect(0, 0, SPRITE, SPRITE)
-  return canvas
+  return radialSprite(SPRITE, [
+    [0, `rgb(${colour} / 100%)`],
+    [0.1, `rgb(${colour} / 62%)`],
+    [0.26, `rgb(${colour} / 24%)`],
+    [0.55, `rgb(${colour} / 6%)`],
+    [1, `rgb(${colour} / 0%)`],
+  ])
 }
 
 /**

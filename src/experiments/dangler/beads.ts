@@ -11,6 +11,8 @@
  * Brightness is `globalAlpha` and costs no cache entry.
  */
 
+import { wrapHue } from "@/experiments/simulation/colour"
+import { ditherAlpha, radialSprite } from "@/experiments/simulation/sprite"
 import { coreColour, haloColour } from "@/experiments/dangler/palette"
 
 const HUE_BUCKETS = 24
@@ -53,37 +55,10 @@ export type Beads = {
   reset: () => void
 }
 
-/**
- * Jitters alpha by about a level.
- *
- * A soft gradient ramping over a few hundred pixels quantises into concentric
- * contour rings at 8-bit precision, and more colour stops cannot help — a near
- * bulb with a wide glow is exactly that case. Breaking the rings into grain is
- * the only thing that works.
- */
-function dither(context: CanvasRenderingContext2D, size: number): void {
-  const image = context.getImageData(0, 0, size, size)
-  const { data } = image
-  for (let i = 3; i < data.length; i += 4) {
-    if (data[i] === 0) continue
-    data[i] = Math.max(0, Math.min(255, data[i] + (Math.random() * 2 - 1) * 1.5))
-  }
-  context.putImageData(image, 0, 0)
-}
-
 function sprite(size: number, stops: [number, string][], jitter: boolean): HTMLCanvasElement {
-  const canvas = document.createElement("canvas")
-  canvas.width = size
-  canvas.height = size
+  const canvas = radialSprite(size, stops)
   const context = canvas.getContext("2d")
-  if (!context) return canvas
-
-  const half = size / 2
-  const gradient = context.createRadialGradient(half, half, 0, half, half, half)
-  for (const [offset, colour] of stops) gradient.addColorStop(offset, colour)
-  context.fillStyle = gradient
-  context.fillRect(0, 0, size, size)
-  if (jitter) dither(context, size)
+  if (context && jitter) ditherAlpha(context, size, size, 1.5)
   return canvas
 }
 
@@ -97,7 +72,7 @@ export function createBeads(context: CanvasRenderingContext2D): Beads {
   let floorPx = MIN_CORE_DEVICE_PX
 
   function bucket(hue: number, saturation: number): number {
-    const h = Math.round(((((hue % 360) + 360) % 360) / 360) * HUE_BUCKETS) % HUE_BUCKETS
+    const h = Math.round((wrapHue(hue) / 360) * HUE_BUCKETS) % HUE_BUCKETS
     const s = Math.round(Math.min(1, Math.max(0, saturation)) * (SATURATION_BUCKETS - 1))
     return h * SATURATION_BUCKETS + s
   }

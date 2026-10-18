@@ -700,6 +700,14 @@ exercised in both directions:
   own loops for that reason. `random.ts` stays beside it rather than inside,
   because the showcase imports it by that path. See
   `docs/adr/20261018-the-scene-clock-moves-to-simulation.md`.
+- **Glows and hues** joined `simulation/` the same day: `radialSprite` and
+  `ditherAlpha` in `sprite.ts` (Dangler, Flotsam, Embers, Hexgrid; Starry
+  Night's dither), `wrapHue` in `colour.ts` (six pieces). Each piece keeps its
+  own stops, buckets and colour strings, which differ and would change pixels.
+- **Vicinity and collision did not**, after a full read: four uniform grids
+  (Artdeco, Bubbles, Crowd, Walkers) differ in visit order and bounds, and
+  avoidance forces summed in a different order are different floats. Crowd and
+  Walkers share `timeToCollision` and an angle wrap, but they are two copies.
 - **Noise did not**, though five pieces carry one: Bubbles' and Dotfield's
   Perlin, Dotfield's random-gradient 2D, Embers' hashed lattice and Dangler's
   value noise are five different algorithms, and unifying them changes what

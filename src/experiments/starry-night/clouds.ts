@@ -1,3 +1,4 @@
+import { ditherAlpha } from "@/experiments/simulation/sprite"
 import { envelope } from "@/experiments/starry-night/character"
 
 /**
@@ -89,7 +90,7 @@ export function createCloudLayer(
     context.restore()
   }
 
-  dither(context, bufferWidth, bufferHeight)
+  ditherAlpha(context, bufferWidth, bufferHeight, DITHER_LEVELS / 2)
 
   return {
     buffer,
@@ -98,17 +99,6 @@ export function createCloudLayer(
     from: { x: Math.random(), y: Math.random() },
     to: { x: Math.random(), y: Math.random() },
   }
-}
-
-function dither(context: CanvasRenderingContext2D, width: number, height: number): void {
-  const image = context.getImageData(0, 0, width, height)
-  const { data } = image
-  // Alpha only: the banding lives there, and the tint should stay a single hue.
-  for (let index = 3; index < data.length; index += 4) {
-    if (data[index] === 0) continue
-    data[index] = Math.max(0, Math.min(255, data[index] + (Math.random() - 0.5) * DITHER_LEVELS))
-  }
-  context.putImageData(image, 0, 0)
 }
 
 /**

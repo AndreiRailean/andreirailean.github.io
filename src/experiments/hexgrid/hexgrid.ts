@@ -7,6 +7,8 @@
  * hex's intensity is read off that clock and its distance. Patterns overlap,
  * so more than one may be live at once.
  */
+import { wrapHue } from "@/experiments/simulation/colour"
+import { radialSprite } from "@/experiments/simulation/sprite"
 import { context2d, fitCanvas } from "@/experiments/simulation/canvas"
 import { steadyLoop } from "@/experiments/simulation/loop"
 import { hashSeed, makeRng, shuffle, signed, type Rng } from "@/experiments/random"
@@ -132,7 +134,7 @@ function to255(rgb: [number, number, number]): [number, number, number] {
 const key = (q: number, r: number) => `${q},${r}`
 
 /** Wraps a hue into 0–360. */
-const wrap = (h: number) => ((h % 360) + 360) % 360
+const wrap = wrapHue
 
 /**
  * One pattern. Cycle 0 is the seed's own, so an address always opens on the same
@@ -613,17 +615,13 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
     const inner = ((SQRT3 / 2) * r) / reach
     const STOPS = 48
     const sprite = (alpha: (x: number) => number) => {
-      const canvas = document.createElement("canvas")
-      canvas.width = px
-      canvas.height = px
-      const s = canvas.getContext("2d")!
-      const g = s.createRadialGradient(px / 2, px / 2, 0, px / 2, px / 2, px / 2)
+      const stops: [number, string][] = []
       for (let j = 0; j <= STOPS; j++) {
         const x = j / STOPS
-        g.addColorStop(x, `rgba(0,0,0,${alpha(x / inner)})`)
+        stops.push([x, `rgba(0,0,0,${alpha(x / inner)})`])
       }
-      s.fillStyle = g
-      s.fillRect(0, 0, px, px)
+      const canvas = radialSprite(px, stops)
+      const s = canvas.getContext("2d")!
       // Clip to the hex. A resting hole is clear by the sprite's corners, but a
       // growing one is not, and the square's dark corners land on neighbours.
       s.globalCompositeOperation = "destination-in"

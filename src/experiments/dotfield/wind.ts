@@ -27,6 +27,7 @@
 
 import { hashSeed, makeRng, shuffle, signed, type Rng } from "@/experiments/random"
 import type { Settings } from "@/experiments/dotfield/settings"
+import { wrapHue } from "@/experiments/simulation/colour"
 
 const TAU = Math.PI * 2
 const DEG = Math.PI / 180
@@ -295,7 +296,7 @@ export function createWind(seed: number) {
     /** What the air is doing, for `stats()`. */
     report() {
       return {
-        prevailing: Math.round((((prevailing / DEG) % 360) + 360) % 360),
+        prevailing: Math.round(wrapHue(prevailing / DEG)),
         gustsInPlay: gusts.length,
         clock: Number(clock.toFixed(1)),
       }
