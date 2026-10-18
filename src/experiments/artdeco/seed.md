@@ -212,6 +212,11 @@ two overlapping in a chain along a line.)_
 > the edges and in the corners. ao rather than being always cut-off, the lines
 > would draw shapes and allow for insets
 
+## 2026-10-18 — frame of progress
+
+> if you see what i have open, save it as "frame of progress"
+> http://100.117.55.104:4627/experiments/artdeco/?s=___f_________3-m2cTTkaUggKMIIoMC0AAHHUgUKYiAAEAyztMPKBKIENAQjFAk8PKkECg
+
 ## Open questions
 
 _Mine, not his — what I assumed and what would settle it._
