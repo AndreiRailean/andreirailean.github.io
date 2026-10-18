@@ -23,7 +23,7 @@ import { toggleFullscreen } from "@/experiments/kit/fullscreen"
  * **It renders DOM, not appearance.** The class names below are the contract
  * with a piece's own stylesheet: `.bar`, `.panel`, `.group`, `.row`, `.label`,
  * `.value`, `.span`, `.modes`, `.modes.set`, `.mode`, `.mode.glyph`, `.presets`, `.preset`,
- * `.toggle`, `.copy`, `.index`, `.about` — plus `data-active` and `data-locked` on a mode.
+ * `.toggle`, `.copy`, `.index`, `.about`, `.play` — plus `data-active` and `data-locked` on a mode.
  * A piece that uses a control kind it has no CSS for will render it unstyled and
  * nothing will say so — that has happened here twice now, and
  * `tests/kit.spec.ts` checks the range row's layout, on its fixture, because of
@@ -309,6 +309,8 @@ export type Controls<S> = {
   isPanelOpen: () => boolean
   /** true or false pins the state; null hands control back to the idle timer. */
   setIdle: (idle: boolean | null) => void
+  /** Shows the scene as held or playing. The button only reflects this; `pause()` owns it. */
+  setPaused: (paused: boolean) => void
 }
 
 /**
@@ -426,6 +428,15 @@ export type Options<S extends object> = {
    * piece with no `window.experiment` is a piece no test can reach.
    */
   chrome?: boolean
+  /**
+   * Hold the scene, or let it run on — the console's `pause()`.
+   *
+   * Given, the chrome draws a play/pause button in the bottom-right corner and
+   * Space toggles it, the way a video player does. It holds the scene and
+   * nothing else: no setting moves, so a piece's own `playback` is exactly what
+   * it was when the scene starts again.
+   */
+  onPause?: () => void
 }
 
 /**
@@ -443,6 +454,18 @@ export type CopyAction = {
   text: () => string
   /** Tooltip. Worth saying what the copied text is for. */
   title?: string
+}
+
+/** A play triangle, or two pause bars — what a press will do. */
+function playIcon(paused: boolean): SVGSVGElement {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+  svg.setAttribute("viewBox", "0 0 16 16")
+  svg.setAttribute("aria-hidden", "true")
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path")
+  path.setAttribute("d", paused ? "M4 2.5v11l9.5-5.5z" : "M3.5 2.5h3v11h-3zM9.5 2.5h3v11h-3z")
+  path.setAttribute("fill", "currentColor")
+  svg.append(path)
+  return svg
 }
 
 function button(label: string, className = ""): HTMLButtonElement {
@@ -467,6 +490,7 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     onChange,
     aboutHref,
     indexHref,
+    onPause,
   } = options
   const copyActions: CopyAction[] = options.copy ?? [
     {
@@ -635,6 +659,26 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     index.title = "Every piece in the gallery"
     if (chrome) root.append(index)
   }
+  /**
+   * Play and pause, bottom right, the way a video player has it (Andrei,
+   * 2026-10-18: "the youtube way"). The icon shows what a press will do, so a
+   * playing scene shows pause. `about` moves left of it, which is why it is
+   * appended first.
+   */
+  const playButton = onPause ? button("", "play") : null
+  if (playButton && onPause) {
+    playButton.addEventListener("click", () => onPause())
+    if (chrome) root.append(playButton)
+  }
+  function showPaused(paused: boolean) {
+    if (!playButton) return
+    playButton.dataset.paused = String(paused)
+    playButton.setAttribute("aria-label", paused ? "play" : "pause")
+    playButton.title = paused ? "Play (Space)" : "Pause (Space)"
+    playButton.replaceChildren(playIcon(paused))
+  }
+  showPaused(false)
+
   if (aboutHref) {
     const about = document.createElement("a")
     about.className = "about"
@@ -1059,6 +1103,31 @@ export function createControls<S extends object>(options: Options<S>): Controls<
       return
     }
 
+    /*
+     * Space plays and pauses, the way it does on a video.
+     *
+     * **Except where it is typed.** A text field already returned above; a
+     * select opens on Space and a textarea or an editable takes it as text. A
+     * slider has no use for it, so Space after a drag pauses. Nor does a
+     * *button* keep it: clicking a preset leaves the focus there, and Space
+     * would click that preset again rather than pause — the same reasoning as
+     * the arrows below — and on the play button itself the native click would
+     * undo the toggle this makes. `preventDefault` stops that activation and
+     * the page's scroll alike. A held key repeats, and a repeat is not a second
+     * press.
+     */
+    if (event.key === " " && onPause) {
+      const target = event.target
+      const typed =
+        target instanceof HTMLSelectElement ||
+        target instanceof HTMLTextAreaElement ||
+        (target instanceof HTMLElement && target.isContentEditable)
+      if (typed) return
+      event.preventDefault()
+      if (!event.repeat) onPause()
+      return
+    }
+
     const key = event.key.toLowerCase()
     if (key === "c") {
       setPanelOpen(!panelOpen)
@@ -1178,6 +1247,7 @@ export function createControls<S extends object>(options: Options<S>): Controls<
       pinnedIdle = idle
       goActive()
     },
+    setPaused: showPaused,
     destroy() {
       window.clearTimeout(idleTimer)
       window.removeEventListener("mousemove", onMouse)
