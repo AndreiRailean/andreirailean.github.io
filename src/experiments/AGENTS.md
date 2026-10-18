@@ -690,6 +690,16 @@ exercised in both directions:
   named-parameter reader stay with the piece and are handed in, because they
   are that piece's rules and history. See
   `docs/adr/20261017-the-settings-plumbing-moves-to-the-section.md`.
+- **`simulation/`** holds the scene's clock and canvas: `parkingLoop` and
+  `steadyLoop` in `loop.ts`, the two frame-driver shapes eight pieces had
+  written out, plus `settleSeconds`; `context2d` and `fitCanvas` in
+  `canvas.ts`. **The clock is shared and the stepping is not**: each piece
+  hands in how a frame's seconds become simulation steps, and its own dt
+  clamp, because five stepping schemes are in use and choosing one changes
+  what a piece draws. Bubbles, Psyxels, Starry Night and Artdeco keep their
+  own loops for that reason. `random.ts` stays beside it rather than inside,
+  because the showcase imports it by that path. See
+  `docs/adr/20261018-the-scene-clock-moves-to-simulation.md`.
 - **Noise did not**, though five pieces carry one: Bubbles' and Dotfield's
   Perlin, Dotfield's random-gradient 2D, Embers' hashed lattice and Dangler's
   value noise are five different algorithms, and unifying them changes what

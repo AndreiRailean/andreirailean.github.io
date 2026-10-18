@@ -1,10 +1,10 @@
 /**
  * How far one animation frame moves the sea.
  *
- * `previous` is the last frame's timestamp, or 0 when there was none, so the
- * first frame after a start adds nothing. A frame never counts for more than
- * `MAX_FRAME` of wall time, so a tab left in the background comes back to one
- * short step rather than a jump across everything it missed.
+ * The frame's wall time comes from the section's `parkingLoop`, which adds
+ * nothing on the first frame after a start and never counts a frame for more
+ * than `MAX_FRAME`, so a tab left in the background comes back to one short
+ * step rather than a jump across everything it missed.
  *
  * **This is the one place `playback` is applied, and it has to stay the one
  * place.** Everything time-dependent in the piece reads the clock or is
@@ -16,7 +16,6 @@
  */
 export const MAX_FRAME = 0.25
 
-export function frameStep(previous: number, now: number, playback: number): { elapsed: number; step: number } {
-  const elapsed = previous === 0 ? 0 : Math.min(MAX_FRAME, (now - previous) / 1000)
-  return { elapsed, step: elapsed * playback }
+export function seaStep(elapsed: number, playback: number): number {
+  return elapsed * playback
 }

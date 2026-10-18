@@ -12,6 +12,7 @@
  * `stop()`, so `destroy` is `stop` and no new method was needed.
  */
 
+import { settleSeconds } from "@/experiments/simulation/loop"
 import { decodeScene } from "@/experiments/address"
 import { createEmbers } from "@/experiments/embers/embers"
 import { normalizeSettings, REGISTRY, type Settings } from "@/experiments/embers/settings"
@@ -58,7 +59,7 @@ export function start(canvas: HTMLCanvasElement, settings: Settings) {
     stats: fire.stats,
     destroy: fire.stop,
     verbs: {
-      settle: (seconds: number) => fire.settle(Math.max(0, Math.min(600, Number(seconds) || 0))),
+      settle: (seconds: number) => fire.settle(settleSeconds(seconds)),
       burst: () => fire.burst(),
       debug: (on?: boolean) => {
         debugging = on === undefined ? !debugging : Boolean(on)

@@ -6,6 +6,7 @@
  * `resize` listener and drops it in `stop()`, so `destroy` is `stop`.
  */
 
+import { settleSeconds } from "@/experiments/simulation/loop"
 import { decodeScene } from "@/experiments/address"
 import type { Live, PieceApi } from "@/experiments/piece"
 import { createDotfield } from "@/experiments/dotfield/dotfield"
@@ -36,7 +37,7 @@ export function start(canvas: HTMLCanvasElement, settings: Settings) {
     stats: scene.stats,
     destroy: scene.stop,
     verbs: {
-      settle: (seconds: number) => scene.settle(Math.max(0, Math.min(600, Number(seconds) || 0))),
+      settle: (seconds: number) => scene.settle(settleSeconds(seconds)),
       debug: (on?: boolean) => scene.debug(on),
     },
   } satisfies Live<Settings>
