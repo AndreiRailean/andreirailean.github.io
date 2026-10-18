@@ -380,7 +380,7 @@ export const CONTROLS: Control[] = [
     format: (v) => v.toFixed(2),
     hint: "Strength of the wind pushing on the strands. The gust is sampled per strand and applied hardest at the free end, so a strand swings from its anchor with its tip lagging behind — the sway travels rather than the whole string moving at once.",
   },
-  /* @__PURE__ */ timescaleControl({ group: "motion", max: 1.5 }),
+  /* @__PURE__ */ timescaleControl({ max: 1.5 }),
 ]
 
 /**

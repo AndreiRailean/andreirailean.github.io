@@ -1,3 +1,4 @@
+import { PLAYBACK_GROUP } from "@/experiments/kit/speed"
 import { describe, expect, it } from "vitest"
 import { keysOf } from "@/experiments/kit/controls"
 import {
@@ -43,7 +44,9 @@ describe("bounds", () => {
   })
 
   it("files every control under a heading the panel will render", () => {
-    for (const control of CONTROLS) expect(GROUP_ORDER, control.label).toContain(control.group)
+    // The kit renders its own playback group last in every panel, so speed is
+    // the one control filed outside the piece's order — #312.
+    for (const control of CONTROLS) expect([...GROUP_ORDER, PLAYBACK_GROUP], control.label).toContain(control.group)
   })
 
   it("gives every logarithmic control a positive minimum, which the mapping requires", () => {

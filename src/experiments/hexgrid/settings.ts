@@ -499,7 +499,7 @@ export const CONTROLS: Control[] = [
     ],
     hint: "How each hex goes. Dimming lowers its colour to black. Hole growing keeps the colour bright while the dark middle widens until it reaches the edge, and only then fades what is left. Light into the hole draws the colour in from the edges until it is gone into the hole. Hole, then shrink closes the hole and shrinks the colour to a point in the middle: bloom run backwards.",
   },
-  /* @__PURE__ */ timescaleControl({ group: "pulse" }),
+  /* @__PURE__ */ timescaleControl(),
 ]
 
 export const DEFAULT_SETTINGS: Settings = {

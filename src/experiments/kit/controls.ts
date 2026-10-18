@@ -1,5 +1,6 @@
 import { copyText } from "@/experiments/kit/copy"
 import { toggleFullscreen } from "@/experiments/kit/fullscreen"
+import { PLAYBACK_GROUP } from "@/experiments/kit/speed"
 
 /**
  * The chrome: a column of presets, a bar of actions and `adjust`, a settings
@@ -718,8 +719,21 @@ export function createControls<S extends object>(options: Options<S>): Controls<
   /** Every row the panel drew, with its control, so `render()` can mark the inert ones. */
   const drawn: { row: HTMLElement; control: Control<string & keyof S> }[] = []
 
-  if (groups && groups.length > 0) {
-    for (const entry of groups) {
+  /**
+   * **The kit's playback group closes every panel**, whatever the piece's own
+   * order says, and a panel with no groups still gets it as a heading of its
+   * own — #312. Speed is the kit's control, so where it sits is too.
+   */
+  const playbackRows = specs.filter((control) => control.group === PLAYBACK_GROUP)
+  const isPlayback = (entry: string | GovernedGroup<string & keyof S>) =>
+    (typeof entry === "string" ? entry : entry.name) === PLAYBACK_GROUP
+  const orderedGroups =
+    groups && groups.length > 0
+      ? [...groups.filter((entry) => !isPlayback(entry)), ...(playbackRows.length > 0 ? [PLAYBACK_GROUP] : [])]
+      : null
+
+  if (orderedGroups) {
+    for (const entry of orderedGroups) {
       const group = typeof entry === "string" ? entry : entry.name
       const inGroup = specs.filter((control) => control.group === group)
       if (inGroup.length === 0) continue
@@ -781,7 +795,15 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     }
   } else {
     openBox("")
-    for (const control of specs) into.append(makeRow(control))
+    for (const control of specs) if (control.group !== PLAYBACK_GROUP) into.append(makeRow(control))
+    if (playbackRows.length > 0) {
+      openBox(PLAYBACK_GROUP)
+      const heading = document.createElement("div")
+      heading.className = "group"
+      heading.textContent = PLAYBACK_GROUP
+      into.append(heading)
+      for (const control of playbackRows) into.append(makeRow(control))
+    }
   }
 
   function makeSlider(control: SliderControl<string & keyof S> | RangeControl<string & keyof S>, key: string) {

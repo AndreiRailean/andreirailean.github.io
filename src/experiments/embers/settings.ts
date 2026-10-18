@@ -399,7 +399,6 @@ export const CONTROLS: Control[] = [
     format: (v) => (v <= 0 ? "off" : `1/${Math.round(1 / v)}s`),
     hint: "How long the shutter stays open, in seconds of fire. Every ember is already drawn as a streak from where it was to where it is, so this is not what makes motion visible — it is how much motion one frame gathers. A long shutter smears each ember along the path it actually took, curve and all, and because the light is spread rather than repeated it does not brighten the picture. Off gives you a single instant.",
   },
-  /* @__PURE__ */ timescaleControl({ group: "picture", max: 8 }),
   {
     kind: "choice",
     key: "mark",
@@ -408,6 +407,7 @@ export const CONTROLS: Control[] = [
     options: /* @__PURE__ */ MARKS.map((mark) => ({ value: mark, label: mark })),
     hint: "What each piece of light is drawn as. The air knows nothing about embers, so this is free: sparks are hard and streaked, motes are soft and round with no body at all, and flakes are wide, slow-turning and edge-on half the time. Nothing about the flow changes.",
   },
+  /* @__PURE__ */ timescaleControl({ max: 8 }),
 ]
 
 export const DEFAULT_SETTINGS: Settings = {

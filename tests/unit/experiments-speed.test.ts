@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest"
 import { encodeScene, type Slot } from "@/experiments/address"
 import type { Control, SliderControl, Track } from "@/experiments/kit/controls"
-import { fromPlayback, TIMESCALE_KEY, TIMESCALE_SLOT, TIMESCALE_TRACK, timescaleControl } from "@/experiments/kit/speed"
+import {
+  fromPlayback,
+  PLAYBACK_GROUP,
+  TIMESCALE_KEY,
+  TIMESCALE_SLOT,
+  TIMESCALE_TRACK,
+  timescaleControl,
+} from "@/experiments/kit/speed"
 import { pieces } from "../support/pieces.ts"
 
 /**
@@ -41,8 +48,8 @@ describe.each(pieces)("%s", (slug) => {
     const speed = CONTROLS.filter((control) => "key" in control && control.key === TIMESCALE_KEY)
     expect(speed, `${slug} has no speed control — add timescaleControl() from kit/speed`).toHaveLength(1)
     const control = speed[0] as SliderControl<string>
-    const kit = timescaleControl({ ...(control.group ? { group: control.group } : {}) })
-    for (const field of ["kind", "label", "step", "scale", "hint"] as const)
+    const kit = timescaleControl()
+    for (const field of ["kind", "label", "group", "step", "scale", "hint"] as const)
       expect(control[field], `${slug}'s speed control changed its ${field}`).toEqual(kit[field])
     expect(control.format(2.5)).toBe(kit.format(2.5))
     expect(control.min).toBeGreaterThanOrEqual(TIMESCALE_TRACK.min)
@@ -53,6 +60,13 @@ describe.each(pieces)("%s", (slug) => {
       min: control.min,
       max: control.max,
     })
+  })
+
+  it("puts speed last, in the playback group", async () => {
+    const { CONTROLS } = await load(slug)
+    const last = CONTROLS[CONTROLS.length - 1]!
+    expect("key" in last && last.key, `${slug}'s last control is not speed`).toBe(TIMESCALE_KEY)
+    expect(last.group).toBe(PLAYBACK_GROUP)
   })
 
   it("has no speed of its own beside it", async () => {

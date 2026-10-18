@@ -109,7 +109,6 @@ export const CONTROLS: Control[] = [
     format: metres,
     hint: "How much water is in the frame, measured across its shorter side. This is the piece's main dial and it does more than magnify: because a wave's speed is fixed by its length, a frame full of centimetre ripples is frantic and a frame full of ocean swell is slow, and the same settings give you both. Everything floating stays where it is on screen as you drag it, so this zooms rather than rearranges.",
   },
-  /* @__PURE__ */ timescaleControl({ group: "view" }),
   {
     kind: "slider",
     group: "sea",
@@ -389,6 +388,7 @@ export const CONTROLS: Control[] = [
     format: (v) => v.toFixed(2),
     hint: "How sharply a piece's edge falls off. At 0 it is an object with a boundary you can see, which is what lets two of them overlap visibly. At 1 it has no edge at all and is a soft ball of its own colour — a point of light, whatever size it happens to be. Between them the glare comes in from the rim toward the centre with it. This is the control to reach for when large pieces look hard against the fuzz of the small ones: raising it makes the whole size range read as one family instead of two.",
   },
+  /* @__PURE__ */ timescaleControl(),
 ]
 
 /**

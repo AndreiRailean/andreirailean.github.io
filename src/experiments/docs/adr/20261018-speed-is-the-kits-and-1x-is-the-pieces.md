@@ -41,6 +41,10 @@ And, asked where a floor should sit:
 - **One control, `src/experiments/kit/speed.ts`**: label "speed", key
   `timescale`, a log track from 0.1× to 10×, one address slot. A piece may
   narrow the track and nothing else.
+- **In its own group, last in every panel**: Andrei, "speed should be in own
+  group at the bottom of each piece (last control). call the group
+  "Playback"". The kit renders the `playback` group last whatever the piece's
+  own order, and gives a panel with no groups that one heading.
 - **1× is the piece's natural rate.** Each piece exports `CLOCK_RATE`, the clock
   rate its 1× stands for: Flotsam 0.2, Embers 0.5 (so its presets stay round),
   the rest 1. The fine half of a log slider then sits where the presets were.

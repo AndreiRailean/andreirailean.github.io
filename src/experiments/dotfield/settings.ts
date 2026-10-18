@@ -456,7 +456,7 @@ export const CONTROLS: Control[] = [
     format: /* @__PURE__ */ fixed(2),
     hint: "How far the top of each column is lifted toward white. 0 gives it the stalk's colour, 1 makes every dot white.",
   },
-  /* @__PURE__ */ timescaleControl({ group: "wind" }),
+  /* @__PURE__ */ timescaleControl(),
 ]
 
 export const DEFAULT_SETTINGS: Settings = {

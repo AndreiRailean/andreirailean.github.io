@@ -326,8 +326,9 @@ existing piece's `CHROME` and `start` rather than working them out.
 **Speed and pause are the kit's, and every piece takes both** — #312, #313.
 Pause is free: implement `setPaused` and the corner button, Space and
 `experiment.pause()` reach it. Speed takes four lines in `settings.ts`:
-`timescale` in `Settings`, `/* @__PURE__ */ timescaleControl({ group })` in
-`CONTROLS` (the annotation keeps the panel out of the runner, #243),
+`timescale` in `Settings`, `/* @__PURE__ */ timescaleControl()` last in
+`CONTROLS` (the annotation keeps the panel out of the runner, #243; the kit
+files it under its own **playback** group, last in every panel),
 `timescaleTrack()` in `TRACKS` and `TIMESCALE_SLOT` appended to `REGISTRY`; then
 `export const CLOCK_RATE`, the clock rate 1× stands for, and multiply the
 piece's own clock by `settings.timescale * CLOCK_RATE` in one place. **1× is the

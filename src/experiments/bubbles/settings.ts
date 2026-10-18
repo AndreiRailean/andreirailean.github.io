@@ -524,7 +524,6 @@ export const CONTROLS: Control[] = [
     format: (v) => v.toFixed(2),
     hint: "How much of the last frame survives into this one. At 0 you see where the bubbles are; turn it up and you see where they have been, which is the flow drawn out as streaks.",
   },
-  /* @__PURE__ */ timescaleControl({ group: "picture", max: 4 }),
   {
     kind: "slider",
     key: "span",
@@ -547,6 +546,7 @@ export const CONTROLS: Control[] = [
     format: (v) => `${Math.round(v)}°`,
     hint: "Colour of these controls and of the written note. The water is black and the bubbles are white, and nothing in the picture uses this — an observer is meant to see white circles and nothing else.",
   },
+  /* @__PURE__ */ timescaleControl({ max: 4 }),
 ]
 
 /**

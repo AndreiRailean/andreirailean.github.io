@@ -382,7 +382,7 @@ export const CONTROLS: Control[] = [
     format: (v) => v.toFixed(2),
     hint: "How washed out the crowd is. At 1 everything is chalk — high lightness, low saturation. Turn it down and the colours state themselves, which is a different picture entirely and worth seeing at least once.",
   },
-  /* @__PURE__ */ timescaleControl({ group: "people", min: 0.5, max: 2 }),
+  /* @__PURE__ */ timescaleControl({ min: 0.5, max: 2 }),
 ]
 
 /** Bounds for the seed, so `reroll` and the panel cannot disagree about them. */

@@ -27,6 +27,13 @@ import type { SliderControl, Track } from "@/experiments/kit/controls"
 
 export const TIMESCALE_KEY = "timescale"
 
+/**
+ * The group speed lives in, which the kit renders last in every panel. Andrei,
+ * 2026-10-18: "speed should be in own group at the bottom of each piece (last
+ * control). call the group "Playback"".
+ */
+export const PLAYBACK_GROUP = "playback"
+
 /** A tenth to ten times the piece's natural speed. Three significant figures anywhere on it. */
 export const TIMESCALE_TRACK = { min: 0.1, max: 10, step: 0.001, scale: "log" } as const satisfies Track
 
@@ -56,16 +63,19 @@ const HINT =
  * modules, and a spread of a shared object pins it the same way; measured
  * 2026-10-18. `tests/unit/runner-bundle.test.ts` fails a piece that forgets.
  */
-export function timescaleControl<G extends string>(options: {
-  group?: G
-  min?: number
-  max?: number
-}): SliderControl<typeof TIMESCALE_KEY> & { group: G } {
+export function timescaleControl<G extends string>(
+  options: {
+    min?: number
+    max?: number
+  } = {},
+): SliderControl<typeof TIMESCALE_KEY> & { group: G } {
   return {
     kind: "slider",
     key: TIMESCALE_KEY,
     label: "speed",
-    ...(options.group === undefined ? {} : { group: options.group }),
+    // Typed as the piece's own group union so it fits the piece's `Control`;
+    // the kit files it under its own heading regardless — `controls.ts`.
+    group: PLAYBACK_GROUP,
     min: options.min ?? TIMESCALE_TRACK.min,
     max: options.max ?? TIMESCALE_TRACK.max,
     step: TIMESCALE_TRACK.step,

@@ -276,7 +276,7 @@ export const CONTROLS: Control[] = [
     hint: "How far each line's colour may stray from the hue, line by line. Needs some tint to show.",
     inert: (settings: Settings) => settings.tint === 0,
   },
-  /* @__PURE__ */ timescaleControl({ group: "lines" }),
+  /* @__PURE__ */ timescaleControl(),
 ]
 
 export const DEFAULT_SETTINGS: Settings = {

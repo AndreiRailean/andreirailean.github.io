@@ -598,7 +598,7 @@ export const CONTROLS: Control[] = [
     format: percent,
     hint: "How strong those opinions are. Wildness decides how much of a psyx's colour is its own; this decides whether its own colour is a tint or a shout. At zero the field is greyscale however wild it is.",
   },
-  /* @__PURE__ */ timescaleControl({ group: "life" }),
+  /* @__PURE__ */ timescaleControl(),
 ]
 
 /**

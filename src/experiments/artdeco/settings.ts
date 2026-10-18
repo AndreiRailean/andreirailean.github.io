@@ -1039,7 +1039,7 @@ export const CONTROLS: Control[] = [
     ],
     hint: "New: each drawing after the first makes different decisions, though every one follows from the seed, so the same address plays the same sequence. Same again: every drawing is the first one.",
   },
-  /* @__PURE__ */ timescaleControl({ group: "growth" }),
+  /* @__PURE__ */ timescaleControl(),
 ]
 
 export const DEFAULT_SETTINGS: Settings = {

@@ -673,7 +673,7 @@ export const CONTROLS: Control[] = [
     format: (v) => (v <= 0 ? "unseen" : `${Math.round(v * 100)}%`),
     hint: "Paint the boulders grey instead of black, to see them as the shapes they are. At 0 they are the ground's colour and exist only as the crowd missing from behind them, which is the piece; turned up it is a way of finding out what is doing the hiding.",
   },
-  /* @__PURE__ */ timescaleControl({ group: "paint", min: 0.5, max: 2 }),
+  /* @__PURE__ */ timescaleControl({ min: 0.5, max: 2 }),
 ]
 
 /** Bounds for the seed, so `reroll` and the panel cannot disagree about them. */

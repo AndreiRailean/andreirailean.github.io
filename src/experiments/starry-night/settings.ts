@@ -220,7 +220,7 @@ export const CONTROLS: Control[] = [
     format: (from, to) => `${(from / 1000).toFixed(1)}–${(to / 1000).toFixed(1)}s`,
     hint: "How long a layer takes to fade in and back out. Every layer draws its own lifespan from between these two, which is what keeps them out of step — a wider gap makes them scatter faster. Dragging one handle past the other carries it along.",
   },
-  /* @__PURE__ */ timescaleControl({}),
+  /* @__PURE__ */ timescaleControl(),
 ]
 
 /** Button text for the depth policies. The URL keeps the underlying names. */
