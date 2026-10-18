@@ -7,7 +7,7 @@
  * hex's intensity is read off that clock and its distance. Patterns overlap,
  * so more than one may be live at once.
  */
-import { hashSeed, makeRng, type Rng } from "@/experiments/random"
+import { hashSeed, makeRng, shuffle, signed, type Rng } from "@/experiments/random"
 import { needsRebuild, type Gamut, type Settings } from "@/experiments/hexgrid/settings"
 
 const SQRT3 = Math.sqrt(3)
@@ -290,20 +290,14 @@ function tiledCentres(hexes: Hex[], cycle: number): number[] {
 function randomCentres(hexes: Hex[], density: number, rng: Rng): number[] {
   const count = Math.max(1, Math.round((hexes.length * density) / 100))
   const order = hexes.map((_, i) => i)
-  for (let i = order.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1))
-    ;[order[i], order[j]] = [order[j]!, order[i]!]
-  }
+  shuffle(rng, order)
   return order.slice(0, count)
 }
 
 /** Hexes in random order, each kept if it is at least `spacing` from every one kept so far. */
 function scatteredCentres(hexes: Hex[], index: Map<string, number>, spacing: number, rng: Rng): number[] {
   const order = hexes.map((_, i) => i)
-  for (let i = order.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1))
-    ;[order[i], order[j]] = [order[j]!, order[i]!]
-  }
+  shuffle(rng, order)
   const kept: number[] = []
   const blocked = new Set<number>()
   for (const i of order) {
@@ -323,13 +317,13 @@ function scatteredCentres(hexes: Hex[], index: Map<string, number>, spacing: num
 
 function colour(hexes: Hex[], flowers: number, settings: Settings, rng: Rng, cycle: number) {
   // Each cycle after the first moves the whole pattern's hue by up to `wander`.
-  const hue = cycle === 0 ? settings.hue : wrap(settings.hue + settings.wander * (rng() * 2 - 1))
-  const base = Array.from({ length: flowers }, () => wrap(hue + settings.drift * (rng() * 2 - 1)))
+  const hue = cycle === 0 ? settings.hue : wrap(settings.hue + settings.wander * signed(rng))
+  const base = Array.from({ length: flowers }, () => wrap(hue + settings.drift * signed(rng)))
   const late = Array.from({ length: flowers }, () => rng())
   const triad = [-1, 0, 1]
   for (const hex of hexes) {
     const flower = base[hex.owner] ?? hue
-    const own = rng() * 2 - 1
+    const own = signed(rng)
     hex.late = late[hex.owner] ?? 0
     hex.phase = rng() * Math.PI * 2
     hex.rate = 0.08 + rng() * 0.17

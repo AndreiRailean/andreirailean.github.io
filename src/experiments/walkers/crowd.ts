@@ -46,7 +46,7 @@ import {
   type Force,
 } from "@/experiments/walkers/steering"
 import type { View } from "@/experiments/walkers/view"
-import { makeRng, type Rng } from "@/experiments/random"
+import { makeRng, signed, type Rng } from "@/experiments/random"
 
 const TAU = Math.PI * 2
 
@@ -463,13 +463,13 @@ export function createCrowd({ view: initialView, settings: initialSettings }: Op
     const y = outerY() + beyond
     switch (edge) {
       case 0:
-        return { x: -x, y: (stream() * 2 - 1) * view.halfHeight }
+        return { x: -x, y: signed(stream) * view.halfHeight }
       case 1:
-        return { x, y: (stream() * 2 - 1) * view.halfHeight }
+        return { x, y: signed(stream) * view.halfHeight }
       case 2:
-        return { x: (stream() * 2 - 1) * view.halfWidth, y: y }
+        return { x: signed(stream) * view.halfWidth, y: y }
       default:
-        return { x: (stream() * 2 - 1) * view.halfWidth, y: -y }
+        return { x: signed(stream) * view.halfWidth, y: -y }
     }
   }
 
@@ -520,8 +520,8 @@ export function createCrowd({ view: initialView, settings: initialSettings }: Op
   /** A spot inside the frame worth going to, kept off the very edge. */
   function spotInside(): { x: number; y: number } {
     return {
-      x: (stream() * 2 - 1) * view.halfWidth * 0.72,
-      y: (stream() * 2 - 1) * view.halfHeight * 0.72,
+      x: signed(stream) * view.halfWidth * 0.72,
+      y: signed(stream) * view.halfHeight * 0.72,
     }
   }
 
@@ -543,8 +543,8 @@ export function createCrowd({ view: initialView, settings: initialSettings }: Op
    */
   function spotAnywhere(): { x: number; y: number } {
     return {
-      x: (stream() * 2 - 1) * (view.halfWidth + view.margin * 0.9),
-      y: (stream() * 2 - 1) * (view.halfHeight + view.margin * 0.9),
+      x: signed(stream) * (view.halfWidth + view.margin * 0.9),
+      y: signed(stream) * (view.halfHeight + view.margin * 0.9),
     }
   }
 

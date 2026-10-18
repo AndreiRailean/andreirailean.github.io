@@ -14,7 +14,7 @@
  * uniform". That has an exact answer and it is `entryAngle` below.
  */
 
-import type { Rng } from "@/experiments/random"
+import { signed, type Rng } from "@/experiments/random"
 import type { GraphPath } from "@/experiments/crowd/path"
 
 /** A point drawn uniformly over a disc. `sqrt` because area grows with r². */
@@ -66,7 +66,7 @@ export function corridorPoint(rng: Rng, radius: number, observerY: number, half:
     const y = low + rng() * (high - low)
     const chord = Math.sqrt(Math.max(0, radius * radius - y * y))
     if (rng() * radius > chord) continue
-    return { x: (rng() * 2 - 1) * chord, y }
+    return { x: signed(rng) * chord, y }
   }
   return { x: 0, y: low + rng() * (high - low) }
 }
@@ -163,10 +163,10 @@ export function bandPoint(
   const secMax = Math.sqrt(1 + path.steepest * path.steepest)
   const across = () => {
     const side = inner > 0 ? (rng() < 0.5 ? -1 : 1) : 1
-    return inner > 0 ? side * (inner + rng() * (outer - inner)) : (rng() * 2 - 1) * outer
+    return inner > 0 ? side * (inner + rng() * (outer - inner)) : signed(rng) * outer
   }
   for (let attempt = 0; attempt < 40; attempt++) {
-    const x = ox + (rng() * 2 - 1) * radius
+    const x = ox + signed(rng) * radius
     const s = path.slope(x)
     const sec = Math.sqrt(1 + s * s)
     if (!path.straight && rng() * secMax > sec) continue
@@ -200,7 +200,7 @@ export function bandEntry(
 ): { x: number; y: number } {
   const along = Math.atan(path.slope(ox))
   const side = Math.cos(angle - along) >= 0 ? 1 : -1
-  const lateral = inner > 0 ? (rng() < 0.5 ? -1 : 1) * (inner + rng() * (outer - inner)) : (rng() * 2 - 1) * outer
+  const lateral = inner > 0 ? (rng() < 0.5 ? -1 : 1) * (inner + rng() * (outer - inner)) : signed(rng) * outer
   const at = (t: number) => {
     const x = ox + side * t
     const s = path.slope(x)

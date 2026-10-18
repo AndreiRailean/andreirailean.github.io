@@ -28,6 +28,7 @@
  */
 
 import { gaussian, type Rng } from "@/experiments/random"
+import { clamp } from "@/experiments/settings-plumbing"
 import type { PaletteName, Settings } from "@/experiments/walkers/settings"
 
 /** The hue the crowd's own colours scatter around. */
@@ -226,8 +227,6 @@ export function groundOf(settings: Settings): Ground {
     mottleOut: hsla(settings.hue + 12, saturation * 1.2, lightness + (settings.dusk ? 5 : -6), 0),
   }
 }
-
-const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
 const wrapHue = (hue: number) => ((hue % 360) + 360) % 360
 

@@ -1,12 +1,6 @@
-import { decodeScene, encodeScene, type Slot } from "@/experiments/address"
-import {
-  gridAt,
-  snapToGrid,
-  type Control as KitControl,
-  type RangeControl,
-  type SliderControl,
-  type Track,
-} from "@/experiments/kit/controls"
+import { clamp, namesANumber, onTracks, packedAddress } from "@/experiments/settings-plumbing"
+import type { Slot } from "@/experiments/address"
+import type { Control as KitControl, RangeControl, SliderControl, Track } from "@/experiments/kit/controls"
 import type { Chrome } from "@/experiments/piece"
 import { groundColour } from "@/experiments/embers/draw"
 
@@ -503,17 +497,10 @@ export const BOUNDS: Record<NumericKey, { min: number; max: number }> = Object.f
  * slider offers: every scene below was recorded against the controls as they
  * stand, which is the one advantage of being the newest piece in the section.
  */
-export function gridFor(key: NumericKey, value: number): number {
-  const track = TRACKS[key]
-  return track ? gridAt(track, value) : 0
-}
+const tracks = onTracks(TRACKS, { untracked: "keep" })
+export const gridFor = tracks.gridFor
 
-function snap(key: NumericKey, value: number): number {
-  const track = TRACKS[key]
-  return track ? snapToGrid(track, value) : value
-}
-
-const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
+const snap = tracks.snap
 
 /**
  * Fills gaps from `base` and forces every value into legal bounds.
@@ -615,28 +602,14 @@ export const REGISTRY: readonly Slot[] = [
  * is a link whose scene changes the day that default does, in a bookmark
  * belonging to somebody who is not watching.
  */
-export function settingsToQuery(settings: Settings): URLSearchParams {
-  const params = new URLSearchParams()
-  params.set("s", encodeScene(REGISTRY, settings))
-  return params
-}
-
-/**
- * Reads settings from a query string.
- *
- * The packed parameter wins when it is there and readable; a corrupt one
- * degrades to the defaults rather than throwing in a page's first statement.
- * The named-parameter form is read too, so a link written by hand or by an
- * older piece still restores its scene.
- */
-export function settingsFromQuery(params: URLSearchParams): Settings {
-  const packed = params.get("s")
-  if (packed !== null && packed !== "") {
-    const scene = decodeScene(REGISTRY, packed)
-    if (scene) return normalizeSettings(scene as Partial<Settings>)
-  }
-  return settingsFromNamedQuery(params)
-}
+export const { settingsToQuery, urlForSettings, settingsFromQuery, namesASetting } = packedAddress<Settings>({
+  registry: REGISTRY,
+  normalize: normalizeSettings,
+  legacy: {
+    read: settingsFromNamedQuery,
+    names: namesALegacySetting,
+  },
+})
 
 /**
  * An absent param is `null` and `Number(null)` is 0, which is a legal value for
@@ -659,21 +632,10 @@ function settingsFromNamedQuery(params: URLSearchParams): Settings {
   return normalizeSettings(patch)
 }
 
-/** The address that restores exactly these settings. */
-export function urlForSettings(settings: Settings, pathname: string): string {
-  const query = settingsToQuery(settings).toString()
-  return `${pathname}${query ? `?${query}` : ""}`
-}
-
 /** Whether a query string names any setting at all. */
-export function namesASetting(params: URLSearchParams): boolean {
-  const packed = params.get("s")
-  if (packed !== null && packed !== "" && decodeScene(REGISTRY, packed)) return true
+function namesALegacySetting(params: URLSearchParams): boolean {
   if (isMark(params.get("mark"))) return true
-  return (Object.keys(BOUNDS) as NumericKey[]).some((key) => {
-    const raw = params.get(key)
-    return raw !== null && raw.trim() !== "" && Number.isFinite(Number(raw))
-  })
+  return namesANumber(params, BOUNDS)
 }
 
 /**

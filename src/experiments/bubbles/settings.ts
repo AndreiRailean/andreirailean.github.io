@@ -1,12 +1,6 @@
-import { decodeScene, encodeScene, type Slot } from "@/experiments/address"
-import {
-  gridAt,
-  snapToGrid,
-  type Control as KitControl,
-  type RangeControl,
-  type SliderControl,
-  type Track,
-} from "@/experiments/kit/controls"
+import { clamp, namesANumber, onTracks, packedAddress } from "@/experiments/settings-plumbing"
+import type { Slot } from "@/experiments/address"
+import type { Control as KitControl, RangeControl, SliderControl, Track } from "@/experiments/kit/controls"
 import type { Chrome } from "@/experiments/piece"
 
 /** Re-exported so a consumer needs one import for a control and its keys. */
@@ -677,18 +671,11 @@ export const BOUNDS: Record<NumericKey, { min: number; max: number }> = {
 const FINER_GRID: Partial<Record<NumericKey, number>> = {}
 
 /** The spacing one setting is stored on, or 0 for a key with no track. */
-export function gridFor(key: NumericKey, value: number): number {
-  const track = TRACKS[key]
-  return track ? gridAt(track, value, FINER_GRID[key]) : 0
-}
+const tracks = onTracks(TRACKS, { finer: FINER_GRID, untracked: "keep" })
+export const gridFor = tracks.gridFor
 
 /** Snaps one setting, leaving alone any key with no track. */
-function snap(key: NumericKey, value: number): number {
-  const track = TRACKS[key]
-  return track ? snapToGrid(track, value, FINER_GRID[key]) : value
-}
-
-const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
+const snap = tracks.snap
 
 /**
  * Fills gaps from `base` and forces every value into legal bounds.
@@ -862,28 +849,14 @@ export const REGISTRY: readonly Slot[] = [
  * link resting on a default is a link whose scene changes the day the default
  * does.
  */
-export function settingsToQuery(settings: Settings): URLSearchParams {
-  const params = new URLSearchParams()
-  params.set("s", encodeScene(REGISTRY, settings))
-  return params
-}
-
-/**
- * Reads settings from a query string, in either form.
- *
- * The packed parameter wins when it is there and readable; a corrupt one
- * degrades to the named-parameter reader and then to the defaults rather than
- * throwing in a page's first statement. The named form is read forever and is
- * never written again.
- */
-export function settingsFromQuery(params: URLSearchParams): Settings {
-  const packed = params.get("s")
-  if (packed !== null && packed !== "") {
-    const scene = decodeScene(REGISTRY, packed)
-    if (scene) return normalizeSettings(scene as Partial<Settings>)
-  }
-  return settingsFromNamedQuery(params)
-}
+export const { settingsToQuery, urlForSettings, settingsFromQuery, namesASetting } = packedAddress<Settings>({
+  registry: REGISTRY,
+  normalize: normalizeSettings,
+  legacy: {
+    read: settingsFromNamedQuery,
+    names: namesALegacySetting,
+  },
+})
 
 /**
  * Reads settings from named parameters.
@@ -915,22 +888,11 @@ function settingsFromNamedQuery(params: URLSearchParams): Settings {
 }
 
 /** Whether a query string names any setting at all. */
-export function namesASetting(params: URLSearchParams): boolean {
-  const packed = params.get("s")
-  if (packed !== null && packed !== "" && decodeScene(REGISTRY, packed)) return true
+function namesALegacySetting(params: URLSearchParams): boolean {
   if (isLayout(params.get("layout"))) return true
   if (isSpin(params.get("spin"))) return true
   if (isLook(params.get("look"))) return true
-  return (Object.keys(BOUNDS) as NumericKey[]).some((key) => {
-    const raw = params.get(key)
-    return raw !== null && raw.trim() !== "" && Number.isFinite(Number(raw))
-  })
-}
-
-/** The address that restores exactly these settings. */
-export function urlForSettings(settings: Settings, pathname: string): string {
-  const query = settingsToQuery(settings).toString()
-  return `${pathname}${query ? `?${query}` : ""}`
+  return namesANumber(params, BOUNDS)
 }
 
 /** Settings that change how many bubbles the pool must hold. */

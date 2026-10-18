@@ -1,11 +1,6 @@
-import { decodeScene, encodeScene, type Slot } from "@/experiments/address"
-import {
-  gridAt,
-  snapToGrid,
-  type Control as KitControl,
-  type SliderControl,
-  type Track,
-} from "@/experiments/kit/controls"
+import { clamp, onTracks, oneOf, packedAddress, reroller } from "@/experiments/settings-plumbing"
+import type { Slot } from "@/experiments/address"
+import type { Control as KitControl, SliderControl, Track } from "@/experiments/kit/controls"
 import type { Chrome } from "@/experiments/piece"
 
 /** Re-exported so a consumer needs one import for a control and its keys. */
@@ -1058,20 +1053,10 @@ export const BOUNDS: Record<NumericKey, { min: number; max: number }> = {
 }
 
 /** The spacing one setting is stored on, or 0 for a key with no track. */
-export function gridFor(key: NumericKey, value: number): number {
-  const track = TRACKS[key]
-  return track ? gridAt(track, value) : 0
-}
+const tracks = onTracks(TRACKS, { untracked: "round" })
+export const gridFor = tracks.gridFor
 
-function snap(key: NumericKey, value: number): number {
-  const track = TRACKS[key]
-  return track ? snapToGrid(track, value) : Math.round(value)
-}
-
-const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
-
-const oneOf = <T extends string>(options: readonly T[], value: unknown, fallback: T): T =>
-  options.includes(value as T) ? (value as T) : fallback
+const snap = tracks.snap
 
 /**
  * An address from before the line chose at each meeting carries one `meet`;
@@ -1255,34 +1240,12 @@ export const REGISTRY: readonly Slot[] = [
   { key: "backdrop", kind: "enum", options: ["dark", "clear"] },
 ]
 
-export function settingsToQuery(settings: Settings): URLSearchParams {
-  const params = new URLSearchParams()
-  params.set("s", encodeScene(REGISTRY, settings))
-  return params
-}
+export const { settingsToQuery, urlForSettings, settingsFromQuery, namesASetting } = packedAddress<Settings>({
+  registry: REGISTRY,
+  normalize: normalizeSettings,
+})
 
-export function urlForSettings(settings: Settings, pathname: string): string {
-  return `${pathname}?${settingsToQuery(settings).toString()}`
-}
-
-/** The packed form only: this piece was born after the named form stopped being written. */
-export function settingsFromQuery(params: URLSearchParams): Settings {
-  const packed = params.get("s")
-  if (packed) {
-    const scene = decodeScene(REGISTRY, packed)
-    if (scene) return normalizeSettings(scene as Partial<Settings>)
-  }
-  return normalizeSettings({})
-}
-
-export function namesASetting(params: URLSearchParams): boolean {
-  const packed = params.get("s")
-  return Boolean(packed && decodeScene(REGISTRY, packed))
-}
-
-export function reroll(settings: Settings, seed?: number): Settings {
-  return normalizeSettings({ ...settings, seed: seed ?? Math.floor(Math.random() * (SEED_BOUNDS.max + 1)) })
-}
+export const reroll = reroller(normalizeSettings, SEED_BOUNDS)
 
 export const CHROME: Chrome<Settings> = {
   slug: "artdeco",

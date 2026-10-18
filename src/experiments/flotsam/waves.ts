@@ -45,7 +45,7 @@
  * the span slider and glacial at the other, without a tempo control anywhere.
  */
 
-import { hashSeed, makeRng } from "@/experiments/random"
+import { hashSeed, makeRng, signed } from "@/experiments/random"
 
 /** Standard gravity, in m/s². Taken literally, like every other unit here. */
 export const G = 9.80665
@@ -232,7 +232,7 @@ export function createSea(spec: SeaSpec): Sea {
     const wavelength = shortest * (longest / shortest) ** t
 
     const stratum = count === 1 ? 0 : (2 * (j + 0.5)) / count - 1
-    const jitter = (rng() * 2 - 1) / count
+    const jitter = signed(rng) / count
     const baseAngle = spec.heading + spec.spread * Math.max(-1, Math.min(1, stratum + jitter))
     const [dx, dy] = heading(baseAngle)
 
