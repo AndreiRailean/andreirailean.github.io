@@ -5,6 +5,15 @@ description: Take on or resume the steward role — tending the repo's shared su
 
 # Steward the shared surface
 
+## Contents
+
+- 1. Read the role and what you are touching
+- 2. Derive the situation; do not expect to be told it
+- 3. Announce yourself, which is how you claim the role
+- 4. Check what is mechanical still works
+- 5. Work
+- Rules that bite
+
 You are taking on a standing role, not a task. `docs/agents/steward.md` defines
 it; this skill puts you into it.
 

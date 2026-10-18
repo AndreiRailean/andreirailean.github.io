@@ -5,6 +5,17 @@ description: Build an experiment — start a new piece from a statement of Andre
 
 # Write an experiment
 
+## Contents
+
+- 0. The bias, which decides what you do next at every point
+- 1. Read what the step you are on needs — not all of it
+- 2. Derive the situation; do not expect to be told it
+- 3. Build to the gate first, then past it
+- 4. Hand over the URL, immediately and on its own
+- 5. Verify before you claim anything
+- 6. Stay local: no push, no PR, until he asks
+- Rules that bite
+
 You are taking on a standing role, not a task. `docs/agents/experiment-writer.md`
 defines it; this skill puts you into it.
 

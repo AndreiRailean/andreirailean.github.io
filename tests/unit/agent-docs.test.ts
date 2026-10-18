@@ -202,5 +202,43 @@ describe("every skill is well formed enough to be surfaced", () => {
         `${path}: description is missing or too short to say when the skill applies`,
       ).toBeGreaterThan(40)
     })
+
+    // A skill read in part is followed in part. Past about a hundred lines a
+    // reader can preview the top and act on it, so the top has to name every
+    // section the skill holds — wrap-up's report checks steps a reader who
+    // stopped at step 2 never saw. Required of every skill rather than only
+    // the long ones, because a skill crosses the line one edit at a time and
+    // nobody adds the list on the edit that crosses it. Compared against the
+    // headings, so a renamed or added section that the list misses fails here.
+    it("opens with a Contents list naming every section, in order", () => {
+      const { contents, headings } = sections(readFileSync(path, "utf8"))
+
+      expect(contents, `${path}: no "## Contents" list before its first section`).not.toBeNull()
+      expect(contents, `${path}: "## Contents" is out of step with the ## headings`).toEqual(headings)
+    })
   })
 })
+
+/**
+ * A skill's `## Contents` bullets and its other `##` headings, in order.
+ * `contents` is null when the list is missing or is not the first section.
+ * Fenced blocks are skipped, since a `##` inside one is not a heading.
+ */
+function sections(source: string): { contents: string[] | null; headings: string[] } {
+  const headings: string[] = []
+  let contents: string[] | null = null
+  let current = ""
+  let fenced = false
+  for (const line of source.split("\n")) {
+    if (line.startsWith("```")) fenced = !fenced
+    if (fenced) continue
+    if (line.startsWith("## ")) {
+      current = line.slice(3).trim()
+      if (current === "Contents") contents = headings.length === 0 ? [] : null
+      else headings.push(current)
+    } else if (current === "Contents" && contents && line.startsWith("- ")) {
+      contents.push(line.slice(2).trim())
+    }
+  }
+  return { contents, headings }
+}

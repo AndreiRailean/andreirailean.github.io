@@ -5,6 +5,16 @@ description: Put the site in front of Andrei in a browser and manage the preview
 
 # Show Andrei the work
 
+## Contents
+
+- The one command
+- The loop
+- The port is his bookmark
+- Do not build while he is looking
+- What is on his screen: the bridge
+- Stopping it
+- Never `astro dev` for this
+
 **He approves what he sees in a browser, not what you describe.** Nearly
 everything in this repo ends at a visual judgement he makes, so putting the work
 on screen is part of finishing it — not a favour to ask for.
