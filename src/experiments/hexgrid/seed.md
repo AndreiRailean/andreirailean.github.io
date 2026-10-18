@@ -58,7 +58,7 @@ describes the work.
 
 > i'm looking at this. can you give me a preset where fading in takes the same
 > amount of time as fading out.
-> http://100.117.55.104:4574/experiments/hexgrid/?s=v____H8Z5d1SwjuQHohBYQMCAQAAHgMEJPCWAym0I
+> /experiments/hexgrid/?s=v____H8Z5d1SwjuQHohBYQMCAQAAHgMEJPCWAym0I
 >
 > and another where fading in and out feels like a breath with fading in being
 > the inhale and fading out being the exhale
@@ -76,7 +76,7 @@ describes the work.
 > have colour appearing in the middle and then it grows and forms a hole in
 > the middle. so the hex is cycling through the gradient from colour to
 > darkness. i'm looking at this:
-> http://100.117.55.104:4574/experiments/hexgrid/?s=v____P9gGeXGUsI7kB6IQUTMgEpAAB4DBCTwlhABtCM
+> /experiments/hexgrid/?s=v____P9gGeXGUsI7kB6IQUTMgEpAAB4DBCTwlhABtCM
 
 ## 2026-10-11 — seventh round
 
@@ -87,7 +87,7 @@ describes the work.
 > allow selection from descriptive options
 >
 > change embers to this and move it to first place/primary
-> http://100.117.55.104:4574/experiments/hexgrid/?s=v____P8YSMFHCg8MlCiAweHFh4nAABR5SCTwVgZFqVd
+> /experiments/hexgrid/?s=v____P8YSMFHCg8MlCiAweHFh4nAABR5SCTwVgZFqVd
 >
 > explain the difference between eased and s-curve. both appear to be doing the
 > same just with a slight growth parameter difference
@@ -181,7 +181,7 @@ answered by dragging._
 > it doesn't loop and colours are not the same.
 >
 > i'm playing with this.
-> http://100.117.55.104:4574/experiments/hexgrid/?s=____QMD0dilhHcgPRECxAYEAgAAPAYA
+> /experiments/hexgrid/?s=____QMD0dilhHcgPRECxAYEAgAAPAYA
 >
 > i'm playing with spacing, but i don't think i want to have a grid. black
 > centers can be placed randomly

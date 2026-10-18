@@ -76,8 +76,12 @@ own failure. The judgement is "is this still useful", not "am I allowed to
 continue".
 
 **Write `src/experiments/<slug>/seed.md` before any code**, with his instruction
-verbatim, and append each round of his feedback as it arrives. His transcript
-dies with the session and the prose exists nowhere else. Verbatim, not
+verbatim, and append each later piece of artistic direction as it arrives —
+what the piece should look like, feel like or become. Not bug reports, not his
+questions, not requests to save a preset or move a control: the work answers
+those. The test per sentence is whether it would still matter if the piece were
+rebuilt from nothing. His transcript dies with the session and the prose exists
+nowhere else. Verbatim, not
 summarised: `CONTEXT.md` records that the section's aim, _organic change_, was
 "named by the pieces' author across four of them", so his words are the primary
 source rather than raw material for a tidier sentence. Questions you could not
