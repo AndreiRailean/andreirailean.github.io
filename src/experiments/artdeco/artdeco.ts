@@ -48,6 +48,7 @@
  */
 
 import { hashSeed, makeRng, type Rng } from "@/experiments/random"
+import { distance, enter, inside, outline, type Point, type Shape } from "@/experiments/artdeco/frame"
 import { needsRebuild, type Mark, type Settings } from "@/experiments/artdeco/settings"
 
 type Kind = "straight" | "branch" | "fork" | "turn" | "echo" | "stop"
@@ -368,28 +369,61 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
   }
   const inset = () => px(settings.margin)
 
-  /** The empty middle a frame leaves, as half its width and height about the centre, or null with no frame. */
-  function hole(): { hx: number; hy: number } | null {
-    if (settings.frame <= 0) return null
+  let holeKey = ""
+  let holePoly: Point[] | null = null
+  /** The empty middle a frame leaves, as an outline about the centre, or null with no frame. See `frame.ts`. */
+  function hole(): Point[] | null {
+    const key = [
+      settings.frame,
+      settings.frameShape,
+      settings.frameCorner,
+      settings.frameCornerSize,
+      settings.frameSteps,
+      settings.insets,
+      settings.insetDepth,
+      settings.insetShape,
+      width,
+      height,
+    ].join(" ")
+    if (key === holeKey) return holePoly
+    holeKey = key
     const band = px(settings.frame)
-    const hx = width / 2 - band
-    const hy = height / 2 - band
-    return hx > 1 && hy > 1 ? { hx, hy } : null
+    holePoly =
+      settings.frame > 0 && width / 2 - band > 1 && height / 2 - band > 1
+        ? outline(shapeAt(band), centre(), middle())
+        : null
+    return holePoly
+  }
+
+  /** The middle's shape, as the settings describe it, for a band `band` px wide. */
+  function shapeAt(band: number): Shape {
+    return {
+      hx: width / 2 - band,
+      hy: height / 2 - band,
+      oval: settings.frameShape === "oval",
+      corner: settings.frameCorner,
+      cornerSize: px(settings.frameCornerSize),
+      steps: settings.frameSteps,
+      insets: settings.insets,
+      insetDepth: px(settings.insetDepth),
+      insetShape: settings.insetShape,
+    }
   }
 
   /**
    * How far a tip at (ax, ay) heading along (tx, ty) goes before any image of
    * it enters the empty middle, and the direction of the edge it meets there,
-   * turned back into the grown copy; null if none does. The middle is a box or
-   * an oval about the centre, which a turned copy does not map onto itself, so
-   * each image is tested rather than the grown copy alone.
+   * turned back into the grown copy; null if none does. The middle is mirrored
+   * both ways but a turned copy does not map it onto itself, so each image is
+   * tested rather than the grown copy alone.
    */
   function toHole(ax: number, ay: number, tx: number, ty: number): { t: number; ux: number; uy: number } | null {
-    if (!hole()) return null
+    const poly = hole()
+    if (!poly) return null
     let best: { t: number; ux: number; uy: number } | null = null
     for (const f of group()) {
       const [ix, iy] = image(f, ax, ay)
-      const hit = toHoleOnce(ix, iy, f.xx * tx + f.xy * ty, f.yx * tx + f.yy * ty)
+      const hit = enter(poly, ix, iy, f.xx * tx + f.xy * ty, f.yx * tx + f.yy * ty)
       if (hit && (!best || hit.t < best.t))
         best = { t: hit.t, ux: f.xx * hit.ux + f.yx * hit.uy, uy: f.xy * hit.ux + f.yy * hit.uy }
     }
@@ -398,75 +432,16 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
 
   /** Whether a circle, or any image of it, reaches into the empty middle. */
   function inHole(x: number, y: number, r: number, axis: boolean, slide = true): boolean {
-    const h = hole()
-    if (!h) return false
+    const poly = hole()
+    if (!poly) return false
     // As drawn: the outermost strand, and the stroke's width.
     r += ((Math.round(settings.strands) - 1) / 2) * settings.spacing + settings.width
     for (const f of group()) {
       if (axis && f.flip) continue
       const [ix, iy] = image(f, x, y, slide)
-      const ox = Math.abs(ix - centre())
-      const oy = Math.abs(iy - middle())
-      if (settings.frameShape === "oval") {
-        // The oval grown by the radius all round: near enough for a circle against a gentle curve.
-        if ((ox / (h.hx + r)) ** 2 + (oy / (h.hy + r)) ** 2 < 1) return true
-      } else if (Math.hypot(Math.max(0, ox - h.hx), Math.max(0, oy - h.hy)) < r) return true
+      if (inside(poly, ix, iy) || distance(poly, ix, iy) < r) return true
     }
     return false
-  }
-
-  /**
-   * How far along (tx, ty) from (ax, ay) a tip enters the empty middle, and
-   * the direction of the edge it enters by; null if it does not. 0 if it is
-   * already inside.
-   */
-  function toHoleOnce(ax: number, ay: number, tx: number, ty: number): { t: number; ux: number; uy: number } | null {
-    const h = hole()
-    if (!h) return null
-    const ox = ax - centre()
-    const oy = ay - middle()
-    if (settings.frameShape === "oval") {
-      const u = ox / h.hx
-      const v = oy / h.hy
-      const du = tx / h.hx
-      const dv = ty / h.hy
-      const a = du * du + dv * dv
-      const b = 2 * (u * du + v * dv)
-      const c = u * u + v * v - 1
-      if (c < 0) return { t: 0, ux: 1, uy: 0 }
-      const disc = b * b - 4 * a * c
-      if (disc < 0 || a < EPS) return null
-      const t = (-b - Math.sqrt(disc)) / (2 * a)
-      if (t <= 1e-6) return null
-      // The tangent there: square to the normal, which is (x / hx², y / hy²).
-      const nx = (ox + tx * t) / (h.hx * h.hx)
-      const ny = (oy + ty * t) / (h.hy * h.hy)
-      return { t, ux: -ny, uy: nx }
-    }
-    // A box: where the ray is inside both slabs at once.
-    let enter = -Infinity
-    let exit = Infinity
-    let vertical = true
-    for (const [o, d, half, side] of [
-      [ox, tx, h.hx, true],
-      [oy, ty, h.hy, false],
-    ] as [number, number, number, boolean][]) {
-      if (Math.abs(d) < EPS) {
-        if (Math.abs(o) >= half) return null
-        continue
-      }
-      const t1 = (-half - o) / d
-      const t2 = (half - o) / d
-      const near = Math.min(t1, t2)
-      if (near > enter) {
-        enter = near
-        vertical = side
-      }
-      exit = Math.min(exit, Math.max(t1, t2))
-    }
-    if (enter > exit || exit <= 1e-6) return null
-    if (enter <= 0) return { t: 0, ux: 1, uy: 0 }
-    return vertical ? { t: enter, ux: 0, uy: 1 } : { t: enter, ux: 1, uy: 0 }
   }
 
   /** A tip at the empty middle's edge: it stops, or rebounds off it. Returns false when the tip stops. */
@@ -1585,17 +1560,14 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     }
     // Nothing is drawn in the empty middle: a turned copy or a circle can carry
     // a line into it that the grown copy stopped short of.
-    const h = hole()
+    const poly = hole()
     ctx.save()
     // A safety net only: no line or circle should reach the middle, and with
     // debug on it is left off so one that does shows.
-    if (h && !debug) {
+    if (poly && !debug) {
       ctx.beginPath()
       ctx.rect(0, 0, width, height)
-      if (settings.frameShape === "oval") {
-        ctx.moveTo(centre() + h.hx, middle())
-        ctx.ellipse(centre(), middle(), h.hx, h.hy, 0, 0, 2 * Math.PI)
-      } else ctx.rect(centre() - h.hx, middle() - h.hy, 2 * h.hx, 2 * h.hy)
+      trace(poly)
       ctx.clip("evenodd")
     }
     const cx = centre()
@@ -1687,6 +1659,22 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
       ctx.fill()
     }
     ctx.restore()
+    if (poly && settings.outline !== "none") {
+      // The middle's edge as a rule, and a second inside it for a double one;
+      // lines that rebound off it then read as meeting it.
+      ctx.lineWidth = settings.width
+      ctx.lineJoin = "miter"
+      ctx.strokeStyle = `hsl(${hue} 62% 64%)`
+      ctx.beginPath()
+      trace(poly)
+      ctx.stroke()
+      if (settings.outline === "double") {
+        const inner = outline(shapeAt(px(settings.frame) + settings.spacing * 2), centre(), middle())
+        ctx.beginPath()
+        trace(inner)
+        ctx.stroke()
+      }
+    }
     if (debug) {
       ctx.setLineDash([4, 6])
       ctx.lineWidth = 1
@@ -1703,6 +1691,12 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
           ctx.fillRect(x - 2, y - 2, 4, 4)
         }
     }
+  }
+
+  /** Adds a closed polygon to the current path. */
+  function trace(poly: Point[]) {
+    poly.forEach(([x, y], k) => (k === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)))
+    ctx.closePath()
   }
 
   /** Strands drawn for a line of generation `gen`: bands on the stems only, if so set. */

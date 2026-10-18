@@ -356,3 +356,25 @@ _Mine, not his — what I assumed and what would settle it._
   a page that serves the clear frame alone for embedding, with no chrome.
   Tips that are flying ignore the middle, so a tips-pen drawing can land in it
   and draw lines nobody sees.
+- **Frames, first look** (2026-10-18). The frame group is last in the panel.
+  The cut-off circles and the hidden lines were one fault: the middle was
+  clipped, and turned copies grew into it. Now every image of a tip is tested
+  against the middle and rebounds off it (a flying tip too), a circle that
+  would reach into it is left out (`circles.framed`), and the clip is only a
+  safety net, off under debug so an intrusion shows. Measured with the clip
+  off: no lit pixel in the middle at folds 2, 3, 4 and 6, box and oval. At 3,
+  and 4 with turned copies, a copy round the centre starts inside the middle
+  and ends at once; copies to the edges fixes it (hyper cube: 12 segments
+  round the centre, 143 to the edges).
+- **Ornament** (2026-10-18). The middle is now a shape, built in `frame.ts`
+  one side at a time so it is mirrored both ways by construction: _corners_
+  square, cut, stepped (with _steps_), rounded or notched, at _corner size_;
+  _insets_ per side, at _inset depth_, as a box, a ziggurat or a chevron;
+  and _outline_, the middle's edge drawn as a rule or a double rule so lines
+  that end or rebound there meet a line. Lines rebound off every facet, so
+  they grow into the insets and round the corners. Presets 24, frame, stepped
+  and 25, frame, notched. Not built: ornament on the oval; insets with
+  different spacing, or alternating shapes; ornament at the screen's outer
+  edge rather than the middle's; the outline growing in rather than standing
+  from the start; insets reaching out of the middle into the band (the
+  middle growing into the band) as well as in.

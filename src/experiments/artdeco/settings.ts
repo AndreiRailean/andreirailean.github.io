@@ -1,3 +1,4 @@
+import type { Corner, InsetShape } from "@/experiments/artdeco/frame"
 import { clamp, onTracks, oneOf, packedAddress, reroller } from "@/experiments/settings-plumbing"
 import type { Slot } from "@/experiments/address"
 import type { Control as KitControl, SliderControl, Track } from "@/experiments/kit/controls"
@@ -32,6 +33,8 @@ export type Vary = "new" | "same"
 export type FrameShape = "box" | "oval"
 export type AtFrame = "stop" | "rebound" | "both"
 export type Backdrop = "dark" | "clear"
+export type Outline = "none" | "line" | "double"
+export type { Corner, InsetShape } from "@/experiments/artdeco/frame"
 
 export type Settings = {
   /** Order of the symmetry: 1 mirrors left and right, 2 top and bottom too, 3 and up turn it round the centre. */
@@ -149,6 +152,20 @@ export type Settings = {
   frame: number
   /** The empty middle's shape: a box, or the oval inside it. */
   frameShape: FrameShape
+  /** The middle's corners: square, cut, stepped, rounded, or the band's corner reaching in as a quarter disc. */
+  frameCorner: Corner
+  /** How far the corner ornament reaches along each side, in per cent of the height. */
+  frameCornerSize: number
+  /** Steps in a stepped corner. */
+  frameSteps: number
+  /** Insets on each side of the middle, where the band reaches in. */
+  insets: number
+  /** How far an inset reaches into the middle, in per cent of the height. */
+  insetDepth: number
+  /** An inset's profile. */
+  insetShape: InsetShape
+  /** Whether the middle's edge is drawn: not at all, as a rule, or as a double rule. */
+  outline: Outline
   /** What a line does on reaching the empty middle. */
   atFrame: AtFrame
   /** Dark: the piece's own ground. Clear: nothing behind the lines, for an overlay. */
@@ -184,6 +201,9 @@ type EnumKey =
   | "frameShape"
   | "atFrame"
   | "backdrop"
+  | "frameCorner"
+  | "insetShape"
+  | "outline"
 export type NumericKey = Exclude<keyof Settings, EnumKey>
 
 export type Control = KitControl<string & keyof Settings>
@@ -205,6 +225,9 @@ export const VARIES: Vary[] = ["new", "same"]
 export const FRAME_SHAPES: FrameShape[] = ["box", "oval"]
 export const AT_FRAMES: AtFrame[] = ["stop", "rebound", "both"]
 export const BACKDROPS: Backdrop[] = ["dark", "clear"]
+export const CORNERS: Corner[] = ["square", "chamfer", "steps", "round", "notch"]
+export const INSET_SHAPES: InsetShape[] = ["box", "steps", "chevron"]
+export const OUTLINES: Outline[] = ["none", "line", "double"]
 
 const SEED_BOUNDS = { min: 0, max: 999_999 }
 
@@ -255,6 +278,97 @@ export const CONTROLS: Control[] = [
       { value: "oval", label: "oval" },
     ],
     hint: "The empty middle: a box, its corners square, or the oval that fits inside the box. At 3 and 6 an oval suits the turned copies better.",
+    inert: (settings: Settings) => settings.frame <= 0,
+  },
+  {
+    kind: "choice",
+    key: "frameCorner",
+    label: "corners",
+    group: "frame",
+    options: [
+      { value: "square", label: "square" },
+      { value: "chamfer", label: "cut" },
+      { value: "steps", label: "stepped" },
+      { value: "round", label: "rounded" },
+      { value: "notch", label: "notched" },
+    ],
+    hint: "The middle's corners, which the band fills: square; cut across; stepped, a staircase of blocks; rounded; or notched, the band's corner reaching into the middle as a quarter disc. Box only.",
+    inert: (settings: Settings) => settings.frame <= 0 || settings.frameShape === "oval",
+  },
+  {
+    kind: "slider",
+    key: "frameCornerSize",
+    label: "corner size",
+    group: "frame",
+    min: 0,
+    max: 30,
+    step: 0.5,
+    format: share,
+    hint: "How far the corner ornament reaches along each side, as a share of the height.",
+    inert: (settings: Settings) =>
+      settings.frame <= 0 || settings.frameShape === "oval" || settings.frameCorner === "square",
+  },
+  {
+    kind: "slider",
+    key: "frameSteps",
+    label: "steps",
+    group: "frame",
+    min: 1,
+    max: 8,
+    step: 1,
+    format: (v) => String(Math.round(v)),
+    hint: "How many steps a stepped corner takes.",
+    inert: (settings: Settings) =>
+      settings.frame <= 0 || settings.frameShape === "oval" || settings.frameCorner !== "steps",
+  },
+  {
+    kind: "slider",
+    key: "insets",
+    label: "insets",
+    group: "frame",
+    min: 0,
+    max: 6,
+    step: 1,
+    format: (v) => String(Math.round(v)),
+    hint: "Places on each side where the band reaches into the middle, spaced evenly between the corners. Lines rebound off them like any other edge, so they grow round them. Box only.",
+    inert: (settings: Settings) => settings.frame <= 0 || settings.frameShape === "oval",
+  },
+  {
+    kind: "slider",
+    key: "insetDepth",
+    label: "inset depth",
+    group: "frame",
+    min: 0,
+    max: 30,
+    step: 0.5,
+    format: share,
+    hint: "How far each inset reaches into the middle, as a share of the height.",
+    inert: (settings: Settings) => settings.frame <= 0 || settings.frameShape === "oval" || settings.insets < 1,
+  },
+  {
+    kind: "choice",
+    key: "insetShape",
+    label: "inset shape",
+    group: "frame",
+    options: [
+      { value: "box", label: "box" },
+      { value: "steps", label: "stepped" },
+      { value: "chevron", label: "chevron" },
+    ],
+    hint: "An inset's profile: a plain box, a ziggurat of three tiers, or a point.",
+    inert: (settings: Settings) => settings.frame <= 0 || settings.frameShape === "oval" || settings.insets < 1,
+  },
+  {
+    kind: "choice",
+    key: "outline",
+    label: "outline",
+    group: "frame",
+    options: [
+      { value: "none", label: "none" },
+      { value: "line", label: "rule" },
+      { value: "double", label: "double rule" },
+    ],
+    hint: "Whether the middle's edge is drawn, so lines that end or rebound there meet a line rather than nothing. A double rule adds a second inside the first, the strand spacing twice inside it.",
     inert: (settings: Settings) => settings.frame <= 0,
   },
   {
@@ -980,6 +1094,13 @@ export const DEFAULT_SETTINGS: Settings = {
   margin: 0,
   frame: 0,
   frameShape: "box",
+  frameCorner: "square",
+  frameCornerSize: 8,
+  frameSteps: 3,
+  insets: 0,
+  insetDepth: 5,
+  insetShape: "box",
+  outline: "none",
   atFrame: "stop",
   backdrop: "dark",
   cycle: "hold",
@@ -1040,6 +1161,10 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   spread: { min: 1, max: 4, step: 1 },
   margin: { min: 0, max: 25, step: 0.5 },
   frame: { min: 0, max: 45, step: 0.5 },
+  frameCornerSize: { min: 0, max: 30, step: 0.5 },
+  frameSteps: { min: 1, max: 8, step: 1 },
+  insets: { min: 0, max: 6, step: 1 },
+  insetDepth: { min: 0, max: 30, step: 0.5 },
   life: { min: 1, max: 120, step: 0.5 },
   hold: { min: 0, max: 60, step: 0.5 },
   hue: { min: 0, max: 360, step: 1 },
@@ -1094,6 +1219,9 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
     frameShape: oneOf(FRAME_SHAPES, merged.frameShape, base.frameShape),
     atFrame: oneOf(AT_FRAMES, merged.atFrame, base.atFrame),
     backdrop: oneOf(BACKDROPS, merged.backdrop, base.backdrop),
+    frameCorner: oneOf(CORNERS, merged.frameCorner, base.frameCorner),
+    insetShape: oneOf(INSET_SHAPES, merged.insetShape, base.insetShape),
+    outline: oneOf(OUTLINES, merged.outline, base.outline),
   }
 
   for (const [key, bound] of Object.entries(BOUNDS) as [NumericKey, { min: number; max: number }][]) {
@@ -1159,6 +1287,12 @@ const GROWTH_KEYS = [
   "frame",
   "frameShape",
   "atFrame",
+  "frameCorner",
+  "frameCornerSize",
+  "frameSteps",
+  "insets",
+  "insetDepth",
+  "insetShape",
   "seed",
 ] as const satisfies readonly (keyof Settings)[]
 
@@ -1238,6 +1372,13 @@ export const REGISTRY: readonly Slot[] = [
   { key: "frameShape", kind: "enum", options: ["box", "oval"] },
   { key: "atFrame", kind: "enum", options: ["stop", "rebound", "both"] },
   { key: "backdrop", kind: "enum", options: ["dark", "clear"] },
+  { key: "frameCorner", kind: "enum", options: ["square", "chamfer", "steps", "round", "notch"] },
+  { key: "frameCornerSize", kind: "num", grid: 0.5, origin: 0, bits: 6 },
+  { key: "frameSteps", kind: "num", grid: 1, origin: 1, bits: 3 },
+  { key: "insets", kind: "num", grid: 1, origin: 0, bits: 3 },
+  { key: "insetDepth", kind: "num", grid: 0.5, origin: 0, bits: 6 },
+  { key: "insetShape", kind: "enum", options: ["box", "steps", "chevron"] },
+  { key: "outline", kind: "enum", options: ["none", "line", "double"] },
 ]
 
 export const { settingsToQuery, urlForSettings, settingsFromQuery, namesASetting } = packedAddress<Settings>({
