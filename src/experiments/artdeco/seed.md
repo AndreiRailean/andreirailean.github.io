@@ -69,7 +69,7 @@ describes the work.
 ## 2026-10-16 — playing with it, and "the construct"
 
 > I'm playing with this:
-> http://100.117.55.104:4627/experiments/artdeco/?s=___f____QEnZwkSRpSCAowggwwLQAAcdSBQpgABAEjLE
+> /experiments/artdeco/?s=___f____QEnZwkSRpSCAowggwwLQAAcdSBQpgABAEjLE
 >
 > Observations: the stems all come from the same location, which pegs the
 > birth to always be in the same spot. i wonder if allowing variability beyond
@@ -106,7 +106,7 @@ describes the work.
 > undershoot. hard to control and kinda gets boring really quickly.
 >
 > save this one as "the construct"
-> http://100.117.55.104:4627/experiments/artdeco/?s=___f____QEnZwkSRpSCAowggwwLQAAcdSBQpgABAEjLE
+> /experiments/artdeco/?s=___f____QEnZwkSRpSCAowggwwLQAAcdSBQpgABAEjLE
 >
 > - it's the same one as above, only the stems are a little further apart. on
 >   my screen, the pattern it produces is mesmerising. not sure what will happen
@@ -118,12 +118,12 @@ describes the work.
 > circles and strange cut-offs on where the up-down lines would meet. does the
 > left-right symmetry need to mirror the up-down one or can the left-right have
 > a life of its own? i'm looking at this
-> http://100.117.55.104:4627/experiments/artdeco/?s=___f_____2BQGcJEkaUiAKMIIMMC0AAHPUgUKYAAQBIyz0ERIq
+> /experiments/artdeco/?s=___f_____2BQGcJEkaUiAKMIIMMC0AAHPUgUKYAAQBIyz0ERIq
 
 ## 2026-10-16 — clockwork
 
 > save this as clockwork
-> http://100.117.55.104:4627/experiments/artdeco/?s=___f_____3AwGoJEkOUhREMIIMMC0AAHPUgCEIAAQAmyzqCRJT
+> /experiments/artdeco/?s=___f_____3AwGoJEkOUhREMIIMMC0AAHPUgCEIAAQAmyzqCRJT
 
 ## 2026-10-17 — busyness
 
@@ -143,7 +143,7 @@ describes the work.
 > go. there's something to its permanence, but i'd like to know how to control
 > it.
 >
-> http://100.117.55.104:4627/experiments/artdeco/?s=___f_____39J2cJEkaUggKMIJMMC0AAHHUgUKYYAQBIyxAADIAMYRQ
+> /experiments/artdeco/?s=___f_____39J2cJEkaUggKMIJMMC0AAHHUgUKYYAQBIyxAADIAMYRQ
 >
 > I started playing with circles and it appears that busyness controlls allow
 > me to find them manageable again, though i do find places of
@@ -182,12 +182,12 @@ two overlapping in a chain along a line.)_
 >
 > here, i turned off the tips and am quite enjoying the constant
 > re-generation. let's call this a snowflake
-> http://100.117.55.104:4627/experiments/artdeco/?s=___f______9_A5lBiZjDMMwjCCFDAtAAAQlAFAAAAKAAMtAACjARFkVQAKwI
+> /experiments/artdeco/?s=___f______9_A5lBiZjDMMwjCCFDAtAAAQlAFAAAAKAAMtAACjARFkVQAKwI
 
 ## 2026-10-17 — hyper cube
 
 > hyper cube
-> http://100.117.55.104:4627/experiments/artdeco/?s=___f________cAOZQYmYwzDMIwghQwLQAAEJQBQAAACgADLQAAowERZFUACsiG2M
+> /experiments/artdeco/?s=___f________cAOZQYmYwzDMIwghQwLQAAEJQBQAAACgADLQAAowERZFUACsiG2M
 
 ## 2026-10-17 — frames
 
@@ -215,7 +215,7 @@ two overlapping in a chain along a line.)_
 ## 2026-10-18 — frame of progress
 
 > if you see what i have open, save it as "frame of progress"
-> http://100.117.55.104:4627/experiments/artdeco/?s=___f_________3-m2cTTkaUggKMIIoMC0AAHHUgUKYiAAEAyztMPKBKIENAQjFAk8PKkECg
+> /experiments/artdeco/?s=___f_________3-m2cTTkaUggKMIIoMC0AAHHUgUKYiAAEAyztMPKBKIENAQjFAk8PKkECg
 
 ## Open questions
 
