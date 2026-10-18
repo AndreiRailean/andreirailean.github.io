@@ -38,6 +38,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 247,
       minLifetimeMs: 6_000,
       maxLifetimeMs: 26_000,
+      timescale: 1,
     },
   },
   {
@@ -59,6 +60,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 30,
       minLifetimeMs: 2500,
       maxLifetimeMs: 9500,
+      timescale: 1,
     },
   },
   {
@@ -80,6 +82,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 225,
       minLifetimeMs: 3500,
       maxLifetimeMs: 10500,
+      timescale: 1,
     },
   },
 ]

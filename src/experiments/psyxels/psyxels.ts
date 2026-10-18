@@ -99,7 +99,7 @@ export type PsyxelsStats = {
   drawMs: number
   /** Distinct colours the scene has needed. A wide spread on a photograph wants thousands. */
   colours: number
-  /** Seconds on the piece's own clock, which `playback` scales. */
+  /** Seconds on the piece's own clock, which the speed control scales. */
   clock: number
   fps: number
   /**
@@ -645,7 +645,7 @@ export function createPsyxels(canvas: HTMLCanvasElement, initial: Settings): Psy
   }
 
   function step(now: number): void {
-    const advance = frameAdvance(last, now, settings.playback, reduced?.matches ?? false)
+    const advance = frameAdvance(last, now, settings.timescale, reduced?.matches ?? false)
     last = now
     clock += advance
 

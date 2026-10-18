@@ -401,10 +401,12 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
   }
 
   function frame(nowMs: number) {
-    const deltaMs = lastFrameMs === 0 ? 0 : Math.min(nowMs - lastFrameMs, MAX_FRAME_MS)
+    const frameMs = lastFrameMs === 0 ? 0 : Math.min(nowMs - lastFrameMs, MAX_FRAME_MS)
     lastFrameMs = nowMs
     // Exponential average: one slow frame should not read as a slow sky.
-    if (deltaMs > 0) smoothedFrameMs += (deltaMs - smoothedFrameMs) * 0.05
+    if (frameMs > 0) smoothedFrameMs += (frameMs - smoothedFrameMs) * 0.05
+    // The sky's time, which the speed control scales; the frame rate above is the screen's.
+    const deltaMs = frameMs * settings.timescale
     advance(deltaMs)
     advanceClouds(deltaMs)
     advanceGlimmers(deltaMs)

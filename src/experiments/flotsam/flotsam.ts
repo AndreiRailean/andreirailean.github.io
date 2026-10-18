@@ -21,7 +21,7 @@ import { MAX_FRAME, seaStep } from "@/experiments/flotsam/clock"
 import { currentAt } from "@/experiments/flotsam/current"
 import { GROUND, VIGNETTE } from "@/experiments/flotsam/palette"
 import { createSpecks, type Specks } from "@/experiments/flotsam/specks"
-import type { Settings } from "@/experiments/flotsam/settings"
+import { CLOCK_RATE, type Settings } from "@/experiments/flotsam/settings"
 import { screenX, screenY, worldX, worldY } from "@/experiments/flotsam/view"
 import { createWater, type Water } from "@/experiments/flotsam/water"
 
@@ -150,7 +150,6 @@ export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flo
     const settings = water.settings
     return (
       !stillOnly.matches &&
-      settings.playback > 0 &&
       (settings.steepness > 0 ||
         settings.drift > 0 ||
         settings.eddies > 0 ||
@@ -306,7 +305,7 @@ export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flo
     frame(elapsed) {
       if (!isAnimated()) return "idle"
       // `seaStep` is the only place `playback` is applied — see `clock.ts`.
-      water.step(seaStep(elapsed, water.settings.playback))
+      water.step(seaStep(elapsed, water.settings.timescale * CLOCK_RATE))
       return "moved"
     },
     draw,

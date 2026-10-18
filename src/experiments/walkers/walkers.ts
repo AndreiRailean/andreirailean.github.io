@@ -171,7 +171,7 @@ export function createWalkers(canvas: HTMLCanvasElement, initial: Settings): Wal
   let heads = 0
   let debug = false
 
-  const isAnimated = () => !stillOnly.matches && settings.playback > 0
+  const isAnimated = () => !stillOnly.matches
 
   function resize(): void {
     const next = fitCanvas(canvas, { width, height, dpr })
@@ -277,7 +277,7 @@ export function createWalkers(canvas: HTMLCanvasElement, initial: Settings): Wal
     clamp: 0.25,
     frame(elapsed) {
       if (!isAnimated()) return "idle"
-      carry += elapsed * settings.playback
+      carry += elapsed * settings.timescale
       let steps = 0
       while (carry >= STEP && steps < MAX_STEPS) {
         crowd.step(STEP)

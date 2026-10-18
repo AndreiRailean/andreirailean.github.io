@@ -1,7 +1,14 @@
+import { TIMESCALE_SLOT, timescaleControl, timescaleTrack } from "@/experiments/kit/speed"
 import { clamp, onTracks, oneOf, packedAddress, reroller } from "@/experiments/settings-plumbing"
 import type { Slot } from "@/experiments/address"
 import type { Control as KitControl, SliderControl, Track } from "@/experiments/kit/controls"
 import type { Chrome } from "@/experiments/piece"
+
+/**
+ * The clock rate this piece's 1× stands for, as a multiple of real time. The
+ * kit's speed control scales it — `kit/speed.ts`.
+ */
+export const CLOCK_RATE = 1
 
 /** Re-exported so a consumer needs one import for a control and its keys. */
 export { keysOf } from "@/experiments/kit/controls"
@@ -90,6 +97,8 @@ export type Settings = {
   /** How a hex goes: dimming, its hole growing until it swallows the hex, its light sinking back into the hole, or its colour shrinking to the middle. */
   exit: Exit
   seed: number
+  /** The speed control's value: a multiple of `CLOCK_RATE`. The kit's — `kit/speed.ts`. */
+  timescale: number
 }
 
 export type NumericKey = Exclude<keyof Settings, "layout" | "pattern" | "gamut" | "fadeBy" | "curve" | "entry" | "exit">
@@ -490,6 +499,7 @@ export const CONTROLS: Control[] = [
     ],
     hint: "How each hex goes. Dimming lowers its colour to black. Hole growing keeps the colour bright while the dark middle widens until it reaches the edge, and only then fades what is left. Light into the hole draws the colour in from the edges until it is gone into the hole. Hole, then shrink closes the hole and shrinks the colour to a point in the middle: bloom run backwards.",
   },
+  /* @__PURE__ */ timescaleControl({ group: "pulse" }),
 ]
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -527,6 +537,7 @@ export const DEFAULT_SETTINGS: Settings = {
   entry: "dim",
   exit: "dim",
   seed: 1,
+  timescale: 1,
 }
 
 /** Written out rather than derived from `CONTROLS`; see `src/experiments/AGENTS.md` under Presets. */
@@ -557,6 +568,7 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   rise: { min: 0.1, max: 10, step: 0.1 },
   hold: { min: 0, max: 30, step: 0.1 },
   fade: { min: 0.1, max: 20, step: 0.1 },
+  timescale: timescaleTrack(),
 }
 
 export const BOUNDS: Record<NumericKey, { min: number; max: number }> = {
@@ -667,6 +679,8 @@ export const REGISTRY: readonly Slot[] = [
   { key: "exit", kind: "enum", options: ["dim", "hole"], retired: true },
   { key: "entry", kind: "enum", options: ["dim", "hole", "glow", "bloom"] },
   { key: "exit", kind: "enum", options: ["dim", "hole", "sink", "shrink"] },
+  // The kit's speed control, appended — `kit/speed.ts`.
+  TIMESCALE_SLOT,
 ]
 
 export const { settingsToQuery, urlForSettings, settingsFromQuery, namesASetting } = packedAddress<Settings>({

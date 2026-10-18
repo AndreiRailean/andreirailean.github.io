@@ -406,16 +406,16 @@ test("softness takes a piece from an object with an edge to a soft blob", async 
  * wind is untouched.
  */
 /**
- * **Wiring: playback 0 stops the clock and parks the loop**, the path reduced
- * motion takes too. That playback scales the step, and is applied in one place,
- * is `clock.test.ts`; this used to time 600 ms of a live page at two speeds.
- * Seen red 2026-10-16 with `isAnimated` ignoring playback.
+ * **Wiring: pause stops the clock and parks the loop.** Playback 0 did this
+ * until the kit's speed control replaced it (#312) — a speed has no 0 now, and
+ * holding the sea is pause's. That speed scales the step, and is applied in one
+ * place, is `clock.test.ts`.
  */
-test("playback at nothing stops the sea and parks the loop", async ({ page }) => {
-  const experiment = await openFlotsam(page, { settings: { ...MODEST, playback: 1 }, idle: true })
+test("pause stops the sea and parks the loop", async ({ page }) => {
+  const experiment = await openFlotsam(page, { settings: { ...MODEST, timescale: 1 }, idle: true })
   await expect.poll(async () => (await experiment.api(({ api }) => api.stats())).clock).toBeGreaterThan(0)
 
-  await experiment.api(({ api }) => api.set({ playback: 0 }))
+  await experiment.api(({ api }) => api.pause(true))
   await expect.poll(async () => (await experiment.api(({ api }) => api.stats())).running, { timeout: 5000 }).toBe(false)
   const parked = (await experiment.api(({ api }) => api.stats())).clock
   await page.waitForTimeout(200)
@@ -425,8 +425,8 @@ test("playback at nothing stops the sea and parks the loop", async ({ page }) =>
 test("run() is seconds of sea, not seconds of watching", async ({ page }) => {
   // A poster recipe asking for forty seconds wants forty seconds of water
   // whatever rate someone happens to be viewing at. Five rather than thirty: at
-  // playback 0.1 a run that obeyed playback would come out at 0.5.
-  const experiment = await openFlotsam(page, { settings: { ...MODEST, playback: 0.1 }, idle: true })
+  // half speed, a tenth of real time, a run that obeyed the speed would come out at 0.5.
+  const experiment = await openFlotsam(page, { settings: { ...MODEST, timescale: 0.5 }, idle: true })
 
   const before = await experiment.api(({ api }) => api.stats())
   await experiment.api(({ api }) => api.run(5))

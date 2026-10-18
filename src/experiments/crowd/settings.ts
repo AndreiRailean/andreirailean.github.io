@@ -1,7 +1,14 @@
+import { fromPlayback, TIMESCALE_SLOT, timescaleControl, timescaleTrack } from "@/experiments/kit/speed"
 import { clamp, namesANumber, onTracks, packedAddress, reroller } from "@/experiments/settings-plumbing"
 import type { Slot } from "@/experiments/address"
 import type { Control as KitControl, RangeControl, SliderControl, Track } from "@/experiments/kit/controls"
 import type { Chrome } from "@/experiments/piece"
+
+/**
+ * The clock rate this piece's 1× stands for, as a multiple of real time. The
+ * kit's speed control scales it — `kit/speed.ts`.
+ */
+export const CLOCK_RATE = 1
 
 /** Re-exported so a consumer needs one import for a control and its keys. */
 export { keysOf } from "@/experiments/kit/controls"
@@ -133,7 +140,8 @@ export type Settings = {
   /** How much of that hue the heads actually carry. 0 is white. */
   tint: number
   /** Clock rate. Every time-dependent thing in the piece goes through it. */
-  playback: number
+  /** The speed control's value: a multiple of `CLOCK_RATE`. The kit's — `kit/speed.ts`. */
+  timescale: number
   /** Decides who is out there, how tall they are and where they are going. */
   seed: number
 }
@@ -665,17 +673,7 @@ export const CONTROLS: Control[] = [
     format: (v) => (v <= 0 ? "unseen" : `${Math.round(v * 100)}%`),
     hint: "Paint the boulders grey instead of black, to see them as the shapes they are. At 0 they are the ground's colour and exist only as the crowd missing from behind them, which is the piece; turned up it is a way of finding out what is doing the hiding.",
   },
-  {
-    kind: "slider",
-    key: "playback",
-    label: "playback",
-    group: "paint",
-    min: 0,
-    max: 2,
-    step: 0.05,
-    format: (v) => `${v.toFixed(2)}x`,
-    hint: "Clock rate. Everything time-dependent goes through it — my stride, the crowd's, the looking, the stopping — so half speed is the same walk taken slowly rather than a slower walk. 0 holds the frame.",
-  },
+  /* @__PURE__ */ timescaleControl({ group: "paint", min: 0.5, max: 2 }),
 ]
 
 /** Bounds for the seed, so `reroll` and the panel cannot disagree about them. */
@@ -734,7 +732,7 @@ export const DEFAULT_SETTINGS: Settings = {
   shade: 0,
   hue: 210,
   tint: 0,
-  playback: 1,
+  timescale: 1,
   seed: 7351,
 }
 
@@ -793,7 +791,7 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   shade: { min: 0, max: 1, step: 0.05 },
   hue: { min: 0, max: 359, step: 1 },
   tint: { min: 0, max: 1, step: 0.02 },
-  playback: { min: 0, max: 2, step: 0.05 },
+  timescale: timescaleTrack({ min: 0.5, max: 2 }),
 }
 
 /**
@@ -1018,7 +1016,7 @@ export const REGISTRY: readonly Slot[] = [
   { key: "fade", kind: "num", grid: 0.1, origin: 2, bits: 10 },
   { key: "hue", kind: "num", grid: 1, origin: 0, bits: 9 },
   { key: "tint", kind: "num", grid: 0.02, origin: 0, bits: 6 },
-  { key: "playback", kind: "num", grid: 0.05, origin: 0, bits: 6 },
+  { key: "playback", kind: "num", grid: 0.05, origin: 0, bits: 6, retired: true },
   { key: "seed", kind: "num", grid: 1, origin: 0, bits: 17 },
   // Appended, which is the only edit this list takes. `reach` splits the world's
   // size away from `fade`, which used to derive it — see `throng.ts`.
@@ -1063,6 +1061,8 @@ export const REGISTRY: readonly Slot[] = [
   { key: "way", kind: "num", grid: 1, origin: 0, bits: 1, retired: true },
   // `way` again, as the boolean it always was: a toggle, not a two-stop slider.
   { key: "way", kind: "bool" },
+  // The kit's speed control, appended — `kit/speed.ts`.
+  TIMESCALE_SLOT,
 ]
 
 /**
@@ -1075,7 +1075,7 @@ export const REGISTRY: readonly Slot[] = [
 export const { settingsToQuery, urlForSettings, settingsFromQuery, namesASetting } = packedAddress<Settings>({
   registry: REGISTRY,
   normalize: normalizeSettings,
-  upgrade: fromOlder,
+  upgrade: (scene) => fromPlayback(fromOlder(scene), CLOCK_RATE),
   legacy: {
     read: settingsFromNamedQuery,
     names: (params) => namesANumber(params, BOUNDS),

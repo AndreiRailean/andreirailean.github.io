@@ -323,6 +323,22 @@ collection resolves it through `image()` and a missing file 500s the index.
 of this file, and a `Piece.astro` that hands them to the gallery's boot. Copy an
 existing piece's `CHROME` and `start` rather than working them out.
 
+**Speed and pause are the kit's, and every piece takes both** — #312, #313.
+Pause is free: implement `setPaused` and the corner button, Space and
+`experiment.pause()` reach it. Speed takes four lines in `settings.ts`:
+`timescale` in `Settings`, `/* @__PURE__ */ timescaleControl({ group })` in
+`CONTROLS` (the annotation keeps the panel out of the runner, #243),
+`timescaleTrack()` in `TRACKS` and `TIMESCALE_SLOT` appended to `REGISTRY`; then
+`export const CLOCK_RATE`, the clock rate 1× stands for, and multiply the
+piece's own clock by `settings.timescale * CLOCK_RATE` in one place. **1× is the
+piece at its natural speed, not the wall clock**: Andrei, 2026-10-18, "for
+flotsam, the 0.2 is probably the 100% speed that we're interested". Narrow the
+track only where the stepping cannot use it. No speed reaches 0 — holding the
+scene is pause's, and pausing moves no setting.
+`tests/unit/experiments-speed.test.ts` holds every piece to this. See
+`src/experiments/kit/speed.ts` and
+`docs/adr/20261018-speed-is-the-kits-and-1x-is-the-pieces.md`.
+
 Two more files a builder working from the list above will not otherwise reach.
 Both were shipped only by inference by the sessions that hit this (#201).
 

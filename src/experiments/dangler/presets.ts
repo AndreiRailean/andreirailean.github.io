@@ -56,6 +56,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       gustRate: 17,
       tremble: 0,
       sway: 0.5,
+      timescale: 1,
     },
   },
   {
@@ -97,6 +98,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       gustRate: 6,
       tremble: 0,
       sway: 0.7,
+      timescale: 1,
     },
   },
   {
@@ -131,6 +133,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       gustRate: 9,
       tremble: 0,
       sway: 0,
+      timescale: 1,
     },
   },
 ]

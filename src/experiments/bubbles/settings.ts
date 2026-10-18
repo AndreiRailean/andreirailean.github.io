@@ -1,7 +1,14 @@
+import { fromPlayback, TIMESCALE_SLOT, timescaleControl, timescaleTrack } from "@/experiments/kit/speed"
 import { clamp, namesANumber, onTracks, packedAddress } from "@/experiments/settings-plumbing"
 import type { Slot } from "@/experiments/address"
 import type { Control as KitControl, RangeControl, SliderControl, Track } from "@/experiments/kit/controls"
 import type { Chrome } from "@/experiments/piece"
+
+/**
+ * The clock rate this piece's 1× stands for, as a multiple of real time. The
+ * kit's speed control scales it — `kit/speed.ts`.
+ */
+export const CLOCK_RATE = 1
 
 /** Re-exported so a consumer needs one import for a control and its keys. */
 export { keysOf } from "@/experiments/kit/controls"
@@ -100,7 +107,8 @@ export type Settings = {
   /** How much of the last frame is left behind, as a wake. */
   trail: number
   /** How fast the water runs, against real time. */
-  playback: number
+  /** The speed control's value: a multiple of `CLOCK_RATE`. The kit's — `kit/speed.ts`. */
+  timescale: number
   /** Metres of water across the shorter side of the window. */
   span: number
   /** Hue of the controls and of the written note. The water has no colour. */
@@ -516,18 +524,7 @@ export const CONTROLS: Control[] = [
     format: (v) => v.toFixed(2),
     hint: "How much of the last frame survives into this one. At 0 you see where the bubbles are; turn it up and you see where they have been, which is the flow drawn out as streaks.",
   },
-  {
-    kind: "slider",
-    key: "playback",
-    label: "speed",
-    group: "picture",
-    min: 0.05,
-    max: 2,
-    step: 0.01,
-    scale: "log",
-    format: (v) => `${v.toFixed(2)}x`,
-    hint: "How fast the water runs against real time. Depth is the honest way to calm the surface, because it changes what the jets actually do; this changes nothing about the water and only watches it more slowly. Both are worth having — one is the tub, the other is the camera.",
-  },
+  /* @__PURE__ */ timescaleControl({ group: "picture", max: 4 }),
   {
     kind: "slider",
     key: "span",
@@ -594,7 +591,7 @@ export const DEFAULT_SETTINGS: Settings = {
   spray: 1,
   count: 12000,
   rim: 1.2,
-  playback: 1,
+  timescale: 1,
   trail: 0,
   span: 0.85,
   hue: 190,
@@ -644,7 +641,7 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   spray: { min: 0, max: 8, step: 1 },
   count: { min: 200, max: 20000, step: 100, scale: "log" },
   rim: { min: 0.5, max: 6, step: 0.1 },
-  playback: { min: 0.05, max: 2, step: 0.01, scale: "log" },
+  timescale: timescaleTrack({ max: 4 }),
   trail: { min: 0, max: 0.95, step: 0.05 },
   span: { min: 0.3, max: 4, step: 0.05 },
   hue: { min: 0, max: 360, step: 1 },
@@ -792,7 +789,7 @@ export const REGISTRY: readonly Slot[] = [
   { key: "plume", kind: "num", grid: 0.01, origin: 0.02, bits: 7 },
   { key: "gas", kind: "num", grid: 1, origin: 2, bits: 12 },
   { key: "fragile", kind: "num", grid: 0.02, origin: 0, bits: 6, retired: true },
-  { key: "playback", kind: "num", grid: 0.01, origin: 0.05, bits: 8 },
+  { key: "playback", kind: "num", grid: 0.01, origin: 0.05, bits: 8, retired: true },
   { key: "rim", kind: "num", grid: 0.01, origin: 0.02, bits: 6, retired: true },
   // Appended after the second round. The birth band's floor came down from 2mm
   // to half a millimetre and its ceiling from 40mm to 14mm, which the old slots
@@ -839,6 +836,8 @@ export const REGISTRY: readonly Slot[] = [
   { key: "rupture", kind: "num", grid: 0.02, origin: 0, bits: 6 },
   { key: "rim", kind: "num", grid: 0.1, origin: 0.5, bits: 6 },
   { key: "fragile", kind: "num", grid: 0.02, origin: 0, bits: 6 },
+  // The kit's speed control, appended — `kit/speed.ts`.
+  TIMESCALE_SLOT,
 ]
 
 /**
@@ -852,6 +851,7 @@ export const REGISTRY: readonly Slot[] = [
 export const { settingsToQuery, urlForSettings, settingsFromQuery, namesASetting } = packedAddress<Settings>({
   registry: REGISTRY,
   normalize: normalizeSettings,
+  upgrade: (scene) => fromPlayback(scene, CLOCK_RATE),
   legacy: {
     read: settingsFromNamedQuery,
     names: namesALegacySetting,

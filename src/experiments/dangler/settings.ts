@@ -1,7 +1,14 @@
+import { TIMESCALE_SLOT, timescaleControl, timescaleTrack } from "@/experiments/kit/speed"
 import { clamp, namesANumber, onTracks, packedAddress, reroller } from "@/experiments/settings-plumbing"
 import type { SliderControl, Track } from "@/experiments/kit/controls"
 import type { Slot } from "@/experiments/address"
 import type { Chrome } from "@/experiments/piece"
+
+/**
+ * The clock rate this piece's 1× stands for, as a multiple of real time. The
+ * kit's speed control scales it — `kit/speed.ts`.
+ */
+export const CLOCK_RATE = 1
 /**
  * Everything about the scene that is tunable at runtime.
  *
@@ -44,6 +51,8 @@ export type Settings = {
   gustRate: number
   tremble: number
   sway: number
+  /** The speed control's value: a multiple of `CLOCK_RATE`. The kit's — `kit/speed.ts`. */
+  timescale: number
 }
 
 export type NumericKey = keyof Settings
@@ -371,6 +380,7 @@ export const CONTROLS: Control[] = [
     format: (v) => v.toFixed(2),
     hint: "Strength of the wind pushing on the strands. The gust is sampled per strand and applied hardest at the free end, so a strand swings from its anchor with its tip lagging behind — the sway travels rather than the whole string moving at once.",
   },
+  /* @__PURE__ */ timescaleControl({ group: "motion", max: 1.5 }),
 ]
 
 /**
@@ -431,6 +441,7 @@ export const DEFAULT_SETTINGS: Settings = {
   gustRate: 6,
   tremble: 0,
   sway: 0.7,
+  timescale: 1,
 }
 
 /**
@@ -477,6 +488,7 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   sway: { min: 0, max: 1, step: 0.01 },
   tremble: { min: 0, max: 1, step: 0.01 },
   breeze: { min: 0, max: 1, step: 0.01 },
+  timescale: timescaleTrack({ max: 1.5 }),
 }
 
 /**
@@ -602,6 +614,8 @@ export const REGISTRY: readonly Slot[] = [
   { key: "gustRate", kind: "num", grid: 0.5, origin: 0.5, bits: 6 },
   { key: "tremble", kind: "num", grid: 0.01, origin: 0, bits: 7 },
   { key: "sway", kind: "num", grid: 0.01, origin: 0, bits: 7 },
+  // The kit's speed control, appended — `kit/speed.ts`.
+  TIMESCALE_SLOT,
 ]
 
 /**

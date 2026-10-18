@@ -79,6 +79,7 @@ exports[`artdeco > has not edited a slot in place 1`] = `
   "insetDepth num grid=0.5 origin=0 bits=6",
   "insetShape enum box|steps|chevron",
   "outline enum none|line|double",
+  "timescale num grid=0.001 origin=0.1 bits=14",
 ]
 `;
 
@@ -140,6 +141,7 @@ exports[`bubbles > has not edited a slot in place 1`] = `
   "rupture num grid=0.02 origin=0 bits=6",
   "rim num grid=0.1 origin=0.5 bits=6",
   "fragile num grid=0.02 origin=0 bits=6",
+  "timescale num grid=0.001 origin=0.1 bits=14",
 ]
 `;
 
@@ -154,6 +156,7 @@ exports[`bubbles > retires a slot by appending to the retired list, never by edi
   "28 rate",
   "32 rim",
   "36 fragile",
+  "37 playback",
   "38 rim",
 ]
 `;
@@ -212,12 +215,14 @@ exports[`crowd > has not edited a slot in place 1`] = `
   "passage num grid=0.1 origin=1.6 bits=7",
   "way num grid=1 origin=0 bits=1",
   "way bool",
+  "timescale num grid=0.001 origin=0.1 bits=14",
 ]
 `;
 
 exports[`crowd > retires a slot by appending to the retired list, never by editing one 1`] = `
 [
   "9 walk",
+  "19 playback",
   "23 companions",
   "48 ground",
   "50 way",
@@ -254,6 +259,7 @@ exports[`dangler > has not edited a slot in place 1`] = `
   "gustRate num grid=0.5 origin=0.5 bits=6",
   "tremble num grid=0.01 origin=0 bits=7",
   "sway num grid=0.01 origin=0 bits=7",
+  "timescale num grid=0.001 origin=0.1 bits=14",
 ]
 `;
 
@@ -299,6 +305,7 @@ exports[`dotfield > has not edited a slot in place 1`] = `
   "heightSway num grid=0.05 origin=0 bits=6",
   "hinge num grid=0.01 origin=0 bits=7",
   "segments num grid=1 origin=1 bits=4",
+  "timescale num grid=0.001 origin=0.1 bits=14",
 ]
 `;
 
@@ -344,12 +351,14 @@ exports[`embers > has not edited a slot in place 1`] = `
   "mark enum ember|spark|mote|flake",
   "shutter num grid=0.005 origin=0 bits=7",
   "playback num grid=0.01 origin=0.05 bits=8",
+  "timescale num grid=0.001 origin=0.1 bits=14",
 ]
 `;
 
 exports[`embers > retires a slot by appending to the retired list, never by editing one 1`] = `
 [
   "25 trail",
+  "28 playback",
 ]
 `;
 
@@ -385,10 +394,15 @@ exports[`flotsam > has not edited a slot in place 1`] = `
   "softness num grid=0.01 origin=0 bits=7",
   "span num grid=0.01 origin=1.5 bits=15",
   "playback num grid=0.01 origin=0 bits=8",
+  "timescale num grid=0.001 origin=0.1 bits=14",
 ]
 `;
 
-exports[`flotsam > retires a slot by appending to the retired list, never by editing one 1`] = `[]`;
+exports[`flotsam > retires a slot by appending to the retired list, never by editing one 1`] = `
+[
+  "29 playback",
+]
+`;
 
 exports[`hexgrid > has not edited a slot in place 1`] = `
 [
@@ -431,6 +445,7 @@ exports[`hexgrid > has not edited a slot in place 1`] = `
   "exit enum dim|hole",
   "entry enum dim|hole|glow|bloom",
   "exit enum dim|hole|sink|shrink",
+  "timescale num grid=0.001 origin=0.1 bits=14",
 ]
 `;
 
@@ -489,6 +504,7 @@ exports[`psyxels > has not edited a slot in place 1`] = `
   "glyphs set minus|plus|circled-minus|circled-plus|ring|dot|cross|circled-cross|bar|moon|star|diamond|eye|heart|leaf|sprout|spiral",
   "finest num grid=0.00001 origin=0 bits=17",
   "coarse num grid=0.00001 origin=0 bits=17",
+  "timescale num grid=0.001 origin=0.1 bits=14",
 ]
 `;
 
@@ -498,6 +514,7 @@ exports[`psyxels > retires a slot by appending to the retired list, never by edi
   "5 coarse",
   "6 levels",
   "21 glyphs",
+  "35 playback",
   "39 dither",
 ]
 `;
@@ -519,6 +536,7 @@ exports[`starry-night > has not edited a slot in place 1`] = `
   "hue num grid=1 origin=0 bits=9",
   "minLifetimeMs num grid=500 origin=1000 bits=7",
   "maxLifetimeMs num grid=500 origin=1000 bits=7",
+  "timescale num grid=0.001 origin=0.1 bits=14",
 ]
 `;
 
@@ -548,6 +566,7 @@ exports[`streakers > has not edited a slot in place 1`] = `
   "dotSizes num grid=0.05 origin=0 bits=5",
   "tint num grid=0.05 origin=0 bits=5",
   "hues num grid=1 origin=0 bits=8",
+  "timescale num grid=0.001 origin=0.1 bits=14",
 ]
 `;
 
@@ -585,11 +604,13 @@ exports[`walkers > has not edited a slot in place 1`] = `
   "playback num grid=0.05 origin=0 bits=6",
   "seed num grid=1 origin=0 bits=17",
   "palette enum crowd|quiet",
+  "timescale num grid=0.001 origin=0.1 bits=14",
 ]
 `;
 
 exports[`walkers > retires a slot by appending to the retired list, never by editing one 1`] = `
 [
   "1 palette",
+  "21 playback",
 ]
 `;

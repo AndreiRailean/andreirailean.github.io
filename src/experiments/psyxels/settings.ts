@@ -1,3 +1,4 @@
+import { fromPlayback, TIMESCALE_SLOT, timescaleControl, timescaleTrack } from "@/experiments/kit/speed"
 import { clamp, namesANumber, onTracks, packedAddress, reroller } from "@/experiments/settings-plumbing"
 import { withinBytes, type Slot } from "@/experiments/address"
 import type {
@@ -36,6 +37,12 @@ import {
 } from "@/experiments/psyxels/glyphs"
 import type { Chrome } from "@/experiments/piece"
 import { levelsBetween, levelsOf, MAX_LEVELS, MIN_PX } from "@/experiments/psyxels/stack"
+
+/**
+ * The clock rate this piece's 1× stands for, as a multiple of real time. The
+ * kit's speed control scales it — `kit/speed.ts`.
+ */
+export const CLOCK_RATE = 1
 
 export { levelsOf }
 
@@ -96,7 +103,8 @@ export type Settings = {
   edgeHue: number
   wildness: number
   saturation: number
-  playback: number
+  /** The speed control's value: a multiple of `CLOCK_RATE`. The kit's — `kit/speed.ts`. */
+  timescale: number
 }
 
 export type NumericKey = Exclude<keyof Settings, "subject" | "text" | "picture" | "face" | "polarity" | "glyphs">
@@ -590,17 +598,7 @@ export const CONTROLS: Control[] = [
     format: percent,
     hint: "How strong those opinions are. Wildness decides how much of a psyx's colour is its own; this decides whether its own colour is a tint or a shout. At zero the field is greyscale however wild it is.",
   },
-  {
-    kind: "slider",
-    group: "life",
-    key: "playback",
-    label: "playback",
-    min: 0,
-    max: 2,
-    step: 0.01,
-    format: (value) => (value === 0 ? "paused" : `${value.toFixed(2)}x`),
-    hint: "How fast you are watching, the way a video player means it. It scales the clock in one place, so the breathing, the frame changes and the repacking all slow by the same factor and every relationship between them survives. At 0 it holds still, which is the only way to look properly at how one psyx was actually packed.",
-  },
+  /* @__PURE__ */ timescaleControl({ group: "life" }),
 ]
 
 /**
@@ -660,7 +658,7 @@ export const DEFAULT_SETTINGS: Settings = {
   edgeHue: 96,
   wildness: 0.62,
   saturation: 0.8,
-  playback: 1,
+  timescale: 1,
 }
 
 /**
@@ -704,7 +702,7 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   edgeHue: { min: -180, max: 180, step: 1 },
   wildness: { min: 0, max: 1, step: 0.01 },
   saturation: { min: 0, max: 1, step: 0.01 },
-  playback: { min: 0, max: 2, step: 0.01 },
+  timescale: timescaleTrack(),
 }
 
 export const BOUNDS: Record<NumericKey, { min: number; max: number }> = {
@@ -969,7 +967,7 @@ export const REGISTRY: readonly Slot[] = [
   { key: "edgeHue", kind: "num", grid: 1, origin: -180, bits: 9 },
   { key: "wildness", kind: "num", grid: 0.01, origin: 0, bits: 7 },
   { key: "saturation", kind: "num", grid: 0.01, origin: 0, bits: 7 },
-  { key: "playback", kind: "num", grid: 0.01, origin: 0, bits: 8 },
+  { key: "playback", kind: "num", grid: 0.01, origin: 0, bits: 8, retired: true },
   // #263: the subject became a mode, and what it shows became two settings.
   // The retired slot above is still read, and `fromLegacy` turns what it says
   // into these.
@@ -1009,6 +1007,8 @@ export const REGISTRY: readonly Slot[] = [
   { key: "finest", kind: "num", grid: 0.00001, origin: 0, bits: 17 },
   // On the sizes range's finer grid; the first `coarse` slot is retired and still read.
   { key: "coarse", kind: "num", grid: 0.00001, origin: 0, bits: 17 },
+  // The kit's speed control, appended — `kit/speed.ts`.
+  TIMESCALE_SLOT,
 ]
 
 /**
@@ -1022,6 +1022,7 @@ export const REGISTRY: readonly Slot[] = [
 export const { settingsToQuery, urlForSettings, settingsFromQuery, namesASetting } = packedAddress<Settings>({
   registry: REGISTRY,
   normalize: normalizeSettings,
+  upgrade: (scene) => fromPlayback(scene, CLOCK_RATE),
   legacy: {
     read: settingsFromNamedQuery,
     names: namesALegacySetting,

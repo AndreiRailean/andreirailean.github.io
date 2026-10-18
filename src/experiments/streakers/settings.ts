@@ -1,7 +1,14 @@
+import { TIMESCALE_SLOT, timescaleControl, timescaleTrack } from "@/experiments/kit/speed"
 import { clamp, onTracks, oneOf, packedAddress, reroller } from "@/experiments/settings-plumbing"
 import type { Slot } from "@/experiments/address"
 import type { Control as KitControl, RangeControl, SliderControl, Track } from "@/experiments/kit/controls"
 import type { Chrome } from "@/experiments/piece"
+
+/**
+ * The clock rate this piece's 1× stands for, as a multiple of real time. The
+ * kit's speed control scales it — `kit/speed.ts`.
+ */
+export const CLOCK_RATE = 1
 
 /** Re-exported so a consumer needs one import for a control and its keys. */
 export { keysOf } from "@/experiments/kit/controls"
@@ -54,6 +61,8 @@ export type Settings = {
   /** Degrees each line's hue may stray from `hue`, at random, line by line. */
   hues: number
   seed: number
+  /** The speed control's value: a multiple of `CLOCK_RATE`. The kit's — `kit/speed.ts`. */
+  timescale: number
 }
 
 export type NumericKey = Exclude<keyof Settings, "layout" | "placement" | "gapBy">
@@ -156,7 +165,7 @@ export const CONTROLS: Control[] = [
   {
     kind: "range",
     keys: ["slowest", "fastest"],
-    label: "speed",
+    label: "line speeds",
     group: "lines",
     min: 0.5,
     max: 100,
@@ -267,6 +276,7 @@ export const CONTROLS: Control[] = [
     hint: "How far each line's colour may stray from the hue, line by line. Needs some tint to show.",
     inert: (settings: Settings) => settings.tint === 0,
   },
+  /* @__PURE__ */ timescaleControl({ group: "lines" }),
 ]
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -289,6 +299,7 @@ export const DEFAULT_SETTINGS: Settings = {
   tint: 0,
   hues: 0,
   seed: 1,
+  timescale: 1,
 }
 
 /** Written out rather than derived from `CONTROLS`; see `src/experiments/AGENTS.md` under Presets. */
@@ -308,6 +319,7 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   hue: { min: 0, max: 360, step: 1 },
   tint: { min: 0, max: 1, step: 0.05 },
   hues: { min: 0, max: 180, step: 1 },
+  timescale: timescaleTrack(),
 }
 
 export const BOUNDS: Record<NumericKey, { min: number; max: number }> = {
@@ -404,6 +416,8 @@ export const REGISTRY: readonly Slot[] = [
   { key: "dotSizes", kind: "num", grid: 0.05, origin: 0, bits: 5 },
   { key: "tint", kind: "num", grid: 0.05, origin: 0, bits: 5 },
   { key: "hues", kind: "num", grid: 1, origin: 0, bits: 8 },
+  // The kit's speed control, appended — `kit/speed.ts`.
+  TIMESCALE_SLOT,
 ]
 
 export const { settingsToQuery, urlForSettings, settingsFromQuery, namesASetting } = packedAddress<Settings>({

@@ -272,7 +272,7 @@ describe("the seed", () => {
   })
 })
 
-describe("playback and the defaults", () => {
+describe("the defaults", () => {
   it("starts from a legal set of settings", () => {
     expect(normalizeSettings(DEFAULT_SETTINGS)).toEqual(DEFAULT_SETTINGS)
   })

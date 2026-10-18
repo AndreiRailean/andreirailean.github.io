@@ -46,6 +46,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       entry: "bloom",
       exit: "hole",
       seed: 5,
+      timescale: 1,
     },
   },
   {
@@ -86,6 +87,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       entry: "dim",
       exit: "dim",
       seed: 7,
+      timescale: 1,
     },
   },
   {
@@ -126,6 +128,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       exit: "dim",
       overlap: 0.25,
       seed: 7,
+      timescale: 1,
     },
   },
   {
@@ -166,6 +169,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       exit: "dim",
       overlap: 0,
       seed: 7,
+      timescale: 1,
     },
   },
   {
@@ -206,6 +210,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       exit: "hole",
       overlap: 0.25,
       seed: 7,
+      timescale: 1,
     },
   },
   {
@@ -246,6 +251,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       exit: "hole",
       overlap: 0,
       seed: 7,
+      timescale: 1,
     },
   },
   {
@@ -286,6 +292,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       entry: "glow",
       exit: "hole",
       seed: 7,
+      timescale: 1,
     },
   },
   {
@@ -326,6 +333,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       entry: "bloom",
       exit: "hole",
       seed: 7,
+      timescale: 1,
     },
   },
   {
@@ -366,6 +374,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       entry: "glow",
       exit: "sink",
       seed: 7,
+      timescale: 1,
     },
   },
   {
@@ -406,6 +415,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       entry: "dim",
       exit: "dim",
       seed: 1,
+      timescale: 1,
     },
   },
   {
@@ -446,6 +456,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       entry: "dim",
       exit: "dim",
       seed: 3,
+      timescale: 1,
     },
   },
   {
@@ -486,6 +497,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       entry: "dim",
       exit: "dim",
       seed: 7,
+      timescale: 1,
     },
   },
 ]

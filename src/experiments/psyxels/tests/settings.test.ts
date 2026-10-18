@@ -325,7 +325,7 @@ describe("what a change costs", () => {
       "inset",
       "threshold",
       "flatten",
-      "playback",
+      "timescale",
     ] as const) {
       const next = normalizeSettings({ ...DEFAULT_SETTINGS, [key]: DEFAULT_SETTINGS[key] / 2 })
       expect(needsPacking(DEFAULT_SETTINGS, next), key).toBe(false)

@@ -12,11 +12,11 @@ import { seaStep } from "@/experiments/flotsam/clock"
  * holds them there.
  */
 describe("seaStep", () => {
-  it("moves the sea by the wall time between frames, at playback 1", () => {
+  it("moves the sea by the wall time between frames, at rate 1", () => {
     expect(seaStep(0.016, 1)).toBeCloseTo(0.016)
   })
 
-  it("slows by exactly the playback factor, and stops at zero", () => {
+  it("slows by exactly the rate, and stops at zero", () => {
     const full = seaStep(0.2, 1)
     expect(full).toBeCloseTo(0.2, 9)
     expect(seaStep(0.2, 0.25)).toBeCloseTo(full / 4, 9)

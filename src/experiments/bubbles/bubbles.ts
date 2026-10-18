@@ -1262,7 +1262,7 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
     // Seconds of water per second of wall clock. Substeps are still capped at
     // STEP, so slow motion is smooth rather than the stop-motion an accumulator
     // draining a fixed step produces below about a fifth speed.
-    const elapsed = wall * settings.playback
+    const elapsed = wall * settings.timescale
 
     let remaining = elapsed
     let steps = 0

@@ -48,7 +48,7 @@ import { createBed, type Bed, type Spawn } from "@/experiments/embers/bed"
 import { blankEmber, dress, samplePath, stepEmber, type Ember, type Physics } from "@/experiments/embers/ember"
 import { clearFrame, drawEmbers, drawFirelight, makeSheet, sheetMatches, type Sheet } from "@/experiments/embers/draw"
 import { rampStep, SEEN } from "@/experiments/embers/palette"
-import { needsSheet, type Settings } from "@/experiments/embers/settings"
+import { CLOCK_RATE, needsSheet, type Settings } from "@/experiments/embers/settings"
 import { beyond, makeView, screenX, screenY, type View } from "@/experiments/embers/view"
 
 /**
@@ -196,7 +196,7 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
   let peak = 0
   let debug = false
 
-  const isAnimated = () => !stillOnly.matches && settings.playback > 0
+  const isAnimated = () => !stillOnly.matches
 
   function resizePool(): void {
     const wanted = Math.round(settings.count)
@@ -426,7 +426,7 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
       // fire. Real time is quick: a campfire's updraft just over the coals is
       // about 4.5 m/s, which is what the plume correlations give and what this
       // piece uses, and at a close framing that is two screen-heights a second.
-      const plan = framePlan(elapsed, settings.playback)
+      const plan = framePlan(elapsed, settings.timescale * CLOCK_RATE)
       for (let at = 0; at < plan.substeps; at++) step(plan.dt)
       // Seconds of *fire* drawn, which is what the shutter is quoted in.
       return "moved"

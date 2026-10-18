@@ -1,8 +1,15 @@
+import { fromPlayback, TIMESCALE_SLOT, timescaleControl, timescaleTrack } from "@/experiments/kit/speed"
 import { clamp, namesANumber, onTracks, packedAddress } from "@/experiments/settings-plumbing"
 import type { Slot } from "@/experiments/address"
 import type { Control as KitControl, RangeControl, SliderControl, Track } from "@/experiments/kit/controls"
 import type { Chrome } from "@/experiments/piece"
 import { groundColour } from "@/experiments/embers/draw"
+
+/**
+ * The clock rate this piece's 1× stands for, as a multiple of real time. The
+ * kit's speed control scales it — `kit/speed.ts`.
+ */
+export const CLOCK_RATE = 0.5
 
 /** Re-exported so a consumer needs one import for a control and its keys. */
 export { keysOf } from "@/experiments/kit/controls"
@@ -93,7 +100,8 @@ export type Settings = {
    * everything time-dependent in the piece goes through it and half speed is the
    * same fire watched slowly rather than a different fire.
    */
-  playback: number
+  /** The speed control's value: a multiple of `CLOCK_RATE`. The kit's — `kit/speed.ts`. */
+  timescale: number
   mark: Mark
 }
 
@@ -391,18 +399,7 @@ export const CONTROLS: Control[] = [
     format: (v) => (v <= 0 ? "off" : `1/${Math.round(1 / v)}s`),
     hint: "How long the shutter stays open, in seconds of fire. Every ember is already drawn as a streak from where it was to where it is, so this is not what makes motion visible — it is how much motion one frame gathers. A long shutter smears each ember along the path it actually took, curve and all, and because the light is spread rather than repeated it does not brighten the picture. Off gives you a single instant.",
   },
-  {
-    kind: "slider",
-    key: "playback",
-    group: "picture",
-    label: "playback",
-    min: 0.05,
-    max: 2,
-    step: 0.01,
-    scale: "log",
-    format: (v) => `${v.toFixed(2)}x`,
-    hint: "How fast the fire runs. 1 is real time — and real time is quick: a campfire's updraft just above the coals is about four and a half metres a second, which is what the plume correlations give for a fire of that size and what this piece uses. Fire is worth watching slowly, and a close framing needs it most, because how fast an ember crosses the screen is its real speed multiplied by how much you have zoomed in.",
-  },
+  /* @__PURE__ */ timescaleControl({ group: "picture", max: 8 }),
   {
     kind: "choice",
     key: "mark",
@@ -440,7 +437,7 @@ export const DEFAULT_SETTINGS: Settings = {
   exposure: 2.2,
   flare: 1.5,
   shutter: 0.03,
-  playback: 0.45,
+  timescale: 0.9,
   mark: "ember",
 }
 
@@ -481,7 +478,7 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   exposure: { min: 0.05, max: 20, step: 0.01, scale: "log" },
   flare: { min: 0, max: 3, step: 0.05 },
   shutter: { min: 0, max: 0.5, step: 0.005 },
-  playback: { min: 0.05, max: 2, step: 0.01, scale: "log" },
+  timescale: timescaleTrack({ max: 8 }),
 }
 
 /** Bounds for every numeric setting, narrowed from `TRACKS` rather than declared twice. */
@@ -591,7 +588,9 @@ export const REGISTRY: readonly Slot[] = [
   { key: "trail", kind: "num", grid: 0.02, origin: 0, bits: 6, retired: true },
   { key: "mark", kind: "enum", options: MARKS },
   { key: "shutter", kind: "num", grid: 0.005, origin: 0, bits: 7 },
-  { key: "playback", kind: "num", grid: 0.01, origin: 0.05, bits: 8 },
+  { key: "playback", kind: "num", grid: 0.01, origin: 0.05, bits: 8, retired: true },
+  // The kit's speed control, appended — `kit/speed.ts`.
+  TIMESCALE_SLOT,
 ]
 
 /**
@@ -605,6 +604,7 @@ export const REGISTRY: readonly Slot[] = [
 export const { settingsToQuery, urlForSettings, settingsFromQuery, namesASetting } = packedAddress<Settings>({
   registry: REGISTRY,
   normalize: normalizeSettings,
+  upgrade: (scene) => fromPlayback(scene, CLOCK_RATE),
   legacy: {
     read: settingsFromNamedQuery,
     names: namesALegacySetting,

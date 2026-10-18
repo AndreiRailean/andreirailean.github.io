@@ -1,7 +1,14 @@
+import { fromPlayback, TIMESCALE_SLOT, timescaleControl, timescaleTrack } from "@/experiments/kit/speed"
 import { clamp, namesANumber, onTracks, packedAddress, reroller } from "@/experiments/settings-plumbing"
 import type { Slot } from "@/experiments/address"
 import type { Control as KitControl, RangeControl, SliderControl, Track } from "@/experiments/kit/controls"
 import type { Chrome } from "@/experiments/piece"
+
+/**
+ * The clock rate this piece's 1× stands for, as a multiple of real time. The
+ * kit's speed control scales it — `kit/speed.ts`.
+ */
+export const CLOCK_RATE = 1
 
 /** Re-exported so a consumer needs one import for a control and its keys. */
 export { keysOf } from "@/experiments/kit/controls"
@@ -65,7 +72,8 @@ export type Settings = {
   /** How washed out the crowd's colours are. 1 is full pastel. */
   pastel: number
   /** Clock rate. Every time-dependent thing in the piece goes through it. */
-  playback: number
+  /** The speed control's value: a multiple of `CLOCK_RATE`. The kit's — `kit/speed.ts`. */
+  timescale: number
   /** Decides who arrives, how tall they are and what colour they wear. */
   seed: number
 }
@@ -374,17 +382,7 @@ export const CONTROLS: Control[] = [
     format: (v) => v.toFixed(2),
     hint: "How washed out the crowd is. At 1 everything is chalk — high lightness, low saturation. Turn it down and the colours state themselves, which is a different picture entirely and worth seeing at least once.",
   },
-  {
-    kind: "slider",
-    key: "playback",
-    label: "playback",
-    group: "people",
-    min: 0,
-    max: 2,
-    step: 0.05,
-    format: (v) => `${v.toFixed(2)}x`,
-    hint: "Clock rate. Everything time-dependent goes through it — steps, gaze, play, the rate people arrive — so half speed is the same crowd watched slowly rather than a slower crowd. 0 holds the frame.",
-  },
+  /* @__PURE__ */ timescaleControl({ group: "people", min: 0.5, max: 2 }),
 ]
 
 /** Bounds for the seed, so `reroll` and the panel cannot disagree about them. */
@@ -418,7 +416,7 @@ export const DEFAULT_SETTINGS: Settings = {
   tint: 0.62,
   spread: 42,
   pastel: 0.78,
-  playback: 1,
+  timescale: 1,
   seed: 4821,
 }
 
@@ -456,7 +454,7 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   tint: { min: 0, max: 1, step: 0.02 },
   spread: { min: 0, max: 120, step: 1 },
   pastel: { min: 0, max: 1, step: 0.02 },
-  playback: { min: 0, max: 2, step: 0.05 },
+  timescale: timescaleTrack({ min: 0.5, max: 2 }),
 }
 
 /**
@@ -630,9 +628,11 @@ export const REGISTRY: readonly Slot[] = [
   { key: "tint", kind: "num", grid: 0.02, origin: 0, bits: 6 },
   { key: "spread", kind: "num", grid: 1, origin: 0, bits: 7 },
   { key: "pastel", kind: "num", grid: 0.02, origin: 0, bits: 6 },
-  { key: "playback", kind: "num", grid: 0.05, origin: 0, bits: 6 },
+  { key: "playback", kind: "num", grid: 0.05, origin: 0, bits: 6, retired: true },
   { key: "seed", kind: "num", grid: 1, origin: 0, bits: 17 },
   { key: "palette", kind: "enum", options: ["crowd", "quiet"] },
+  // The kit's speed control, appended — `kit/speed.ts`.
+  TIMESCALE_SLOT,
 ]
 
 /**
@@ -646,6 +646,7 @@ export const REGISTRY: readonly Slot[] = [
 export const { settingsToQuery, urlForSettings, settingsFromQuery, namesASetting } = packedAddress<Settings>({
   registry: REGISTRY,
   normalize: normalizeSettings,
+  upgrade: (scene) => fromPlayback(scene, CLOCK_RATE),
   legacy: {
     read: settingsFromNamedQuery,
     names: namesALegacySetting,
