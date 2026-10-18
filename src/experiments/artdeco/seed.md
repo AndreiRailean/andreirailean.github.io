@@ -207,6 +207,11 @@ two overlapping in a chain along a line.)_
 > middle section, we are drawing a lot of hidden lines. perhaps they all need
 > to bounce of the border
 
+> i would also like to add a bit of complexity to the frame so it's not just a
+> band around, but also, in the spirit of art deco, allows for ornamentation on
+> the edges and in the corners. ao rather than being always cut-off, the lines
+> would draw shapes and allow for insets
+
 ## Open questions
 
 _Mine, not his — what I assumed and what would settle it._

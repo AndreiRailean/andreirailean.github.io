@@ -208,7 +208,7 @@ export const BACKDROPS: Backdrop[] = ["dark", "clear"]
 
 const SEED_BOUNDS = { min: 0, max: 999_999 }
 
-export const GROUP_ORDER = ["frame", "growth", "decisions", "meeting", "busyness", "circles", "line", "cycle"] as const
+export const GROUP_ORDER = ["growth", "decisions", "meeting", "busyness", "circles", "line", "cycle", "frame"] as const
 
 const seconds = (v: number) => `${v.toFixed(1)}s`
 const unit = (v: number) => v.toFixed(2)
@@ -243,7 +243,7 @@ export const CONTROLS: Control[] = [
     max: 45,
     step: 0.5,
     format: (v) => (v > 0 ? share(v) : "off"),
-    hint: "The margin turned inside out: the drawing keeps to a band this wide round the edges, as a share of the height, and the middle stays empty. Lines meet the middle's edge as they meet the frame's, and anything a copy carries into it is not drawn. 0: no frame, the whole screen.",
+    hint: "The margin turned inside out: the drawing keeps to a band this wide round the edges, as a share of the height, and the middle stays empty. Every line, in every copy, meets the middle's edge as it meets the frame's, and a circle that would reach into it is left out. At 3, and at 4 with turned copies, a copy round the centre may start inside the middle and its stems die at once; copies to the edges keeps them out. 0: no frame, the whole screen.",
   },
   {
     kind: "choice",

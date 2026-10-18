@@ -209,7 +209,7 @@ export type Stats = {
   rebounds: number
   offshoots: number
   /** Circles placed at corners and along lines, and those left out for shyness. */
-  circles: { corner: number; along: number; shied: number }
+  circles: { corner: number; along: number; shied: number; framed: number }
   /** Decisions taken as the second or third of three. */
   repeated: number
   /** Tips pen: times a pen lifted and landed, and tips flying lifted now. */
@@ -264,7 +264,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
   let chose = emptyChoices()
   let rebounds = 0
   let offshoots = 0
-  let circles = { corner: 0, along: 0, shied: 0 }
+  let circles = { corner: 0, along: 0, shied: 0, framed: 0 }
   let repeated = 0
   let lifts = 0
   let flocked = 0
@@ -378,11 +378,49 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
   }
 
   /**
-   * How far along (tx, ty) from (ax, ay) a tip enters the empty middle, and
-   * the direction of the edge it enters by; null if it does not. 0 if it is
-   * already inside, which only a margin wider than the frame allows.
+   * How far a tip at (ax, ay) heading along (tx, ty) goes before any image of
+   * it enters the empty middle, and the direction of the edge it meets there,
+   * turned back into the grown copy; null if none does. The middle is a box or
+   * an oval about the centre, which a turned copy does not map onto itself, so
+   * each image is tested rather than the grown copy alone.
    */
   function toHole(ax: number, ay: number, tx: number, ty: number): { t: number; ux: number; uy: number } | null {
+    if (!hole()) return null
+    let best: { t: number; ux: number; uy: number } | null = null
+    for (const f of group()) {
+      const [ix, iy] = image(f, ax, ay)
+      const hit = toHoleOnce(ix, iy, f.xx * tx + f.xy * ty, f.yx * tx + f.yy * ty)
+      if (hit && (!best || hit.t < best.t))
+        best = { t: hit.t, ux: f.xx * hit.ux + f.yx * hit.uy, uy: f.xy * hit.ux + f.yy * hit.uy }
+    }
+    return best
+  }
+
+  /** Whether a circle, or any image of it, reaches into the empty middle. */
+  function inHole(x: number, y: number, r: number, axis: boolean, slide = true): boolean {
+    const h = hole()
+    if (!h) return false
+    // As drawn: the outermost strand, and the stroke's width.
+    r += ((Math.round(settings.strands) - 1) / 2) * settings.spacing + settings.width
+    for (const f of group()) {
+      if (axis && f.flip) continue
+      const [ix, iy] = image(f, x, y, slide)
+      const ox = Math.abs(ix - centre())
+      const oy = Math.abs(iy - middle())
+      if (settings.frameShape === "oval") {
+        // The oval grown by the radius all round: near enough for a circle against a gentle curve.
+        if ((ox / (h.hx + r)) ** 2 + (oy / (h.hy + r)) ** 2 < 1) return true
+      } else if (Math.hypot(Math.max(0, ox - h.hx), Math.max(0, oy - h.hy)) < r) return true
+    }
+    return false
+  }
+
+  /**
+   * How far along (tx, ty) from (ax, ay) a tip enters the empty middle, and
+   * the direction of the edge it enters by; null if it does not. 0 if it is
+   * already inside.
+   */
+  function toHoleOnce(ax: number, ay: number, tx: number, ty: number): { t: number; ux: number; uy: number } | null {
     const h = hole()
     if (!h) return null
     const ox = ax - centre()
@@ -434,7 +472,8 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
   /** A tip at the empty middle's edge: it stops, or rebounds off it. Returns false when the tip stops. */
   function atHole(tree: Tree, head: Head, ux: number, uy: number, at: number): boolean {
     meetings.frame += 1
-    if (settings.atFrame === "stop") return lift(head, at)
+    // A flying tip has nothing to stop; it rebounds, so it never lands in the middle.
+    if (settings.atFrame === "stop" && !head.lifted) return lift(head, at)
     return atWall(tree, head, ux, uy, at)
   }
 
@@ -1093,6 +1132,10 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
    * out. Near means closer than a radius apart, edge to edge.
    */
   function place(tree: Tree, c: Circle): boolean {
+    if (inHole(c.x, c.y, radiusOf(c), c.axis)) {
+      circles.framed += 1
+      return false
+    }
     if (settings.shy > 0) {
       const r = radiusOf(c)
       const near = (x: number, y: number, rr: number) => Math.hypot(x - c.x, y - c.y) < r + rr + Math.max(r, rr)
@@ -1284,13 +1327,18 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
       const bx = ax + dx(head.seg.d) * ev
       const by = ay + dy(head.seg.d) * ev
       if (ev > EPS) {
-        const wall = head.lifted ? null : toHole(ax, ay, dx(head.seg.d), dy(head.seg.d))
+        const wall = toHole(ax, ay, dx(head.seg.d), dy(head.seg.d))
+        if (wall && wall.t <= 0) {
+          // A copy starting inside the middle has no edge to bounce off: it ends.
+          meetings.frame += 1
+          return false
+        }
         if (wall && wall.t <= ev) {
           // Grow to the empty middle, short of it by a hair so the next search starts outside.
           const reach = Math.max(0, wall.t - 0.01)
           const tx = dx(head.seg.d)
           const ty = dy(head.seg.d)
-          const hit = firstHit(tree, head, ax, ay, ax + tx * reach, ay + ty * reach)
+          const hit = head.lifted ? null : firstHit(tree, head, ax, ay, ax + tx * reach, ay + ty * reach)
           if (hit) {
             grow(tree, head, hit.t * reach)
             if (!meet(tree, head, hit, at())) return false
@@ -1388,6 +1436,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
         (t) => haloShowing(t) && Math.hypot(t.halo!.x - centre(), t.halo!.y - y) < t.halo!.r + r,
       )
       if (showing && hashSeed(settings.seed, salt, 37) / 4294967296 < settings.shy) circles.shied += 1
+      else if (inHole(centre(), y, r, true, false)) circles.framed += 1
       else tree.halo = { x: centre(), y, r, rot: NaN, rotAt: 0 }
     }
     if (seen.length < MAX_SEGS + 1) seen = new Uint32Array(MAX_SEGS + 1)
@@ -1445,7 +1494,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     chose = emptyChoices()
     rebounds = 0
     offshoots = 0
-    circles = { corner: 0, along: 0, shied: 0 }
+    circles = { corner: 0, along: 0, shied: 0, framed: 0 }
     repeated = 0
     lifts = 0
     flocked = 0
@@ -1538,7 +1587,9 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     // a line into it that the grown copy stopped short of.
     const h = hole()
     ctx.save()
-    if (h) {
+    // A safety net only: no line or circle should reach the middle, and with
+    // debug on it is left off so one that does shows.
+    if (h && !debug) {
       ctx.beginPath()
       ctx.rect(0, 0, width, height)
       if (settings.frameShape === "oval") {
