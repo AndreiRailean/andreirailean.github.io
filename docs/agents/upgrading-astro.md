@@ -91,6 +91,21 @@ version:
    own: after #307 moved the lockfile to Astro 7.2.8, worktrees still ran
    7.2.4.
 
+## When to upgrade: the monthly check
+
+On the 1st of each month, `.github/workflows/astro-outdated.yml` asks the
+registry about every package listed above. If any has a release newer than the
+lockfile's version, and old enough for pnpm to install, it files or updates one
+`steward` issue titled **Astro upgrade available**, with a table of what moved.
+A month with nothing to upgrade closes that issue if it is still open. The
+steward takes the issue like any other and follows this procedure. Andrei,
+2026-10-18: "let's also make it a steward task to check for new versions on a
+regular basis and suggest and upgrade if available. doesn't have to be too
+frequent. once a month is probably enough".
+
+To ask now rather than wait: `node scripts/astro-outdated.ts` prints what the
+issue would say, or nothing. `gh workflow run astro-outdated.yml` files it.
+
 ## Dependabot
 
 Dependabot raises grouped security bumps (`npm_and_yarn`) that often include
