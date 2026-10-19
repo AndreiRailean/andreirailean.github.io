@@ -57,6 +57,12 @@ above has in common. `tests/unit/browser-suite.test.ts` and
 the repo does not contain, which is the version to copy when a check reads
 source rather than behaviour.
 
+**Break on a committed tree.** Commit first, even as a wip commit, so the
+restore is `git checkout <file>` and has nothing newer to drop. Restoring to
+anything older — a stale `cp` backup, or `git checkout` over uncommitted work —
+silently reverts the edits since, and the next break then fails for a reason
+nobody planted. Two sessions in two repos did exactly this on 2026-10-18.
+
 **And the same sentence holds one layer down: a branch nobody has seen taken is
 a claim too.** `crowd` shipped `if (Math.abs(yawOffset) > NECK_LIMIT)` where
 `yawOffset` springs, critically damped, toward a target already clamped to
