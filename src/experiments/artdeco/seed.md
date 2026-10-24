@@ -217,6 +217,24 @@ two overlapping in a chain along a line.)_
 > if you see what i have open, save it as "frame of progress"
 > /experiments/artdeco/?s=___f_________3-m2cTTkaUggKMIIoMC0AAHHUgUKYiAAEAyztMPKBKIENAQjFAk8PKkECg
 
+## 2026-10-24 — lifecycles, for looping video
+
+On recording looping reels with framestep (#329):
+
+> artdeco, i feel it's not really a loop mode, but a lifecycle configuration
+> that starts blank (as it currently does) and ends blank (where all lines draw
+> themselves off screen). The looper (framestep) would then take the longer
+> piece and compose the end over the start in a way that the transition is
+> invisible. this would come at a cost of the piece starting already "mature",
+> like in all other pieces, i.e. without emerging from the sides of the screen.
+
+> artdeco preset looks good, just a tad too slow for me. i increased the rate
+> to 33%/s and life to 0s.
+
+> to further fool the viewer, we can show multiple "loops" and stitch them
+> together at the blank point so it's not as obvious that we're just looping -
+> we are but there are multiple pieces shown - say a loop of 3x 5second pieces.
+
 ## Open questions
 
 _Mine, not his — what I assumed and what would settle it._
