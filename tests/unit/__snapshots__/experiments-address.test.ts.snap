@@ -459,6 +459,48 @@ exports[`hexgrid > retires a slot by appending to the retired list, never by edi
 ]
 `;
 
+exports[`melting > has not edited a slot in place 1`] = `
+[
+  "shape enum tetra|cube|octa|icosa|dodeca",
+  "motion enum spin|tumble",
+  "clock enum wall|zero",
+  "turn num grid=1 origin=5 bits=7",
+  "beat num grid=0.5 origin=0.5 bits=6",
+  "nudge num grid=1 origin=0 bits=6",
+  "scale num grid=0.05 origin=0.2 bits=5",
+  "size num grid=0.01 origin=0.02 bits=6",
+  "swell num grid=0.05 origin=0 bits=5",
+  "satellites num grid=1 origin=0 bits=3",
+  "presence num grid=0.05 origin=0 bits=5",
+  "roam num grid=0.05 origin=0 bits=5",
+  "stretch num grid=0.05 origin=0 bits=5",
+  "integrity num grid=0.05 origin=0 bits=5",
+  "wax num grid=0.01 origin=0 bits=6",
+  "lumps num grid=1 origin=0 bits=5",
+  "heat num grid=0.05 origin=0 bits=5",
+  "rise num grid=1 origin=4 bits=7",
+  "splitting num grid=0.05 origin=0 bits=5",
+  "joining num grid=0.05 origin=0 bits=5",
+  "hue num grid=1 origin=0 bits=9",
+  "tint num grid=0.05 origin=0 bits=5",
+  "seed num grid=1 origin=0 bits=20",
+  "timescale num grid=0.001 origin=0.1 bits=14",
+  "keeper num grid=0.05 origin=0 bits=5",
+  "cycle num grid=1 origin=2 bits=4",
+  "irregular num grid=0.05 origin=0 bits=3",
+  "change num grid=0.05 origin=0 bits=5",
+  "hands num grid=1 origin=0 bits=3",
+  "sway num grid=5 origin=0 bits=5",
+  "reservoir num grid=0.05 origin=0 bits=5",
+  "ripple num grid=0.05 origin=0 bits=5",
+  "steer num grid=0.05 origin=0 bits=5",
+  "colours num grid=1 origin=1 bits=3",
+  "ceiling num grid=0.05 origin=0 bits=6",
+]
+`;
+
+exports[`melting > retires a slot by appending to the retired list, never by editing one 1`] = `[]`;
+
 exports[`psyxels > has not edited a slot in place 1`] = `
 [
   "seed num grid=1 origin=0 bits=20",
