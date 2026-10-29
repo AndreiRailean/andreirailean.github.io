@@ -22,6 +22,7 @@ const EXPECTED = [
   { slug: "embers", title: "Embers" },
   { slug: "flotsam", title: "Flotsam" },
   { slug: "hexgrid", title: "Hexgrid" },
+  { slug: "melting", title: "Melting" },
   { slug: "psyxels", title: "Psyxels" },
   { slug: "starry-night", title: "Starry Night" },
   { slug: "streakers", title: "Streakers" },
@@ -59,7 +60,11 @@ test("lists every experiment, each with a poster that actually loaded", async ({
     await expect(plate.locator(`a.note[href="/experiments/${slug}/about/"]`)).toHaveCount(1)
 
     // Decoded, not merely present. A missing or unreadable image still has a
-    // box; only `naturalWidth` tells them apart.
+    // box; only `naturalWidth` tells them apart. Scrolled to first, because the
+    // posters load lazily: a plate far enough down the wall is never fetched,
+    // which is a poster nobody asked for yet rather than a broken one. The
+    // thirteenth plate was the first to land past Chromium's lazy-load margin.
+    await plate.scrollIntoViewIfNeeded()
     const poster = plate.locator("img")
     await expect.poll(() => poster.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0)
   }
