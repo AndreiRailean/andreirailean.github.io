@@ -4,6 +4,7 @@ title: Melting
 summary: A lava lamp of wax that rises, gathers, splits and sinks, among whose blobs are the corners of a solid nobody sees, turning at the pace of the clock.
 started: 2026-10-24
 updated: 2026-10-30
+poster: ./poster.webp
 tags:
   - canvas
   - generative
