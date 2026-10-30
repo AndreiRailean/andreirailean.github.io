@@ -63,8 +63,19 @@ export type WallEntry = {
  * crossing pieces tears one down and mounts another. Judged worth it, and the
  * order is a source edit away from any other opinion.
  *
- * **Art Deco's `construct` leads, on the rule every lead has: `/showcase/` is
+ * **Melting's `lava lamp` leads, on the rule every lead has: `/showcase/` is
  * entry zero and that is the newest published scene.** It is the piece's
+ * primary, a scene Andrei found by dragging. Its other three — tempus, ora and
+ * wax alone — are woven further down, one after every fifth entry. Andrei named
+ * all four. Each runs on the wall clock, so every screen showing one shows the
+ * same lamp.
+ *
+ * Each lead's scenes push every entry below them down, so the spacing and
+ * neighbours described for the pieces below are as they were when woven, not
+ * where they sit now: Art Deco's no longer fall one after every fifth entry,
+ * and Melting's `tempus` now sits between `catch me` and `keep left`.
+ *
+ * **Art Deco's `construct` led before it, on the same rule.** It is the piece's
  * primary, a scene Andrei found by playing with it. Its other four — snowflake,
  * facade, skyline and clockwork — are woven further down, one after every
  * fifth entry. Andrei named all five.
@@ -121,6 +132,15 @@ export type WallEntry = {
  */
 export const WALL: readonly WallEntry[] = [
   {
+    id: "melting-lava-lamp",
+    title: "lava lamp",
+    piece: "melting",
+    pieceTitle: "Melting",
+    note: "Andrei's, found by dragging: an icosahedron tumbling on a slow, hard-tipping beat and losing a corner now and then, among nine small lumps of a little wax that rise quickly and often split.",
+    runner: "melting.6a752ab50c61.js",
+    scene: "_____39xkt5R64lg3ipSLaUUOAABw4SjAAMAAAA",
+  },
+  {
     id: "artdeco-construct",
     title: "construct",
     piece: "artdeco",
@@ -164,6 +184,15 @@ export const WALL: readonly WallEntry[] = [
     note: "A market whose stalls nobody can see, and one person in red I am trying to catch. They duck round corners and wait for me to nearly reach them; my eyes go between them and the way ahead. The red head looks like the subject for a moment — the subject is whoever is doing the chasing.",
     runner: "crowd.9810eb51f4a2.js",
     scene: "_-__7___QF8syctZLJ4JCqihtGAAAo-hVSe4AABoAAkABQ6oCkAABQ4",
+  },
+  {
+    id: "melting-tempus",
+    title: "tempus",
+    piece: "melting",
+    pieceTitle: "Melting",
+    note: "The lava lamp at its steadiest: a lopsided icosahedron that now and then turns into another solid, over a bottomless pool whose surface the beats heap region by region.",
+    runner: "melting.6a752ab50c61.js",
+    scene: "_____39xktlR64lg6FJSLaUUOAABw4R5UwNRgAA",
   },
   {
     id: "crowd-keep-left",
@@ -211,6 +240,15 @@ export const WALL: readonly WallEntry[] = [
     scene: "____-0AW29AnEGQE_EY9a0YGERRZLojAtkAMMqLEI",
   },
   {
+    id: "melting-ora",
+    title: "ora",
+    piece: "melting",
+    pieceTitle: "Melting",
+    note: "Tempus in colour: every corner and every lump wears one of four colours the stream picks — a corner turns to a new one every few beats, a lump takes one each time it leaves the pool.",
+    runner: "melting.6a752ab50c61.js",
+    scene: "_____39xktlR64lg6FJSLaUHvAABw4R5UwNRgGA",
+  },
+  {
     id: "crowd-market",
     title: "market",
     piece: "crowd",
@@ -254,6 +292,15 @@ export const WALL: readonly WallEntry[] = [
     note: "Open water at night, a gusting sea running diagonally, a slow current crossing it — close enough in to read the shape of each wave rather than the pattern they make.",
     runner: "flotsam.b2c2cc0608a3.js",
     scene: "_____2AAApg-AAhWZMoefOEiIhWqrJNnYMfAUFyA8ZKB8UJgwADrig",
+  },
+  {
+    id: "melting-wax-alone",
+    title: "wax alone",
+    piece: "melting",
+    pieceTitle: "Melting",
+    note: "Only the wax, rising, splitting, gathering and sinking, with no solid among it.",
+    runner: "melting.6a752ab50c61.js",
+    scene: "_____39xkt5R64linoJYQUoUOAABw4QDAAMAAAA",
   },
   {
     id: "hexgrid-even",
