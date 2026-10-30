@@ -173,19 +173,27 @@ describe.each(slugs)("%s", (slug) => {
     }
   })
 
+  /**
+   * Closed at 360, because every hue track is `{ min: 0, max: 360 }` and a
+   * scene dragged to the end is what `pnpm run bridge state` prints. It was
+   * `[0, 360)` until #328, which made that scene unsaveable as printed: walkers
+   * and islands each stored it as 0 with a comment. 360 is the same colour to
+   * every reader — CSS `hsl()`, and every piece, which wraps hue anyway because
+   * a base plus a spread passes 360 all the time.
+   */
   it("gives every preset a usable hue", async () => {
     if (optsOutOf(source, "hue")) return
     const { PRESETS } = await settingsModule(slug)
 
     const bad = (PRESETS ?? [])
       .map((preset, index) => ({ index, label: preset.label, hue: preset.settings.hue }))
-      .filter(({ hue }) => typeof hue !== "number" || !Number.isFinite(hue) || hue < 0 || hue >= 360)
+      .filter(({ hue }) => typeof hue !== "number" || !Number.isFinite(hue) || hue < 0 || hue > 360)
 
     expect(
       bad,
       `${bad.map((b) => `${slug} preset ${b.index} (${b.label}) has hue ${String(b.hue)}`).join("; ")}. ` +
         `The about page, the poster and the index placard tint themselves from a preset's hue, ` +
-        `so every preset needs one in [0, 360). If this piece genuinely has no hue control, ` +
+        `so every preset needs one in [0, 360]. If this piece genuinely has no hue control, ` +
         `that is the point at which the section has to decide how to derive one from its other ` +
         `settings — raise it rather than working around it, or say why not with a ` +
         `"${OPT_OUT_HUE} <reason>" comment in presets.ts.`,
