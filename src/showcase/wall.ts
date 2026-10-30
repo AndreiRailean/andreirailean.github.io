@@ -70,6 +70,11 @@ export type WallEntry = {
  * all four. Each runs on the wall clock, so every screen showing one shows the
  * same lamp.
  *
+ * Each lead's scenes push every entry below them down, so the spacing and
+ * neighbours described for the pieces below are as they were when woven, not
+ * where they sit now: Art Deco's no longer fall one after every fifth entry,
+ * and Melting's `tempus` now sits between `catch me` and `keep left`.
+ *
  * **Art Deco's `construct` led before it, on the same rule.** It is the piece's
  * primary, a scene Andrei found by playing with it. Its other four — snowflake,
  * facade, skyline and clockwork — are woven further down, one after every

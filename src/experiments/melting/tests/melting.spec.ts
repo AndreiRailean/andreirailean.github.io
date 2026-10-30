@@ -40,12 +40,41 @@ test("the lamp is a function of the moment: the same from anywhere, and on a sec
   }
 
   const here = await first.api(at, MOMENT)
-  expect(here.length).toBeGreaterThan(0)
+  expect(here.filter((blob) => blob.r > 0).length).toBeGreaterThan(0)
   await first.api(at, MOMENT + 517)
   expect(await first.api(at, MOMENT)).toEqual(here)
 
   const elsewhere = await openMelting(await context.newPage(), { idle: true })
   expect(await elsewhere.api(at, MOMENT)).toEqual(here)
+})
+
+test("on the wall clock, two screens showing the same wall time show the same lamp", async ({ page, context }) => {
+  // `goto` sets the scene's time directly, so the test above never reads the
+  // wall. Here nothing calls it: each page takes its time from `Date.now()`,
+  // held at the same instant on both, so they agree only if the wall is read.
+  const at = new Date(MOMENT * 1000)
+  const blobs = ({ api }: { api: ExperimentApi }) => {
+    api.pause(true)
+    return api.blobs()
+  }
+
+  await page.clock.setFixedTime(at)
+  const lamp = await openMelting(page, { idle: true }).then((experiment) => experiment.api(blobs))
+  expect(lamp.filter((blob) => blob.r > 0).length).toBeGreaterThan(0)
+
+  const second = await context.newPage()
+  await second.clock.setFixedTime(at)
+  expect(await openMelting(second, { idle: true }).then((experiment) => experiment.api(blobs))).toEqual(lamp)
+
+  // And it is the wall's moment, not merely the same start: the lamp `goto`
+  // puts at that moment.
+  const third = await openMelting(await context.newPage(), { idle: true })
+  const moment = await third.api(({ api, arg }) => {
+    api.pause(true)
+    api.goto(arg as number)
+    return api.blobs()
+  }, MOMENT)
+  expect(moment).toEqual(lamp)
 })
 
 test("lava pong hangs a ceiling and the primary does not", async ({ page }) => {
@@ -82,6 +111,8 @@ test("wax alone has no solid, and nothing budded from one", async ({ page }) => 
       .map((blob) => blob.id)
   })
 
+  // The wax is there, so the lamp drew; that the solid's ids are the ones
+  // below WAX_ID is shown by the primary's paired presence in the test above.
   expect(ids.length).toBeGreaterThan(0)
   expect(ids.filter((id) => id < WAX_ID)).toEqual([])
 })
