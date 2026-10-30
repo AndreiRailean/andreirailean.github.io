@@ -307,6 +307,14 @@ Both runners assert on numbers, not pixels — almost every bug in this section 
 invisible in a screenshot. Test output buffers: wait for the run to exit rather
 than polling its log.
 
+**For each spec you write, break the mechanism its title names once, and watch
+that test fail.** Green on first run says nothing about whether it can go red.
+Melting shipped two that could not: "two screens show the same lamp" drove both
+pages through `goto`, which sets the time directly, so it passed with the wall
+clock switched off; and a presence check counted blobs at radius 0, the trap
+the same file documented. Both were green locally and on CI, and only a fresh
+reviewer found them. Commit first, so the restore is `git checkout <file>`.
+
 ## 6. Stay local: no push, no PR, until he asks
 
 **A piece is not pushed to GitHub and gets no pull request until Andrei says
