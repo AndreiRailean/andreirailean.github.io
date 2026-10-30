@@ -63,45 +63,38 @@ export type WallEntry = {
  * crossing pieces tears one down and mounts another. Judged worth it, and the
  * order is a source edit away from any other opinion.
  *
- * **Melting's `lava lamp` leads, on the rule every lead has: `/showcase/` is
- * entry zero and that is the newest published scene.** It is the piece's
- * primary, a scene Andrei found by dragging. Its other three — tempus, ora and
- * wax alone — are woven further down, one after every fifth entry. Andrei named
- * all four. Each runs on the wall clock, so every screen showing one shows the
- * same lamp.
+ * **Every lead is on one rule: `/showcase/` is entry zero, and that is the
+ * newest published scene.** A piece published whole puts its primary there and
+ * weaves its other scenes in further down, one after every fifth entry from the
+ * top. The array is the only record of where anything sits now. Each new lead
+ * pushes everything below it down, so the notes below say who chose what and
+ * why, and never where a scene is: a positional sentence here was true for one
+ * publish and then wrong for good (#334).
  *
- * Each lead's scenes push every entry below them down, so the spacing and
- * neighbours described for the pieces below are as they were when woven, not
- * where they sit now: Art Deco's no longer fall one after every fifth entry,
- * and Melting's `tempus` now sits between `catch me` and `keep left`.
+ * The leads so far, newest first. Each was its piece's primary.
  *
- * **Art Deco's `construct` led before it, on the same rule.** It is the piece's
- * primary, a scene Andrei found by playing with it. Its other four — snowflake,
- * facade, skyline and clockwork — are woven further down, one after every
- * fifth entry. Andrei named all five.
+ * **Melting's `lava lamp`**, a scene Andrei found by dragging, with tempus, ora
+ * and wax alone woven in. Andrei named all four. Each runs on the wall clock,
+ * so every screen showing one shows the same lamp.
  *
- * **Hexgrid's `embers` led before it, on the same rule.** It is the piece's
- * primary, a scene Andrei found by dragging. Its other eleven presets are
- * woven further down, one after every fifth entry. Andrei asked for all of
- * them.
+ * **Art Deco's `construct`**, a scene Andrei found by playing with it, with
+ * snowflake, facade, skyline and clockwork woven in. Andrei named all five.
  *
- * **Dotfield's `meadow` led before it, on the same rule.** It is the piece's
- * primary. Its other seven — white, still, squall, eddies, islands,
- * wildflowers and slalom — are woven further down. Andrei asked for all of
- * its presets; meadow and white are scenes he found by dragging.
+ * **Hexgrid's `embers`**, a scene Andrei found by dragging, with its other
+ * eleven presets woven in. Andrei asked for all of them.
  *
- * **Streakers' `dimensions` led before it, on the same rule.** It is the piece's
- * primary. Its other five — saturn, rosette, random star, weave and club — are
- * woven further down. Andrei named all six; the piece has ten presets.
+ * **Dotfield's `meadow`**, with white, still, squall, eddies, islands,
+ * wildflowers and slalom woven in. Andrei asked for all of its presets; meadow
+ * and white are scenes he found by dragging.
  *
- * **Crowd's `catch me` led before it, on the rule Bubbles and Embers led on:
- * `/showcase/` is entry zero and that is the newest published scene.** It is
- * also the piece's primary. `keep left` follows it, and `parade`, `teams`,
- * `runner` and `street run` are woven further down. Bubbles comes after
- * `keep left`.
+ * **Streakers' `dimensions`**, with saturn, rosette, random star, weave and
+ * club woven in. Andrei named all six; the piece has ten presets.
  *
- * **Bubbles led before it, on the rule Embers led on.** Embers is second and its own argument is
- * unchanged — its piece has moved further since it was pinned than any of its
+ * **Crowd's `catch me`**, published with `keep left` straight after it and
+ * `parade`, `teams`, `runner` and `street run` woven in.
+ *
+ * **Bubbles**, and before it **Embers**, whose argument for `winter blues` is
+ * unchanged: its piece has moved further since it was pinned than any of its
  * neighbours have, which is the freeze doing its job rather than a reason to
  * move it. `winter blues` renders the bytes it was published against, and what
  * Embers does next cannot reach it.
