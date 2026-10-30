@@ -77,6 +77,13 @@ fell behind the time it showed, and a hidden tab stopped it. On the wall clock
 at 1× the scene reads `Date.now()` every frame, with an offset that `settle`, a
 slowed clock and `goto` carry. At any other speed it steps.
 
+**So a pause on the wall clock at 1× does not hold the time, only the
+picture**: on release the lamp jumps to where the wall has got to, and a
+`goto` made while paused resumes that far past its moment. That is deliberate.
+Resuming where it stopped would leave this screen out of step with every other
+one for good, which is the one thing the wall clock is for. Anyone wanting a
+held moment uses the zero clock, which steps.
+
 ## The poster is a fixed moment
 
 `poster.ts` pauses and calls `goto` on one moment, so a recapture is the same

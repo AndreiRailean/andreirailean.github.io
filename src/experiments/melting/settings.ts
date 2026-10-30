@@ -296,7 +296,8 @@ export const CONTROLS: Control[] = [
     step: 1,
     format: (v) => `${v} quarter turns`,
     hint: "How long one cycle of the timekeeper's comings and goings lasts, in quarter turns. A quarter of a cycle goes in arriving, and a quarter in leaving.",
-    inert: (settings: Settings) => settings.keeper >= 1 || settings.keeper <= 0,
+    // Kept for ever, the solid still changes shape once a cycle if `change` says so.
+    inert: (settings: Settings) => settings.keeper <= 0 || (settings.keeper >= 1 && settings.change <= 0),
   },
   {
     kind: "slider",
@@ -435,7 +436,8 @@ export const CONTROLS: Control[] = [
     step: 0.05,
     format: (v) => (v === 0 ? "conserved" : v === 1 ? "bottomless" : v.toFixed(2)),
     hint: "How far the pool keeps its level while lumps are out. 0 conserves the wax, so the pool sinks as lumps leave it; 1 treats the pool as bottomless, so no lump can change it.",
-    inert: noWax,
+    // A timekeeper that comes and goes sinks into the pool and raises it too.
+    inert: (settings: Settings) => noWax(settings) && settings.keeper >= 1,
   },
   {
     kind: "slider",
@@ -447,7 +449,8 @@ export const CONTROLS: Control[] = [
     step: 0.05,
     format: (v) => v.toFixed(2),
     hint: "How far the stream heaps and hollows the pool's surface, region by region, each region easing to a new height every few beats.",
-    inert: (settings: Settings) => settings.wax === 0,
+    // Without wax, a timekeeper that comes and goes still leaves a pool.
+    inert: (settings: Settings) => settings.wax === 0 && settings.keeper >= 1,
   },
   {
     kind: "slider",

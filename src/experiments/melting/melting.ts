@@ -168,10 +168,13 @@ const RIPPLE_BEATS = 2
 /**
  * Keeps `v` inside `[lo, hi]` without a wall: within `k` of an edge it slows
  * exponentially, so a blob pushed outward gathers against the edge and pools
- * there rather than leaving or bouncing.
+ * there rather than leaving or bouncing. A blob too big for the room keeps
+ * the same easing over half of it, rather than snapping to the middle the
+ * frame it outgrows it.
  */
 function pool(v: number, lo: number, hi: number, k: number): number {
-  if (hi - lo < 2 * k) return (lo + hi) / 2
+  k = Math.min(k, (hi - lo) / 2)
+  if (!(k > 0)) return (lo + hi) / 2
   if (v < lo + k) return lo + k * Math.exp((v - lo - k) / k)
   if (v > hi - k) return hi - k * Math.exp((hi - k - v) / k)
   return v
@@ -616,6 +619,8 @@ export function createMelting(canvas: HTMLCanvasElement, initial: Settings) {
    */
   function ceilingOf(at: number): Spot[] {
     const spacing = CEILING_SPACING * height
+    // A canvas with no height has no ceiling, and would loop for ever below.
+    if (!(spacing > 0)) return []
     const half = Math.ceil(width / 2 / spacing) + 3
     const p1 = fixed(settings.seed, 301, 0)
     const p2 = fixed(settings.seed, 301, 1)
