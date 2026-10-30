@@ -38,9 +38,9 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       span: 24,
       camera: 60,
       traces: 6,
-      // Given as 360, which is the same colour: the hue every presentation
-      // surface reads has to be in [0, 360), and `tests/unit/experiments-presets`
-      // holds every piece to it.
+      // Given as 360, which is the same colour. Stored as 0 while the preset
+      // check wanted [0, 360). It takes 360 since #328; this stays 0 because
+      // the two are one scene and changing it would only move the slider.
       hue: 0,
       tint: 0.18,
       spread: 78,
