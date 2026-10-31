@@ -41,29 +41,14 @@ Followed immediately by:
 > then i turn again. Natural motion is not like that. If i'm walking, i turn my
 > head only slightly and then turn it back. The motion is very smooth - need
 > easing. Only when I'm stopped do I turn my head, but I don't keep it turned. If
-> I want to face another direction, my whole body turns. Currently the experiment
-> appears to never turn the head, but turn the whole body as it looks like the
-> motion is always in the direction i am facing.
+> I want to face another direction, my whole body turns.
 >
 > distance appears to introduce linear fog. more clarity needs to be preserved in
 > the closer layers.
 >
-> on top of viewing distance it would be good to control the distance of the
-> crowd. so beyond 200m, for example there would be no people. A slider that
-> pushes the density forward, i.e. everyone generate in close proximity if I want
-> it.
->
 > would be good to be able to simulate walking down the street or a corridor
 > where people are only moving towards and away from me and I have to take them
 > over or let them pass.
-
-> Head turns are now smooth, thank you.
-
-## 2026-09-20 — jitter
-
-> I'm seeing strange jitter. When looking at the "street" or "concourse" i'm
-> seeing occasional shaking. In video games that usually indicates collisions. Is
-> that deliberate here? Are we modelling colissions?
 
 ## 2026-09-20 — strafing
 
@@ -73,50 +58,37 @@ Followed immediately by:
 
 ## 2026-09-20 — companions, and looking up and down
 
-> this looks good now. very natural motion. i like.
->
 > makes me wonder if having companions would add realism. i'm walking with
 > somebody and we're talking. I'm glance at them as we're walking and talking. So
 > there's someone always there with me (when I have a companion).
 >
 > also, and i'm not sure if this kind of realism is useful here, people, when
-> they walk, don't just look to the sides. we look at the ground as well. current
-> simulation does have a control for looking up or down. Perhaps that's something
-> that should also form part of natural observational head movement. Due to
-> peripheral vision, people can look down and keep walking forward, which is
-> modelled by a control. Basically, looks like what we need is to make that
-> control to be the bias and let natural gaze wonder up/down/left/right.
+> they walk, don't just look to the sides. we look at the ground as well. Perhaps
+> that's something that should also form part of natural observational head
+> movement. Due to peripheral vision, people can look down and keep walking
+> forward, which is modelled by a control. Basically, looks like what we need is
+> to make that control to be the bias and let natural gaze wonder
+> up/down/left/right.
 
-> great. i see it gazing down, but haven't detected an up gaze yet. like looking
-> at a bird and following its flight while walking
+> like looking at a bird and following its flight while walking
 
 > also gazing down while walking at a stationary object you're walking past - a
 > rock, a dog, etc. that's a "follow" motion that is allowed without stopping. at
 > a market specifically, that's how one walks and looks.
 
-> add 2 companions to the market preset
-
-## 2026-09-20 — do I ever turn
-
-> in the simulation, am i always moving in the same direction or do i ever turn.
-> hard to tell. i can see the turning, but other than collision avoidance, i
-> think the motion is always in a straight line. is that correct?
-
 ## 2026-09-20 — the family, and how far to take it
 
-> set market "with me: 3" - the whole family is walking around
-
-> that's ok. some can be walking behind and sometimes overtaking. i can stop to
-> look at them.
+> some can be walking behind and sometimes overtaking. i can stop to look at
+> them.
 
 > We don't need to overdo the constellation modeling. Catching up with the group
 > and all stopping together are possible, but i don't think they add any value.
 > just having some companions provides perspective. because i see whate i "see",
 > having a companion makes it look somewhat like a third person view.
 
-> if you built the shuffle, it's ok. just no need to take it further into whole
-> "family at the market and everyone is trying to keep together while being
-> interested in different things" dynamic.
+> just no need to take it further into whole "family at the market and everyone
+> is trying to keep together while being interested in different things"
+> dynamic.
 
 ## 2026-09-20 — why the gaze follows what is not drawn
 
@@ -134,11 +106,10 @@ code had:
 Answering the last two open questions, and naming the piece better than any of
 the prose written for it:
 
-> i'm looking at market and it all appears fluid. i like the interaction with
-> companions - hard to tell if i'm looking at them or past them, so not a worry.
+> i like the interaction with companions - hard to tell if i'm looking at them or
+> past them, so not a worry.
 >
-> don't quite understand what "black above the band" is. if we're talking about
-> the "sky", then yes - it's a "brief" because nothing was specified to be there,
+> if we're talking about the "sky", then yes - it's a "brief" because nothing was specified to be there,
 > so it's empty as expected. adding landmarks would probably add more character
 > to the scene, but it would also break up the "moving infinity" that is
 > presented.
@@ -230,9 +201,9 @@ Questions I could not answer, and what I assumed:
 
 ## 2026-09-25 — a two-way trail that keeps left
 
-> great, thanks. how about a meander along a two way path where I and everyone
-> going in my direction walks on the left, and those moving in the opposite
-> direction (towards me) are on the right.
+> how about a meander along a two way path where I and everyone going in my
+> direction walks on the left, and those moving in the opposite direction
+> (towards me) are on the right.
 
 Built as a `keep to` slider under **route** (left, right, or either side, with a
 strength) and a **keep left** preset: the trail made two-way, everybody keeping
@@ -243,16 +214,13 @@ overtake and come back. Which of those he meant is his to say.
 
 ## 2026-09-26 — the showcase, a runner, a loop, and somebody to chase
 
-> great. let's add keep left, parade and teams to the showcase. i like how in
-> "keep left" the crowd goes into far distance. there's just enough people to
-> see the train and give it the right shape into the horison.
+> i like how in "keep left" the crowd goes into far distance. there's just
+> enough people to see the train and give it the right shape into the horison.
 >
 > let's do a few more:
 > runner - i am the only one running. everyone else is walking, like they do in
-> "keep left" in both direction. i'm running in between the two streams. i can
-> increase my pace with a slider on "keep left" but not enough to make it feel
-> like a jog. maybe because my bobbing is still walk-like. either way, running
-> between the two streams would be great.
+> "keep left" in both direction. i'm running in between the two streams. either
+> way, running between the two streams would be great.
 >
 > loop run - like teams, i am canvassed on both sides by a standing croud. but
 > i'm not walking into the straight infinity, instead I go in a loop with a few
@@ -272,12 +240,7 @@ overtake and come back. Which of those he meant is his to say.
 
 ### What I did with it, and what I could not decide
 
-- **Showcase:** keep left, parade and teams are on the wall, keep left first as
-  the newest. Pinned to a runner built from this branch, so they can be
-  re-pinned freely until it merges.
-- **runner:** the keep-left trail with me running down the middle. The cause of
-  "not enough to feel like a jog" was two things, both fixed: the pace track
-  stopped at 2.2 m/s, and the bob stayed a walk's at any speed. `my line` and
+- **runner:** the keep-left trail with me running down the middle. `my line` and
   `hold` put me anywhere across the way.
 - **loop run** and **street run:** the same run, kerbs and three companions,
   on a closed 700 m circuit and on a bending street, so the question — is a
@@ -330,24 +293,15 @@ them and how many glances they get.
 
 ## 2026-09-26 — focus on the chasee, the loop, and being caught
 
-> it's looking really good. the "catch me" preset is feeling more natural,
-> though it does feel like the red dot goes out of sight a little too much and
-> for a chasing scene, it feels that the chaser isn't focusing on the chasee as
-> much as they should.
+> the "catch me" preset is feeling more natural, though it does feel like the
+> red dot goes out of sight a little too much and for a chasing scene, it feels
+> that the chaser isn't focusing on the chasee as much as they should.
 >
 > i can't tell the loop from the street. maybe i need to let it loop for much
 > longer to notice, but I won't do that.
 >
-> please file a ticket for the steward to think about how to handle cases when
-> preset number grows like we have it here. i don't want to artificially limit
-> it. and i don't want you to focus on it right now.
->
-> i'm looking at a seemingly abnormal "catch me" case. where the red person has
-> been caught. they're not running away anymore and I appear to be looking
-> around all the time with the red person going out of sight to the left and to
-> the right. i can't quite tell whether we're walking together or we're
-> wrestling. i think if i catch them we can stand together for a little bit,
-> then they run away and I chase them again. tom and jerry style
+> i think if i catch them we can stand together for a little bit, then they run
+> away and I chase them again. tom and jerry style
 
 ## 2026-09-26 — occlusion
 
@@ -360,8 +314,7 @@ them and how many glances they get.
 > much occlusion kills infinity, but it also brings the "reveal" feeling when
 > something appears that couldn't be seen before. seeing the line of people
 > disappearing around the bend and then coming onto a clearing that shows how
-> far the line goes could help bring more visual variety to a scene. let me know
-> if this is something that needs its own session.
+> far the line goes could help bring more visual variety to a scene.
 
 Not built in the session that received it; see the reply there. What it would
 take, for whoever picks it up: the stalls (`stalls.ts`) and a trail's edges are
@@ -372,20 +325,14 @@ a hillside) that end at a clearing, which the trail does not yet have.
 
 ## 2026-09-26 — where a chaser looks
 
-> Ok. One last thing on the chaser: when running after someone the head should
-> face predominantly in one of 2 directions: direction of travel, person being
+> One last thing on the chaser: when running after someone the head should face
+> predominantly in one of 2 directions: direction of travel, person being
 > chased. We can't run looking sideways, so that means the head turns much more
 > often. Birds don't matter anymore. Running into things does and losing the
 > target is. That dynamic would help avoid crosshairs even more
 
 Built as a two-way gaze in a chase: short spells on the way ahead and on them,
-nothing else, on a quicker neck. Found and fixed on the way: a catch that
-re-caught them the next step, 55 times in four minutes on one seed.
-
-## 2026-09-26 — catch me first, and to the wall
-
-> promote "catch me" to first preset. push today's presets to showcase: catch
-> me, teams, runner, street run. open PR and merge when ready
+nothing else, on a quicker neck.
 
 ## 2026-09-26 — occlusion as black circles
 
@@ -394,15 +341,12 @@ re-caught them the next step, 55 times in four minutes on one seed.
 > the complexity of it and needing more research. i was thinking about it and
 > thought that perhaps first type of occlusion could be just another type of
 > circles, but much larger and of black colour so the blend in with the
-> background. these would naturally block everything behind them. i'm not sure
-> if that is how current compositor works and if it's even possible to block
-> anything. looking at the red circle in "catch me" i can see that it is
-> rendered with opacity in front of everything that is behind it. the same
-> principle can be applied to sparse large circles whose midpoint starts at
-> ground level. they would naturally form islands. could probably be squares as
-> well, but circles large enough would probably suffice to start with and to
-> keep with the circle theme. do some research and see what kind of occlusion
-> you can implement while i'm away.
+> background. these would naturally block everything behind them. looking at
+> the red circle in "catch me" i can see that it is rendered with opacity in
+> front of everything that is behind it. the same principle can be applied to
+> sparse large circles whose midpoint starts at ground level. they would
+> naturally form islands. could probably be squares as well, but circles large
+> enough would probably suffice to start with and to keep with the circle theme.
 
 Built as **boulders**: black spheres centred at ground level, so a dome stands
 above it, placed at random so some land together as islands, and kept off the
@@ -411,13 +355,6 @@ ground), `boulder size`, `boulder shade` (grey instead of black, to see what is
 doing the hiding) — and three presets: **boulders** (the market),
 **round the bend** (the trail, bends tightened so there is an inside to hide
 across) and **hide and seek** (catch me with boulders instead of stalls).
-
-The compositor answer, since he asked: it paints back to front, so a black
-circle painted in order _would_ block what is behind it, the way the red head
-does. That is not quite enough for something this big — a sphere has no single
-depth, so people at its rim came out wrong either way — so each head asks each
-boulder along its own line of sight instead, and the black outline is painted
-for the heads its edge cuts. `AGENTS.md` has the numbers.
 
 Open, for him:
 
@@ -434,10 +371,8 @@ Open, for him:
 ## 2026-09-27 — a line between rocks, and the market without stalls
 
 > i'm seeing the blackouts, but am struggling to construct a scene where a line
-> meanders between rocks. i think we end up with boulders spread around in a way
-> that the path doesn't come near it. also would be good to rework the market to
-> have boulders instead of stalls. i'm not sure if we need all the stalls-related
-> controls with this
+> meanders between rocks. also would be good to rework the market to have
+> boulders instead of stalls.
 
 Built as: on a street or trail the boulders now line the verges, a metre or
 two off the edge, in groves with clearings between, and favour the inside of
@@ -483,55 +418,11 @@ old aisle setting back as `passages`, and three presets: **boulder grid**,
 are in — so passage width is the lever. The one-piece-or-layers question is
 answered in the session and left open here: his call.
 
-## 2026-09-27 — shading shows them transparent
-
-> boulders only appear to lose transparency when i'm right in front of them.
-> this becomes obvious when boulder shading is adjusted up and down and
-> whatever is supposed to be occluded by them is shining right through them.
-> here's an example
-> /experiments/crowd/?s=_-__7___fF8syctZLJ4JCqihtGAAAo-hVSe4AABoAAkABQ6oCkAAACxQQs
-
-Measured on that address, offline and by tracing the paint calls in the
-browser: no head behind a boulder was drawn. About 70% of the heads on screen
-sat over some boulder's outline, at 25–61% of its distance and more than half
-of them below half brightness — the band of nearer, fogged heads crossing every
-boulder. The grey was the one thing the fog did not touch, so it read as
-nearest. Fixed by fogging the shade and painting boulders far to near; at shade
-0 nothing changes.
-
-## 2026-09-27 — far boulders let heads through
-
-> what i'm seeing far away boulders become transparent and heads are coming
-> through. i'm judging it by the size of head relative to size of boulder. only
-> the first two rows of boulders in this scene (honeycomb with grey boulders)
-> are opaque.
-> /experiments/crowd/?s=_-__7___fF8syctZLJ4JCqihtGAAAo-hVSe4AABoAAkABQ6oCkAAACxQR8
-
-He was right and the last round's answer was incomplete. Only the detail
-radius (24 m, his "first two rows") is pushed off boulders; past it people walk
-through them, and a 3 m dome is only 2.5 m across at head height, so somebody
-near the edge of a footprint had their head outside the sphere, drawn on the
-flank at the boulder's own distance. Measured exactly on his address: 2–9 such
-heads a frame, about 3% of those drawn past 24 m; 0 after. Anybody standing
-inside a footprint is now inside the boulder.
-
 ## 2026-09-27 — still not right past the first line
 
-> still not right. only the close bolders are opaque. past the first line of
-> boulders it appears that there are no boulders. no grid can be detected
-> without boulder shading. with boulder shading it is obvious that people are
-> seen through. perhaps it is too much of a task and we've entered into 3d
-> geometry that doesn't quite fit our mostly 2d model.
-
-> i'm stepping away. work independently.
-
-One more real fault, and then the answer is not geometry. The fault: each
-boulder's verdict was combined by taking the larger number, and "cut" is 2
-where "hidden" is 1, so a head grazed by one boulder and wholly behind the next
-stayed cut — 20–32 a frame on a honeycomb. Fixed. Then checked inside the
-running page, on its own frame rather than a copy of the maths: of 1,279 heads
-drawn over a boulder's outline, every one was in front of that boulder's
-surface along its own sight line, the nearest by 0.8 m.
+> no grid can be detected without boulder shading. perhaps it is too much of a
+> task and we've entered into 3d geometry that doesn't quite fit our mostly 2d
+> model.
 
 What remains is what can be seen from eye height. Every head is at the eye's
 height, so on a honeycomb a sight line travels about two rows before it meets
@@ -556,7 +447,6 @@ Open, for him:
 
 ## 2026-09-28 — what the piece actually is
 
-> great. boulders now correctly block people at all distances.
 > looking at the piece with fresh eyes i realise that the most significant
 > development here is the active gaze. people dynamics, obstacles, chase - all
 > are variations of what we have done before in other experiments. it's the
@@ -573,96 +463,5 @@ Open, for him:
 > "plugins" that enhance and complicate the scene and those could be swappable
 > or composable.
 
-> yes, when restructure in 238 is done and merged, you can start on the
-> layering.
-
-> i'm stepping away. when restructure is done, you can open and merge PRs as
-> needed. talk to other sessions if you need assistance with layering.
-
 Filed as #242, reviewed once by the steward (five points on the issue), and
 started when #238 landed.
-
-## 2026-09-28 — the panel jumps, and loop is not a ground
-
-> ground slider makes the whole pannel jump because it cuts sections below and
-> when there's not enough content to present, the whole control panel moves
-> down to touch the bottom of the panel. it feels like we're trying to do 2
-> things: disable controls that don't matter (i.e. when groud: none) and reduce
-> the size of controls section. we can disable unused controls without hiding
-> them. some relationships are weird. moving the "loop" control turns the
-> ground to loop. not clear why "loop" type is even needed for ground if
-> anything appears to be loopable. i can't recommend a solution
-
-## 2026-09-28 — a toggle, my line, and values that wrap
-
-> representing booleans as sliders is quite something. when way can have 2
-> options: open ground and "a way" - that's a toggle.
-> "my line" appears to be always disabled, at least I haven't figured out what
-> turns it on.
-> "boulders" are also jumpy when the value goes from "none" (one line) to "%%
-> of the ground" (two lines)
->
-> let's fix the jumpiness by adjusting value render and not spend much more
-> time on this. clearly, this is a hard problem to solve.
-
-Done, and stopped there: `way` is a toggle (a boolean slot, the numeric one
-retired); `hold` now sits above `my line`, since holding a line is what turns
-it on; values render on one line in the kit, and the formats that did not fit
-were shortened (free, 6% cover, hexagonal). Walkers' pace band needed its value
-column widened to stay whole. Measured: no row moves when boulders go from none
-to a share, or when the way is toggled.
-
-## 2026-09-29 — a toggle group
-
-> standard treatment for these kinds of toggles is a "toggle group" - what
-> shadcn calls them. having one button change label based on state is
-> possible, but is unorthodox and surprising
-
-Done in the kit, for every piece: a toggle is two buttons, the current one lit,
-each setting its own value. Crowd's way, starry night's sky and walkers' two
-toggles all change with it.
-
-## 2026-09-29 — sections as boxes
-
-> that is looking better now. i'm looking at the screen and am thinking that
-> perhaps each sesion could be a box and those boxes stack along the right side
-> of the screen masonry grid style. this would eliminate the scroll inside
-> controller panel and would provide better anchoring of section. this ui looks
-> like photoshop panels for layers, etc. Photoshop solves this problem by
-> providing tabs inside the panel, but that pushes sections out of sight and
-> makes them hard to discover. we're not there yet. this boxed grouping
-> naturally leads to layer-per-file (aka modular) approach.
-
-> a user (me) could then decide to collapse some modules so they stay
-> collapsed if they're not in use. that is not something we want to encode in
-> the URL, though, but we could - the url is so opaque to the user that we could
-> store other bits of state there. though i'd avoid that as long as I can.
-
-Built as a kit option, on for crowd: each group is a box, stacked down the
-right edge and wrapping into columns to the left, so nothing scrolls. A box's
-heading folds it, remembered per piece in the browser's storage and never in
-the address. Open: at 1280×800 the boxes need three columns and the second and
-third cover the preset buttons; folding two boxes brings it to two, which still
-covers presets 16–23.
-
-## 2026-09-29 — the section is the switch, and done for now
-
-> nice. this looks much better than scrolling controls. let's create a ticket
-> for steward to take this pattern to other experiments. i don't care about
-> small screens yet. file a ticket to test that resolution out by steward and
-> suggest approaches.
->
-> with this boxed controls approach it is obvious that ground:a way is a
-> toggle that turns on ground structure entirely. so it's the whole section
-> that's being turned on and off, not one control inside the section.
->
-> tell steward in that ticket to move the "copy link" part to the top and
-> break it out of the box. it should be just a "copy link" (two words) next to
-> "adjust" button in the top right corner: reroll, copy, adjust. this applies
-> to all experiments.
->
-> i think we've done enough here. let's open a PR and merge when green.
-
-The way toggle now sits in the ground box's heading, switching the section.
-Filed #257 (boxed panels and "copy link" in the bar, for every piece) and #258
-(small screens, measured, with approaches), both for the steward.

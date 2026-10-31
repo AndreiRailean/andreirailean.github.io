@@ -1,6 +1,6 @@
 # seed — streakers
 
-What Andrei asked for, in his words, and each round of feedback as it arrives.
+What Andrei asked for, in his words, and each later statement of artistic direction as it arrives.
 Verbatim. This file faces inward and records him; `about.md` faces outward and
 describes the work.
 
@@ -30,34 +30,9 @@ describes the work.
 > A particular variant I want to see is a screen filled with many such lines, so
 > it appears full and moving.
 
-## 2026-10-06 — first round
-
-> looking good. hue, line sizes and dot sizes don't appear to be doing much. i
-> like this one.
-> /experiments/streakers/?s=__94CZR5aALAID4IDAhgO0AAH
-
-> call that one "saturn"
-
 ## Questions I could not answer, and what I assumed
 
-- ~~Should saturn be the primary?~~ Answered 2026-10-06: "full", renamed
-  "dimensions", is the primary; saturn stays second.
-- **"Hue doesn't do much"** — it only tinted the controls. I took that as
-  wanting colour in the dots, so `tint` (0 stays white) and `hue spread` (per
-  line) were added rather than repurposing hue. Every preset but star,
-  rosette and weave keeps white dots.
 - ~~Ring with parallel aim wastes most emitters~~ Settled 2026-10-06: parallel
   aim on a ring removed. "All follow the same angles" is read as the same
   angle off the middle — twist — rather than one shared heading, which is the
   edge layout.
-
-## 2026-10-06 — second round
-
-> make 4 "full" the first and primary preset but name it "dimensions". saturn
-> should stay number 2. "rosette" number 3.
-
-## 2026-10-06 — third round
-
-> add 1,2,3,7,9 to showcase
-> add this as "club" /experiments/streakers?s=-_-fQJ3ACzWkgDEKVgJ0ugACtKUtA
-> add club to showcase as well

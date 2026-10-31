@@ -35,6 +35,15 @@ nothing to react to. Every piece since has skipped the document and embers, the
 newest, has none. The practice had drifted the right way; nothing held it there,
 and nothing in any agent doc mentioned the question at all.
 
+He had said which way round he wanted it the same day, before that spec existed:
+
+> feel free to write the spec and start implementing before my approval. i'd
+> rather adjust in flight as it's an experiment - we'll only know where to go
+> once we take the first step
+
+That sentence lived in dangler's `seed.md` until #320 pruned seeds to a piece's
+artistic direction. It is about how every piece gets built, so it lives here.
+
 **Bottom-up construction is the other, and it is the stronger pull**, because it
 is how one would sensibly build a simulation: model the bodies, then the forces,
 then the camera, and wire up a page once there is something worth looking at.

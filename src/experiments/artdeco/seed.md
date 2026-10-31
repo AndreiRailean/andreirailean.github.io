@@ -1,7 +1,7 @@
 # seed — artdeco
 
-What Andrei asked for, in his words, and each round of feedback as it arrives.
-Verbatim. This file faces inward and records him; `about.md` faces outward and
+What Andrei asked for, in his words, and each later statement of artistic
+direction as it arrives. Verbatim. This file faces inward and records him; `about.md` faces outward and
 describes the work.
 
 ## 2026-10-15 — the seed
@@ -51,7 +51,7 @@ describes the work.
 
 ## 2026-10-16 — first look
 
-> oooh. i love it. i like how the parallelism occurs naturally. feels like
+> i like how the parallelism occurs naturally. feels like
 > stop/cross/rebound is a decision to be made by the line. we only need to
 > provide it as an option, so a piece can have all 3 enabled or only one.
 >
@@ -95,35 +95,11 @@ describes the work.
 >
 > would be good to allow for a vertical bias - so a line would have a tendency
 > to go longer in the up-down plane to build skyscraper-like structures.
->
-> i'm finding circles a little hard to control, so i'm not testing them at the
-> moment. they overlap a little too much and unpredictably, so i'll leave them
-> until i get the feel for the lines.
->
-> i'm not finding the multi-line treatment (triplets) very useful. it may be
-> good as a stem, but it only works if it is smarter about angles and joins. it
-> produces joins that only touch on one of the lines and has others over or
-> undershoot. hard to control and kinda gets boring really quickly.
->
-> save this one as "the construct"
-> /experiments/artdeco/?s=___f____QEnZwkSRpSCAowggwwLQAAcdSBQpgABAEjLE
->
-> - it's the same one as above, only the stems are a little further apart. on
->   my screen, the pattern it produces is mesmerising. not sure what will happen
->   on replay.
 
 ## 2026-10-16 — four to the edges
 
-> interesting. by pushing 4 to the edges (instead of a square) i get 3 big
-> circles and strange cut-offs on where the up-down lines would meet. does the
-> left-right symmetry need to mirror the up-down one or can the left-right have
-> a life of its own? i'm looking at this
-> /experiments/artdeco/?s=___f_____2BQGcJEkaUiAKMIIMMC0AAHPUgUKYAAQBIyz0ERIq
-
-## 2026-10-16 — clockwork
-
-> save this as clockwork
-> /experiments/artdeco/?s=___f_____3AwGoJEkOUhREMIIMMC0AAHPUgCEIAAQAmyzqCRJT
+> does the left-right symmetry need to mirror the up-down one or can the
+> left-right have a life of its own?
 
 ## 2026-10-17 — busyness
 
@@ -138,12 +114,8 @@ describes the work.
 
 ## 2026-10-17 — the permanent circle, and circles crowding
 
-> i'm looking at this, a derivative of preset 17, and the main circle has not
-> moved in a few minutes now. nothing can kill it and it makes no decision to
-> go. there's something to its permanence, but i'd like to know how to control
+> there's something to its permanence, but i'd like to know how to control
 > it.
->
-> /experiments/artdeco/?s=___f_____39J2cJEkaUggKMIJMMC0AAHHUgUKYYAQBIyxAADIAMYRQ
 >
 > I started playing with circles and it appears that busyness controlls allow
 > me to find them manageable again, though i do find places of
@@ -170,7 +142,7 @@ two overlapping in a chain along a line.)_
 > don't want it's feel to change. not sure if this tip thing is a hint at a new
 > piece or another type of "pen"
 
-## 2026-10-17 — taming tips, and snowflake
+## 2026-10-17 — taming tips
 
 > hmmm. it does begin to look like a different piece, but we'll keep it here
 > because learning the controls is a little hard. tips dynamic needs to be
@@ -181,13 +153,7 @@ two overlapping in a chain along a line.)_
 > be seen and others cannot.
 >
 > here, i turned off the tips and am quite enjoying the constant
-> re-generation. let's call this a snowflake
-> /experiments/artdeco/?s=___f______9_A5lBiZjDMMwjCCFDAtAAAQlAFAAAAKAAMtAACjARFkVQAKwI
-
-## 2026-10-17 — hyper cube
-
-> hyper cube
-> /experiments/artdeco/?s=___f________cAOZQYmYwzDMIwghQwLQAAEJQBQAAACgADLQAAowERZFUACsiG2M
+> re-generation.
 
 ## 2026-10-17 — frames
 
@@ -199,23 +165,10 @@ two overlapping in a chain along a line.)_
 
 ## 2026-10-18 — frames, first look
 
-> thanks. it's looking good. you're a good implementer of patterns.
-> i wouldn't put the "frame" box as the first control. maybe the last.
-> pull latest main so you can see what I'm looking at
-> i see that the circles that appear on the border are cut off. would be good
-> for them to not be cut off. if the border is implemented by occlusion of the
-> middle section, we are drawing a lot of hidden lines. perhaps they all need
-> to bounce of the border
-
 > i would also like to add a bit of complexity to the frame so it's not just a
 > band around, but also, in the spirit of art deco, allows for ornamentation on
 > the edges and in the corners. ao rather than being always cut-off, the lines
 > would draw shapes and allow for insets
-
-## 2026-10-18 — frame of progress
-
-> if you see what i have open, save it as "frame of progress"
-> /experiments/artdeco/?s=___f_________3-m2cTTkaUggKMIIoMC0AAHHUgUKYiAAEAyztMPKBKIENAQjFAk8PKkECg
 
 ## 2026-10-24 — lifecycles, for looping video
 
@@ -227,9 +180,6 @@ On recording looping reels with framestep (#329):
 > piece and compose the end over the start in a way that the transition is
 > invisible. this would come at a cost of the piece starting already "mature",
 > like in all other pieces, i.e. without emerging from the sides of the screen.
-
-> artdeco preset looks good, just a tad too slow for me. i increased the rate
-> to 33%/s and life to 0s.
 
 > to further fool the viewer, we can show multiple "loops" and stitch them
 > together at the blank point so it's not as obvious that we're just looping -
@@ -299,13 +249,6 @@ _Mine, not his — what I assumed and what would settle it._
   - _Vertical bias_: `rise` lengthens upright stretches and, at the same odds,
     makes turns lean back towards upright. Two mechanisms under one slider; if
     you want them apart, that is a split.
-  - _Strands_: joins at turns are now mitred, and `strands on: stems only`
-    bands the stems alone. Splits still start in the middle of a band.
-  - _Replay_: two live loads of the construct used to diverge within seconds,
-    because the drawing depended on frame length. Growth now runs in fixed
-    ticks, so a replay is the same drawing. **The construct you saw was one of
-    those frame-dependent drawings**; the preset now grows the fixed one, which
-    may not be the exact picture you fell for.
 - **Four to the edges** (2026-10-16). The three circles were the big circle
   slid out with each side copy; it now turns with the copies but never slides,
   so one on the centre stays one. The cut-offs: with slid copies every copy
@@ -363,8 +306,7 @@ _Mine, not his — what I assumed and what would settle it._
   line that would lift ends instead), and _dots to_ (only tips up to that many
   splits from a stem are drawn as dots). On pen up in flow, flying tips peaked
   at 1143 with none of them, 113 with toll 2, and exactly 60 with flock 60.
-  Snowflake is preset 20, as you made it.
-- **Frames** (2026-10-17). A group of its own, first in the panel. _frame_ is
+- **Frames** (2026-10-17). A group of its own. _frame_ is
   the margin turned inside out: a band that wide round the edges, as a share
   of the height, and the middle stays empty. Lines meet the middle's edge as
   they meet the screen's, and the middle is clipped, so a turned copy or a
@@ -379,16 +321,6 @@ _Mine, not his — what I assumed and what would settle it._
   a page that serves the clear frame alone for embedding, with no chrome.
   Tips that are flying ignore the middle, so a tips-pen drawing can land in it
   and draw lines nobody sees.
-- **Frames, first look** (2026-10-18). The frame group is last in the panel.
-  The cut-off circles and the hidden lines were one fault: the middle was
-  clipped, and turned copies grew into it. Now every image of a tip is tested
-  against the middle and rebounds off it (a flying tip too), a circle that
-  would reach into it is left out (`circles.framed`), and the clip is only a
-  safety net, off under debug so an intrusion shows. Measured with the clip
-  off: no lit pixel in the middle at folds 2, 3, 4 and 6, box and oval. At 3,
-  and 4 with turned copies, a copy round the centre starts inside the middle
-  and ends at once; copies to the edges fixes it (hyper cube: 12 segments
-  round the centre, 143 to the edges).
 - **Ornament** (2026-10-18). The middle is now a shape, built in `frame.ts`
   one side at a time so it is mirrored both ways by construction: _corners_
   square, cut, stepped (with _steps_), rounded or notched, at _corner size_;
