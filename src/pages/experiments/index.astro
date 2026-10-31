@@ -150,15 +150,23 @@ const [opened] = experiments.map(({ data }) => data.started).sort((a, b) => a.va
       }
 
       /*
-       * Two up wherever two fit. With the caption on the work rather than under
-       * it a plate is only as tall as the picture, which is what lets a phone
-       * show three of them instead of one.
+       * As many up as fit at 28rem a plate, and no cap on the wall. With the
+       * caption on the work rather than under it a plate is only as tall as the
+       * picture, which is what lets a phone show three of them instead of one.
+       *
+       * 28rem is pinned from both sides: a 1024 px laptop stays two-up only
+       * below about 28.6rem, and a 1440 px one only above about 26.8rem. It then
+       * gives three up at 1920 px and five at 2560 px, where every piece fits on
+       * one screen. The wall used to stop at 78rem, which held a 30" screen to
+       * two columns with more than half of it blank (#331).
+       *
+       * The widest a plate gets with two or more up is just before the next
+       * column fits, about 43rem. The image `sizes` below says so.
        */
       .wall {
         display: grid;
         gap: clamp(1rem, 2.5vw, 1.75rem);
-        grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
-        max-width: 78rem;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr));
         margin: 0;
         padding: 0;
         list-style: none;
@@ -403,7 +411,7 @@ const [opened] = experiments.map(({ data }) => data.started).sort((a, b) => a.va
                 src={data.poster}
                 alt=""
                 widths={[560, 1120]}
-                sizes="(min-width: 58rem) 37rem, 100vw"
+                sizes="(min-width: 64rem) 43rem, 100vw"
                 loading={index === 0 ? "eager" : "lazy"}
               />
             )}
