@@ -12,8 +12,10 @@ for; a piece started today gets one from minute zero.
 
 **Long preset URLs are replaced with `[preset URL]`.** They are machine data
 rather than his phrasing, they ran to four hundred characters each, and the
-scenes they name are in `settings.ts`. Nothing else is altered, trimmed or
-tidied.
+scenes they name are in `settings.ts`. Since #320 it holds his artistic
+direction only: bug reports, feedback on the implementation, his questions and
+preset or control requests were removed by whole sentences, and no surviving
+sentence is reworded.
 
 ---
 
@@ -56,12 +58,10 @@ tidied.
 
 ## 2026-08-30 — easing between frames, and where the realism will live
 
-> wow, this is nice. make transitions between frames a little smoother so they
-> ease in and out. i see the pixels themselves are pulsing, but the transition
-> between frames is abrupt. i suspect a lot of the realism in this piece will be
-> in the frames themselves: the content, transitions and refinement of detail.
->
-> let's set this for the portrait. [preset URL]
+> make transitions between frames a little smoother so they ease in and out. i
+> see the pixels themselves are pulsing, but the transition between frames is
+> abrupt. i suspect a lot of the realism in this piece will be in the frames
+> themselves: the content, transitions and refinement of detail.
 >
 > next we'll want to play with edge detection and try to accent the edges
 > through size of the pixel
@@ -113,15 +113,10 @@ records it as the section's aim.
 
 ## 2026-08-30 — slowing it down for an organic simmer
 
-> here's another update for Acid. let's move this to be the first preset.
-> [preset URL]
->
-> it also reveals something interesting. when slowed down, which i'm doing to
-> avoid too much flashing and give it a bit more of an organic simmer feel, big
-> psyx reveal a gap when they phase out. it gets filled in quickly enough, but
-> feels like larger units should have higher gravity and fade in an out faster.
-> maybe i'm inventing things. with the preset above, i have slowed the piece
-> down, while ramping up all other timing params for a more organic feel.
+> when slowed down, which i'm doing to avoid too much flashing and give it a
+> bit more of an organic simmer feel, big psyx reveal a gap when they phase
+> out. it gets filled in quickly enough, but feels like larger units should
+> have higher gravity and fade in an out faster. maybe i'm inventing things.
 >
 > Still not a fan of the empty black box. Almost feels like content-carying
 > pixels in a bigger psyx should knock out the smaller pieces. this would
@@ -129,22 +124,11 @@ records it as the section's aim.
 > having an offset different to the box is also weird, i think we need to
 > offsett the box and the content of the psyx, but that makes for a very fine
 > grid.
->
-> i just observed a large psyx staying on screen for a very long time. i guess
-> some space affinity is still at play.
 
-## 2026-08-30 — a slider is a slider
+## 2026-08-30 — small psyx in the gaps of big ones
 
-> i wanted to control the size of the larges psyx and it took me a while to
-> figure out that "coarse" is the control. When presented as a percentage of the
-> screen it doesn't fit on one line and reveals too much information. It's just
-> a slider that controls the size: max is bigger, min is smaller. no need for
-> super technical detail in percentages.
->
-> "solid" isn't quite what I was aiming for, but misunderstanding is
-> understandable. It has it's place. I was more thinking that smaller psyx can
-> be shown in the empty spaces left by the unfilled portions of the big ones.
-> But that's a much bigger ask.
+> I was more thinking that smaller psyx can be shown in the empty spaces left
+> by the unfilled portions of the big ones. But that's a much bigger ask.
 >
 > I also still don't like how offsetting works because the empty box doesn't
 > move, only the visible portion moves, so there's this disconnect with the
@@ -157,45 +141,6 @@ records it as the section's aim.
 > [preset URL]), is it provides a sort of a glow. Now I want us to build real
 > glow. Maybe even with an aftereffect feel, so as the psyx is eased out, it's
 > afterglow eases out with a delay.
-
-## 2026-08-30 — the afterglow outlives its preset
-
-The bug he describes here is the origin of `#117`, still open.
-
-> set this to preset 3: Ampersand [preset URL]
->
-> afterglow looks buggy in that if you click between presets and the target
-> preset is on a slow clock, afterglow stays for a long time and is totally
-> unrelated to the active preset. set playback on 4,5,6,7 to 1 because they're
-> too slow and afterglow makes them look bad
-
-## 2026-08-30 — a preset is never a default
-
-This became
-`docs/adr/20260830-a-preset-inherits-from-nothing.md`.
-
-> we don't want Acid to be default settings. We already ran into this when
-> working on one of previous experiments. we never want a preset to be used as
-> default for others to be based upon. as with flotsam or dangler, first preset
-> is just postition one and when experiment is opened without any params it
-> redirects to the full url of the first preset. other presets are not impacted
-> when something else becomes number one.
-
-## 2026-09-30 — the boxes say what has to change (#263)
-
-Said after seeing psyxels boxed (#261), whose boxes had grown to 28rem to hold
-the subject choices. Recorded in #263 by the steward; copied here verbatim.
-
-> psyxels' wide boxes hint at the structural changes needed. Subject: "A",
-> "Alive", "L", "Luna", "&" - are all doable with just an input box so "Alive"
-> is what is typed in and can be changed to anything else - no need to select
-> from a limited set of subjects of textual kind. glyphs deserve their own box.
-> portrait should be a url pointing to the local avatar stored in the repo or
-> pointing to my github public avatar. "face" control only relates to typed
-> text. when subject is "text", user can enter text and choose the font. when
-> subject is "picture" user can set the url. glyphs and polarity fit together.
-> fill is a camera control that zooms in and out - it's ok to keep it there,
-> but it doesn't quite fit with the rest.
 
 ## Open questions, 2026-10-02 — left by the session that built #263, #117 and #135
 
@@ -212,20 +157,6 @@ Not asked of him in a message; written here so they outlive the session.
   toggle), or the default for new scenes? _Answered 2026-10-15, below: neither._
 - **#135.** `garden` puts sprout and spiral beside moon, heart and leaf. Does
   either earn the flower's slot? Neither has been judged by eye in a field yet.
-
-## 2026-10-02 — after #268, #269 and #270
-
-> local avatar and github is the same picture. it was copied across when we
-> built the experiment or somewhere around that time, so the threshold should
-> be the same. threshold is increased in that pic to blank out the background
-> to leave the face as the only thing with the psyxels (mostly)
->
-> flat/dither - ok
-> sprout - good
-> garden - good. rename to "life" and use this [preset URL]
->
-> biggest doesn't seem to work as it claims - every psyxel is the same size and
-> "biggest" just makes them all big. see this [preset URL]
 
 ## 2026-10-15 — #117, flat against dither
 

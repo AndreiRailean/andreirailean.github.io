@@ -12,7 +12,9 @@ for; a piece started today gets one from minute zero.
 
 **Long preset URLs are replaced with `[preset URL]`**, and the closing
 housekeeping messages — open a PR, stop the server, close the session — are
-left out as incidental. Nothing else is altered, trimmed or tidied.
+left out as incidental. Since #320 it holds his artistic direction only: bug
+reports, feedback on the implementation, his questions and preset or control
+requests were removed by whole sentences, and no surviving sentence is reworded.
 
 ---
 
@@ -51,36 +53,14 @@ left out as incidental. Nothing else is altered, trimmed or tidied.
 
 ## 2026-09-07 — a fire, not a storm
 
-> thanks. i'm looking at this and am trying to slow it down. the piece looks
-> like a fire when zoomed out, but also moves like a storm when zoomed in. fire
-> is mesmerising in slow motion or slow. here it moves very fast so the
+> i'm looking at this and am trying to slow it down. the piece looks like a
+> fire when zoomed out, but also moves like a storm when zoomed in. fire is
+> mesmerising in slow motion or slow. here it moves very fast so the
 > wheighlessness of embers cannot be enjoyed - they're blown away. [preset URL]
-> i don't really understand the trails control - it appears to add glow.
 
-## 2026-09-12 — heat against hue, and the depth of a fire gradient
+## 2026-09-12 — the depth of a fire gradient
 
-> i'm fiddling with controls. there's a "heat" control that claims to set the
-> colour of embers but it doesn't seem to do anything. "hue" control is the
-> only thing that changes their colour. so either one is unnecessary or I'm
-> using them incorrectly. heat slider seems to control the intensity of embers
-> and hue controls the colour but hue control seems to make it "flat". embers
-> usually appear not as a light to dark gradient but as a transition between
-> colours of heat, i.e. yellow-to-white or red-yellow-white. i don't think
-> we're going for that kind of realism here but feels that a little bit more
-> depth of "fire gradient" is possible.
-
-## 2026-09-12 — winter blues, and a control that does nothing
-
-> let's save this as first preset and call it "winter blues" [preset URL]
->
-> i don't quite understand how "splinters" control works. i slid it up and an
-> down and it doesn't seem to change anything or maybe other controls are
-> inhibiting it.
-
-## 2026-09-12 — locking it in
-
-> winter blues is good. let's lock it in and update the about page background
-> and gallery poster
-
-> sync up with main. when we open the PR, i want to make sure we publish winter
-> blues to the showcase
+> embers usually appear not as a light to dark gradient but as a transition
+> between colours of heat, i.e. yellow-to-white or red-yellow-white. i don't
+> think we're going for that kind of realism here but feels that a little bit
+> more depth of "fire gradient" is possible.

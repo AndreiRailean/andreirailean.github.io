@@ -15,7 +15,9 @@ finding — the slug does not match the piece.
 
 **Long preset URLs are replaced with `[preset URL]`.** They are machine data
 rather than his phrasing, and the scenes they name are in `settings.ts`.
-Nothing else is altered, trimmed or tidied.
+Since #320 it holds his artistic direction only: bug reports, feedback on the
+implementation, his questions and preset or control requests were removed by
+whole sentences, and no surviving sentence is reworded.
 
 ---
 
@@ -35,35 +37,25 @@ Nothing else is altered, trimmed or tidied.
 The complaint that a mechanical look is a _mechanism_ to find rather than a
 number to tune, stated as plainly as it ever gets here.
 
-> this is an excellent start. thank you. the moving diagonals are appearing a
-> little too mechanical. what gives it away is the very even looking wave
-> period, so some variability there would be great if the algorithm allows.
-> also wave direction - they all come from the same exact direction. waves are
-> usually caused by wind and wind comes in gusts and with direction changes. i
-> don't want to cause major algorithmic rework as what we have here appears
-> mesmerising as is.
-
-## 2026-08-29 — a broken control
-
-> wavelength control is broken. i can't slide it and it appears to be pegged to
-> the lower value of the range.
+> the moving diagonals are appearing a little too mechanical. what gives it
+> away is the very even looking wave period, so some variability there would
+> be great if the algorithm allows. also wave direction - they all come from
+> the same exact direction. waves are usually caused by wind and wind comes in
+> gusts and with direction changes. i don't want to cause major algorithmic
+> rework as what we have here appears mesmerising as is.
 
 ## 2026-08-29 — a more alive starry night
 
 > this setting looks like a more "alive" starry night. Because dominant stars
-> keep their position, it appears very organic. let's save this one as well.
-> [preset URL] call it simmer
+> keep their position, it appears very organic.
 
 ## 2026-08-29 — thinking aloud about brightness
 
-Worth keeping whole: it is the clearest example of him reasoning toward
-something he cannot yet name, and the answer turned out to be a control that
-did not exist yet.
+The clearest example of him reasoning toward something he cannot yet name, and
+the answer turned out to be a control that did not exist yet.
 
-> i'm trying to understand how to reduce the brightness of the scene. i'm
-> looking at migration and it appears that the only controls are the size and
-> number of pieces and neither combination of those produces the effect I feel
-> I want. The lights do fade a little bit (i'm loooking at "migration"), but
+> i'm trying to understand how to reduce the brightness of the scene. The
+> lights do fade a little bit (i'm loooking at "migration"), but
 > overall they appear at a static level even when followed individually. i'm
 > not sure what i'm after, so cannot articulate it easily. perhaps i'm trying
 > to reach for the same monotonic distribution of lights as in starry night.
@@ -76,53 +68,14 @@ did not exist yet.
 > size/density balance and am evaluating on the intensity of overall light the
 > scene produces. i'm looking at this as I write. [preset URL]
 
-## 2026-08-29 — the halo on the largest pieces
+## 2026-08-29 — large pieces alone, like a bokeh
 
-> Yes, size mix is what i was after. now that I can have only a few large
-> pieces I'm noticing that the large the shiny object the fuzzier it is. They
-> appear as a tiny solid dot in the middle with a thick halo around. i thought
-> it was gleam, but no, increasing gleam gives all smaller staars a halo, but
-> the big one don't get one and their gleam happens around the tiny center dot
-> and is almost fully covered by the white semi-transparent halo. Also, it
-> looks like the largest dots are not subject to colour spread. It appears that
-> the dot is composed of layers: small dots that vary in colour, the the gleam
-> of that tiny dot of the same colour, then a white halo that changes in size
-> based on "max size" control. It is quite obvious here when looking at bigger
-> pieces [preset URL]
-
-## 2026-08-29 — proving it with a scene of only large pieces
-
-> ok. this change give a more even colour. but there's a sharp edge between
-> smaller and bigger pieces with biger having a sharp boundary while smaller
-> ones are fuzzy gleam is increased. this forces the choice of smaller sizes to
-> keep the scene smooth.
->
-> to prove that large pieces are never fuzzy, i built a scene with only large
-> piece. and it has its own charm and is beginning to look like a bokeh, though
-> with pulsing jagged row resolution halos. [preset URL]
+> and it has its own charm and is beginning to look like a bokeh, though with
+> pulsing jagged row resolution halos. [preset URL]
 
 ## 2026-08-29 — slower is more real
 
-> change speeds: offing - 0.2, windrows - 0.3, crossing - 0.75, riptide - 0.2,
-> pond - 0.6, migration - 0.2, dream - 0.6
->
 > slower speed gives it a more cinematic look and increases realism because the
 > patterns aren't as easily detectable. also, if you fly over an ocean on a
 > plane - about 1km above - you'd see wave bands moving vey slowly, almost like
 > a standing pattern.
-
-## 2026-08-29 — closing
-
-> ok. we're done here. thank you. you're doing excellent work. i am happy with
-> the level of research you do and how you interpret and adopt my realism
-> requirements. keep it up!
-
-## 2026-10-18 — 1× is the speed worth watching
-
-> speed is the crudest level of control that slows down the whole piece. on
-> pieces where the presets are mostly at the lowest end of the range, it's an
-> indication that there's nothing interesting at the high end for the experiment
-> and the scale can be adjusted for finer adjustments within the interesting
-> range rather than having a generic multiplier. for flotsam, the 0.2 is
-> probably the 100% speed that we're interested. and that is what we want to
-> speed up and slow down.

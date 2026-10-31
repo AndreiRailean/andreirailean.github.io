@@ -1,6 +1,6 @@
 # seed — dotfield
 
-What Andrei asked for, in his words, and each round of feedback as it arrives.
+What Andrei asked for, in his words, and each later statement of artistic direction as it arrives.
 Verbatim. This file faces inward and records him; `about.md` faces outward and
 describes the work.
 
@@ -23,16 +23,11 @@ describes the work.
 
 ## 2026-10-10 — first round
 
-> I realised that "offset" is the same as "triangle". or at least the look
-> exactly the same. offset falls out of the control container box. [Image #1]
 > all the wind appears to be comeing from the same direction. in dangler, the
 > direction was coming from different directions and it appeared more varied.
 > i can see the wave dynamic from flotsam with wave patterns coming through. i
 > expect it to be less cyclical here. wind doesn't come from the same direction
 > all the time and gusts also not "more wind" from the same direction.
-> i'm looking at this. thin dots and rigid stalks in white at this spacing looks
-> good to me.
-> /experiments/dotfield/?s=____cCsABRVkwYpQyeAghoCIAKhNokkKAZAAAUAA
 > increasing height appears to make the springing action appear random. with
 > this setting it's hard to tell that the stalks are together at all - some
 > bend a lot, others appear to not bend at all.
@@ -44,15 +39,6 @@ describes the work.
 > dangler. i like that but I'm also interested in seeing tall stalks that don't
 > curl but just bend at the springy base, like ski markers in slalom
 
-## 2026-10-10 — third round
-
-> meadow:
-> /experiments/dotfield/?s=vov___9wLjQmSXxGDcXKlh4qgUjIwAAEAAKsiEZNcDwhNVCRGAAG
-> white:
-> /experiments/dotfield/?s=vov___9wOgBcqyaCCIAKhNokkKAZAAAUAAJQOYZPANBaFGRRaApi
->
-> add all presets to showcase. open PR and merge when green
-
 ## Questions I could not answer, and what I assumed
 
 - **Which lattice is "hex" and which is "triangle"?** A field of dots on a
@@ -60,8 +46,7 @@ describes the work.
   `triangle` the triangular lattice (six equidistant neighbours) and `hex` the
   honeycomb (dots on the corners of hexagons, three neighbours, an empty
   centre in each cell). `diamond` is the square turned 45°. Swap the labels if
-  they read the wrong way round. ~~`offset`~~ Answered 2026-10-10: it looked
-  the same as triangle, so it became `rows`, a crop at twice the spacing.
+  they read the wrong way round.
 - **What colour is the top of a column?** The seed puts colour on the sides, so
   an upright field would be nothing but tops. I gave the tops the stalk's
   colour lifted toward white by a `cap` setting — 0 is the stalk colour, 1 is

@@ -34,8 +34,6 @@ sentences are quoted unaltered; the sentences between them were left out.
 
 ## 2026-10-24 — what the experiment is for
 
-> Call the experiment "islands"
-
 > I'd be keen to see if shapes other than a cube make sense and whether
 > rotation is what we find most useful. It will be sufficient for an
 > experiment, and we may leave it at that. Or we may keep building to have
@@ -182,9 +180,7 @@ The scene on his screen when he said so, read off the bridge:
 > materially influence the density of.
 
 > If you feel the need to introduce more dimensions like colour or
-> patterning, i'm happy for us to look into that. For lava flavour keep using
-> tempus. For exploring other dimensionality, create a new preset and call it
-> "Ora"
+> patterning, i'm happy for us to look into that.
 
 ## 2026-10-26 — wax on top and bottom: lava pong
 
