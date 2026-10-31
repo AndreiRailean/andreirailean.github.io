@@ -17,7 +17,9 @@ survived anyway, because the _originating_ session's transcript is still on
 disk under the same worktree slug. The handoff was never the only copy.
 
 **Long preset URLs are replaced with `[preset URL]`**, and housekeeping is left
-out as incidental. Nothing else is altered, trimmed or tidied.
+out as incidental. Since #320 it holds his artistic direction only: bug
+reports, feedback on the implementation, his questions and preset or control
+requests were removed by whole sentences, and no surviving sentence is reworded.
 
 ---
 
@@ -67,88 +69,31 @@ in `docs/agents/issue-tracker.md`.
 
 ## 2026-09-03 — reaching for stars, getting bacteria
 
-> great start. i can't open locahost links because you're on a vm.
->
 > playing with controls, i'm trying to adjust it so it, like others, can become
 > a set of stars on a dark background. this is as close as I can get it. looks
 > like bacteria [preset URL]
 
-## 2026-09-04 — chalky, and a spawn that gives itself away
+## 2026-09-04 — contrast, and colours that are tame
 
 > i'm still not able to achieve a contrasting black background with white
-> lines. all colours are tame. here's the config i'm playing with. one thing
-> that looks like a bug at this config is that initial population spawns in a
-> rectangle in the middle of the screen with roughly 1/4 of screen being empty.
-> then they start walking around. it takes a long time for traces to hide that
-> fact as initial traces only preserve the origins. call this preset "chalky"
-> [preset URL]
-
-## 2026-09-04 — the permanent grey trace
-
-> i've got this version of chalky that i'm working with. what i'm trying to
-> understand is how traces are expected to behave. i see the bright white trace
-> fading, but it leaves a permanent grey trace behind and I'm not sure how to
-> control it. [preset URL]
+> lines. all colours are tame.
 
 ## 2026-09-04 — trimming the light presets
 
-> poster is green when chalky has dark background. i may be looking at the
-> wrong thing. remove presets 4 and up. white balls on light backgrounds don't
-> look good.
+> white balls on light backgrounds don't look good.
 
 An instance of narrowing a piece by deleting what argues with the finding.
-
-## 2026-09-04 — what did we learn
-
-> looking good. i think walkers is good to release. did we learn anything new
-> in this experiment? you don't have access to the old session, so whatever
-> knowledge was there was already captured in ADRs or text
-
----
-
-## 2026-09-04 — the suite is too expensive, and where that led
-
-This exchange is the origin of the browser/unit split work and of #133.
-
-> we're really taxing GitHub with those tests, aren't we? is it neccessary to
-> perform so much visual testing? it's been running for 8+ min now
-
-> close the server. if some tests can be moved off chromium (expensive) to
-> vitest (cheap) why do we write them for chromium first?
-
-> "heads lean outward" is that even needed anymore after we moved to circles?
-> what is url round-tripping?
-> landing rewrite sounds like a universal property. i guess this is hinting at
-> the cost of each experiement being standalone.]
-
-> i think it's reasonable for this kind of liberal expansion. we just need a
-> gate that causes us to stop to think if a browser test needs to be reworked
-> as a vitest.
-
-> capture a ticket for steward to analyse tests, decide which ones need moving
-> out of browser space and see what kind of project-wide config could help
-> speed up testing and reasoning about writing tests. do that only after you
-> finish the harness so the steward doesn't rederive this. i wrote this hours
-> ago. does 131 deal with this already?
 
 ---
 
 ## 2026-10-17 — colour is a randomness indicator, not a group
 
-Asked, after a review found every `set()` recoloured the whole crowd: whether
-to keep each person's colour draws from birth, so a slider that is not about
-colour leaves everyone as they were.
-
-> yes to walkers lifetime colour.
-
-Then, the same day, looking at `bacteria` on the live site:
+Looking at `bacteria` on the live site:
 
 > i'm looking at bacteria now in prod and don't really caro for group colour.
 > i'm not looking for groups and even if walkers do walk together they don't
 > need colour to be understood as being together. colour is more of a
-> randomness indicator. do the simplest thing there. if colour of each walker
-> costs too much to maintain, we can simplify it further. merge walkers when
-> ready without waiting for my approval.
+> randomness indicator.
 
 `kin` and `teams` went; `bacteria` moved to `crowd`. Each person's colour is
 drawn once and rebuilt from the settings on every change.

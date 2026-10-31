@@ -12,7 +12,9 @@ for; a piece started today gets one from minute zero.
 
 **Bare preset query strings are replaced with `[preset URL]`**, and
 housekeeping — merge when green, push what we have — is left out as incidental.
-Nothing else is altered, trimmed or tidied.
+Since #320 it holds his artistic direction only: bug reports, feedback on the
+implementation, his questions and preset or control requests were removed by
+whole sentences, and no surviving sentence is reworded.
 
 ---
 
@@ -51,31 +53,16 @@ Followed by:
 > slider controlling all light sources is there some imperfection coefficient
 > that causes slight variability in light colour?
 
-## 2026-08-24 — adjust in flight
-
-The clearest statement of the working method the experiment-writer role was
-later built around.
-
-> sounds good. also starry night got an "f" shortcut for full-screen mode. if
-> you sync with latest main, you'll see it. feel free to write the spec and
-> start implementing before my approval. i'd rather adjust in flight as it's an
-> experiment - we'll only know where to go once we take the first step
-
 ---
 
-## 2026-08-24 — tilt is useless, and a bug that turned out to be a feature
+## 2026-08-24 — a bug that turned out to be a feature
 
 The gust control exists because he found it by accident and kept doing it
 deliberately.
 
-> what i haven't found useful yet is camera tilt. because we're looking up,
-> tilt is like looking backwards, which is unnatural and doesn't give me
-> anything - it's like it's trying to flip the sceene so the danglers grow from
-> the ground. anyway, that's just a comment. whenever I tilt, i end up wanting
-> to just drag the scene to observe it in 3d space or at least to be able to
-> "move underneath" or "turn my head". tilt gives me only one dimension of
-> turning. but I don't think we need to focus on that just yet.
->
+> whenever I tilt, i end up wanting to just drag the scene to observe it in 3d
+> space or at least to be able to "move underneath" or "turn my head".
+
 > what i do find genuenly attrative happens as an unexpected side effect of
 > adjusting settings. when I change spread, the wires get redrawn and that
 > gives them a jolt so they sway a lot more when they spawn and then they come
@@ -85,20 +72,10 @@ deliberately.
 > which makes the wires sway hard like there was a burst, a gust of wind. would
 > be good to allow for gusts. so for some cases instead of constant breeze, we
 > could have waves of bursts of displacement and let it settle.
->
-> because settings are so numerous, they have to be scrolled. i think we could
-> let the panel be taller so everything fits.
 
-## 2026-08-24 — gusts against yanks
+## 2026-08-24 — gusts
 
-> 3 is "frantic" with this preset [preset URL]
->
-> gusts are very nice. i like this kind of motion. however i'm still not
-> getting the effect of the "yank" you diagnosed. with gusts the bottom of the
-> wires spread and then stabilise. with yanks they appear to stay in the center
-> more. i guess it's because the yank makes the wire move (or stretch and
-> contract) in the vertical (height) plane so it gives a denser presence in the
-> middle without much sway.
+> gusts are very nice. i like this kind of motion.
 
 ## 2026-08-25 — tremble, motion sickness, and animating the canopy instead
 
@@ -121,16 +98,8 @@ deliberately.
 > relief parameter (which would result in up-down) sway or anchor rotation
 > through a common center coordinate may do the trick for now.
 
-## 2026-08-25 — flicker that cannot be seen, and clustering
+## 2026-08-25 — clustering
 
-> please add 0.7 sway to together preset.
->
-> one setting i haven't been able to observe in action is "flicker". no matter
-> how high it is, i don't get the flickering feeling. perhaps i'm expecting too
-> much while it simply fades in and out gently and that gets lost in with the
-> rest of the motion. when focusing on a single light i can't see any visible
-> flicker.
->
 > another idea mildly related to topology is clustering. again the tree
 > analogy: branches force anchors to be clustered along them. whether it's
 > random disconnected clusters or a more connected variety - i don't know what
@@ -140,45 +109,9 @@ deliberately.
 > "together" preset i think that having a bit more of a shape to the swaying
 > canopy and anchor positions could give it some more refinement.
 
-## 2026-08-25 — commit locally, push when ready
+## 2026-08-25 — branches to the edges
 
-Still the standing rule for a piece, now in
-`docs/agents/experiment-writer.md`.
-
-> let's commit locally and only push a PR when we're ready. there's a lot of
-> experimentation and manual testing for each change, there's no need to push
-> it right away. you can keep this PR open and add to it when we're ready to
-> release. removes the need to keep updating the PR description and doesn't
-> expose half-built experiments to the world.
->
-> branches appear to work, but a are a little hard to test. every time i move
-> the lider control, anchors jump around and often get into an interessting
-> broken state where they swing violently (fast rotation around the anchor) and
-> never settle. It's a cool looking thing, but makes me search for a way to
-> "pacify" the scene by moving other sliders.
->
-> branches has an interesting relationship with spread. when increasing spread,
-> it appears to increase "trunk" thickness until all lights are off screen
-> completely. I don't know what i'm expecting to be honest, but given that
-> branches introduce a constraint on where the anchors could land, increasing
-> the spread reduces the probability that anything will land on a branch. what
-> appears to not be possible is having branches that are covered with anchors
-> all the way to the edges of the scene. i can only simulate that if i play
-> with camera zoom, but then the impressive feel of the long wires goes away.
-> with spread 2m and branches off, we get a good number of lights on screen.
-> with spread 2m and 2 branches most of the lights are off screen.
-
-## 2026-08-25 — the panel must not block on the render
-
-> one glitch that's happening now that wasn't before is when i try to move the
-> slider, branches in particular, the whole thing freezes like it's trying hard
-> to re-render everything. we need to decouple the UI from updates in a way
-> that doesn't block user interactions. so snapping to the next branch value
-> should happen immediately even if animation render loop is struggling to
-> catch up to re-rendering everything at once.
-
-## 2026-08-25 — the spinning bulb
-
-> that is all smooth now. another bug is when stiffness and set are high, each
-> bulb starts spinning and never settles so it spins while it is dangling on a
-> wire. this config has the bug for me. [preset URL]
+> what appears to not be possible is having branches that are covered with
+> anchors all the way to the edges of the scene. i can only simulate that if i
+> play with camera zoom, but then the impressive feel of the long wires goes
+> away.

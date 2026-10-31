@@ -41,7 +41,10 @@ don't think that last part is worth recording."
 
 ## Consequences
 
-Existing seeds keep what they already hold; this governs what is added. The
+Existing seeds were pruned to the same rule in #320, by whole sentences with
+every surviving word unchanged. One sentence about the working method rather
+than a piece moved to
+`20260919-an-interactable-build-precedes-the-design-conversation.md`. The
 hosts stay in git history — this removes them from the record as it stands,
 not from the past.
 
