@@ -150,9 +150,23 @@ const [opened] = experiments.map(({ data }) => data.started).sort((a, b) => a.va
       }
 
       /*
-       * Two up wherever two fit. With the caption on the work rather than under
-       * it a plate is only as tall as the picture, which is what lets a phone
-       * show three of them instead of one.
+       * Two up wherever two fit, and on a wide screen as many as fit at a plate's
+       * natural size. With the caption on the work rather than under it a plate
+       * is only as tall as the picture, which is what lets a phone show three of
+       * them instead of one.
+       *
+       * The natural size is 38rem, what a two-up plate reaches on a laptop. Up to
+       * that point plates are fluid, which is the only place they scale: one up
+       * on a phone, two up on a laptop. Past it they stop growing and the wall
+       * adds a column whenever another 38rem fits, with no cap. Andrei, on a wide
+       * screen: "larger plates would look better… don't scale the plates and have
+       * them reflow to fit in their natural size until we get to the small
+       * screens." The wall used to stop at 78rem, which held a 30" screen to two
+       * columns with more than half of it blank (#331).
+       *
+       * `auto-fill` with a fixed track counts columns by that track, which is
+       * exactly what is wanted here and exactly what went wrong below 84rem when
+       * it was tried everywhere: 1024 and 1280 px laptops fell to one column.
        */
       .wall {
         display: grid;
@@ -162,6 +176,13 @@ const [opened] = experiments.map(({ data }) => data.started).sort((a, b) => a.va
         margin: 0;
         padding: 0;
         list-style: none;
+      }
+
+      @media (min-width: 84rem) {
+        .wall {
+          grid-template-columns: repeat(auto-fill, 38rem);
+          max-width: none;
+        }
       }
 
       .plate {
@@ -403,7 +424,7 @@ const [opened] = experiments.map(({ data }) => data.started).sort((a, b) => a.va
                 src={data.poster}
                 alt=""
                 widths={[560, 1120]}
-                sizes="(min-width: 58rem) 37rem, 100vw"
+                sizes="(min-width: 58rem) 38rem, 100vw"
                 loading={index === 0 ? "eager" : "lazy"}
               />
             )}
