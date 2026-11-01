@@ -38,19 +38,27 @@ import startPreviewServer from "../tests/support/preview-server.ts"
 const posterPath = (slug: string) => `src/experiments/${slug}/poster.webp`
 
 /**
- * 16:9, and wider than the suite's 1280×900 on purpose.
+ * 16:9, at the plate's own size: the 38rem a plate on the index sits at.
  *
  * The index shows the poster full-width in its column, so this is the shape the
  * reader sees. It is not a cropped detail of a taller frame: Dangler divides by
  * depth, which makes field of view — and therefore what is in the picture at
  * all — follow the viewport's aspect ratio. Cropping would show a scene the
  * piece never composes.
+ *
+ * **The size matters as well as the shape.** It used to be 1024×576, shown in
+ * a 608px plate, so every poster was the piece at 0.6×. A piece framed by its
+ * frame (bubbles, crowd, embers) shrinks as a whole and does not care, but one
+ * sized in css px (hexgrid's hexes, starry night's stars, dotfield's spacing)
+ * came out smaller than it ever is in the piece. At the plate's size a poster
+ * is what a canvas in that plate draws, which is what the index rendering its
+ * own frames will need to match.
  */
-const VIEWPORT = { width: 1024, height: 576 }
+const VIEWPORT = { width: 608, height: 342 }
 
-/** Captured at 2×, published at 1× of that. Retina without a 3200px file. */
+/** Captured at 2× and published at that, so a retina plate gets a pixel for a pixel. */
 const SCALE = 2
-const OUTPUT_WIDTH = 1600
+const OUTPUT_WIDTH = VIEWPORT.width * SCALE
 
 /** Tuned by eye against the size budget below; these are dark, grainy fields. */
 const WEBP_QUALITY = 80
@@ -162,11 +170,7 @@ async function capture(
   })
 
   try {
-    const params = new URLSearchParams()
-    for (const [key, value] of Object.entries(recipe.settings ?? {})) params.set(key, String(value))
-    const query = params.toString()
-
-    await page.goto(`${baseUrl}/experiments/${slug}/${query ? `?${query}` : ""}`)
+    await page.goto(`${baseUrl}/experiments/${slug}/`)
     await page.waitForFunction(() => Boolean(window.experiment), undefined, { timeout: 30_000 })
 
     // Before anything else: the chrome and the pointer are not part of the
@@ -182,6 +186,7 @@ async function capture(
         (api as { preset: (which: string) => unknown }).preset(arg as string)
       await run(page, load, recipe.preset)
     }
+    if (recipe.settings) await layer(page, slug, recipe.settings)
     if (recipe.prepare) await run(page, recipe.prepare)
 
     const attempts = Math.max(1, recipe.attempts ?? 1)
@@ -209,6 +214,45 @@ async function capture(
     console.log(`${slug.padEnd(14)} ${String(kb).padStart(4)}KB  ${path}${picked}${over}`)
   } finally {
     await context.close()
+  }
+}
+
+/**
+ * Layer a recipe's settings over whatever is loaded, and fail unless every one
+ * of them reads back.
+ *
+ * **The read-back is the point.** These used to travel in the query string,
+ * and both recipes that used them were dropped without a sound: streakers
+ * reads only the packed `s=` address, and embers loaded its preset after the
+ * address, which replaced it. Each poster was captured, looked plausible, and
+ * was not the scene its recipe described. A setting `normalize` clamps or
+ * snaps comes back a little different, so numbers are compared to within a
+ * hundredth of their own size.
+ *
+ * **A key the piece does not have is checked against the settings it had
+ * before**, not the ones it returns. `normalize` spreads the patch over its
+ * base, so a misspelt key comes back in the result exactly as asked and would
+ * pass a read-back on its own.
+ */
+async function layer(page: Page, slug: string, settings: Record<string, number | string>): Promise<void> {
+  const get = ({ api }: { api: unknown }) => (api as { get: () => Record<string, unknown> }).get()
+  const known = new Set(Object.keys(await run(page, get)))
+  const set = ({ api, arg }: { api: unknown; arg?: unknown }) =>
+    (api as { set: (patch: unknown) => Record<string, unknown> }).set(arg)
+  const applied = await run(page, set, settings)
+  const missed = Object.entries(settings).filter(([key, wanted]) => {
+    if (!known.has(key)) return true
+    const got = applied[key]
+    if (typeof wanted === "number" && typeof got === "number") {
+      return Math.abs(got - wanted) > Math.abs(wanted) / 100
+    }
+    return got !== wanted
+  })
+  if (missed.length > 0) {
+    const detail = missed.map(([key, wanted]) =>
+      known.has(key) ? `${key}: asked ${wanted}, got ${String(applied[key])}` : `${key}: not one of ${slug}'s settings`,
+    )
+    throw new Error(`${slug}'s recipe settings did not land:\n  ${detail.join("\n  ")}`)
   }
 }
 
