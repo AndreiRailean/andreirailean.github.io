@@ -27,9 +27,14 @@ export type PosterRecipe<Api> = {
   preset?: string
 
   /**
-   * Settings for the query string, applied at load exactly as a shared URL
-   * would carry them. Layered over `preset` when both are given, which is the
-   * escape hatch for "that preset, but wound down for a thumbnail".
+   * Settings layered over `preset` (or the primary, when there is none), which
+   * is the escape hatch for "that preset, but wound down for a thumbnail".
+   *
+   * Applied through the piece's own `set()` after the preset, and checked
+   * against what `get()` reads back, so a key the piece does not know fails the
+   * capture. They used to go in the query string, where both recipes using
+   * them were silently dropped: streakers reads only the packed `s=` address,
+   * and embers' preset was loaded after the address and replaced it (#341).
    */
   settings?: Record<string, number | string>
 

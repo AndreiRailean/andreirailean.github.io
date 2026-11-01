@@ -170,11 +170,7 @@ async function capture(
   })
 
   try {
-    const params = new URLSearchParams()
-    for (const [key, value] of Object.entries(recipe.settings ?? {})) params.set(key, String(value))
-    const query = params.toString()
-
-    await page.goto(`${baseUrl}/experiments/${slug}/${query ? `?${query}` : ""}`)
+    await page.goto(`${baseUrl}/experiments/${slug}/`)
     await page.waitForFunction(() => Boolean(window.experiment), undefined, { timeout: 30_000 })
 
     // Before anything else: the chrome and the pointer are not part of the
@@ -190,6 +186,7 @@ async function capture(
         (api as { preset: (which: string) => unknown }).preset(arg as string)
       await run(page, load, recipe.preset)
     }
+    if (recipe.settings) await layer(page, slug, recipe.settings)
     if (recipe.prepare) await run(page, recipe.prepare)
 
     const attempts = Math.max(1, recipe.attempts ?? 1)
@@ -217,6 +214,45 @@ async function capture(
     console.log(`${slug.padEnd(14)} ${String(kb).padStart(4)}KB  ${path}${picked}${over}`)
   } finally {
     await context.close()
+  }
+}
+
+/**
+ * Layer a recipe's settings over whatever is loaded, and fail unless every one
+ * of them reads back.
+ *
+ * **The read-back is the point.** These used to travel in the query string,
+ * and both recipes that used them were dropped without a sound: streakers
+ * reads only the packed `s=` address, and embers loaded its preset after the
+ * address, which replaced it. Each poster was captured, looked plausible, and
+ * was not the scene its recipe described. A setting `normalize` clamps or
+ * snaps comes back a little different, so numbers are compared to within a
+ * hundredth of their own size.
+ *
+ * **A key the piece does not have is checked against the settings it had
+ * before**, not the ones it returns. `normalize` spreads the patch over its
+ * base, so a misspelt key comes back in the result exactly as asked and would
+ * pass a read-back on its own.
+ */
+async function layer(page: Page, slug: string, settings: Record<string, number | string>): Promise<void> {
+  const get = ({ api }: { api: unknown }) => (api as { get: () => Record<string, unknown> }).get()
+  const known = new Set(Object.keys(await run(page, get)))
+  const set = ({ api, arg }: { api: unknown; arg?: unknown }) =>
+    (api as { set: (patch: unknown) => Record<string, unknown> }).set(arg)
+  const applied = await run(page, set, settings)
+  const missed = Object.entries(settings).filter(([key, wanted]) => {
+    if (!known.has(key)) return true
+    const got = applied[key]
+    if (typeof wanted === "number" && typeof got === "number") {
+      return Math.abs(got - wanted) > Math.abs(wanted) / 100
+    }
+    return got !== wanted
+  })
+  if (missed.length > 0) {
+    const detail = missed.map(([key, wanted]) =>
+      known.has(key) ? `${key}: asked ${wanted}, got ${String(applied[key])}` : `${key}: not one of ${slug}'s settings`,
+    )
+    throw new Error(`${slug}'s recipe settings did not land:\n  ${detail.join("\n  ")}`)
   }
 }
 
