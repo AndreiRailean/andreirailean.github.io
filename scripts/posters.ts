@@ -38,19 +38,27 @@ import startPreviewServer from "../tests/support/preview-server.ts"
 const posterPath = (slug: string) => `src/experiments/${slug}/poster.webp`
 
 /**
- * 16:9, and wider than the suite's 1280×900 on purpose.
+ * 16:9, at the plate's own size: the 38rem a plate on the index sits at.
  *
  * The index shows the poster full-width in its column, so this is the shape the
  * reader sees. It is not a cropped detail of a taller frame: Dangler divides by
  * depth, which makes field of view — and therefore what is in the picture at
  * all — follow the viewport's aspect ratio. Cropping would show a scene the
  * piece never composes.
+ *
+ * **The size matters as well as the shape.** It used to be 1024×576, shown in
+ * a 608px plate, so every poster was the piece at 0.6×. A piece framed by its
+ * frame (bubbles, crowd, embers) shrinks as a whole and does not care, but one
+ * sized in css px (hexgrid's hexes, starry night's stars, dotfield's spacing)
+ * came out smaller than it ever is in the piece. At the plate's size a poster
+ * is what a canvas in that plate draws, which is what the index rendering its
+ * own frames will need to match.
  */
-const VIEWPORT = { width: 1024, height: 576 }
+const VIEWPORT = { width: 608, height: 342 }
 
-/** Captured at 2×, published at 1× of that. Retina without a 3200px file. */
+/** Captured at 2× and published at that, so a retina plate gets a pixel for a pixel. */
 const SCALE = 2
-const OUTPUT_WIDTH = 1600
+const OUTPUT_WIDTH = VIEWPORT.width * SCALE
 
 /** Tuned by eye against the size budget below; these are dark, grainy fields. */
 const WEBP_QUALITY = 80
