@@ -38,6 +38,19 @@ const EXPECTED = [
  * experiment, for no reason connected to what they were checking. The panel test
  * below already derives its count for the same reason.
  */
+/**
+ * Opens the index and waits until the plates near the screen are drawn.
+ *
+ * `gallery/plates.ts` fetches each piece's code as its plate comes near, one
+ * plate at a time, for a second or two after the page loads. A test that
+ * clicks through to a piece before that is done aborts a fetch in flight,
+ * which the `problems` fixture rightly reports as a failed request.
+ */
+async function openIndex(page: Page, query = ""): Promise<void> {
+  await page.goto(`/experiments/${query}`)
+  await expect(page.locator("html")).toHaveAttribute("data-plates", "idle", { timeout: 30_000 })
+}
+
 async function firstPlateSlug(page: Page): Promise<string> {
   const href = await page.locator(".plate").first().locator("a.open").getAttribute("href")
   const slug = href?.match(/^\/experiments\/([^/]+)\/$/)?.[1]
@@ -71,7 +84,7 @@ test("lists every experiment, each with a poster that actually loaded", async ({
 })
 
 test("the caption sits over the plate's link without swallowing it", async ({ page }) => {
-  await page.goto("/experiments/")
+  await openIndex(page)
 
   // A real pointer press at the caption's own centre, not `locator.click()`:
   // Playwright refuses that one because it can see `a.open` "intercepting" the
@@ -91,7 +104,7 @@ test("the caption sits over the plate's link without swallowing it", async ({ pa
 })
 
 test("about is the one thing on the caption that catches its own click", async ({ page }) => {
-  await page.goto("/experiments/")
+  await openIndex(page)
 
   const slug = await firstPlateSlug(page)
   await page.locator(".plate").first().locator("a.note").click()
@@ -125,29 +138,46 @@ test("the panel names the artist and counts the room from the work in it", async
   await expect(page.locator(".masthead .run")).toHaveText(new RegExp(`^${plates} pieces · since \\w+ \\d{4}$`))
 })
 
-test("every plate ends up showing something, and a drawn one is a real frame the width of its plate", async ({
+test("every piece that can be drawn draws its plate, as a real frame the width of its plate", async ({
   page,
-}) => {
-  await page.goto("/experiments/")
+}, testInfo) => {
+  // With the budget lifted, because this machine is slower than the ones it
+  // protects: one slow plate would turn the rest into posters, leave their
+  // recipes untried, and fail nothing.
+  await openIndex(page, "?budget=off")
   // Off every plate, so none is lifted by its hover and measures wider than it sits.
   await page.mouse.move(0, 0)
 
-  // Each plate starts empty and is filled by `gallery/plates.ts`, with a frame
-  // its piece drew here or with its poster. Scrolled to in turn, because a
-  // plate is only drawn once it comes near the screen.
+  // Each plate starts empty and is filled by `gallery/plates.ts`. Scrolled to
+  // in turn, because a plate is only drawn once it comes near the screen.
   const plates = page.locator(".plate")
   for (let i = 0; i < (await plates.count()); i += 1) {
     await plates.nth(i).scrollIntoViewIfNeeded()
     await expect(plates.nth(i)).toHaveAttribute("data-shown", /^(live|poster)$/, { timeout: 30_000 })
   }
 
-  // Presence, not only the absence of a stuck plate: a module that drew
-  // nothing at all and fell back everywhere would pass the loop above.
+  // A poster only where a piece is not drawn on purpose. `failed`, `slow` and
+  // `not a piece` all mean a plate that should have been drawn and was not.
+  const outcomes = await plates.evaluateAll((elements) =>
+    elements.map((element) => ({
+      piece: element.getAttribute("data-piece"),
+      shown: element.getAttribute("data-shown"),
+      why: element.getAttribute("data-why"),
+      ms: element.getAttribute("data-drawn-ms"),
+    })),
+  )
+  testInfo.annotations.push({
+    type: "plates",
+    description: outcomes.map(({ piece, shown, why, ms }) => `${piece} ${shown} ${why ?? `${ms} ms`}`).join(", "),
+  })
+  expect(outcomes.filter(({ shown, why }) => shown !== "live" && why !== "poster-only")).toEqual([])
+  // Presence, not only the absence of a stray poster: a module that marked
+  // every piece poster-only would pass the line above.
   const drawn = page.locator('.plate[data-shown="live"]')
   expect(await drawn.count()).toBeGreaterThan(0)
 
   for (const plate of await drawn.all()) {
-    const { width, frame, lit } = await plate.evaluate((element) => {
+    const { width, frame, lit, poster } = await plate.evaluate((element) => {
       const canvas = element.querySelector<HTMLCanvasElement>(".live canvas")!
       const { data } = canvas.getContext("2d")!.getImageData(0, 0, canvas.width, canvas.height)
       // Pixels that differ from the corner, as a share of all of them. A
@@ -165,18 +195,42 @@ test("every plate ends up showing something, and a drawn one is a real frame the
         width: element.getBoundingClientRect().width,
         frame: canvas.getBoundingClientRect().width,
         lit: differ / (data.length / 4),
+        poster: getComputedStyle(element.querySelector("img")!).opacity,
       }
     })
     const piece = await plate.getAttribute("data-piece")
     expect(Math.abs(frame - width), `${piece}'s frame is ${frame}px in a ${width}px plate`).toBeLessThan(1)
     expect(lit, `${piece}'s frame is blank`).toBeGreaterThan(0.01)
+    // The poster under a drawn frame stays hidden. This is what the page
+    // starting blank rests on; without it the rejected poster-then-crossfade
+    // (src/experiments/docs/adr/20260901-a-poster-held-over-a-booting-piece.md)
+    // would be back with nothing failing.
+    expect(poster, `${piece}'s poster shows under its frame`).toBe("0")
   }
+})
+
+test("a device that draws slowly gets posters for the rest of the wall", async ({ page }) => {
+  // Twenty times slower: on the box the budget was set on, the second plate
+  // drawn takes over a second, past the 600 ms a plate is allowed.
+  const cdp = await page.context().newCDPSession(page)
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 20 })
+  await openIndex(page)
+
+  const plates = page.locator(".plate")
+  for (let i = 0; i < (await plates.count()); i += 1) {
+    await plates.nth(i).scrollIntoViewIfNeeded()
+    await expect(plates.nth(i)).toHaveAttribute("data-shown", /^(live|poster)$/, { timeout: 60_000 })
+  }
+  // Something was cut off by the budget, and nothing failed while it was.
+  await expect(page.locator('.plate[data-why="slow"]').first()).toBeAttached()
+  await expect(page.locator('.plate[data-why="failed"]')).toHaveCount(0)
 })
 
 test("the posters come back if the script that draws the plates never runs", async ({ page, problems }) => {
   // The page hides every poster before it paints, so that a drawn frame can
   // fade in where nothing was. If the module never arrives, that would leave a
   // wall of empty plates; the inline script that hid them brings them back.
+  // That they are hidden in the first place is checked by the test above.
   await page.route(/\/_astro\/.*\.js$/, (route) => route.abort())
   await page.goto("/experiments/")
 

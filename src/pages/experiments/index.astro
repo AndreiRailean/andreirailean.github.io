@@ -35,11 +35,11 @@ const [opened] = experiments.map(({ data }) => data.started).sort((a, b) => a.va
     -->
     <script is:inline>
       document.documentElement.classList.add("plates")
-      addEventListener("load", () =>
-        setTimeout(() => {
-          if (!document.documentElement.dataset.plates) document.documentElement.classList.remove("plates")
-        }, 3000),
-      )
+      // A module script runs before this event, so by now it has either
+      // started or never will.
+      addEventListener("DOMContentLoaded", () => {
+        if (!document.documentElement.dataset.plates) document.documentElement.classList.remove("plates")
+      })
     </script>
     <style is:global>
       /*

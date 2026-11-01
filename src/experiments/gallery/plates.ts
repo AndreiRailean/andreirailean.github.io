@@ -91,6 +91,44 @@ function handle(live: Live<object>): Record<string, unknown> {
   }
 }
 
+/**
+ * How long a piece's modules may take to arrive, or its recipe to finish,
+ * before its plate gives up and shows the poster. Without it, a chunk that
+ * stalls on a flaky network would hold the queue, and every plate after it
+ * would stay empty with nothing left to bring its poster back.
+ */
+const PATIENCE_MS = 10_000
+
+/**
+ * The most the whole wall may take, added up. `BUDGET_MS` alone would let a
+ * device that takes just under it per plate pay that on every plate.
+ */
+const TOTAL_BUDGET_MS = 1500
+
+/**
+ * `?budget=off` draws every plate whatever it costs. For the browser suite,
+ * which runs slower than the machines the budget protects and has to see every
+ * recipe drawn: with the budget on, one slow plate on CI would turn the rest
+ * into posters and leave their recipes untried, with nothing failing.
+ */
+const unlimited = new URLSearchParams(location.search).get("budget") === "off"
+
+function within<T>(work: Promise<T>, ms: number, what: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${what} took longer than ${ms} ms`)), ms)
+    work.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      (error: unknown) => {
+        clearTimeout(timer)
+        reject(error)
+      },
+    )
+  })
+}
+
 const frame = () => new Promise<void>((done) => requestAnimationFrame(() => done()))
 
 const idle = () =>
@@ -99,8 +137,8 @@ const idle = () =>
     else setTimeout(done, 50)
   })
 
-/** Draws the plate's still and returns how long the piece held the main thread for it. */
-async function draw(plate: HTMLElement, piece: Piece): Promise<number> {
+/** Draws the plate's still: the piece started, brought to its recipe's moment, drawn, and destroyed. */
+async function draw(plate: HTMLElement, piece: Piece): Promise<void> {
   const { recipe } = piece
   const base = recipe.preset
     ? piece.presets.find(({ label }) => label === recipe.preset)?.settings
@@ -117,24 +155,29 @@ async function draw(plate: HTMLElement, piece: Piece): Promise<number> {
   layer.append(canvas)
   plate.prepend(layer)
 
-  const began = performance.now()
   const live = piece.start(canvas, piece.normalize({ ...base, ...recipe.settings }))
   try {
-    if (recipe.prepare) await recipe.prepare({ api: handle(live) })
+    if (recipe.prepare) await within(Promise.resolve(recipe.prepare({ api: handle(live) })), PATIENCE_MS, "prepare")
     // A recipe that only waits lets the piece run in real time before the
     // shutter. Here that time is settled instead, where the piece has the verb.
     else if (recipe.dwellMs && typeof live.verbs.settle === "function") live.verbs.settle(recipe.dwellMs / 1000)
-    const spent = performance.now() - began
     await frame()
     await frame()
     live.setPaused(true)
-    return spent
   } finally {
     live.destroy()
   }
 }
 
-function showPoster(plate: HTMLElement): void {
+/**
+ * Why a plate shows its poster, kept on the plate as `data-why` so a check can
+ * tell a plate that was never meant to be drawn from one that failed or was
+ * cut off by the budget.
+ */
+type Why = "poster-only" | "slow" | "failed" | "not a piece"
+
+function showPoster(plate: HTMLElement, why: Why): void {
+  plate.dataset.why = why
   const poster = plate.querySelector("img")
   const reveal = () => {
     plate.dataset.shown = "poster"
@@ -144,35 +187,56 @@ function showPoster(plate: HTMLElement): void {
 }
 
 let slow = false
+let total = 0
 const waiting: HTMLElement[] = []
 let draining = false
 
 async function show(plate: HTMLElement): Promise<void> {
   const slug = plate.dataset.piece ?? ""
-  if (slow || POSTER_ONLY.has(slug)) return showPoster(plate)
+  if (slow) return showPoster(plate, "slow")
+  let spent = 0
   try {
-    const piece = await load(slug)
-    if (!piece) return showPoster(plate)
+    const piece = await within(load(slug), PATIENCE_MS, `${slug}'s modules`)
+    if (!piece) return showPoster(plate, "not a piece")
     await idle()
-    const spent = await draw(plate, piece)
+    const began = performance.now()
+    try {
+      await draw(plate, piece)
+    } finally {
+      spent = performance.now() - began
+    }
     plate.dataset.shown = "live"
     plate.dataset.drawnMs = String(Math.round(spent))
-    if (spent > BUDGET_MS) slow = true
   } catch (error) {
     // An error rather than a warning: the visitor still gets a poster, but a
     // piece that cannot draw its plate is broken, and the browser suite fails
     // on errors the page reports.
     console.error(`plates: ${slug} fell back to its poster`, error)
     plate.querySelector(".live")?.remove()
-    showPoster(plate)
+    showPoster(plate, "failed")
+  } finally {
+    // Counted whether the plate drew or threw: a piece that took five seconds
+    // and then failed has said as much about the device as one that succeeded.
+    total += spent
+    if (!unlimited && (spent > BUDGET_MS || total > TOTAL_BUDGET_MS)) slow = true
   }
 }
 
+/**
+ * `data-plates` on the root: `running` while plates are being drawn, `idle`
+ * once the queue is empty. Its being set at all is what tells the inline
+ * script in the page's head that this module ran.
+ */
 async function drain(): Promise<void> {
   if (draining) return
   draining = true
-  while (waiting.length > 0) await show(waiting.shift()!)
-  draining = false
+  document.documentElement.dataset.plates = "running"
+  try {
+    while (waiting.length > 0) await show(waiting.shift()!)
+  } finally {
+    draining = false
+    document.documentElement.dataset.plates = "idle"
+  }
 }
 
 /** Keeps each plate's canvas the width of its plate. The piece never knows: it sees `PLATE`. */
@@ -196,6 +260,12 @@ const near = new IntersectionObserver(
 
 document.documentElement.dataset.plates = "running"
 for (const plate of document.querySelectorAll<HTMLElement>(".plate[data-piece]")) {
+  // Not queued: a poster-only plate has nothing to wait for but its image, and
+  // in the queue it would wait behind every plate being drawn ahead of it.
+  if (POSTER_ONLY.has(plate.dataset.piece ?? "")) {
+    showPoster(plate, "poster-only")
+    continue
+  }
   fit.observe(plate)
   near.observe(plate)
 }
