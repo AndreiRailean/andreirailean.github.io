@@ -39,8 +39,10 @@ It draws **one plate at a time, in idle time**, and leaves nothing running.
   brings them back if the module never runs;
 - a piece throws while drawing;
 - a piece is in `POSTER_ONLY`;
-- the device has taken longer than `BUDGET_MS` (600 ms) to draw a plate. The
-  first slow plate stops the rest.
+- the device has taken longer than `BUDGET_MS` (600 ms) to draw a plate, or
+  1.5 s across the wall. The first slow plate stops the rest;
+- a piece's code or its recipe has taken over ten seconds, so a stalled fetch
+  cannot hold the queue.
 
 **Pieces whose recipe moment is expensive keep their posters.** At first only
 five pieces draw. The other eight simulate seconds to minutes before the
