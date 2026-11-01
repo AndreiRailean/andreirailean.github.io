@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs"
 import { pathToFileURL } from "node:url"
 import { chromium, type Page } from "playwright"
 import sharp from "sharp"
-import type { PosterRecipe } from "../src/experiments/poster.ts"
+import { PLATE, type PosterRecipe } from "../src/experiments/poster.ts"
 import { resolveChromium } from "../tests/support/chromium.ts"
 import startPreviewServer from "../tests/support/preview-server.ts"
 
@@ -54,7 +54,7 @@ const posterPath = (slug: string) => `src/experiments/${slug}/poster.webp`
  * is what a canvas in that plate draws, which is what the index rendering its
  * own frames will need to match.
  */
-const VIEWPORT = { width: 608, height: 342 }
+const VIEWPORT = { ...PLATE }
 
 /** Captured at 2× and published at that, so a retina plate gets a pixel for a pixel. */
 const SCALE = 2

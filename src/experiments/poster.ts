@@ -8,8 +8,20 @@
  * photographing stays in each experiment's own `poster.ts`, because that is
  * per-piece knowledge and ADR-0002 is about exactly this.
  *
- * `scripts/posters.ts` is the only consumer.
+ * `scripts/posters.ts` reads the recipes, and `gallery/plates.ts` reads them
+ * again to draw the same moment live on the index.
  */
+
+/**
+ * The box a poster is captured in and a plate's canvas draws in: 38rem at
+ * 16:9, the size a plate on the index sits at.
+ *
+ * The one value here rather than a type, because the capture and the index
+ * have to agree on it and a second copy would drift. A piece sized in css px
+ * (hexgrid's hexes, streakers' dots) composes differently in a different box,
+ * so a plate drawing at another size would not be the poster's picture.
+ */
+export const PLATE = { width: 608, height: 342 } as const
 
 /**
  * Everything the capture script needs from one experiment.

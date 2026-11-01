@@ -27,6 +27,20 @@ const [opened] = experiments.map(({ data }) => data.started).sort((a, b) => a.va
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Experiments</title>
     <meta name="description" content="Programmed graphics. Each one runs full-screen and stands on its own." />
+    <!--
+      Before anything paints, so a poster never shows and is then taken away.
+      The plates module draws each plate and fades it in; it marks the page as
+      running when it starts, and if it never does (blocked, failed to load) the
+      posters come back on their own.
+    -->
+    <script is:inline>
+      document.documentElement.classList.add("plates")
+      // A module script runs before this event, so by now it has either
+      // started or never will.
+      addEventListener("DOMContentLoaded", () => {
+        if (!document.documentElement.dataset.plates) document.documentElement.classList.remove("plates")
+      })
+    </script>
     <style is:global>
       /*
        * A wall of plates, each with its label mounted on the work.
@@ -210,8 +224,41 @@ const [opened] = experiments.map(({ data }) => data.started).sort((a, b) => a.va
         height: 100%;
         object-fit: cover;
         transition:
+          opacity 700ms ease-out,
           transform 600ms cubic-bezier(0.2, 0, 0.1, 1),
           filter 300ms ease-out;
+      }
+
+      /*
+       * A plate drawn by its piece: `gallery/plates.ts`. The page starts with
+       * every plate empty, and each fades in once it has something to show — a
+       * frame the piece drew here, or its poster when it could not.
+       */
+      .plates .plate img {
+        opacity: 0;
+      }
+      .plates .plate[data-shown="poster"] img {
+        opacity: 1;
+      }
+
+      .live {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        transition:
+          opacity 700ms ease-out,
+          transform 600ms cubic-bezier(0.2, 0, 0.1, 1),
+          filter 300ms ease-out;
+      }
+      .plate[data-shown="live"] .live {
+        opacity: 1;
+      }
+      /* The canvas keeps the box the piece composed in, and is scaled to the
+         plate: `--fit` is the plate's width over that box's. */
+      .live canvas {
+        display: block;
+        transform-origin: 0 0;
+        transform: scale(var(--fit, 1));
       }
 
       /*
@@ -278,7 +325,9 @@ const [opened] = experiments.map(({ data }) => data.started).sort((a, b) => a.va
       }
 
       .plate:hover img,
-      .plate:focus-within img {
+      .plate:focus-within img,
+      .plate:hover .live,
+      .plate:focus-within .live {
         transform: scale(1.015);
         filter: brightness(1.08);
       }
@@ -386,12 +435,15 @@ const [opened] = experiments.map(({ data }) => data.started).sort((a, b) => a.va
 
       @media (prefers-reduced-motion: reduce) {
         .plate img,
+        .live,
         .placard {
           transition: none;
         }
 
         .plate:hover img,
-        .plate:focus-within img {
+        .plate:focus-within img,
+        .plate:hover .live,
+        .plate:focus-within .live {
           transform: none;
         }
       }
@@ -418,7 +470,7 @@ const [opened] = experiments.map(({ data }) => data.started).sort((a, b) => a.va
     ) : (
       <ul class="wall">
         {experiments.map(({ data }, index) => (
-          <li class="plate">
+          <li class="plate" data-piece={data.slug}>
             {data.poster && (
               <Image
                 src={data.poster}
@@ -456,5 +508,8 @@ const [opened] = experiments.map(({ data }) => data.started).sort((a, b) => a.va
         ))}
       </ul>
     )}
+    <script>
+      import "@/experiments/gallery/plates"
+    </script>
   </body>
 </html>
