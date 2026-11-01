@@ -406,9 +406,18 @@ frontmatter. `/experiments/` is generated from it.
 
 ## Posters
 
-`/experiments/` shows a still of each piece above its entry. It is captured, not
-drawn, and it is committed — see
+`/experiments/` shows a still of each piece above its entry. The poster is
+captured, not drawn, and it is committed — see
 `docs/adr/20260828-posters-are-captured-by-hand.md` for why not at build time.
+
+**On the page, the plate is drawn by the piece and the poster is the fallback.**
+`gallery/plates.ts` starts each piece in the poster's box (`PLATE`), runs its
+recipe, draws one frame, destroys it and fades the frame in. A piece in
+`POSTER_ONLY` shows its poster instead, and so does every plate after the first
+that takes longer than the budget. So **a recipe is read twice**: its `prepare`
+gets the piece's verbs, its stats and `pause`, and a recipe that reaches for
+anything else throws on the index. See
+`docs/adr/20261102-the-index-draws-its-plates.md`.
 
 ```
 src/experiments/<slug>/poster.ts     the recipe: which moment is worth shooting
@@ -462,8 +471,9 @@ max-age=31536000` — a year — on a URL keyed by **file path with no content
   point in the same breeze. Both look unchanged to a person and both churn the
   file. Hence the slug filter: re-capture the piece you actually changed.
 - `scripts/posters.ts` is generic and knows nothing about any piece; the shared
-  contract is the types in `src/experiments/poster.ts`. Per ADR-0002 that is all
-  it is allowed to be — a shape, not a base class.
+  contract is the types in `src/experiments/poster.ts`, plus `PLATE`, the one
+  size the capture and the index must agree on. Per ADR-0002 that is all it is
+  allowed to be — a shape and a size, not a base class.
 - `poster` is optional in the collection schema. A piece may exist before anyone
   has decided what one frame of it looks like, and the index falls back to a
   text-only entry.
