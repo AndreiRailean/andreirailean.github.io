@@ -124,3 +124,69 @@ test("the panel names the artist and counts the room from the work in it", async
   const plates = await page.locator(".plate").count()
   await expect(page.locator(".masthead .run")).toHaveText(new RegExp(`^${plates} pieces · since \\w+ \\d{4}$`))
 })
+
+test("every plate ends up showing something, and a drawn one is a real frame the width of its plate", async ({
+  page,
+}) => {
+  await page.goto("/experiments/")
+  // Off every plate, so none is lifted by its hover and measures wider than it sits.
+  await page.mouse.move(0, 0)
+
+  // Each plate starts empty and is filled by `gallery/plates.ts`, with a frame
+  // its piece drew here or with its poster. Scrolled to in turn, because a
+  // plate is only drawn once it comes near the screen.
+  const plates = page.locator(".plate")
+  for (let i = 0; i < (await plates.count()); i += 1) {
+    await plates.nth(i).scrollIntoViewIfNeeded()
+    await expect(plates.nth(i)).toHaveAttribute("data-shown", /^(live|poster)$/, { timeout: 30_000 })
+  }
+
+  // Presence, not only the absence of a stuck plate: a module that drew
+  // nothing at all and fell back everywhere would pass the loop above.
+  const drawn = page.locator('.plate[data-shown="live"]')
+  expect(await drawn.count()).toBeGreaterThan(0)
+
+  for (const plate of await drawn.all()) {
+    const { width, frame, lit } = await plate.evaluate((element) => {
+      const canvas = element.querySelector<HTMLCanvasElement>(".live canvas")!
+      const { data } = canvas.getContext("2d")!.getImageData(0, 0, canvas.width, canvas.height)
+      // Pixels that differ from the corner, as a share of all of them. A
+      // canvas the piece never drew on is one colour throughout.
+      let differ = 0
+      for (let i = 0; i < data.length; i += 4) {
+        if (
+          Math.abs(data[i]! - data[0]!) + Math.abs(data[i + 1]! - data[1]!) + Math.abs(data[i + 2]! - data[2]!) >
+          30
+        ) {
+          differ += 1
+        }
+      }
+      return {
+        width: element.getBoundingClientRect().width,
+        frame: canvas.getBoundingClientRect().width,
+        lit: differ / (data.length / 4),
+      }
+    })
+    const piece = await plate.getAttribute("data-piece")
+    expect(Math.abs(frame - width), `${piece}'s frame is ${frame}px in a ${width}px plate`).toBeLessThan(1)
+    expect(lit, `${piece}'s frame is blank`).toBeGreaterThan(0.01)
+  }
+})
+
+test("the posters come back if the script that draws the plates never runs", async ({ page, problems }) => {
+  // The page hides every poster before it paints, so that a drawn frame can
+  // fade in where nothing was. If the module never arrives, that would leave a
+  // wall of empty plates; the inline script that hid them brings them back.
+  await page.route(/\/_astro\/.*\.js$/, (route) => route.abort())
+  await page.goto("/experiments/")
+
+  await expect(page.locator("html")).not.toHaveClass(/\bplates\b/, { timeout: 10_000 })
+  const poster = page.locator(".plate img").first()
+  await expect.poll(() => poster.evaluate((img) => getComputedStyle(img).opacity)).toBe("1")
+
+  // The aborted scripts, which are the point of this test, reported once as a
+  // failed request and once by the console.
+  const expected = /^(request failed: .*\/_astro\/|console\.error: Failed to load resource)/
+  expect(problems.filter((problem) => !expected.test(problem))).toEqual([])
+  problems.length = 0
+})
