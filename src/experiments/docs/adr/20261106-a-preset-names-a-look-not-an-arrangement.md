@@ -42,6 +42,11 @@ the screen exactly. Only a preset stopped being an exact scene.
 
 ## Consequences
 
+- **A piece with no seed setting can still repeat itself.** Embers drew its
+  air, bed and jitter from a constant seed, and with a deterministic `settle`
+  its plate was the same fire on every load. It draws them from a fresh stream
+  on every start now. Melting's recipe stopped jumping to one fixed moment, so
+  its plate is the lamp as it is now.
 - **No poster capture is reproducible.** Each is a different arrangement of
   the same scene, as each plate and each landing is.
 - **A preset button still lights for every arrangement it rolls**, because the
