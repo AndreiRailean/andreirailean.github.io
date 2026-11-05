@@ -48,16 +48,18 @@ import type { Live, Preset, Start } from "@/experiments/piece"
  * frames. Bubbles really was slow, 1.7 s for its old primary, and its primary
  * is now `standing still`, reached through a coarse warm-up; its `poster.ts`
  * says why. Its plate takes about 260 ms, of which `warm` is 220.
+ *
+ * Crowd and Flotsam draw their first frame, in 176 ms and 219 ms, rather than
+ * the 45 s and 40 s their recipes used to run. Their `poster.ts` files say why
+ * that frame is the piece.
  */
-const POSTER_ONLY = new Set(["crowd", "flotsam", "hexgrid", "psyxels", "walkers"])
+const POSTER_ONLY = new Set(["hexgrid", "psyxels", "walkers"])
 
 /**
  * Longest a plate may take to draw before the device is judged too slow for
  * the rest. A long task this size is a visible hitch in a scroll, which is the
  * thing being protected. The slowest plate drawn here, embers, takes about half
- * of it on the box above, and the eight together about 1.1 s of the 1.5 s
- * `TOTAL_BUDGET_MS`, so a device much slower than that box gets posters from
- * somewhere down the wall.
+ * of it on the box above.
  */
 const BUDGET_MS = 600
 
@@ -112,8 +114,14 @@ const PATIENCE_MS = 10_000
 /**
  * The most the whole wall may take, added up. `BUDGET_MS` alone would let a
  * device that takes just under it per plate pay that on every plate.
+ *
+ * It was 1.5 s, and the ten plates drawn here came to about 1.5 s on the box
+ * above, so a busy run of that box already ended with the last plates on their
+ * posters. Andrei raised it: "let's raise the 1.5s limit". It is paid one plate
+ * at a time in idle time, never as one long task, so the total is CPU time spent
+ * rather than a freeze.
  */
-const TOTAL_BUDGET_MS = 1500
+const TOTAL_BUDGET_MS = 3000
 
 /**
  * `?budget=off` draws every plate whatever it costs. For the browser suite,

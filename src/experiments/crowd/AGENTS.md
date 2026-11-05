@@ -430,14 +430,16 @@ walk at a market's density. Three surfaces want it and only one can afford it:
 
 | surface              | seconds of walk | why                                           |
 | -------------------- | --------------- | --------------------------------------------- |
-| `poster.ts`          | 45              | offline, in the capture script                |
+| `poster.ts`          | 0               | the capture, and the index's live plate       |
 | reduced-motion still | 2               | a page load, for the audience asking for less |
 | the note's backdrop  | 4               | a page load, behind a sheet of text           |
 
 The still and the backdrop were 25 and 45 and were an eight- and nine-second
 freeze on a page load. What made the short ones acceptable is that **`restock`
 now places nobody inside anybody** — rejection sampling against a grid built as
-it goes — which is most of what the long settle was buying. What a settle still
+it goes — which is most of what the long settle was buying. The poster gave up
+its 45 for the same reason on 2026-11-06, when the index started drawing it
+live; `poster.ts` has the comparison. What a settle still
 buys is structure, and **a still cannot show structure that is defined by
 motion.**
 
