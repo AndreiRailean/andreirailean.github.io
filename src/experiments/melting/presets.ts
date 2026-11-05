@@ -5,9 +5,10 @@
  * `../docs/adr/20260830-a-preset-inherits-from-nothing.md`. Position one is the
  * primary: a bare address lands on it, and the poster and the note read it.
  */
+import type { Preset } from "@/experiments/piece"
 import type { Settings } from "@/experiments/melting/settings"
 
-export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
+export const PRESETS: Preset<Settings>[] = [
   {
     label: "lava lamp",
     hint: "An icosahedron tumbling on a slow, hard-tipping beat and losing a corner now and then, among nine small lumps of a little wax that rise quickly and often split. Andrei's, found by dragging.",
@@ -45,7 +46,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 40,
       tint: 0.7,
       colours: 1,
-      seed: 7,
       timescale: 1,
     },
   },
@@ -86,7 +86,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 40,
       tint: 0.7,
       colours: 1,
-      seed: 7,
       timescale: 1,
     },
   },
@@ -127,7 +126,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 15,
       tint: 0.75,
       colours: 4,
-      seed: 7,
       timescale: 1,
     },
   },
@@ -168,7 +166,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 40,
       tint: 0.7,
       colours: 1,
-      seed: 271828,
       timescale: 1,
     },
   },
@@ -209,7 +206,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 0,
       tint: 0.7,
       colours: 1,
-      seed: 7,
       timescale: 1,
     },
   },
@@ -250,7 +246,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 40,
       tint: 0.7,
       colours: 1,
-      seed: 7,
       timescale: 1,
     },
   },
@@ -291,7 +286,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 40,
       tint: 0.7,
       colours: 1,
-      seed: 7,
       timescale: 1,
     },
   },

@@ -6,6 +6,7 @@
  * parameter does. The runner never imports this; see
  * `../docs/adr/20260928-a-piece-is-a-library-behind-three-files.md`.
  */
+import type { Preset } from "@/experiments/piece"
 import type { Settings } from "@/experiments/flotsam/settings"
 
 /**
@@ -17,12 +18,11 @@ import type { Settings } from "@/experiments/flotsam/settings"
  * the scene they found; inheriting the defaults would let it drift silently the
  * next time one of those is retuned.
  */
-export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
+export const PRESETS: Preset<Settings>[] = [
   {
     label: "offing",
     hint: "Open water at night, a gusting sea running diagonally, a slow current crossing it — close enough in to read the shape of each wave rather than the pattern they make.",
     settings: {
-      seed: 41,
       dots: 8500,
       smallest: 0.005,
       largest: 0.09,
@@ -58,7 +58,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     label: "windrows",
     hint: "One swell carrying almost everything, and the flotsam collected into travelling lines with the light along them.",
     settings: {
-      seed: 208,
       dots: 9000,
       smallest: 0.005,
       largest: 0.09,
@@ -103,7 +102,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     label: "crossing",
     hint: "Nine trains from every quarter and none of them dominant — a confused sea that gathers in patches rather than lines.",
     settings: {
-      seed: 77,
       dots: 8000,
       smallest: 0.005,
       largest: 0.11,
@@ -142,7 +140,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     label: "riptide",
     hint: "Chop over a hard swirling current: the lines the waves gather are torn apart as fast as they form.",
     settings: {
-      seed: 9312,
       dots: 9000,
       smallest: 0.004,
       largest: 0.05,
@@ -180,7 +177,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     label: "pond",
     hint: "Four metres of water with dust on it, lit from almost overhead. Small water is quick, which is the surprise.",
     settings: {
-      seed: 660,
       dots: 2600,
       smallest: 0.004,
       largest: 0.026,
@@ -228,7 +224,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     label: "migration",
     hint: "A hard cross-current under a slack, wide-open sea, carrying a warm scatter of everything somewhere else.",
     settings: {
-      seed: 208,
       dots: 3530,
       smallest: 0.004,
       largest: 0.06,
@@ -279,7 +274,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     label: "simmer",
     hint: "A field of violet points that hold their places and breathe, in a haze that moves around them.",
     settings: {
-      seed: 208,
       dots: 4060,
       smallest: 0.018,
       largest: 0.267,
@@ -342,7 +336,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     label: "dream",
     hint: "White water with flotsam-shaped holes in it: overlapping pieces blown past white, and the only dark left is the gaps between them.",
     settings: {
-      seed: 208,
       dots: 1210,
       smallest: 0.115,
       largest: 1.23,

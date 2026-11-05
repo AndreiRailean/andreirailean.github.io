@@ -286,7 +286,19 @@ export function valueAtPosition(track: Track, position: number): number {
   return snapToGrid(track, low * (track.max / low) ** t)
 }
 
-export type Preset<S> = { label: string; hint: string; settings: S }
+/**
+ * A preset's settings: every setting, except that the seed may be left out.
+ *
+ * **A preset names a look, not an arrangement.** Left without a seed, a preset
+ * gets a fresh one each time it is applied, so the same look comes up arranged
+ * differently on every load. Andrei: "what can we do to make them look
+ * different on each load?" Naming a seed pins one arrangement, which is for a
+ * preset whose point is that particular arrangement. The address always
+ * carries the seed in use, so a copied link still reproduces the screen.
+ */
+export type PresetSettings<S> = Omit<S, "seed"> & { seed?: number }
+
+export type Preset<S> = { label: string; hint: string; settings: PresetSettings<S> }
 
 /**
  * An extra button in the bar — Dangler's `reroll`.
@@ -344,6 +356,12 @@ export type Options<S extends object> = {
   settings: S
   controls: Control<string & keyof S>[]
   presets: Preset<S>[]
+  /**
+   * Turns a preset into the scene it applies: the piece's validator, plus a
+   * fresh seed where the preset names none and the piece rerolls. Omitted, a
+   * preset is applied as written. `boot.ts` passes `sceneFromPreset`.
+   */
+  fromPreset?: (preset: Preset<S>) => S
   /**
    * Heading order. Omitted, the rows run together with no headings.
    *
@@ -501,6 +519,9 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     },
   ]
   const chrome = options.chrome ?? true
+  // A preset without a seed is one key short of `S`; the piece's validator
+  // fills it, as it fills anything an address leaves out.
+  const fromPreset = options.fromPreset ?? ((preset: Preset<S>) => normalize({ ...preset.settings } as S))
 
   let current: S = { ...options.settings }
   let panelOpen = false
@@ -618,7 +639,7 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     // A digit is one keypress, so the tenth preset onward has no key of its own
     // and its title must not claim one — #223.
     element.title = index < 9 ? `${preset.hint} (key ${index + 1}, or ← →)` : `${preset.hint} (← →)`
-    element.addEventListener("click", () => apply(normalize({ ...preset.settings })))
+    element.addEventListener("click", () => apply(fromPreset(preset)))
     return element
   })
 
@@ -1048,7 +1069,11 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     }
 
     matching = presets.findIndex((preset) =>
-      (Object.keys(preset.settings) as (keyof S)[]).every((key) => sameValue(preset.settings[key], current[key])),
+      // Over the keys the preset names, so a preset that leaves its seed to be
+      // rolled still lights up for every arrangement it rolls.
+      (Object.keys(preset.settings) as (keyof S)[]).every((key) =>
+        sameValue((preset.settings as Partial<S>)[key], current[key]),
+      ),
     )
 
     presetButtons.forEach((element, index) => {
@@ -1199,7 +1224,7 @@ export function createControls<S extends object>(options: Options<S>): Controls<
       const stepped = presets[Math.min(presets.length - 1, Math.max(0, wanted))]
       if (stepped) {
         event.preventDefault()
-        apply(normalize({ ...stepped.settings }))
+        apply(fromPreset(stepped))
       }
       return
     }
@@ -1211,7 +1236,7 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     }
 
     const preset = presets[Number(event.key) - 1]
-    if (preset) apply(normalize({ ...preset.settings }))
+    if (preset) apply(fromPreset(preset))
   }
 
   const onPointerDownAway = (event: PointerEvent) => {

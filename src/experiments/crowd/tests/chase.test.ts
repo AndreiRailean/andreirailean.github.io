@@ -4,10 +4,9 @@ import { createBoulders } from "@/experiments/crowd/boulders"
 import { createPath } from "@/experiments/crowd/path"
 import { createStalls } from "@/experiments/crowd/stalls"
 import { normalizeSettings, type Settings } from "@/experiments/crowd/settings"
-import { PRESETS } from "@/experiments/crowd/presets"
 import type { Person } from "@/experiments/crowd/throng"
 import { makeRng } from "@/experiments/random"
-import { STEP, wrap } from "./support"
+import { SEEDED, STEP, wrap } from "./support"
 
 /**
  * The chaser: me, after the person in red.
@@ -22,7 +21,7 @@ import { STEP, wrap } from "./support"
  * test was seen to go red.
  */
 
-const CATCH_ME = PRESETS.find((preset) => preset.label === "catch me")!
+const CATCH_ME = SEEDED.find((preset) => preset.label === "catch me")!
 
 const quarry = (x: number, y: number): Person => ({ x, y, vx: 0, vy: 0, head: 1.6, headR: 0.1 }) as unknown as Person
 

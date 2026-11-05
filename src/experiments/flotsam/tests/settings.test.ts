@@ -42,7 +42,9 @@ describe("bounds", () => {
 
   it("keeps every default and every preset inside its own bounds", () => {
     for (const { label, settings } of [{ label: "defaults", settings: DEFAULT_SETTINGS }, ...PRESETS]) {
-      expect(normalizeSettings(settings), label).toEqual(settings)
+      // The validator changes nothing a preset names; a preset leaves its seed
+      // out, and the validator fills that in.
+      expect(normalizeSettings(settings), label).toMatchObject(settings)
     }
   })
 })
@@ -122,7 +124,8 @@ describe("landing", () => {
   it("shows the first preset for a bare URL, and says the address should be rewritten", () => {
     const landing = settingsForLanding(new URLSearchParams(""))
     expect(landing.featured).toBe(true)
-    expect(landing.settings).toEqual(normalizeSettings(PRESETS[0]!.settings))
+    // Matched rather than equal: the seed is rolled, not the preset's.
+    expect(landing.settings).toMatchObject(PRESETS[0]!.settings)
   })
 
   it("leaves a URL that names a setting alone", () => {

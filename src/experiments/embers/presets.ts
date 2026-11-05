@@ -6,6 +6,7 @@
  * parameter does. The runner never imports this; see
  * `../docs/adr/20260928-a-piece-is-a-library-behind-three-files.md`.
  */
+import type { Preset } from "@/experiments/piece"
 import type { Settings } from "@/experiments/embers/settings"
 
 /**
@@ -17,7 +18,7 @@ import type { Settings } from "@/experiments/embers/settings"
  * whatever the defaults become; Psyxels lost four of its six scenes that way.
  * See `../docs/adr/20260830-a-preset-inherits-from-nothing.md`.
  */
-export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
+export const PRESETS: Preset<Settings>[] = [
   {
     label: "winter blues",
     hint: "A wide fire on a cold night, close in, with nothing warm left in it.",

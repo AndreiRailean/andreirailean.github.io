@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import { makeCamera, horizonFor } from "@/experiments/crowd/camera"
 import { drawFrame, makeScratch } from "@/experiments/crowd/draw"
 import { PRESETS } from "@/experiments/crowd/presets"
+import { SEEDED } from "./support"
 import { encodeScene } from "@/experiments/address"
 import {
   normalizeSettings,
@@ -59,7 +60,7 @@ function fingerprint(settings: Settings): number[] {
 }
 
 const scene = (label: string, patch: Partial<Settings> = {}): Settings => {
-  const preset = PRESETS.find((p) => p.label === label)
+  const preset = SEEDED.find((p) => p.label === label)
   if (!preset) throw new Error(`no preset ${label}`)
   // Small, so a dozen walks stay a second or two each.
   return { ...normalizeSettings({ ...preset.settings, density: 10, reach: 30 }), ...patch }
@@ -138,7 +139,11 @@ describe("normalizing", () => {
   })
 
   it("leaves every preset exactly as written", () => {
-    for (const preset of PRESETS) expect(normalizeSettings(preset.settings), preset.label).toEqual(preset.settings)
+    // Apart from the seed, which a preset leaves out and the validator fills.
+    for (const preset of PRESETS) {
+      const { seed: _seed, ...rest } = normalizeSettings(preset.settings)
+      expect(rest, preset.label).toEqual(preset.settings)
+    }
   })
 })
 

@@ -1,5 +1,5 @@
 import type { BaseApi, ControlReport } from "@/experiments/kit/api"
-import type { GovernedGroup } from "@/experiments/kit/controls"
+import type { GovernedGroup, Preset } from "@/experiments/kit/controls"
 
 /**
  * The contract between a piece and the frame it runs in: a shape, not a base
@@ -115,7 +115,24 @@ export type SettingsModule<S extends object> = {
   reroll?: Reroll<S>
 }
 
-export type Preset<S> = { label: string; hint: string; settings: S }
+export type { Preset, PresetSettings } from "@/experiments/kit/controls"
+
+/**
+ * The scene a preset applies: validated, and given a fresh seed when the
+ * preset names none and the piece rerolls. See `PresetSettings` for why a
+ * preset leaves its seed out.
+ *
+ * The one place this happens, so the landing, the bar, the keys, the console
+ * and the index's plates cannot come to disagree about it.
+ */
+export function sceneFromPreset<S extends object>(
+  module: Pick<SettingsModule<S>, "normalizeSettings" | "reroll">,
+  preset: Preset<S>,
+): S {
+  const scene = module.normalizeSettings({ ...preset.settings } as Partial<S>)
+  if (!module.reroll || preset.settings.seed !== undefined) return scene
+  return module.normalizeSettings(module.reroll(scene))
+}
 
 /**
  * `window.experiment` for a piece: the kit's chrome half, the controls report,
@@ -143,10 +160,10 @@ export type Rerollable = { reroll: (seed?: number) => number }
  * standing for "whatever is featured next month".
  */
 export function settingsForLanding<S extends object>(
-  settings: Pick<SettingsModule<S>, "namesASetting" | "settingsFromQuery" | "normalizeSettings">,
+  settings: Pick<SettingsModule<S>, "namesASetting" | "settingsFromQuery" | "normalizeSettings" | "reroll">,
   presets: Preset<S>[],
   params: URLSearchParams,
 ): { settings: S; featured: boolean } {
   if (settings.namesASetting(params)) return { settings: settings.settingsFromQuery(params), featured: false }
-  return { settings: settings.normalizeSettings(presets[0]!.settings), featured: true }
+  return { settings: sceneFromPreset(settings, presets[0]!), featured: true }
 }

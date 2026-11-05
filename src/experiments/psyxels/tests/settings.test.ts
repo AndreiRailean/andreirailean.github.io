@@ -57,7 +57,9 @@ describe("bounds", () => {
 
   it("keeps every default and every preset inside its own bounds", () => {
     for (const { label, settings } of [{ label: "defaults", settings: DEFAULT_SETTINGS }, ...PRESETS]) {
-      expect(normalizeSettings(settings), label).toEqual(settings)
+      // The validator changes nothing a preset names; a preset leaves its seed
+      // out, and the validator fills that in.
+      expect(normalizeSettings(settings), label).toMatchObject(settings)
     }
   })
 })
@@ -242,7 +244,8 @@ describe("the query string", () => {
   it("lands on the featured scene only when the address names nothing", () => {
     const bare = settingsForLanding(new URLSearchParams(""))
     expect(bare.featured).toBe(true)
-    expect(bare.settings).toEqual(normalizeSettings(PRESETS[0]!.settings))
+    // Matched rather than equal: the seed is rolled, not the preset's.
+    expect(bare.settings).toMatchObject(PRESETS[0]!.settings)
 
     expect(settingsForLanding(new URLSearchParams("hue=200")).featured).toBe(false)
     expect(settingsForLanding(new URLSearchParams("subject=avatar")).featured).toBe(false)
@@ -266,7 +269,8 @@ describe("the presets", () => {
    * sliders should stay the scene they found.
    */
   it("each state every setting, so none can drift when another is retuned", () => {
-    const keys = Object.keys(DEFAULT_SETTINGS)
+    // Every setting but the seed, which a preset leaves to be rolled.
+    const keys = Object.keys(DEFAULT_SETTINGS).filter((key) => key !== "seed")
     for (const { label, settings } of PRESETS) {
       expect(Object.keys(settings).sort(), label).toEqual([...keys].sort())
     }
@@ -275,7 +279,7 @@ describe("the presets", () => {
   it("does not privilege the first: it is what a bare address lands on and nothing else", () => {
     const landing = settingsForLanding(new URLSearchParams(""))
     expect(landing.featured).toBe(true)
-    expect(landing.settings).toEqual(normalizeSettings(PRESETS[0]!.settings))
+    expect(landing.settings).toMatchObject(PRESETS[0]!.settings)
     // And the address it rewrites to carries that scene in full rather than
     // standing for "whatever is first".
     const primary = normalizeSettings(PRESETS[0]!.settings)

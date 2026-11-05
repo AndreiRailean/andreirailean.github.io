@@ -6,6 +6,7 @@
  * parameter does. The runner never imports this; see
  * `../docs/adr/20260928-a-piece-is-a-library-behind-three-files.md`.
  */
+import type { Preset } from "@/experiments/piece"
 import type { Settings } from "@/experiments/walkers/settings"
 
 /**
@@ -16,7 +17,7 @@ import type { Settings } from "@/experiments/walkers/settings"
  * that cost Psyxels four of its six scenes; see
  * `../docs/adr/20260830-a-preset-inherits-from-nothing.md`.
  */
-export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
+export const PRESETS: Preset<Settings>[] = [
   {
     label: "chalky",
     hint: "Nothing drawn but where people went, in chalk on slate. Andrei's, found with the sliders.",
@@ -46,7 +47,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       spread: 78,
       pastel: 1,
       timescale: 0.65,
-      seed: 58901,
     },
   },
   {
@@ -75,7 +75,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       spread: 108,
       pastel: 1,
       timescale: 1,
-      seed: 44232,
     },
   },
   {
@@ -104,7 +103,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       spread: 120,
       pastel: 1,
       timescale: 1,
-      seed: 1307,
     },
   },
 ]

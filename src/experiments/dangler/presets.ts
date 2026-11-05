@@ -6,6 +6,7 @@
  * parameter does. The runner never imports this; see
  * `../docs/adr/20260928-a-piece-is-a-library-behind-three-files.md`.
  */
+import type { Preset } from "@/experiments/piece"
 import type { Settings } from "@/experiments/dangler/settings"
 
 /**
@@ -17,12 +18,11 @@ import type { Settings } from "@/experiments/dangler/settings"
  * the scene they found; inheriting the defaults would let it drift silently the
  * next time one of those is retuned.
  */
-export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
+export const PRESETS: Preset<Settings>[] = [
   {
     label: "dreamy",
     hint: "Six arms of long, all but limp strands in cold blue, falling past you, everything barely moving.",
     settings: {
-      seed: 310555,
       strands: 52,
       beads: 9,
       segments: 34,
@@ -63,7 +63,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     label: "together",
     hint: "A tight low cluster, strands plumb and plunging past you, all of it moving.",
     settings: {
-      seed: 7,
       strands: 50,
       beads: 4,
       segments: 20,
@@ -105,7 +104,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     label: "frantic",
     hint: "Fifty-one short strands crammed almost overhead, hot pink through green, hit hard and often.",
     settings: {
-      seed: 7,
       strands: 51,
       beads: 4,
       segments: 20,

@@ -6,6 +6,7 @@
  * parameter does. The runner never imports this; see
  * `../docs/adr/20260928-a-piece-is-a-library-behind-three-files.md`.
  */
+import type { Preset } from "@/experiments/piece"
 import type { Settings } from "@/experiments/crowd/settings"
 
 /**
@@ -20,7 +21,7 @@ import type { Settings } from "@/experiments/crowd/settings"
  * not: the note, the chrome and the index placard all tint themselves from it,
  * and a scene that is white on black still has to say what colour it would be.
  */
-export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
+export const PRESETS: Preset<Settings>[] = [
   {
     label: "catch me",
     hint: "The market among great black boulders, and somebody in red I am trying to keep up with. They run when I get close and wait when I fall behind, and what they run for is the far side of a boulder — so they are simply gone, and where they come out is the question. The red head looks like the subject for a moment. It is not: the subject is whoever is doing the chasing.",
@@ -72,7 +73,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 0,
       tint: 0,
       timescale: 1,
-      seed: 64021,
     },
   },
   {
@@ -126,7 +126,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 208,
       tint: 0,
       timescale: 1,
-      seed: 24196,
     },
   },
   {
@@ -180,7 +179,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 196,
       tint: 0,
       timescale: 1,
-      seed: 6640,
     },
   },
   {
@@ -234,7 +232,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 222,
       tint: 0,
       timescale: 1,
-      seed: 51877,
     },
   },
   {
@@ -288,7 +285,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 200,
       tint: 0,
       timescale: 1,
-      seed: 13907,
     },
   },
   {
@@ -342,7 +338,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 202,
       tint: 0,
       timescale: 1,
-      seed: 30412,
     },
   },
   {
@@ -396,7 +391,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 216,
       tint: 0,
       timescale: 1,
-      seed: 88104,
     },
   },
   {
@@ -450,7 +444,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 28,
       tint: 0,
       timescale: 1,
-      seed: 41822,
     },
   },
   {
@@ -504,7 +497,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 140,
       tint: 0,
       timescale: 1,
-      seed: 60237,
     },
   },
   {
@@ -558,7 +550,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 100,
       tint: 0,
       timescale: 1,
-      seed: 17350,
     },
   },
   {
@@ -612,7 +603,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 160,
       tint: 0,
       timescale: 1,
-      seed: 38815,
     },
   },
   {
@@ -666,7 +656,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 10,
       tint: 0,
       timescale: 1,
-      seed: 71450,
     },
   },
   {
@@ -720,7 +709,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 120,
       tint: 0,
       timescale: 1,
-      seed: 52291,
     },
   },
   {
@@ -774,7 +762,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 40,
       tint: 0,
       timescale: 1,
-      seed: 90313,
     },
   },
   {
@@ -828,7 +815,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 40,
       tint: 0,
       timescale: 1,
-      seed: 90313,
     },
   },
   {
@@ -882,7 +868,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 208,
       tint: 0,
       timescale: 1,
-      seed: 24196,
     },
   },
   {
@@ -936,7 +921,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 100,
       tint: 0,
       timescale: 1,
-      seed: 4242,
     },
   },
   {
@@ -990,7 +974,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 100,
       tint: 0,
       timescale: 1,
-      seed: 4242,
     },
   },
   {
@@ -1044,7 +1027,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 208,
       tint: 0,
       timescale: 1,
-      seed: 24196,
     },
   },
   {
@@ -1098,7 +1080,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 208,
       tint: 0,
       timescale: 1,
-      seed: 24196,
     },
   },
   {
@@ -1152,7 +1133,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 0,
       tint: 0,
       timescale: 1,
-      seed: 64021,
     },
   },
   {
@@ -1206,7 +1186,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 208,
       tint: 0,
       timescale: 1,
-      seed: 24196,
     },
   },
   {
@@ -1260,7 +1239,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 208,
       tint: 0,
       timescale: 1,
-      seed: 24196,
     },
   },
 ]

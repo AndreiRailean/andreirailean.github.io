@@ -85,7 +85,9 @@ describe("presets", () => {
   it.each(PRESETS.map((preset) => [preset.label, preset] as const))(
     "%s is within bounds as written",
     (_label, preset) => {
-      expect(normalizeSettings(preset.settings)).toEqual(preset.settings)
+      // The validator changes nothing a preset names; a preset leaves its seed
+      // out, and the validator fills that in.
+      expect(normalizeSettings(preset.settings)).toMatchObject(preset.settings)
     },
   )
 
@@ -105,7 +107,8 @@ describe("presets", () => {
 describe("landing", () => {
   it("shows the first preset when the URL names no settings", () => {
     const { settings, featured } = settingsForLanding(new URLSearchParams(""))
-    expect(settings).toEqual(normalizeSettings(PRESETS[0]!.settings))
+    // Matched rather than equal: the seed is rolled, not the preset's.
+    expect(settings).toMatchObject(PRESETS[0]!.settings)
     expect(featured).toBe(true)
   })
 

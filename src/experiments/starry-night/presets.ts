@@ -6,6 +6,7 @@
  * parameter does. The runner never imports this; see
  * `../docs/adr/20260928-a-piece-is-a-library-behind-three-files.md`.
  */
+import type { Preset } from "@/experiments/piece"
 import type { Settings } from "@/experiments/starry-night/settings"
 
 /**
@@ -18,7 +19,7 @@ import type { Settings } from "@/experiments/starry-night/settings"
  * scenes; see `../docs/adr/20260830-a-preset-inherits-from-nothing.md`. The
  * values below are the ones that spread produced, written out unchanged.
  */
-export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
+export const PRESETS: Preset<Settings>[] = [
   {
     label: "deep field",
     hint: "Many faint layers on a dark sky. The starting point.",

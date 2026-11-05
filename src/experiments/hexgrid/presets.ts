@@ -5,9 +5,10 @@
  * `../docs/adr/20260830-a-preset-inherits-from-nothing.md`. Position one is the
  * primary: a bare address lands on it, and the poster and the note read it.
  */
+import type { Preset } from "@/experiments/piece"
 import type { Settings } from "@/experiments/hexgrid/settings"
 
-export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
+export const PRESETS: Preset<Settings>[] = [
   {
     label: "embers",
     hint: "Andrei's: small warm hexes dropped at random, each blooming from a point of colour in its middle until a wide, soft hole forms, which then grows until it swallows the hex.",
@@ -45,7 +46,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       fadeBy: "wave",
       entry: "bloom",
       exit: "hole",
-      seed: 5,
       timescale: 1,
     },
   },
@@ -86,7 +86,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       fadeBy: "wave",
       entry: "dim",
       exit: "dim",
-      seed: 7,
       timescale: 1,
     },
   },
@@ -127,7 +126,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       entry: "dim",
       exit: "dim",
       overlap: 0.25,
-      seed: 7,
       timescale: 1,
     },
   },
@@ -168,7 +166,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       entry: "dim",
       exit: "dim",
       overlap: 0,
-      seed: 7,
       timescale: 1,
     },
   },
@@ -209,7 +206,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       entry: "dim",
       exit: "hole",
       overlap: 0.25,
-      seed: 7,
       timescale: 1,
     },
   },
@@ -250,7 +246,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       entry: "hole",
       exit: "hole",
       overlap: 0,
-      seed: 7,
       timescale: 1,
     },
   },
@@ -291,7 +286,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       fadeBy: "wave",
       entry: "glow",
       exit: "hole",
-      seed: 7,
       timescale: 1,
     },
   },
@@ -332,7 +326,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       fadeBy: "wave",
       entry: "bloom",
       exit: "hole",
-      seed: 7,
       timescale: 1,
     },
   },
@@ -373,7 +366,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       fadeBy: "wave",
       entry: "glow",
       exit: "sink",
-      seed: 7,
       timescale: 1,
     },
   },
@@ -414,7 +406,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       fadeBy: "wave",
       entry: "dim",
       exit: "dim",
-      seed: 1,
       timescale: 1,
     },
   },
@@ -455,7 +446,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       fadeBy: "wave",
       entry: "dim",
       exit: "dim",
-      seed: 3,
       timescale: 1,
     },
   },
@@ -496,7 +486,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       fadeBy: "wave",
       entry: "dim",
       exit: "dim",
-      seed: 7,
       timescale: 1,
     },
   },

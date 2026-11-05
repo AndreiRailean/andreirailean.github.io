@@ -212,6 +212,8 @@ export type BaseApiOptions<S> = {
    * reaches a state a URL could not, which `AGENTS.md` rules out.
    */
   normalize: (patch: Partial<S>, base?: S) => S
+  /** The same function `createControls` was given, so `preset()` and a preset button apply alike. */
+  fromPreset?: (preset: Preset<S>) => S
   /**
    * The piece's query-string reader, for `decode`.
    *
@@ -228,6 +230,7 @@ export function createBaseApi<S>({
   scene,
   presets,
   normalize,
+  fromPreset = (preset) => normalize({ ...preset.settings } as Partial<S>),
   fromQuery,
 }: BaseApiOptions<S>): BaseApi<S> {
   // Held here rather than read back off the scene: whether a piece is paused is
@@ -269,7 +272,7 @@ export function createBaseApi<S>({
       if (!found) {
         throw new Error(`No such preset: ${JSON.stringify(which)}. Try ${presets.map((p) => p.label).join(", ")}.`)
       }
-      const next = normalize(found.settings)
+      const next = fromPreset(found)
       controls.apply(next)
       return next
     },

@@ -3,7 +3,7 @@ import { createLoop, createPath, hikingPace, lanePush } from "@/experiments/crow
 import { createStroll, type Neighbourhood } from "@/experiments/crowd/stroll"
 import { createThrong, teamSlots } from "@/experiments/crowd/throng"
 import { normalizeSettings, type Settings } from "@/experiments/crowd/settings"
-import { PRESETS } from "@/experiments/crowd/presets"
+import { SEEDED } from "./support"
 
 /**
  * The structured crowd: a lining that stands, a way that bends, teams, a hill,
@@ -30,7 +30,7 @@ import { PRESETS } from "@/experiments/crowd/presets"
 const STEP = 1 / 120
 
 function walk(label: string, seconds: number) {
-  const preset = PRESETS.find((p) => p.label === label)
+  const preset = SEEDED.find((p) => p.label === label)
   if (!preset) throw new Error(`no preset ${label}`)
   const settings = normalizeSettings(preset.settings)
   const me = createStroll(settings, settings.seed)
@@ -48,7 +48,7 @@ function walk(label: string, seconds: number) {
  * no people.
  */
 function me(label: string, patch: Partial<Settings>, seconds: number) {
-  const preset = PRESETS.find((p) => p.label === label)!
+  const preset = SEEDED.find((p) => p.label === label)!
   const settings = normalizeSettings({ ...preset.settings, ...patch })
   const walker = createStroll(settings, settings.seed)
   const throng = createThrong(settings, walker)
@@ -283,7 +283,7 @@ describe("effort", () => {
    */
   it("is what the crowd walks a climb at", () => {
     const climbing = (effort: number) => {
-      const preset = PRESETS.find((p) => p.label === "the trail")!
+      const preset = SEEDED.find((p) => p.label === "the trail")!
       const settings = normalizeSettings({ ...preset.settings, effort })
       const walker = createStroll(settings, settings.seed)
       const crowd = createThrong(settings, walker)
@@ -335,7 +335,7 @@ describe("keeping to a side", () => {
    * from the throng fails.
    */
   function sides(keep: number) {
-    const preset = PRESETS.find((p) => p.label === "keep left")!
+    const preset = SEEDED.find((p) => p.label === "keep left")!
     const settings = normalizeSettings({ ...preset.settings, keep })
     const walker = createStroll(settings, settings.seed)
     const crowd = createThrong(settings, walker)
@@ -422,7 +422,7 @@ describe("the chase, wired", () => {
    * minutes each.
    */
   it("runs a chase among boulders: the gap opens and closes, they hide, and I go round", () => {
-    const preset = PRESETS.find((p) => p.label === "catch me")!
+    const preset = SEEDED.find((p) => p.label === "catch me")!
     const settings = normalizeSettings({ ...preset.settings, density: 12, reach: 40 })
     const walker = createStroll(settings, settings.seed)
     const crowd = createThrong(settings, walker)
@@ -454,7 +454,7 @@ describe("the chase, wired", () => {
    * all me, which is what makes a straight line to them impossible.
    */
   it("runs a chase through the stalls, and nobody walks through one", () => {
-    const preset = PRESETS.find((p) => p.label === "catch me")!
+    const preset = SEEDED.find((p) => p.label === "catch me")!
     const settings = normalizeSettings({
       ...preset.settings,
       stalls: 0.5,

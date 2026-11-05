@@ -31,8 +31,7 @@ import {
   type GlanceKind,
 } from "@/experiments/crowd/stroll"
 import { makeRng } from "@/experiments/random"
-import { PRESETS } from "@/experiments/crowd/presets"
-import { DEG, STEP, watch, walk, wrap } from "./support"
+import { DEG, SEEDED, STEP, walk, watch, wrap } from "./support"
 
 /**
  * The person carrying the camera, one decision at a time.
@@ -324,7 +323,7 @@ describe("stopping, and turning at a stop", () => {
  * any of it needs. Each one is the property a person saw, measured end to end.
  */
 const SMALL = { reach: 12 }
-const STREET = PRESETS.find((preset) => preset.label === "the street")!
+const STREET = SEEDED.find((preset) => preset.label === "the street")!
 
 describe("the walk, end to end, in a small world", () => {
   it("rests the head ahead while walking, and glances through the neck's spring", () => {
