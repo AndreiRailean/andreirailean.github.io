@@ -200,7 +200,10 @@ test("every piece that can be drawn draws its plate, as a real frame the width o
     })
     const piece = await plate.getAttribute("data-piece")
     expect(Math.abs(frame - width), `${piece}'s frame is ${frame}px in a ${width}px plate`).toBeLessThan(1)
-    expect(lit, `${piece}'s frame is blank`).toBeGreaterThan(0.01)
+    // A canvas nothing drew on scores exactly 0. The floor sits well under
+    // the sparsest plate, Starry Night's sky at about 0.7%, which a 1% floor
+    // written for the denser pieces failed.
+    expect(lit, `${piece}'s frame is blank`).toBeGreaterThan(0.002)
     // The poster under a drawn frame stays hidden. This is what the page
     // starting blank rests on; without it the rejected poster-then-crossfade
     // (src/experiments/docs/adr/20260901-a-poster-held-over-a-booting-piece.md)
