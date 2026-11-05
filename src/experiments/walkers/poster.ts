@@ -27,8 +27,8 @@ import type { PosterRecipe } from "@/experiments/poster"
  * One shutter, not several. Unlike Starry Night there is nothing transient worth
  * hunting for — the picture is a crowd rather than an event, and every frame two
  * minutes in is as good as every other. What varies between captures is which
- * particular afternoon the seed and the settle produce; that is fixed by the
- * preset carrying a seed, so this recipe is as reproducible as the section gets.
+ * particular afternoon the seed and the settle produce, and the seed is rolled
+ * on every load since presets stopped pinning one, so no two captures match.
  */
 const poster: PosterRecipe<ExperimentApi> = {
   prepare: ({ api }) => {

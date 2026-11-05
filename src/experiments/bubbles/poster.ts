@@ -24,10 +24,10 @@ import type { PosterRecipe } from "@/experiments/poster"
  * route to the same moment. See `WARM_STEP` in `bubbles.ts` for what its
  * coarser step costs in accuracy, which is about a fifth of the foam.
  *
- * **One shot.** The jets and the background are fixed by the preset's seed, and
- * a settled `standing still` changes slowly, so frames further apart offer no
- * real choice between them. Not reproducible all the same: every bubble is
- * drawn from a stream that has been running since the page loaded.
+ * **One shot.** A settled `standing still` changes slowly, so frames further
+ * apart offer no real choice between them. Not reproducible: the primary names
+ * no seed, so where the jets sit and which eddies the background is made of
+ * are rolled on every load.
  */
 const poster: PosterRecipe<ExperimentApi> = {
   // No preset named, so it captures the primary, which is what a bare address

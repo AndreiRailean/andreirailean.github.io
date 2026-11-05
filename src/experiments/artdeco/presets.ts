@@ -259,6 +259,11 @@ export const PRESETS: Preset<Settings>[] = [
     label: "ziggurat",
     hint: "Three stems a little apart, square turns, inside a frame. Every line decides as one, so the parallels step in and out together.",
     settings: {
+      // Pinned. Under `unison: "all"` every line makes the same decisions, so a
+      // seed either fills the frame or stops at a few segments: 4 segments in a
+      // third of forty seeds measured. See "`unison: "all"` is bimodal" in
+      // `AGENTS.md`. Every other preset leaves its seed to be rolled.
+      seed: 22,
       fold: "1",
       reach: "centre",
       sides: "copies",
@@ -669,6 +674,11 @@ export const PRESETS: Preset<Settings>[] = [
     label: "banded",
     hint: "Two stems drawn as bands of three strands, square turns and long parallel echoes, deciding as one.",
     settings: {
+      // Pinned. Under `unison: "all"` every line makes the same decisions, so a
+      // seed either fills the frame or stops at a few segments: 4 segments in a
+      // third of forty seeds measured. See "`unison: "all"` is bimodal" in
+      // `AGENTS.md`. Every other preset leaves its seed to be rolled.
+      seed: 4,
       fold: "1",
       reach: "centre",
       sides: "copies",

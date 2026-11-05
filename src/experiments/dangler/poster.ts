@@ -15,12 +15,11 @@ import type { PosterRecipe } from "@/experiments/poster"
  * Naming it here would be a second place to change, and the one that gets
  * forgotten.
  *
- * Not byte-reproducible, despite the preset carrying a `seed`. The seed fixes
- * the *arrangement* — where the anchors sit, how each strand is shaped — and
- * that comes out the same every run. The sway does not: the wind is derived
- * from the clock as well as the seed, so the shutter catches the strands at a
- * different point in the same breeze. Two captures look alike to a person and
- * differ to `git`, which is the whole reason for the slug filter.
+ * Not reproducible. The seed fixes the *arrangement* — where the anchors sit,
+ * how each strand is shaped — and the primary names none, so each load rolls a
+ * fresh one. The sway would differ anyway: the wind is derived from the clock
+ * as well as the seed, so the shutter catches the strands at a different point
+ * in the same breeze.
  */
 const poster: PosterRecipe<ExperimentApi> = {
   prepare: ({ api }) => {
