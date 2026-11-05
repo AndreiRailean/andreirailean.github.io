@@ -50,6 +50,15 @@ shutter, measured at 0.8–39 s on a box with no GPU, or settle inside their
 runners. Each leaves `POSTER_ONLY` once it can start from a state that already
 looks like it has been running. That state is approximate, not replayed.
 
+**Amended 2026-11-06.** Three of those eight were not slow on the index:
+embers and starry night were listed for the settle in their runners' `mount`,
+which the index never calls, and drew in 289 ms and 30 ms once measured.
+Bubbles was slow: its primary needs about thirty seconds of water at 830 ms a
+second. It now draws `standing still`, the preset Andrei suggested, through a
+coarse warm-up (`warm`, four times the step) in about 260 ms, and its poster
+was recaptured the same way so the fallback matches. That makes it the first
+plate showing a preset other than the primary, which is where its link lands.
+
 ## Consequences
 
 - A poster recipe now has two readers, the capture and the index. A recipe

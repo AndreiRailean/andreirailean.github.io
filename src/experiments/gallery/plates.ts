@@ -37,11 +37,15 @@ import type { Live, Preset, Start } from "@/experiments/piece"
  * plate the way this file does with the budget lifted: walkers 39 s (its
  * recipe settles 120 s), crowd 26 s (45 s), flotsam 5.6 s (runs 40 s), hexgrid
  * 2.8 s (sweeps a whole loop for its most lit moment), psyxels 0.8 s (runs
- * 90 s). Bubbles and Embers settle inside their runners, for 30 s and 14 s of
- * water and fire, and a fresh Starry Night has no glimmers yet. The five
- * drawn here took 17–224 ms.
+ * 90 s).
+ *
+ * **Measure before listing a piece here.** Embers and Starry Night were listed
+ * unmeasured, on the strength of the settle in their runners' `mount`, which
+ * this file never calls. Drawn, they took 289 ms and 30 ms. Bubbles was listed
+ * the same way and really was slow, 1.7 s for its primary, and now draws
+ * `standing still` through a coarse warm-up instead; its `poster.ts` says why.
  */
-const POSTER_ONLY = new Set(["bubbles", "crowd", "embers", "flotsam", "hexgrid", "psyxels", "starry-night", "walkers"])
+const POSTER_ONLY = new Set(["crowd", "flotsam", "hexgrid", "psyxels", "walkers"])
 
 /**
  * Longest a plate may take to draw before the device is judged too slow for

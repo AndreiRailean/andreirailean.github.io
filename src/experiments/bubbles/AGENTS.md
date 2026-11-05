@@ -84,7 +84,8 @@ thirty seconds of jets before the tub holds what the numbers say. All three
 surfaces that read the primary hit this together, and all three would otherwise
 show a black rectangle or a field of identical specks:
 
-- the captured poster — `poster.ts` settles through the recipe's dwell;
+- the captured poster and the index's plate — `poster.ts` warms
+  `standing still` through `warm`, below;
 - the note's backdrop — `about.astro` calls `settle(24)`;
 - the reduced-motion still — `bubbles.ts` runs `STILL_SECONDS` before drawing.
 
@@ -92,6 +93,20 @@ show a black rectangle or a field of identical specks:
 `trail` is 0 in the primary and every circle is drawn whole each frame. If a
 scene with a wake is ever promoted to first, that changes and the recipe has to
 say how many frames — see the posters section of `../AGENTS.md`.
+
+## `warm` is a rough fast-forward, and only the index should want it
+
+`warm(seconds)` steps at four times `STEP` until its last second, which it
+settles exactly. The cost of a step is per bubble, not per second of water, so
+it is about a quarter of `settle`'s: 220 ms against 620 for eight seconds of
+`standing still` at plate size. Against an honest 20 s it comes out with about
+a fifth fewer bubbles, the same speed and a mean size within 9%.
+
+It exists because the index draws its plates live under a budget of 600 ms
+each, and an honest settle of this piece does not fit. Do not reach for it
+anywhere a picture is meant to be exact. It also does not rescue the primary,
+whose pool fills within a second and then costs 830 ms per second of water; the
+reasoning is in `poster.ts` and `WARM_STEP`.
 
 ## The contact grid's cell must hold the largest pair
 
