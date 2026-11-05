@@ -50,14 +50,21 @@ shutter, measured at 0.8–39 s on a box with no GPU, or settle inside their
 runners. Each leaves `POSTER_ONLY` once it can start from a state that already
 looks like it has been running. That state is approximate, not replayed.
 
-**Amended 2026-11-06.** Three of those eight were not slow on the index:
-embers and starry night were listed for the settle in their runners' `mount`,
-which the index never calls, and drew in 289 ms and 30 ms once measured.
-Bubbles was slow: its primary needs about thirty seconds of water at 830 ms a
-second. It now draws `standing still`, the preset Andrei suggested, through a
-coarse warm-up (`warm`, four times the step) in about 260 ms, and its poster
-was recaptured the same way so the fallback matches. That makes it the first
-plate showing a preset other than the primary, which is where its link lands.
+**Amended 2026-11-06.** Two of those eight were never measured and were not
+slow: embers was listed for the settle in its runner's `mount`, which the index
+never calls, and Starry Night because a fresh sky has no glimmers yet. They draw
+in 289 ms and 30 ms, and Starry Night's plate is a quieter sky than its poster.
+Bubbles was slow: its primary, `time bubbles`, needs about thirty seconds of
+water at 830 ms a second. Andrei suggested `standing still` and then promoted it
+to primary, so the plate still shows where its link lands. A coarse warm-up,
+`warm`, at four times the step, reaches it in 220 ms, about 260 ms for the whole
+plate, and its poster was recaptured the same way. The eight drawn plates now
+cost about 1.1 s of the 1.5 s total on the preview box.
+
+**And a visitor who asked for less motion gets every poster.** Each piece
+honours the preference inside its own `start()`, with a still of its own and a
+pre-roll of up to twenty-two seconds of simulation, which the recipe's
+warm-up then paid on top of.
 
 ## Consequences
 

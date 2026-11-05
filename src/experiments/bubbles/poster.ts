@@ -9,16 +9,16 @@ import type { PosterRecipe } from "@/experiments/poster"
  * another one, so the size range the settings describe is *earned*. A shutter at
  * frame one photographs black.
  *
- * **`standing still`, not the primary, and that is a trade.** This recipe has
- * two readers: the poster capture, and the index, which draws the plate live in
- * a few hundred milliseconds or falls back to this poster
- * (`../docs/adr/20261102-the-index-draws-its-plates.md`). The primary cannot be
- * drawn in that time. Its pool is full within a second, so every second of its
- * water costs about 830 ms at plate size, and the bright rim its poster used to
- * show gathers over about thirty seconds of it. `standing still` keeps a
- * smaller foam in a frozen background flow, filled in after about eight
- * seconds, and `warm` gets there in about 220 ms. Andrei suggested it for
- * exactly this, because "it appears to have a stable steady state".
+ * **The primary is `standing still` because of this recipe's second reader.**
+ * The index draws each plate live in a few hundred milliseconds or falls back
+ * to this poster (`../docs/adr/20261102-the-index-draws-its-plates.md`), and
+ * `time bubbles`, the primary before it, could not be drawn in that time: its
+ * pool is full within a second, so every second of its water costs about
+ * 830 ms at plate size, and the bright rim its poster showed gathers over about
+ * thirty. `standing still` keeps a smaller foam in a frozen background flow,
+ * filled in after about eight seconds, and `warm` gets there in about 220 ms.
+ * Andrei suggested it for exactly this, because "it appears to have a stable
+ * steady state", and then promoted it so the plate shows where its link lands.
  *
  * **`warm` rather than `settle`**, so the capture and the plate take the same
  * route to the same moment. See `WARM_STEP` in `bubbles.ts` for what its
@@ -30,7 +30,8 @@ import type { PosterRecipe } from "@/experiments/poster"
  * drawn from a stream that has been running since the page loaded.
  */
 const poster: PosterRecipe<ExperimentApi> = {
-  preset: "standing still",
+  // No preset named, so it captures the primary, which is what a bare address
+  // lands on and therefore what the plate is promising.
   prepare: ({ api }) => api.warm(8),
 }
 

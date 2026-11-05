@@ -211,3 +211,10 @@ packs.
   `meniscus` and `foam` get some of both by being soapy: long `lasts`, high
   `holds at`, low `torn by`.
 - **Still not built:** the per-jet tilt, and bubble flattening.
+
+## 2026-11-06 — the primary
+
+Asked how the index's plate should link once it drew `standing still` rather
+than the primary, which cannot be drawn there in time:
+
+> move standing still to primary

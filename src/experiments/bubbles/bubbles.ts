@@ -104,10 +104,10 @@ const STEP = 1 / 60
  * same preset: the foam's mean size within 9%, its speed within 1%, and about a
  * fifth fewer bubbles alive. On screen it reads as the same water.
  *
- * **It does not reach structure that takes long to gather.** The primary's
- * bright rim builds over about thirty seconds of water, at 830 ms per second
+ * **It does not reach structure that takes long to gather.** The bright rim of
+ * `time bubbles`, the primary before it, builds over about thirty seconds of water, at 830 ms per second
  * at plate size, and even eight times the step leaves it about three seconds
- * away. That is why the index draws `standing still` and not the primary.
+ * away. That is why `standing still` became the primary in its place.
  */
 const WARM_STEP = 4 * STEP
 

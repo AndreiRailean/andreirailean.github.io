@@ -104,9 +104,10 @@ a fifth fewer bubbles, the same speed and a mean size within 9%.
 
 It exists because the index draws its plates live under a budget of 600 ms
 each, and an honest settle of this piece does not fit. Do not reach for it
-anywhere a picture is meant to be exact. It also does not rescue the primary,
-whose pool fills within a second and then costs 830 ms per second of water; the
-reasoning is in `poster.ts` and `WARM_STEP`.
+anywhere a picture is meant to be exact. It also did not rescue `time bubbles`,
+the primary before `standing still`, whose pool fills within a second and then
+costs 830 ms per second of water. That is why the primary changed on
+2026-11-06; the reasoning is in `poster.ts` and `WARM_STEP`.
 
 ## The contact grid's cell must hold the largest pair
 
@@ -202,7 +203,8 @@ that fans out harder gives up its speed sooner.
 claim about a number and the piece could not report that number, so the only way
 to check it was to look — which is the thing this section says not to rely on.
 The useful derived figure is _seconds to cross the frame_, `span / speed`: the
-primary is about eleven, and the presets Andrei called too fast were under two.
+primary of the time, `time bubbles`, was about eleven, and the presets Andrei
+called too fast were under two.
 
 ## Gas is a quantity, not a count, and that is a growth-path fix
 

@@ -46,7 +46,11 @@ const EXPECTED = [
  * clicks through to a piece before that is done aborts a fetch in flight,
  * which the `problems` fixture rightly reports as a failed request.
  */
-async function openIndex(page: Page, query = ""): Promise<void> {
+async function openIndex(page: Page, query = "", reducedMotion: "reduce" | "no-preference" = "no-preference") {
+  // Pinned, never inherited: the headless shell CI launches reports `reduce`,
+  // where the system Chromium reports no preference, and under `reduce` no
+  // plate is drawn at all. Unpinned, CI and a local run test different pages.
+  await page.emulateMedia({ reducedMotion })
   await page.goto(`/experiments/${query}`)
   await expect(page.locator("html")).toHaveAttribute("data-plates", "idle", { timeout: 30_000 })
 }
@@ -212,9 +216,22 @@ test("every piece that can be drawn draws its plate, as a real frame the width o
   }
 })
 
+test("a visitor who asked for less motion gets every poster and no plate drawn", async ({ page }) => {
+  await openIndex(page, "?budget=off", "reduce")
+  const plates = page.locator(".plate")
+  const count = await plates.count()
+  expect(count).toBeGreaterThan(0)
+  for (let i = 0; i < count; i += 1) {
+    await plates.nth(i).scrollIntoViewIfNeeded()
+    await expect(plates.nth(i)).toHaveAttribute("data-shown", "poster")
+    await expect(plates.nth(i)).toHaveAttribute("data-why", "reduced motion")
+  }
+  await expect(page.locator(".plate .live")).toHaveCount(0)
+})
+
 test("a device that draws slowly gets posters for the rest of the wall", async ({ page }) => {
-  // Twenty times slower: on the box the budget was set on, the second plate
-  // drawn takes over a second, past the 600 ms a plate is allowed.
+  // Twenty times slower: on the box the budget was set on, even the cheapest
+  // plate, melting at about 40 ms, then takes past the 600 ms a plate is allowed.
   const cdp = await page.context().newCDPSession(page)
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: 20 })
   await openIndex(page)
