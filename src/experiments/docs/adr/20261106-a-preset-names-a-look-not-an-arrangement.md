@@ -28,9 +28,14 @@ landing, the preset buttons, the number and arrow keys, `experiment.preset()`
 and the index's plates. A preset that names a seed keeps it, which is for a
 preset whose point is one arrangement.
 
-The seeds were removed from every preset except two: artdeco's `ziggurat` and
-`banded` run `unison: "all"`, where a third of seeds stop at a few segments,
-so theirs stay pinned.
+The seeds were removed from every preset except where one is the point:
+
+- **artdeco's `ziggurat` and `banded`** run `unison: "all"`, where a third of
+  seeds stop at a few segments;
+- **every melting preset**, because the lamp is a function of the moment and
+  the seed alone, so two screens show the same lamp. That is the piece's
+  premise, and `melting.spec.ts` holds it. It varies anyway, because every
+  load is a different moment.
 
 **The address still carries the seed in use**, so a copied link reproduces
 the screen exactly. Only a preset stopped being an exact scene.

@@ -17,7 +17,7 @@ import { expect, openExperiment, test } from "../../../../tests/support/experime
  * size count as drawn.
  */
 
-/** Any moment will do; this one is the poster's. */
+/** Any moment will do; this one was the poster's until 2026-11-06. */
 const MOMENT = 1_800_000_101
 
 const SATELLITE_ID = 100_000
