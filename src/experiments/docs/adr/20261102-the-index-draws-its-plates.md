@@ -65,6 +65,10 @@ Then crowd and flotsam, by their first frames: a still does not show what their
 recipes ran forty-odd seconds to build, as their `poster.ts` files explain. Ten
 plates come to about 1.5 s, so the total became 3 s at Andrei's word.
 
+Then psyxels by its first frame, and hexgrid by searching its loop every half
+second rather than every tenth: twelve plates, about 1.8 s. Walkers alone keeps
+its poster.
+
 **And a visitor who asked for less motion gets every poster.** Each piece
 honours the preference inside its own `start()`, with a still of its own and a
 pre-roll of up to twenty-two seconds of simulation, which the recipe's

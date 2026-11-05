@@ -380,8 +380,8 @@ flatten` at first, which looks right on a letter — ink is 1 almost everywhere 
 - **`playback` scales the clock in one place, in `step`.** The breathing, the
   frame changes and the repacking all slow by the same factor and every
   relationship between them survives. `run()` is deliberately not scaled by it:
-  it means seconds of field, because a poster recipe asking for ninety seconds
-  wants ninety seconds whatever rate someone is viewing at.
+  it means seconds of field, because a caller asking for ninety seconds wants
+  ninety seconds whatever rate someone is viewing at.
 - **`DEFAULT_SETTINGS` is a baseline, not a scene, and no preset inherits from
   it.** Presets were spread over it and the featured scene _was_ it, so the day
   the featured scene changed every preset that had not named a setting silently
@@ -469,8 +469,10 @@ tests it once, on the kit's own fixture
 sees anything visual, and for this piece neither sees anything structural either.
 
 **A still of frame one is a still of a field that has never repacked.** Use
-`?run=90`, or `experiment.run(90)`, or the poster recipe — all of which step the
-field forward without waiting for it. Repacking is the slow motion here: a square
+`?run=90` or `experiment.run(90)`, both of which step the field forward without
+waiting for it. The poster no longer does: since 2026-11-06 it is the first
+frame, because at plate size the two read as the same word and the index draws
+it live; `poster.ts` has why. Repacking is the slow motion here: a square
 reconsiders its size a handful of times a minute.
 
 - `?debug=1` draws the squares the packing chose. With only glyphs visible, a
