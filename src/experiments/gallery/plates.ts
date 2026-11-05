@@ -49,11 +49,16 @@ import type { Live, Preset, Start } from "@/experiments/piece"
  * is now `standing still`, reached through a coarse warm-up; its `poster.ts`
  * says why. Its plate takes about 260 ms, of which `warm` is 220.
  *
- * Crowd and Flotsam draw their first frame, in 176 ms and 219 ms, rather than
- * the 45 s and 40 s their recipes used to run. Their `poster.ts` files say why
- * that frame is the piece.
+ * Crowd, Flotsam and Psyxels draw their first frame, in 176, 219 and 88 ms,
+ * rather than the 45, 40 and 90 s their recipes used to run, and Hexgrid looks
+ * for its brightest moment every half second instead of every tenth, 358 ms
+ * instead of 2.8 s. Their `poster.ts` files say why.
+ *
+ * Walkers is the one left. Its picture is the ground people have worn, which
+ * takes minutes of crowd and tens of seconds of painted trail to arrive at:
+ * 5 s of it alone costs 2.5 s.
  */
-const POSTER_ONLY = new Set(["hexgrid", "psyxels", "walkers"])
+const POSTER_ONLY = new Set(["walkers"])
 
 /**
  * Longest a plate may take to draw before the device is judged too slow for

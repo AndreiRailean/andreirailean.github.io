@@ -2,17 +2,16 @@ import type { PosterRecipe } from "@/experiments/poster"
 import type { ExperimentApi } from "@/experiments/psyxels/runner"
 
 /**
- * What Psyxels looks like when someone should want to click it.
+ * What Psyxels looks like when someone should want to click it: its first
+ * frame, which is what the landing page opens on.
  *
- * Frame one is a field that has never repacked: every psyx is the size the
- * seed first gave it, every psyx is at the same age, and the arrival ease has
- * them all at the same brightness. That is a picture of the packing, which is
- * half the piece, and it is missing the half that moves.
- *
- * Ninety seconds is a dozen or so size changes per square at the landing scene's
- * churn — long enough that the field on the poster is one the seed alone would
- * never have produced, and that the psyxels are spread across their own cycles
- * rather than sharing one.
+ * **This recipe used to run ninety seconds**, so that the field had repacked a
+ * dozen times and the psyxels were spread across their own cycles rather than
+ * sharing one. That is true of the motion, and at plate size the two frames
+ * read as the same word. Andrei: "psyxels loads first preset right away. i
+ * don't see why we need 90s." The index draws each plate live or falls back to
+ * this poster (`../docs/adr/20261102-the-index-draws-its-plates.md`), and the
+ * run was most of the plate's cost.
  *
  * No preset named, deliberately, and for the reason Dangler's and Flotsam's
  * recipes give: a bare URL lands on the first preset, so opening the piece and
@@ -27,19 +26,23 @@ import type { ExperimentApi } from "@/experiments/psyxels/runner"
  * `pnpm run posters` is for.
  */
 const poster: PosterRecipe<ExperimentApi> = {
-  prepare: ({ api }) => api.run(90),
-
   /**
-   * Half a second, and not for the piece's sake — `run()` has already put the
-   * field where it should be.
-   *
-   * It is for the *chrome*. The capture pins the piece idle before the recipe
-   * runs, and the bar fades out over `--ui-fade`; `run()` then blocks the main
-   * thread for about as long as that fade, so a shutter firing the instant it
-   * returns catches the controls half gone. The first capture here had a ghost
-   * of the preset bar lying across the bottom of the letter.
+   * Half a second, and not for the piece's sake. It is for the *chrome*: the
+   * capture pins the piece idle, and the bar fades out over `--ui-fade`, so a
+   * shutter firing at once catches the controls half gone. The first capture
+   * here had a ghost of the preset bar lying across the bottom of the letter.
+   * The index ignores it, since this piece has no `settle` to spend it on.
    */
   dwellMs: 500,
+
+  /**
+   * And the brightest of several, because a fresh field breathes in unison:
+   * every psyx is the same age, so the whole word dims and brightens together.
+   * One shutter half a second in caught a trough, dimmer than the plate the
+   * index draws a few frames after the start, near full breath. Six shots three
+   * seconds wide cover a breath.
+   */
+  attempts: 6,
 }
 
 export default poster
