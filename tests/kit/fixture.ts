@@ -267,6 +267,9 @@ export function reroll(settings: Settings, seed?: number): Settings {
   return { ...settings, seed: seed ?? (settings.seed % 999_999) + 1 }
 }
 
+/** The fixture preset that names no seed: the last, which has no digit key. */
+export const ROLLED = 11
+
 /**
  * Twelve, so the tenth to twelfth have no digit and the titles must say so.
  * Each differs from its neighbours in `amount`, every one of them on the grid,
@@ -274,15 +277,22 @@ export function reroll(settings: Settings, seed?: number): Settings {
  * it. **No preset holds `amount: 9`**, which is how a test reaches a scene that
  * is nobody's preset without searching for one.
  */
-export const PRESETS: Preset<Settings>[] = Array.from({ length: 12 }, (_, index) => ({
-  label: `scene ${index + 1}`,
-  hint: `Synthetic scene ${index + 1}.`,
-  settings: normalizeSettings({
+export const PRESETS: Preset<Settings>[] = Array.from({ length: 12 }, (_, index) => {
+  const settings = normalizeSettings({
     amount: index * 0.5,
     mode: MODES[index % MODES.length],
     route: ROUTES[index % ROUTES.length],
     flag: index % 2 === 1,
     layer: index % 3 === 2,
     span: [1, 0.5, 20][index % 3],
-  }),
-}))
+  })
+  // The last leaves its seed out, as a real piece's presets do, so applying it
+  // goes through the roll. The rest pin one, which is the other path.
+  const unseeded: Partial<Settings> = { ...settings }
+  delete unseeded.seed
+  return {
+    label: `scene ${index + 1}`,
+    hint: `Synthetic scene ${index + 1}.`,
+    settings: (index === ROLLED ? unseeded : settings) as Preset<Settings>["settings"],
+  }
+})

@@ -141,7 +141,8 @@ describe("normalizing", () => {
   it("leaves every preset exactly as written", () => {
     // Nothing a preset names moves. It leaves its seed out, which the
     // validator fills.
-    for (const preset of PRESETS) expect(normalizeSettings(preset.settings), preset.label).toMatchObject(preset.settings)
+    for (const preset of PRESETS)
+      expect(normalizeSettings(preset.settings), preset.label).toMatchObject(preset.settings)
   })
 })
 

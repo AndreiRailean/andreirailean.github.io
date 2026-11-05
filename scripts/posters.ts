@@ -22,13 +22,12 @@ import startPreviewServer from "../tests/support/preview-server.ts"
  *    loop is the point, the same way `updated` in the frontmatter is kept
  *    current by hand.
  *
- * No capture is byte-reproducible, so re-running this churns whatever it
- * touches. Starry Night takes no seed and comes out a different sky. Dangler's
- * landing preset is seeded, which fixes the arrangement, but its wind is
- * derived from the clock as well, so the strands are caught at a different
- * point in the same breeze. Neither difference is visible to a person. Hence
- * the slug filter: name the piece you actually changed, and leave the rest
- * alone.
+ * No capture is reproducible, so re-running this churns whatever it touches.
+ * A preset that names no seed rolls a fresh arrangement each time it is
+ * applied, and most name none
+ * (`src/experiments/docs/adr/20261106-a-preset-names-a-look-not-an-arrangement.md`).
+ * Hence the slug filter: name the piece you actually changed, and leave the
+ * rest alone.
  *
  *     pnpm run posters                 every experiment
  *     pnpm run posters dangler         just this one

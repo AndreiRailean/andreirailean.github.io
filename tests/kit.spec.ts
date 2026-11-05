@@ -438,6 +438,38 @@ test("an action runs from its button and its key, and reroll moves the seed and 
   expect(page.url(), "reroll left the address on the old seed").not.toBe(before.url)
 })
 
+/**
+ * A preset that names no seed is applied through the piece's roll on every
+ * route, and still lights. `docs/adr/20261106-a-preset-names-a-look-not-an-arrangement.md`
+ * in the experiments section.
+ *
+ * The fixture's twelfth preset names no seed and its eleventh pins the default.
+ * The fixture's `reroll` steps the seed by one, so a route that skips the roll
+ * lands the twelfth on the eleventh's seed, and this fails.
+ */
+test("a preset with no seed rolls one on every route, and still lights", async ({ page }) => {
+  const experiment = await openKit(page, { idle: false })
+  const buttons = page.locator("#ui .presets .preset")
+
+  await buttons.nth(10).click()
+  const pinned = (await settings(page)).seed
+
+  await buttons.nth(11).click()
+  expect((await settings(page)).seed, "the button skipped the roll").not.toBe(pinned)
+  await expect(page.locator("html")).toHaveAttribute("data-preset", "11")
+
+  await buttons.nth(10).click()
+  await page.locator("body").click({ position: { x: 5, y: 5 } })
+  await page.keyboard.press("ArrowRight")
+  await expect(page.locator("html")).toHaveAttribute("data-preset", "11")
+  expect((await settings(page)).seed, "the arrow key skipped the roll").not.toBe(pinned)
+
+  await experiment.api(({ api }) => api.preset(11))
+  await experiment.api(({ api }) => api.preset(12))
+  expect((await settings(page)).seed, "preset() skipped the roll").not.toBe(pinned)
+  await expect(page.locator("html")).toHaveAttribute("data-preset", "11")
+})
+
 test("c opens the panel, Escape closes it, and a digit loads a preset", async ({ page }) => {
   const experiment = await openKit(page, { idle: false })
   const panel = page.locator("#ui .panel")
