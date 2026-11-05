@@ -201,7 +201,7 @@ in order to work at all, and every one of them was learned by breaking it.
   become the setting this rule forbids.
 
   `run()` is deliberately _not_ scaled by it: it means seconds of sea, because a
-  poster recipe asking for forty seconds wants forty seconds of water whatever
+  recipe asking for forty seconds wants forty seconds of water whatever
   rate someone is viewing at. Retuning every scene's playback therefore left the
   poster showing the same frame it did before, which is a good sign the boundary
   is in the right place — it was not recaptured.

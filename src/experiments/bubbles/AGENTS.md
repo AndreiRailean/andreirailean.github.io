@@ -84,7 +84,8 @@ thirty seconds of jets before the tub holds what the numbers say. All three
 surfaces that read the primary hit this together, and all three would otherwise
 show a black rectangle or a field of identical specks:
 
-- the captured poster — `poster.ts` settles through the recipe's dwell;
+- the captured poster and the index's plate — `poster.ts` warms
+  `standing still` through `warm`, below;
 - the note's backdrop — `about.astro` calls `settle(24)`;
 - the reduced-motion still — `bubbles.ts` runs `STILL_SECONDS` before drawing.
 
@@ -92,6 +93,21 @@ show a black rectangle or a field of identical specks:
 `trail` is 0 in the primary and every circle is drawn whole each frame. If a
 scene with a wake is ever promoted to first, that changes and the recipe has to
 say how many frames — see the posters section of `../AGENTS.md`.
+
+## `warm` is a rough fast-forward, and only the index should want it
+
+`warm(seconds)` steps at four times `STEP` until its last second, which it
+settles exactly. The cost of a step is per bubble, not per second of water, so
+it is about a quarter of `settle`'s: 220 ms against 620 for eight seconds of
+`standing still` at plate size. Against an honest 20 s it comes out with about
+a fifth fewer bubbles, the same speed and a mean size within 9%.
+
+It exists because the index draws its plates live under a budget of 600 ms
+each, and an honest settle of this piece does not fit. Do not reach for it
+anywhere a picture is meant to be exact. It also did not rescue `time bubbles`,
+the primary before `standing still`, whose pool fills within a second and then
+costs 830 ms per second of water. That is why the primary changed on
+2026-11-06; the reasoning is in `poster.ts` and `WARM_STEP`.
 
 ## The contact grid's cell must hold the largest pair
 
@@ -187,7 +203,8 @@ that fans out harder gives up its speed sooner.
 claim about a number and the piece could not report that number, so the only way
 to check it was to look — which is the thing this section says not to rely on.
 The useful derived figure is _seconds to cross the frame_, `span / speed`: the
-primary is about eleven, and the presets Andrei called too fast were under two.
+primary of the time, `time bubbles`, was about eleven, and the presets Andrei
+called too fast were under two.
 
 ## Gas is a quantity, not a count, and that is a growth-path fix
 

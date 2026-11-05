@@ -21,7 +21,8 @@
  *
  * **A device that is slow says so by being slow.** The first plate that takes
  * longer than `BUDGET_MS` to draw stops the rest, and every plate after it gets
- * its poster. Measured rather than guessed from a user agent or a core count,
+ * its poster. So does every plate for a visitor who asked for less motion; see
+ * `stillOnly`. Measured rather than guessed from a user agent or a core count,
  * so a fast phone is not punished and a struggling laptop is not trusted.
  */
 
@@ -37,17 +38,28 @@ import type { Live, Preset, Start } from "@/experiments/piece"
  * plate the way this file does with the budget lifted: walkers 39 s (its
  * recipe settles 120 s), crowd 26 s (45 s), flotsam 5.6 s (runs 40 s), hexgrid
  * 2.8 s (sweeps a whole loop for its most lit moment), psyxels 0.8 s (runs
- * 90 s). Bubbles and Embers settle inside their runners, for 30 s and 14 s of
- * water and fire, and a fresh Starry Night has no glimmers yet. The five
- * drawn here took 17–224 ms.
+ * 90 s).
+ *
+ * **Measure before listing a piece here.** Two were listed unmeasured and drew
+ * well inside the budget once tried: embers in 289 ms, listed for the settle in
+ * its runner's `mount`, which this file never calls; and Starry Night in 30 ms,
+ * listed because a fresh sky has no glimmers yet. That is still true, so its
+ * plate is a quieter sky than its poster, which is the brightest of twelve
+ * frames. Bubbles really was slow, 1.7 s for its old primary, and its primary
+ * is now `standing still`, reached through a coarse warm-up; its `poster.ts`
+ * says why. Its plate takes about 260 ms, of which `warm` is 220.
+ *
+ * Crowd and Flotsam draw their first frame, in 176 ms and 219 ms, rather than
+ * the 45 s and 40 s their recipes used to run. Their `poster.ts` files say why
+ * that frame is the piece.
  */
-const POSTER_ONLY = new Set(["bubbles", "crowd", "embers", "flotsam", "hexgrid", "psyxels", "starry-night", "walkers"])
+const POSTER_ONLY = new Set(["hexgrid", "psyxels", "walkers"])
 
 /**
  * Longest a plate may take to draw before the device is judged too slow for
  * the rest. A long task this size is a visible hitch in a scroll, which is the
- * thing being protected. The slowest plate drawn here takes about a third of it
- * on the box above.
+ * thing being protected. The slowest plate drawn here, embers, takes about half
+ * of it on the box above.
  */
 const BUDGET_MS = 600
 
@@ -102,8 +114,14 @@ const PATIENCE_MS = 10_000
 /**
  * The most the whole wall may take, added up. `BUDGET_MS` alone would let a
  * device that takes just under it per plate pay that on every plate.
+ *
+ * It was 1.5 s, and the ten plates drawn here came to about 1.5 s on the box
+ * above, so a busy run of that box already ended with the last plates on their
+ * posters. Andrei raised it: "let's raise the 1.5s limit". It is paid one plate
+ * at a time in idle time, never as one long task, so the total is CPU time spent
+ * rather than a freeze.
  */
-const TOTAL_BUDGET_MS = 1500
+const TOTAL_BUDGET_MS = 3000
 
 /**
  * `?budget=off` draws every plate whatever it costs. For the browser suite,
@@ -174,7 +192,7 @@ async function draw(plate: HTMLElement, piece: Piece): Promise<void> {
  * tell a plate that was never meant to be drawn from one that failed or was
  * cut off by the budget.
  */
-type Why = "poster-only" | "slow" | "failed" | "not a piece"
+type Why = "poster-only" | "reduced motion" | "slow" | "failed" | "not a piece"
 
 function showPoster(plate: HTMLElement, why: Why): void {
   plate.dataset.why = why
@@ -258,14 +276,37 @@ const near = new IntersectionObserver(
   { rootMargin: "50% 0px" },
 )
 
+/**
+ * A visitor who asked for less motion gets every poster and no plate drawn.
+ *
+ * Not for the fade, which CSS already drops. A piece honours the preference
+ * inside its own `start()`, and differently each time: embers runs fourteen
+ * seconds of fire and bubbles twenty-two of water before their first frame, and
+ * Starry Night pins its motion to nothing. That is a different picture from the
+ * recipe's, and its cost lands before the recipe's on top: about two seconds
+ * for the first of those plates, which turned every plate after it into a
+ * poster anyway. A poster is already a still of the moment the recipe meant.
+ */
+const stillOnly = matchMedia("(prefers-reduced-motion: reduce)").matches
+
 document.documentElement.dataset.plates = "running"
+let watched = 0
 for (const plate of document.querySelectorAll<HTMLElement>(".plate[data-piece]")) {
-  // Not queued: a poster-only plate has nothing to wait for but its image, and
-  // in the queue it would wait behind every plate being drawn ahead of it.
+  // Neither is queued: a plate that will show its poster has nothing to wait
+  // for but its image, and in the queue it would wait behind every plate being
+  // drawn ahead of it.
+  if (stillOnly) {
+    showPoster(plate, "reduced motion")
+    continue
+  }
   if (POSTER_ONLY.has(plate.dataset.piece ?? "")) {
     showPoster(plate, "poster-only")
     continue
   }
   fit.observe(plate)
   near.observe(plate)
+  watched += 1
 }
+// Only `drain` sets `idle`, and with nothing queued it never runs, so a wall
+// with no plate to draw would read as running forever.
+if (watched === 0) document.documentElement.dataset.plates = "idle"

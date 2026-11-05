@@ -88,6 +88,29 @@ import { needsPool, type Settings } from "@/experiments/bubbles/settings"
 /** The largest step the simulation will take, in seconds of water. */
 const STEP = 1 / 60
 
+/**
+ * The step `warm` takes until its last second: four of `STEP`.
+ *
+ * **An approximate fast-forward, for a surface that only wants to look as if it
+ * has been running.** The index draws a plate in a few hundred milliseconds or
+ * shows its poster, and `standing still` needs about eight seconds of water
+ * before its foam has filled in, which `settle` takes 620 ms to simulate on the
+ * preview box. The cost is per step, not per second of water, so four times the
+ * step is a quarter of the cost: 220 ms.
+ *
+ * It is safe because every rate in a step is either exponential (lag, cling,
+ * the film clock) or a small linear chance (`merge × dt`), so a longer step is
+ * less accurate rather than unstable. Measured against an honest 20 s of the
+ * same preset: the foam's mean size within 9%, its speed within 1%, and about a
+ * fifth fewer bubbles alive. On screen it reads as the same water.
+ *
+ * **It does not reach structure that takes long to gather.** The bright rim of
+ * `time bubbles`, the primary before it, builds over about thirty seconds of water, at 830 ms per second
+ * at plate size, and even eight times the step leaves it about three seconds
+ * away. That is why `standing still` became the primary in its place.
+ */
+const WARM_STEP = 4 * STEP
+
 /** Most substeps in one frame. A tab coming back resumes; it does not catch up. */
 const MAX_STEPS = 4
 
@@ -355,6 +378,8 @@ export type Bubbles = {
   setSettings: (next: Settings) => void
   /** Run the water forward without waiting for it, in seconds. */
   settle: (seconds: number) => void
+  /** Run the water forward roughly, and its last second exactly. In seconds. See `WARM_STEP`. */
+  warm: (seconds: number) => void
   /** Clear the surface and let it fill again. */
   clear: () => void
   stats: () => BubblesStats
@@ -1292,6 +1317,19 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
 
   const still = window.matchMedia("(prefers-reduced-motion: reduce)")
 
+  function settle(seconds: number) {
+    const bounded = settleSeconds(seconds)
+    // The tail is drawn frame by frame rather than stepped past, so a scene
+    // with a wake arrives with its wake. See `WAKE_FRAMES`.
+    const drawn = settings.trail > 0 ? Math.min(bounded, WAKE_FRAMES * STEP) : 0
+    for (let t = 0; t < bounded - drawn; t += STEP) step(STEP)
+    for (let t = 0; t < drawn; t += STEP) {
+      step(STEP)
+      draw()
+    }
+    draw()
+  }
+
   return {
     start() {
       if (running) return
@@ -1346,17 +1384,15 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
       if (held || !running) draw()
     },
 
-    settle(seconds) {
+    settle,
+
+    warm(seconds) {
+      // The coarse part, then an exact last second through `settle`, so the
+      // velocities and contacts in the picture are ones the real step made,
+      // and a scene with a wake draws it the same way `settle` does.
       const bounded = settleSeconds(seconds)
-      // The tail is drawn frame by frame rather than stepped past, so a scene
-      // with a wake arrives with its wake. See `WAKE_FRAMES`.
-      const drawn = settings.trail > 0 ? Math.min(bounded, WAKE_FRAMES * STEP) : 0
-      for (let t = 0; t < bounded - drawn; t += STEP) step(STEP)
-      for (let t = 0; t < drawn; t += STEP) {
-        step(STEP)
-        draw()
-      }
-      draw()
+      for (let t = 0; t < bounded - 1; t += WARM_STEP) step(WARM_STEP)
+      settle(Math.min(1, bounded))
     },
 
     clear() {

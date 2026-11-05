@@ -2,40 +2,32 @@ import type { ExperimentApi } from "@/experiments/flotsam/runner"
 import type { PosterRecipe } from "@/experiments/poster"
 
 /**
- * What Flotsam looks like when someone should want to click it.
+ * What Flotsam looks like when someone should want to click it: its first
+ * frame.
  *
- * The moment is the whole recipe. Frame one is a *uniform* scatter of specks —
- * the homes are drawn uniformly and nothing has happened to them yet — which is
- * a picture of the piece before it has done the only thing it does. The
- * gathering takes a wave period or two to establish, and the drift a good deal
- * longer. So the shutter waits, and `api.run()` is how it waits without a
- * capture taking half a minute.
+ * **This recipe used to run forty seconds**, on the claim that frame one is a
+ * uniform scatter of specks. It is not. The specks' *homes* are uniform, and
+ * that is where the piece starts, but a speck is drawn where the waves have
+ * displaced it from its home, so the lines the waves gather it into are there
+ * in the first frame. What forty seconds added was drift: the current carrying
+ * those lines somewhere else, which in a still is just a different place for
+ * them. Compared side by side at plate size, the two read as the same sea.
  *
- * Forty seconds, which is about five periods of the longest train in the landing
- * scene. Long enough for the flotsam to have collected into lines and for the
- * current to have carried them somewhere; not so long that the reader is looking
- * at a different scene from the one the page opens on.
+ * And the recipe has a second reader now. The index draws each plate live in a
+ * few hundred milliseconds or falls back to this poster
+ * (`../docs/adr/20261102-the-index-draws-its-plates.md`), and forty seconds of
+ * this sea cost about four. The first frame takes 219 ms.
  *
  * No preset named, deliberately, and for the reason Dangler's recipe gives: a
  * bare URL lands on the first preset, so opening the piece and photographing it
- * are the same act and the poster cannot come to show a scene the landing page
- * does not. Naming it here would be a second place to change, and the one that
- * gets forgotten.
+ * are the same act.
  *
- * Not byte-reproducible, although everything about the sea is. The seed fixes
- * the wave phases, the eddy field and every speck, and `run()` steps a fixed
- * number of times — so two captures put the same flotsam in the same places. The
- * sprites do not: their gradients are dithered with `Math.random` to break the
- * banding an eight-bit ramp would otherwise show, which moves every alpha by up
- * to half a level. Invisible to a person, and enough to churn the file, which is
- * what the slug filter on `pnpm run posters` is for.
+ * Not byte-reproducible. The sprites' gradients are dithered with
+ * `Math.random` to break the banding an eight-bit ramp would otherwise show,
+ * which is invisible to a person and enough to churn the file. That is what
+ * the slug filter on `pnpm run posters` is for.
  */
 const poster: PosterRecipe<ExperimentApi> = {
-  prepare: ({ api }) => api.run(40),
-
-  // No dwell. `run` has already put the sea where it should be, and waiting
-  // would only pick a different point in the same motion at the cost of a
-  // slower capture.
   dwellMs: 0,
 }
 

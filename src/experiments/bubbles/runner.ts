@@ -65,6 +65,9 @@ export function start(canvas: HTMLCanvasElement, settings: Settings) {
     verbs: {
       // Clamped: a console call asking for an hour would hold the tab for it.
       settle: (seconds: number) => water.settle(settleSeconds(seconds)),
+      // Clamped the same way. The index's plate reaches its recipe's moment
+      // through this; see `WARM_STEP` for what it trades.
+      warm: (seconds: number) => water.warm(settleSeconds(seconds)),
       clear: () => water.clear(),
     },
   } satisfies Live<Settings>

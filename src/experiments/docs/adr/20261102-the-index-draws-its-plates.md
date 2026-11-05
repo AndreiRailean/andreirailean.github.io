@@ -40,7 +40,7 @@ It draws **one plate at a time, in idle time**, and leaves nothing running.
 - a piece throws while drawing;
 - a piece is in `POSTER_ONLY`;
 - the device has taken longer than `BUDGET_MS` (600 ms) to draw a plate, or
-  1.5 s across the wall. The first slow plate stops the rest;
+  3 s across the wall (1.5 s until 2026-11-06). The first slow plate stops the rest;
 - a piece's code or its recipe has taken over ten seconds, so a stalled fetch
   cannot hold the queue.
 
@@ -49,6 +49,26 @@ five pieces draw. The other eight simulate seconds to minutes before the
 shutter, measured at 0.8–39 s on a box with no GPU, or settle inside their
 runners. Each leaves `POSTER_ONLY` once it can start from a state that already
 looks like it has been running. That state is approximate, not replayed.
+
+**Amended 2026-11-06.** Two of those eight were never measured and were not
+slow: embers was listed for the settle in its runner's `mount`, which the index
+never calls, and Starry Night because a fresh sky has no glimmers yet. They draw
+in 289 ms and 30 ms, and Starry Night's plate is a quieter sky than its poster.
+Bubbles was slow: its primary, `time bubbles`, needs about thirty seconds of
+water at 830 ms a second. Andrei suggested `standing still` and then promoted it
+to primary, so the plate still shows where its link lands. A coarse warm-up,
+`warm`, at four times the step, reaches it in 220 ms, about 260 ms for the whole
+plate, and its poster was recaptured the same way. The eight drawn plates now
+cost about 1.1 s of the 1.5 s total on the preview box.
+
+Then crowd and flotsam, by their first frames: a still does not show what their
+recipes ran forty-odd seconds to build, as their `poster.ts` files explain. Ten
+plates come to about 1.5 s, so the total became 3 s at Andrei's word.
+
+**And a visitor who asked for less motion gets every poster.** Each piece
+honours the preference inside its own `start()`, with a still of its own and a
+pre-roll of up to twenty-two seconds of simulation, which the recipe's
+warm-up then paid on top of.
 
 ## Consequences
 
