@@ -16,10 +16,10 @@
  * changed my piece" failure the showcase exists to escape.
  *
  * **Naming a runner here is also what publishes it.** `pnpm run runners` builds
- * every piece into that directory as an untracked file; a runner joins the store
- * because an entry like these names it, and `pnpm run prune` removes tracked
- * ones nothing does. See
- * `src/experiments/docs/adr/20260912-the-store-holds-published-runners-only.md`.
+ * every piece into `.runners/`; a runner joins the store because an entry like
+ * these names it, and the next build copies it in. `pnpm run prune` removes
+ * tracked ones nothing names. See
+ * `src/experiments/docs/adr/20261106-runner-builds-live-outside-the-store.md`.
  *
  * The cost is that changing a piece's code and rebuilding leaves entries
  * pointing at the previous runner. That is correct — they keep rendering what

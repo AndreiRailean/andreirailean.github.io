@@ -36,10 +36,10 @@
  *
  * ## Tracked only
  *
- * The store is what git is tracking. `pnpm run runners` writes every piece's
- * current build into the same directory, so an unpublished piece's newest build
- * sits there untracked — build output, not store contents, and not this file's
- * business. Deleting it would delete exactly what a publish is about to commit.
+ * The store is what git is tracking. An untracked runner in it was copied there
+ * because something names it, and is a publish waiting for its commit — not
+ * this file's business. Deleting it would delete exactly what a publish is about
+ * to commit. Builds themselves live in `.runners/`.
  *
  * ```
  * pnpm run prune          delete tracked runners nothing names
@@ -75,7 +75,9 @@ const kb = (bytes: number) => `${(bytes / 1024).toFixed(1)}kb`
  */
 function referenced(): Set<string> {
   const names = new Set<string>()
-  const tracked = execFileSync("git", ["ls-files"], { cwd: root, encoding: "utf8" }).split("\n")
+  // `-z`, or git quotes a path with an unusual character, the read below fails
+  // on the quoted form, and a runner only that file names would be pruned.
+  const tracked = execFileSync("git", ["ls-files", "-z"], { cwd: root, encoding: "utf8" }).split("\0")
   for (const path of tracked) {
     if (!path || path.startsWith("public/showcase/runners/") || BINARY.test(path)) continue
     let text: string
@@ -92,12 +94,11 @@ function referenced(): Set<string> {
 /**
  * The runners git is tracking, which is what "the store" means.
  *
- * **Untracked ones are build output and are left alone.** `pnpm run runners`
- * writes every piece's current build into this directory whether or not anything
- * publishes it, so the newest build of a piece nobody has published sits here
- * untracked — and deleting what a publish is about to commit would be the
- * opposite of helpful. See
- * `src/experiments/docs/adr/20260912-the-store-holds-published-runners-only.md`.
+ * **Untracked ones are left alone.** `pnpm run runners` copies a build into
+ * this directory only when something names it, so an untracked runner here is a
+ * publish about to be committed, and deleting it would be the opposite of
+ * helpful. See
+ * `src/experiments/docs/adr/20261106-runner-builds-live-outside-the-store.md`.
  */
 function tracked(): string[] {
   const listed = execFileSync("git", ["ls-files", "public/showcase/runners"], { cwd: root, encoding: "utf8" })

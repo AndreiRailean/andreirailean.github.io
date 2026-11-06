@@ -69,8 +69,8 @@ monthly check already leaves those out.
   old hashes, and `.github/workflows/runners-append-only.yml` refuses any
   modified or renamed runner. Treat it as reaching the site. Every piece is
   republished, so Andrei sees a preview. Before starting, check whether the
-  hashes actually move: bump it, run `pnpm run runners`, and read `git status`
-  under `public/showcase/runners/`.
+  hashes actually move: run `pnpm run runners` before and after the bump and
+  compare the `runner` lines it prints.
 - **Playwright's browsers must match its version.** CI installs Chromium fresh
   on every run with whatever Playwright is installed
   (`pnpm exec playwright install --with-deps chromium` in
@@ -166,9 +166,8 @@ version:
    ```
 
 3. **Runners must not move.** Astro does not build them; esbuild does, and
-   esbuild is pinned directly in `package.json`. Check it: after
-   `pnpm run runners`, `git status` shows no changed tracked file under
-   `public/showcase/runners/`.
+   esbuild is pinned directly in `package.json`. Check it: the `runner` lines
+   `pnpm run runners` prints are the same before and after the upgrade.
 4. **The general flow's checks, PR and preview** apply as above. Astro renders
    every page, so an Astro upgrade always gets Andrei's preview.
 

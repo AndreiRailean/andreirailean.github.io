@@ -107,7 +107,7 @@ export function browserGrep(selection: Selection): string | null {
   return `(^| )(${slugs}): |src/experiments/(${slugs})/tests/|tests/experiments-index\\.spec\\.ts`
 }
 
-/** Paths changed since `base`, committed or not. Untracked runner builds are build output, and are left out. */
+/** Paths changed since `base`, committed or not. An untracked runner in the store is a publish nobody has committed, and is left out like the store's other files. */
 function changedSince(base: string): string[] {
   const git = (...args: string[]) => execFileSync("git", args, { encoding: "utf8" }).split("\n").filter(Boolean)
   const tracked = git("diff", "--name-only", "--no-renames", base)

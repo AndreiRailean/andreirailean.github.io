@@ -17,6 +17,7 @@ export default tseslint.config(
       ".astro/",
       // `pnpm run runners` output: bundled and minified
       "public/showcase/**",
+      ".runners/",
       // Private scratch space and throwaway probes, both gitignored. eslint
       // scans gitignored directories, so a scratch Playwright script turned the
       // lint job red once — #240.
