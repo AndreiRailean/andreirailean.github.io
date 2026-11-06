@@ -132,20 +132,21 @@ review you can name.
 
 ## 3. Built runners nobody published
 
-**Delete this worktree's untracked runners.** `pnpm run runners` — which every
-build, preview, poster capture and browser run calls — writes each piece's
-current build into `public/showcase/runners/`, and in that directory **tracked
-is published, untracked is build output**. They pile up: sixteen in one worktree
-after one day, and a `git add -A` in that state staged eight of them, which
-would have published them.
+**Builds are not here.** `pnpm run runners` — which every build, preview,
+poster capture and test run calls — writes each piece's current build into
+`.runners/`, gitignored, and that directory needs nothing from a wrap-up: any of
+it can go, and the next build writes it back. It copies a build into the store,
+`public/showcase/runners/`, only when something names it.
 
-**Keep any runner something here names.** Naming a runner — a wall entry, a
-page, an embed — is what makes it wanted, and committing it is what publishes
-it, so a runner that is named and untracked is a publish somebody forgot. The
-loop below decides that rather than judging it: it searches every file in the
-worktree — tracked, with its uncommitted edits, and untracked — for the
-runner's filename. A runner nothing names cannot be loaded by anything, and
-`pnpm run runners` rebuilds it byte for byte, so deleting it loses nothing.
+**So an untracked runner in the store is a publish nobody committed.** Naming a
+runner — a wall entry, a page, an embed — is what makes it wanted, and
+committing it is what publishes it. The loop below reports those. It also
+deletes an untracked runner nothing names, which only a build from before
+2026-11-06 leaves, when builds still went into the store: they piled up,
+sixteen in one worktree after one day, and clearing them by pattern there once
+deleted published runners. It decides by searching every file in the worktree
+— tracked, with its uncommitted edits, and untracked — for the runner's
+filename, never by a glob over the directory.
 
 ```bash
 for f in $(git ls-files --others --exclude-standard public/showcase/runners/); do

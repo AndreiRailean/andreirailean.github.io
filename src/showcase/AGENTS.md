@@ -290,18 +290,20 @@ shared layer, which makes it the steward's call on a count taken here.
 **When you change a piece, you have changed what its next runner will be.** Two
 separate things follow, and only the first is automatic:
 
-1. **Rebuild.** `pnpm run runners` writes the new bytes into
-   `public/showcase/runners/` as an untracked file. Nothing obliges you to commit
-   it — building is not publishing.
+1. **Rebuild.** `pnpm run runners` writes the new bytes into `.runners/`, which
+   is gitignored and disposable. Nothing obliges you to do anything with them —
+   building is not publishing.
 2. **Decide whether published scenes move.** Nothing forces this and nothing can,
    because leaving them is legitimate — a pinned scene keeps rendering the bytes
    it was published against, which is the guarantee. **So it is a question you
    have to actually ask**, and the answer is usually no. Answering yes means
-   editing the entry to name the new runner, and _that_ is what commits it.
+   editing the entry to name the new runner (the build prints its filename). The
+   next `pnpm run runners`, which every preview and test run does, copies a
+   named build into `public/showcase/runners/`, and you commit it with the edit.
 
 **Why a check cannot replace step 2, so nobody re-proposes one.** The _noticing_
-is already mechanical: `showcase-runners.test.ts` forces the rebuild and the
-commit, so a moved hash always lands in somebody's diff. What is left is a
+is already mechanical: every `pnpm run runners` ends on a `moved` line naming
+each piece whose current build is not in the store. What is left is a
 judgement whose legitimate default is _no_, and a check would have to fail on
 the right answer.
 
@@ -321,12 +323,13 @@ same PR. A rendering change nobody asked for is the opposite case — leave it,
 and the old scene stays the scene that was approved.
 
 **Old runners are never deleted.** They accumulate in `public/showcase/runners/`
-and git is the retention, because GitHub Pages keeps no history. An untracked
-runner beside a tracked one is a newer build of the same source; leave both
-while working. **At the end of a session `/wrap-up` deletes untracked runners
-that nothing names**, because nothing can load them and the next build rewrites
-them. It keeps any that something names, and reports each as a publish nobody
-finished.
+and git is the retention, because GitHub Pages keeps no history. **That
+directory holds only runners something names**: builds live in `.runners/`, so
+an untracked file in the store is a publish nobody has committed yet, and
+`/wrap-up` reports it as one. `.runners/` can be emptied at any time. Builds
+went into the store until 2026-11-06, told apart only by being untracked, and
+clearing them by pattern there once deleted published runners —
+`src/experiments/docs/adr/20261106-runner-builds-live-outside-the-store.md`.
 
 ## Verifying
 

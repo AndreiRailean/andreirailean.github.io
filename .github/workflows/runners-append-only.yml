@@ -109,9 +109,10 @@ jobs:
       # **An added runner has to be named by something, or it is build output
       # that a `git add -A` swept in** — #266, where #264 committed five and
       # took two more commits to take them out again, leaving both in main's
-      # history. Tracked is published and untracked is build output, so a runner
-      # this pull request adds, which nothing in the tree names, is the second
-      # kind wearing the first's clothes.
+      # history. Builds have lived in `.runners/` since
+      # `src/experiments/docs/adr/20261106-runner-builds-live-outside-the-store.md`, and a runner
+      # this pull request adds that nothing in the tree names is one of them
+      # wearing a published runner's clothes.
       #
       # A failure rather than the warning below, because it is not the store's
       # old hoard (those were published once and are allowed to sit) but an

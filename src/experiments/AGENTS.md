@@ -85,15 +85,15 @@ Six of those records are rules you will otherwise rediscover the hard way:
   `docs/adr/20260906-a-frame-is-not-a-viewport.md`.
 - **Building a runner is not publishing it.** `public/showcase/runners/` holds
   runners something _names_ — a wall entry, a page — and `pnpm run runners`
-  writes every piece's current build there whether or not anything does. So the
-  directory is self-describing: **tracked is published, untracked is build
-  output.** Changing a piece obliges you to commit nothing; publishing is an
-  edit to whatever names the runner, and that edit is what commits it. A
+  builds every piece into `.runners/`, gitignored, copying a build into the
+  store only once something names it. Changing a piece obliges you to commit
+  nothing; publishing is an edit to whatever names the runner, and that edit is
+  what commits it, with the runner the next build copies in. A
   published runner is then never deleted, edited or renamed, because a page pins
   it by content hash and the failure is silent. `pnpm run prune` removes tracked
   ones nothing names. See
   `docs/adr/20260912-the-store-holds-published-runners-only.md`, which partly
-  supersedes `docs/adr/20260907-runners-are-committed.md`.
+  supersedes `docs/adr/20260907-runners-are-committed.md`, and `docs/adr/20261106-runner-builds-live-outside-the-store.md`.
 - **A published scene is a packed address string plus a frozen runner.** A page outside the
   section gets a piece through two URLs and no imports: a content-addressed
   runner built from `src/experiments/<slug>/runner.ts`, and an artefact naming

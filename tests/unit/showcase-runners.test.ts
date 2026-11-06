@@ -1,9 +1,11 @@
-import { execFileSync } from "node:child_process"
+import { execFileSync, spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { resolve } from "node:path"
 
 import { describe, expect, it } from "vitest"
+
+import { BUILDS, STORE } from "../../scripts/runner-store.ts"
 
 /**
  * What must be true about the runners that are committed.
@@ -26,11 +28,11 @@ const runners = resolve(root, "public/showcase/runners")
 /**
  * The store is what git tracks, not what is on disk.
  *
- * `pnpm run runners` writes every piece's current build into the same
- * directory, so an unpublished piece's newest build sits there untracked. That
- * is build output rather than store contents and nothing here should assert
- * anything about it. See
- * `src/experiments/docs/adr/20260912-the-store-holds-published-runners-only.md`.
+ * Builds go to `.runners/`, and only a build something names is copied into
+ * the store, so an untracked file here is a publish waiting for its commit.
+ * Until it is committed it is not published, and nothing here asserts anything
+ * about it. See
+ * `src/experiments/docs/adr/20261106-runner-builds-live-outside-the-store.md`.
  */
 const committed = execFileSync("git", ["ls-files", "public/showcase/runners"], { cwd: root, encoding: "utf8" })
   .split("\n")
@@ -115,7 +117,9 @@ describe("every runner this repo names", () => {
   const BINARY = /\.(webp|jpe?g|png|gif|ico|woff2?|ttf|otf|mp4|webm|pdf|svg)$/i
 
   const named = new Map<string, string[]>()
-  for (const path of execFileSync("git", ["ls-files"], { cwd: root, encoding: "utf8" }).split("\n")) {
+  // `-z`, or git quotes a path with an unusual character and the read below
+  // skips it, so a runner only that file names would go unchecked.
+  for (const path of execFileSync("git", ["ls-files", "-z"], { cwd: root, encoding: "utf8" }).split("\0")) {
     // The store itself is excluded: a runner containing its own name, or another
     // runner's, is not a reference to it.
     if (!path || path.startsWith("public/showcase/runners/") || BINARY.test(path)) continue
@@ -192,18 +196,53 @@ describe("committed runners", () => {
  * property is about what the script does to the disk. A rebuild is
  * byte-deterministic, so a published runner comes back byte-identical.
  *
- * A piece that has changed since it was published builds to a *new* name, which
- * is a new untracked file rather than a modification — so this stays green, and
- * correctly: not republishing is the ordinary case.
+ * A piece that has changed since it was published builds to a *new* name in
+ * `.runners/`, outside the store — so this stays green, and correctly: not
+ * republishing is the ordinary case.
+ *
+ * **And it adds nothing to the store that nothing names.** Builds went into
+ * this directory until 2026-11-06, and clearing them by pattern there deleted
+ * published runners once. Each file the run adds has to be named somewhere,
+ * found by `git grep` rather than by the script's own scan, so the two cannot
+ * share a blind spot.
  */
 describe("running the script", () => {
   const tracked = committed.map((name) => resolve(runners, name))
+  const before = new Map(tracked.map((path) => [path, readFileSync(path)]))
+  const output = execFileSync("node", ["scripts/runners.ts"], { cwd: root, encoding: "utf8" })
+  const built = [...output.matchAll(/^runner\s+\S+\s+(\S+\.js)/gm)].map((match) => match[1]!)
+
+  /**
+   * Every untracked runner in the store, not only one this run added: a check
+   * that compared before and after went blind from its second run, and in any
+   * worktree that already held builds from before the move.
+   */
+  it("leaves no untracked runner in the store that nothing names", () => {
+    const untracked = execFileSync("git", ["ls-files", "-z", "--others", "--exclude-standard", STORE], {
+      cwd: root,
+      encoding: "utf8",
+    })
+      .split("\0")
+      .filter(Boolean)
+      .map((path) => path.slice(STORE.length + 1))
+    const unnamed = untracked.filter(
+      (name) =>
+        spawnSync("git", ["grep", "--untracked", "-qF", name, "--", ".", `:!${STORE}`], { cwd: root }).status !== 0,
+    )
+    expect(
+      unnamed,
+      `untracked in ${STORE}/ and named by nothing. An untracked runner there should be a publish waiting ` +
+        `for its commit; these are builds from before builds moved to ${BUILDS}/, or a publish whose ` +
+        `naming edit was undone. Delete them.`,
+    ).toEqual([])
+  })
+
+  it("writes each build to .runners/", () => {
+    expect(built.length, "the script printed no runner it built, so this checks nothing").toBeGreaterThan(0)
+    for (const name of built) expect(existsSync(resolve(root, BUILDS, name)), name).toBe(true)
+  })
 
   it("leaves every committed file byte-identical", () => {
-    const before = new Map(tracked.map((path) => [path, readFileSync(path)]))
-
-    execFileSync("node", ["scripts/runners.ts"], { cwd: root, encoding: "utf8" })
-
     const changed = tracked.filter((path) => !before.get(path)!.equals(readFileSync(path)))
 
     expect(
