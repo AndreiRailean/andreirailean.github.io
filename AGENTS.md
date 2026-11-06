@@ -172,6 +172,8 @@ Multi-context. `CONTEXT-MAP.md` at the root names each context and points at its
 
 `main` moves often and nothing forces a branch to keep up. Fetch and branch from `origin/main`, never from local `main`; fetch and merge `origin/main` before opening a PR. Nothing in between. See `docs/agents/working-with-branches.md`.
 
+**A push runs prettier, eslint and the affected unit tests first** (`.githooks/pre-push`, installed by `pnpm install`, or `pnpm run prepare` by hand). It checks the working tree, so it refuses a push from a tree with uncommitted changes or of a commit other than HEAD, as well as one that fails a check; `git push --no-verify` skips it once.
+
 ### The steward
 
 When several sessions build at once, one of them tends the **shared surface** so the others do not. Its scope is a property rather than a directory: work that is shared, mechanical and verifiable, decided by one question — **would a visitor see the difference?** If no it is the steward's, wherever it lives; if yes it waits for Andrei. A standing role, invoked with `/steward`. See `docs/agents/steward.md`.

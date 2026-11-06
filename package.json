@@ -28,7 +28,8 @@
     "runners": "node scripts/runners.ts",
     "test:affected": "node scripts/affected.ts",
     "probe": "vitest run --config vitest.probe.config.mts",
-    "shot": "node scripts/shot.ts"
+    "shot": "node scripts/shot.ts",
+    "prepare": "sh .githooks/install"
   },
   "dependencies": {
     "@astrojs/react": "^7.1.0",
