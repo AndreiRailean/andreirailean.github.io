@@ -23,8 +23,8 @@ import startPreviewServer from "../tests/support/preview-server.ts"
  *    current by hand.
  *
  * No capture is reproducible, so re-running this churns whatever it touches.
- * A preset that names no seed rolls a fresh arrangement each time it is
- * applied, and most name none
+ * A preset whose seed is `"roll"` gets a fresh arrangement each time it is
+ * applied, and most roll
  * (`src/experiments/docs/adr/20261106-a-preset-names-a-look-not-an-arrangement.md`).
  * Hence the slug filter: name the piece you actually changed, and leave the
  * rest alone.

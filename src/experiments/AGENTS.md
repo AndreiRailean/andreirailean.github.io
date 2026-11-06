@@ -465,8 +465,8 @@ max-age=31536000` — a year — on a URL keyed by **file path with no content
   seeded out of phase, so frame one is already a sky — but takes the brightest of
   twelve tries, since its glimmers are too brief to catch on purpose.
 - **No poster is reproducible.** Since 2026-11-06 a preset names a look and
-  not an arrangement: one that names no seed rolls a fresh one each time it is
-  applied, so every capture, like every plate on the index and every bare
+  not an arrangement: one whose seed is `"roll"` gets a fresh one each time it
+  is applied, so every capture, like every plate on the index and every bare
   landing, is a different arrangement of the same scene
   (`docs/adr/20261106-a-preset-names-a-look-not-an-arrangement.md`). Starry
   Night and Embers take no seed at all. Hence the slug filter: re-capture the

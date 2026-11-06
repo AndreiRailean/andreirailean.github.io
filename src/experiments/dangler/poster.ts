@@ -16,7 +16,7 @@ import type { PosterRecipe } from "@/experiments/poster"
  * forgotten.
  *
  * Not reproducible. The seed fixes the *arrangement* — where the anchors sit,
- * how each strand is shaped — and the primary names none, so each load rolls a
+ * how each strand is shaped — and the primary rolls its own, so each load gets a
  * fresh one. The sway would differ anyway: the wind is derived from the clock
  * as well as the seed, so the shutter catches the strands at a different point
  * in the same breeze.

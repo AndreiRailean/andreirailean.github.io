@@ -2,7 +2,7 @@
 type: ADR
 status: accepted
 date: 2026-11-06
-summary: A preset may leave its seed out, and then every load rolls a fresh arrangement of it; the address still carries the seed in use.
+summary: Every preset states its seed, a number to pin one arrangement or "roll" for a fresh one each time it is applied; the address still carries the seed in use.
 ---
 
 # A preset names a look, not an arrangement
@@ -21,14 +21,23 @@ varied.
 
 ## Decision
 
-**A preset's seed is optional** (`PresetSettings`, in `kit/controls.ts`). A
-preset that names none gets a fresh seed every time it is applied, through one
-function, `sceneFromPreset` in `piece.ts`, which every route goes through: the
-landing, the preset buttons, the number and arrow keys, `experiment.preset()`
-and the index's plates. A preset that names a seed keeps it, which is for a
-preset whose point is one arrangement.
+**Every preset states its seed: a number, or `"roll"`** (`PresetSettings`, in
+`kit/controls.ts`, and `ROLL` in `kit/preset.ts`). `"roll"` gets a fresh seed
+every time the preset is applied, through one function, `sceneFromPreset` in
+`piece.ts`, which every route goes through: the landing, the preset buttons,
+the number and arrow keys, `experiment.preset()` and the index's plates. A
+number pins that arrangement, for a preset whose point is one arrangement.
 
-The seeds were removed from every preset except where one is the point:
+The seed is required rather than optional, so a preset that says neither does
+not compile. Andrei, on the first version, where a preset rolled by leaving its
+seed out: "perhaps the seed/no-seed preference should be explicit on
+experiments. it may not always be desired to have all presets pick a random
+seed. and there are times when pegging a seed is the desired state." A missing
+key reads the same whether it was a decision or an oversight, and a scene saved
+from the screen arrives with a seed in it, so leaving it out was the step
+somebody had to remember.
+
+Every preset rolls except where one arrangement is the point:
 
 - **artdeco's `ziggurat` and `banded`** run `unison: "all"`, where a third of
   seeds stop at a few segments;
@@ -40,6 +49,14 @@ The seeds were removed from every preset except where one is the point:
 **The address still carries the seed in use**, so a copied link reproduces
 the screen exactly. Only a preset stopped being an exact scene.
 
+## Considered Options
+
+- **Rolling by leaving the seed out.** The first version. Replaced for the
+  reason above.
+- **One switch per piece**, rolling or pinned for all of its presets. Artdeco
+  needs both in one list, and a per-preset value is that switch written out
+  wherever it applies.
+
 ## Consequences
 
 - **A piece with no seed setting can still repeat itself.** Embers drew its
@@ -50,11 +67,15 @@ the screen exactly. Only a preset stopped being an exact scene.
 - **No poster capture is reproducible.** Each is a different arrangement of
   the same scene, as each plate and each landing is.
 - **A preset button still lights for every arrangement it rolls**, because the
-  kit matches a preset over the keys it names.
-- **`pnpm run bridge state` prints a seed.** Saving a scene as a preset leaves
-  it out unless Andrei wants that arrangement kept.
+  kit matches a rolled seed as any seed.
+- **Applying a rolling preset again rearranges it**, including clicking the
+  one already lit: the button is a way to see the look afresh.
+- **`pnpm run bridge state` prints a seed.** Saving a scene as a preset writes
+  `seed: "roll"` in its place unless Andrei wants that arrangement kept.
+- **Applying a rolling preset without a way to roll throws** rather than
+  falling back to the validator's default seed, which would pin it silently.
 - **A check that builds a world from a preset now gets a different world**
   unless it pins one. Crowd's checks were measured against particular worlds,
   so `crowd/tests/support.ts` pins the seeds its presets used to carry.
-- `tests/unit/experiments-presets.test.ts` asks every piece that rerolls, with
-  a primary that names no seed, to land on more than one seed in three tries.
+- `tests/unit/experiments-presets.test.ts` asks every piece whose primary
+  rolls to land on more than one seed in three tries.

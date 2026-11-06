@@ -124,8 +124,8 @@ work he then reported as broken. Invoked with `/preview`. See
 **What is on his screen can be read, not asked for.** A preview's pages post their
 scene, and under `?trace=1` an event trace, to `.astro/bridge.jsonl`. When he says
 "save what I have on screen as preset X", run `pnpm run bridge state <piece>` and
-add what it prints to that piece's presets, leaving out the `seed` unless he
-wants that arrangement pinned. It never deploys: a check on `dist/`
+add what it prints to that piece's presets, with `seed: "roll"` in place of its
+seed unless he wants that arrangement pinned. It never deploys: a check on `dist/`
 holds that. The `/preview` skill has the rest, and #305 the design.
 
 ### Wrapping up a session

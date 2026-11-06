@@ -26,7 +26,7 @@ import type { PosterRecipe } from "@/experiments/poster"
  *
  * **One shot.** A settled `standing still` changes slowly, so frames further
  * apart offer no real choice between them. Not reproducible: the primary names
- * no seed, so where the jets sit and which eddies the background is made of
+ * no seed of its own, so where the jets sit and which eddies the background is made of
  * are rolled on every load.
  */
 const poster: PosterRecipe<ExperimentApi> = {

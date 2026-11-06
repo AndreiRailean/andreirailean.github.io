@@ -19,7 +19,7 @@ import type { PosterRecipe } from "@/experiments/poster"
  *
  * **It names no preset**: the poster is one of the surfaces that read the
  * primary, so promoting a scene to first moves the index card with it. The
- * primary names no seed, so each capture, like each plate, is a different
+ * primary rolls its seed, so each capture, like each plate, is a different
  * square.
  */
 const poster: PosterRecipe<ExperimentApi> = {
