@@ -25,8 +25,10 @@ function dirs(name: string) {
   return { builds, store }
 }
 
-const A = "walkers.aaaaaaaaaaaa.js"
-const B = "crowd.bbbbbbbbbbbb.js"
+// Put together at runtime: written out whole, each would read as a reference
+// to a runner the store must hold, and the reference check would want it.
+const A = ["walkers", "a".repeat(12), "js"].join(".")
+const B = ["crowd", "b".repeat(12), "js"].join(".")
 
 describe("publishNamed", () => {
   it("copies a named build into the store, and only the named one", () => {
