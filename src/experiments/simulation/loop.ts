@@ -15,9 +15,9 @@
  * - **`parkingLoop`** stops requesting frames once nothing moves and nothing
  *   needs repainting, and `wake()` starts it again. Crowd, Dangler, Embers,
  *   Flotsam and Walkers. Holding cancels the frame outright.
- * - **`steadyLoop`** runs from `start()` to `stop()` and draws every frame;
- *   holding skips the step and keeps drawing. Dotfield, Hexgrid and
- *   Streakers.
+ * - **`steadyLoop`** runs from `start()` to `stop()` and draws every frame
+ *   while it is not held. Holding parks the frames, and `repaint()` draws one
+ *   for a change made while held. Dotfield, Hexgrid, Melting and Streakers.
  *
  * Section level, beside `random.ts`: a piece takes it without taking the
  * chrome, and it is the scene's clock rather than anything a visitor drives.
@@ -114,8 +114,18 @@ export type SteadyLoop = {
   /** Start requesting frames, from a fresh clock. A no-op while running. */
   start: () => void
   stop: () => void
-  /** Hold the scene where it is; frames keep being drawn. */
+  /**
+   * Hold the scene where it is, and stop requesting frames until released.
+   *
+   * It used to keep drawing every frame while held, which cost nothing anyone
+   * noticed while one piece was open, and a whole second of main thread every
+   * second once the index kept a paused piece on each plate (#352). A held
+   * piece now costs nothing, as `src/experiments/AGENTS.md` says `setPaused`
+   * should: a change made while held asks for one frame with `repaint()`.
+   */
   setHeld: (held: boolean) => void
+  /** Draw one frame for a change made while held. A no-op while frames are already coming. */
+  repaint: () => void
   held: () => boolean
   /** Frames per second, smoothed; 0 until the first measured frame. */
   fps: () => number
@@ -137,7 +147,8 @@ export function steadyLoop(options: {
   let fps = 0
 
   function tick(time: number): void {
-    frame = requestAnimationFrame(tick)
+    // Held, this frame is the last until something asks for another.
+    frame = held ? 0 : requestAnimationFrame(tick)
     const dt = last ? Math.min(clamp, (time - last) / 1000) : 0
     last = time
     if (dt > 0) fps = fps ? fps * 0.95 + (1 / dt) * 0.05 : 1 / dt
@@ -157,7 +168,18 @@ export function steadyLoop(options: {
       cancelAnimationFrame(frame)
     },
     setHeld(on) {
+      // Holding lets a frame already asked for draw, and asks for no more: a
+      // piece held before its first frame, as a poster recipe holds Melting,
+      // still draws that frame.
       held = on
+      if (!on && running && !frame) {
+        // From a fresh clock, so the time spent held is not stepped through.
+        last = 0
+        frame = requestAnimationFrame(tick)
+      }
+    },
+    repaint() {
+      if (running && !frame) frame = requestAnimationFrame(tick)
     },
     held: () => held,
     fps: () => fps,

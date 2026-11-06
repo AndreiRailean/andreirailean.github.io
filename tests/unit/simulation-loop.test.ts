@@ -160,15 +160,43 @@ describe("steadyLoop", () => {
     expect(draws()).toBe(3)
   })
 
-  it("held skips the step and keeps drawing", () => {
+  /**
+   * A held loop used to keep drawing every frame. Harmless with one piece
+   * open; the index keeps a paused piece on every plate, and six of them drawing
+   * held frames took the whole main thread (#352).
+   */
+  it("held draws the frame already asked for, skips its step, and asks for no more", () => {
     const { loop, steps, draws } = make()
     loop.start()
     loop.setHeld(true)
     frameAt(1000)
-    frameAt(1016)
     expect(steps).toEqual([])
-    expect(draws()).toBe(2)
+    expect(draws()).toBe(1)
+    expect(queue.size, "a held loop asked for another frame").toBe(0)
     expect(loop.held()).toBe(true)
+    expect(loop.running()).toBe(true)
+  })
+
+  it("repaint draws one frame while held, and release starts again from a fresh clock", () => {
+    const { loop, steps, draws } = make()
+    loop.start()
+    frameAt(1000)
+    loop.setHeld(true)
+    frameAt(1016)
+    expect(queue.size).toBe(0)
+
+    loop.repaint()
+    frameAt(5000)
+    expect(draws()).toBe(3)
+    expect(queue.size, "repaint asked for more than one frame").toBe(0)
+
+    loop.setHeld(false)
+    frameAt(9000)
+    frameAt(9016)
+    // The time spent held is not stepped through.
+    expect(steps.slice(-2)[0]).toBe(0)
+    expect(steps.slice(-1)[0]).toBeCloseTo(0.016, 9)
+    expect(queue.size).toBe(1)
   })
 
   it("start is a no-op while running, and stop cancels", () => {

@@ -1276,11 +1276,14 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
 
   function tick(now: number) {
     if (!running) return
-    frame = requestAnimationFrame(tick)
+    // Held, nothing more is asked for until the piece is released; every
+    // change made while held draws for itself.
     if (held) {
+      frame = 0
       last = now
       return
     }
+    frame = requestAnimationFrame(tick)
 
     const wall = last === 0 ? STEP : Math.min(0.25, (now - last) / 1000)
     last = now
@@ -1361,7 +1364,13 @@ export function createBubbles(canvas: HTMLCanvasElement, initial: Settings): Bub
     },
 
     setPaused(next) {
+      // The next tick sees the hold and asks for no more frames, rather than
+      // running empty ones sixty times a second.
       held = next
+      if (!next && running && !frame) {
+        last = 0
+        frame = requestAnimationFrame(tick)
+      }
     },
 
     setSettings(nextSettings) {

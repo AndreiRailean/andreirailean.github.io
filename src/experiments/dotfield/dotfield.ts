@@ -482,6 +482,7 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
   function onResize() {
     size()
     rebuild()
+    loop.repaint()
   }
 
   /**
@@ -626,6 +627,7 @@ export function createDotfield(canvas: HTMLCanvasElement, initial: Settings) {
       else {
         if (needsRebuild(before, next)) rebuildColours()
       }
+      loop.repaint()
     },
     setPaused(on: boolean) {
       loop.setHeld(on)

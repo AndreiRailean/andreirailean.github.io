@@ -1817,7 +1817,8 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
       }
     }
     draw()
-    frame = requestAnimationFrame(tick)
+    // Held, this frame is the last until the piece is released.
+    frame = held ? 0 : requestAnimationFrame(tick)
   }
 
   function onResize() {
@@ -1860,7 +1861,14 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
       draw()
     },
     setPaused(next: boolean) {
+      // Holding lets a frame already asked for draw, and the tick asks for no
+      // more; every change made while held draws for itself. A held tick used
+      // to draw the same picture sixty times a second.
       held = next
+      if (!next && running && !frame) {
+        last = 0
+        frame = requestAnimationFrame(tick)
+      }
     },
     settle,
     clear() {
