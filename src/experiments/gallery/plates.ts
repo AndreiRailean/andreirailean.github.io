@@ -27,7 +27,7 @@
  */
 
 import { PLATE, type PosterRecipe } from "@/experiments/poster"
-import type { Live, Preset, Start } from "@/experiments/piece"
+import { sceneFromPreset, type Live, type Preset, type SettingsModule, type Start } from "@/experiments/piece"
 
 /**
  * Pieces whose poster moment is too far from their start to reach on a page
@@ -70,25 +70,25 @@ const BUDGET_MS = 600
 
 type Piece = {
   start: Start<object>
-  normalize: (patch: object) => object
+  settings: Pick<SettingsModule<object>, "normalizeSettings" | "reroll">
   presets: Preset<object>[]
   recipe: PosterRecipe<Record<string, unknown>>
 }
 
 const runners = import.meta.glob<Start<object>>("../*/runner.ts", { import: "start" })
-const settings = import.meta.glob<(patch: object) => object>("../*/settings.ts", { import: "normalizeSettings" })
+const settings = import.meta.glob<Pick<SettingsModule<object>, "normalizeSettings" | "reroll">>("../*/settings.ts")
 const presets = import.meta.glob<Preset<object>[]>("../*/presets.ts", { import: "PRESETS" })
 const recipes = import.meta.glob<PosterRecipe<Record<string, unknown>>>("../*/poster.ts", { import: "default" })
 
 /** A piece's four modules, fetched only when its plate comes near; `null` for a folder that is not a piece. */
 async function load(slug: string): Promise<Piece | null> {
   const start = runners[`../${slug}/runner.ts`]
-  const normalize = settings[`../${slug}/settings.ts`]
+  const module = settings[`../${slug}/settings.ts`]
   const list = presets[`../${slug}/presets.ts`]
   const recipe = recipes[`../${slug}/poster.ts`]
-  if (!start || !normalize || !list || !recipe) return null
-  const loaded = await Promise.all([start(), normalize(), list(), recipe()])
-  return { start: loaded[0], normalize: loaded[1], presets: loaded[2], recipe: loaded[3] }
+  if (!start || !module || !list || !recipe) return null
+  const loaded = await Promise.all([start(), module(), list(), recipe()])
+  return { start: loaded[0], settings: loaded[1], presets: loaded[2], recipe: loaded[3] }
 }
 
 /**
@@ -163,10 +163,11 @@ const idle = () =>
 /** Draws the plate's still: the piece started, brought to its recipe's moment, drawn, and destroyed. */
 async function draw(plate: HTMLElement, piece: Piece): Promise<void> {
   const { recipe } = piece
-  const base = recipe.preset
-    ? piece.presets.find(({ label }) => label === recipe.preset)?.settings
-    : piece.presets[0]?.settings
-  if (!base) throw new Error(`no preset ${JSON.stringify(recipe.preset ?? "primary")}`)
+  const preset = recipe.preset ? piece.presets.find(({ label }) => label === recipe.preset) : piece.presets[0]
+  if (!preset) throw new Error(`no preset ${JSON.stringify(recipe.preset ?? "primary")}`)
+  // Through the same function a landing goes through, so a preset that leaves
+  // its seed to be rolled draws a different arrangement on every load here too.
+  const base = sceneFromPreset(piece.settings, preset)
 
   const layer = document.createElement("div")
   layer.className = "live"
@@ -178,7 +179,7 @@ async function draw(plate: HTMLElement, piece: Piece): Promise<void> {
   layer.append(canvas)
   plate.prepend(layer)
 
-  const live = piece.start(canvas, piece.normalize({ ...base, ...recipe.settings }))
+  const live = piece.start(canvas, piece.settings.normalizeSettings({ ...base, ...recipe.settings }))
   try {
     if (recipe.prepare) await within(Promise.resolve(recipe.prepare({ api: handle(live) })), PATIENCE_MS, "prepare")
     // A recipe that only waits lets the piece run in real time before the

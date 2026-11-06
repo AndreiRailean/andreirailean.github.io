@@ -1,4 +1,5 @@
 import { copyText } from "@/experiments/kit/copy"
+import { presetAsWritten, rollsSeed, type ROLL } from "@/experiments/kit/preset"
 import { toggleFullscreen } from "@/experiments/kit/fullscreen"
 import { PLAYBACK_GROUP } from "@/experiments/kit/speed"
 
@@ -286,7 +287,23 @@ export function valueAtPosition(track: Track, position: number): number {
   return snapToGrid(track, low * (track.max / low) ** t)
 }
 
-export type Preset<S> = { label: string; hint: string; settings: S }
+/**
+ * A preset's settings: every setting, with a seed that is either pinned or
+ * `"roll"`.
+ *
+ * **Every preset says which, and none is assumed.** `"roll"` gets a fresh seed
+ * each time the preset is applied, so the same look comes up arranged
+ * differently on every load and every click: the preset names a look. Andrei:
+ * "what can we do to make them look different on each load?" A number pins one
+ * arrangement, for a preset whose point is that arrangement, and he asked for
+ * the choice to be written down rather than implied by a missing key: "it may
+ * not always be desired to have all presets pick a random seed. and there are
+ * times when pegging a seed is the desired state." The address always carries
+ * the seed in use, so a copied link still reproduces the screen.
+ */
+export type PresetSettings<S> = S extends { seed: number } ? Omit<S, "seed"> & { seed: number | typeof ROLL } : S
+
+export type Preset<S> = { label: string; hint: string; settings: PresetSettings<S> }
 
 /**
  * An extra button in the bar — Dangler's `reroll`.
@@ -344,6 +361,13 @@ export type Options<S extends object> = {
   settings: S
   controls: Control<string & keyof S>[]
   presets: Preset<S>[]
+  /**
+   * Turns a preset into the scene it applies: the piece's validator, plus a
+   * fresh seed where the preset's seed is `"roll"`. Omitted, a preset is
+   * applied as written, and one that rolls throws. `boot.ts` passes
+   * `sceneFromPreset`.
+   */
+  fromPreset?: (preset: Preset<S>) => S
   /**
    * Heading order. Omitted, the rows run together with no headings.
    *
@@ -501,6 +525,7 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     },
   ]
   const chrome = options.chrome ?? true
+  const fromPreset = options.fromPreset ?? ((preset: Preset<S>) => presetAsWritten(normalize, preset))
 
   let current: S = { ...options.settings }
   let panelOpen = false
@@ -618,7 +643,7 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     // A digit is one keypress, so the tenth preset onward has no key of its own
     // and its title must not claim one — #223.
     element.title = index < 9 ? `${preset.hint} (key ${index + 1}, or ← →)` : `${preset.hint} (← →)`
-    element.addEventListener("click", () => apply(normalize({ ...preset.settings })))
+    element.addEventListener("click", () => apply(fromPreset(preset)))
     return element
   })
 
@@ -1048,7 +1073,11 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     }
 
     matching = presets.findIndex((preset) =>
-      (Object.keys(preset.settings) as (keyof S)[]).every((key) => sameValue(preset.settings[key], current[key])),
+      // Over every key but a rolled seed, so a preset that rolls still lights
+      // up for every arrangement it rolls.
+      (Object.keys(preset.settings) as (keyof S)[]).every(
+        (key) => (key === "seed" && rollsSeed(preset)) || sameValue((preset.settings as Partial<S>)[key], current[key]),
+      ),
     )
 
     presetButtons.forEach((element, index) => {
@@ -1199,7 +1228,7 @@ export function createControls<S extends object>(options: Options<S>): Controls<
       const stepped = presets[Math.min(presets.length - 1, Math.max(0, wanted))]
       if (stepped) {
         event.preventDefault()
-        apply(normalize({ ...stepped.settings }))
+        apply(fromPreset(stepped))
       }
       return
     }
@@ -1211,7 +1240,7 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     }
 
     const preset = presets[Number(event.key) - 1]
-    if (preset) apply(normalize({ ...preset.settings }))
+    if (preset) apply(fromPreset(preset))
   }
 
   const onPointerDownAway = (event: PointerEvent) => {

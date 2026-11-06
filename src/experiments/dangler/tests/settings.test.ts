@@ -10,7 +10,7 @@ import {
 } from "@/experiments/dangler/settings"
 import { PRESETS } from "@/experiments/dangler/presets"
 import * as module from "@/experiments/dangler/settings"
-import { settingsForLanding as landing } from "@/experiments/piece"
+import { settingsForLanding as landing, presetWithSeed } from "@/experiments/piece"
 
 /** The landing rule as the gallery's boot applies it to this piece. */
 const settingsForLanding = (params: URLSearchParams) => landing(module, PRESETS, params)
@@ -74,7 +74,7 @@ describe("presets", () => {
   it.each(PRESETS.map((preset) => [preset.label, preset] as const))(
     "%s survives the query string",
     (_label, preset) => {
-      const settings = normalizeSettings(preset.settings)
+      const settings = normalizeSettings(presetWithSeed(preset, 1))
       expect(settingsFromQuery(settingsToQuery(settings))).toEqual(settings)
     },
   )
@@ -85,7 +85,10 @@ describe("presets", () => {
   it.each(PRESETS.map((preset) => [preset.label, preset] as const))(
     "%s is within bounds as written",
     (_label, preset) => {
-      expect(normalizeSettings(preset.settings)).toEqual(preset.settings)
+      // The validator changes nothing a preset names, given any legal seed
+      // for one that rolls.
+      const written = presetWithSeed(preset, 1)
+      expect(normalizeSettings(written)).toEqual(written)
     },
   )
 
@@ -105,7 +108,9 @@ describe("presets", () => {
 describe("landing", () => {
   it("shows the first preset when the URL names no settings", () => {
     const { settings, featured } = settingsForLanding(new URLSearchParams(""))
-    expect(settings).toEqual(normalizeSettings(PRESETS[0]!.settings))
+    // The primary rolls its seed, so the scene is the preset with whichever
+    // seed it rolled.
+    expect(settings).toEqual(presetWithSeed(PRESETS[0]!, settings.seed))
     expect(featured).toBe(true)
   })
 

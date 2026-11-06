@@ -171,15 +171,20 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
   let dpr = 1
   let view: View = makeView(settings.span, settings.hearth, 1, 1)
 
-  // The one seed in the piece, and it decides almost nothing: a continuous
-  // emission has no arrangement to preserve, so all this fixes is which
-  // silhouettes exist and the sequence the fire draws its jitter from. There is
-  // no reroll button for the same reason — the scene rerolls itself, constantly.
+  // The one fixed seed in the piece, and it decides only which silhouettes
+  // exist. There is no reroll button: a continuous emission has no arrangement
+  // to preserve, and the scene rerolls itself, constantly.
   const seed = 0x656d62
-  const rng = makeRng(hashSeed(seed, 0x706f6f6c))
+  // **The fire itself is drawn fresh on every start.** The air, the bed and the
+  // jitter used to share the fixed seed, and `settle` is deterministic, so the
+  // index's plate was the same fire on every load. Andrei asked for the plates
+  // to differ from load to load
+  // (`../docs/adr/20261106-a-preset-names-a-look-not-an-arrangement.md`).
+  const stream = hashSeed(seed, Math.floor(Math.random() * 0x7fffffff))
+  const rng = makeRng(hashSeed(stream, 0x706f6f6c))
 
-  const air: Air = createAir(settings, seed)
-  const bed: Bed = createBed(settings, seed)
+  const air: Air = createAir(settings, stream)
+  const bed: Bed = createBed(settings, stream)
   let sheet: Sheet = makeSheet(settings.hue, settings.hueSpread, seed)
 
   let pool: Ember[] = []

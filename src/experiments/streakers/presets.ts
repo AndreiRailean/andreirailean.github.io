@@ -5,9 +5,10 @@
  * `../docs/adr/20260830-a-preset-inherits-from-nothing.md`. Position one is the
  * primary: a bare address lands on it, and the poster and the note read it.
  */
+import type { Preset } from "@/experiments/piece"
 import type { Settings } from "@/experiments/streakers/settings"
 
-export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
+export const PRESETS: Preset<Settings>[] = [
   {
     label: "dimensions",
     hint: "A screen filled with lines, all one way at different speeds, dots varying a little line to line.",
@@ -30,7 +31,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 210,
       tint: 0,
       hues: 0,
-      seed: 11,
+      seed: "roll",
       timescale: 1,
     },
   },
@@ -58,7 +59,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 237,
       tint: 0,
       hues: 0,
-      seed: 7,
+      seed: "roll",
       timescale: 1,
     },
   },
@@ -84,7 +85,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 300,
       tint: 0.6,
       hues: 30,
-      seed: 9,
+      seed: "roll",
       timescale: 1,
     },
   },
@@ -110,7 +111,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 200,
       tint: 0,
       hues: 0,
-      seed: 1,
+      seed: "roll",
       timescale: 1,
     },
   },
@@ -136,7 +137,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 200,
       tint: 0,
       hues: 0,
-      seed: 7,
+      seed: "roll",
       timescale: 1,
     },
   },
@@ -162,7 +163,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 40,
       tint: 0.5,
       hues: 0,
-      seed: 3,
+      seed: "roll",
       timescale: 1,
     },
   },
@@ -188,7 +189,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 40,
       tint: 0,
       hues: 0,
-      seed: 5,
+      seed: "roll",
       timescale: 1,
     },
   },
@@ -214,7 +215,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 20,
       tint: 0,
       hues: 0,
-      seed: 17,
+      seed: "roll",
       timescale: 1,
     },
   },
@@ -240,7 +241,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 250,
       tint: 0.55,
       hues: 60,
-      seed: 21,
+      seed: "roll",
       timescale: 1,
     },
   },
@@ -266,7 +267,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 93,
       tint: 1,
       hues: 180,
-      seed: 21,
+      seed: "roll",
       timescale: 1,
     },
   },

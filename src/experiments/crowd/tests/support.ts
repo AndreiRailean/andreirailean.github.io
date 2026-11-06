@@ -15,11 +15,54 @@ import { PRESETS } from "@/experiments/crowd/presets"
  */
 
 /**
+ * The presets with the seeds they carried until 2026-11-06, for checks that
+ * build a world from one.
+ *
+ * **A preset no longer pins a seed**: each load rolls a fresh arrangement
+ * (`PresetSettings` in `kit/controls.ts`). These checks were measured against
+ * particular worlds, and two of them fall a little short of their lines on
+ * another one — "changes direction at its stops" and "keeps me on it". So the
+ * worlds are pinned here rather than the lines loosened, which keeps every
+ * check exactly as it was written. A new check can use any seed it likes.
+ */
+const WORLDS: Record<string, number> = {
+  "catch me": 64021,
+  market: 24196,
+  concourse: 6640,
+  "standing still": 51877,
+  "the street": 13907,
+  "the far end": 30412,
+  "waist high": 88104,
+  parade: 41822,
+  teams: 60237,
+  "the trail": 17350,
+  "keep left": 38815,
+  runner: 71450,
+  "fire trail": 52291,
+  "loop run": 90313,
+  "street run": 90313,
+  boulders: 24196,
+  "round the bend": 4242,
+  "between the rocks": 4242,
+  "boulder grid": 24196,
+  honeycomb: 24196,
+  "honeycomb chase": 64021,
+  "honeycomb from above": 24196,
+  "grid from above": 24196,
+}
+
+export const SEEDED = PRESETS.map((preset) => {
+  const seed = WORLDS[preset.label]
+  if (seed === undefined) throw new Error(`crowd/tests/support.ts pins no world for the preset "${preset.label}"`)
+  return { ...preset, settings: normalizeSettings({ ...preset.settings, seed }) }
+})
+
+/**
  * The market, by name. These checks were written against it when it was the
  * primary, and a primary moves — "catch me" took the place on 2026-09-26 —
  * so they say which scene they mean rather than which position.
  */
-export const MARKET = PRESETS.find((preset) => preset.label === "market")!
+export const MARKET = SEEDED.find((preset) => preset.label === "market")!
 
 /**
  * The person carrying the camera, and specifically what their head does.

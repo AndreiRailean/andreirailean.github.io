@@ -22,6 +22,7 @@ import { keepAwake } from "@/experiments/kit/wakelock"
 import { isReel } from "@/experiments/gallery/reel"
 import { requireElement } from "@/experiments/element"
 import {
+  sceneFromPreset,
   settingsForLanding,
   type Chrome,
   type PieceApi,
@@ -90,6 +91,7 @@ export function boot<S extends object, V extends Verbs, T>(piece: Piece<S, V, T>
     groups: chrome.groups,
     ...(chrome.boxes ? { boxes: true, folds: chrome.slug } : {}),
     presets,
+    fromPreset: (preset) => sceneFromPreset(module, preset),
     actions: (chrome.actions ?? []).map(({ label, hint, shortcut, verb }) => ({
       label,
       hint,
@@ -123,6 +125,7 @@ export function boot<S extends object, V extends Verbs, T>(piece: Piece<S, V, T>
       scene,
       presets,
       normalize: module.normalizeSettings,
+      fromPreset: (preset) => sceneFromPreset(module, preset),
       fromQuery: module.settingsFromQuery,
     }),
     controls: () => reportControls(module.CONTROLS as Control<string & keyof S>[]),

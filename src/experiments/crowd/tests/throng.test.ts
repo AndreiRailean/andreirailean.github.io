@@ -3,9 +3,8 @@ import { createStroll } from "@/experiments/crowd/stroll"
 import { createThrong, MAX_PEOPLE } from "@/experiments/crowd/throng"
 import { entryAngle } from "@/experiments/crowd/random"
 import { normalizeSettings } from "@/experiments/crowd/settings"
-import { PRESETS } from "@/experiments/crowd/presets"
 import { makeRng } from "@/experiments/random"
-import { walk } from "./support"
+import { SEEDED, walk } from "./support"
 
 /**
  * The crowd as a population: how big it is, and where somebody who leaves it
@@ -98,7 +97,7 @@ describe("the world travels with the observer", () => {
     // What a re-roll is for. `crowd.spec.ts` checks the page passes the seed
     // through; this checks the seed is what decides who is there.
     const cast = (seed: number) => {
-      const settings = normalizeSettings({ ...PRESETS[0]!.settings, reach: 12, seed })
+      const settings = normalizeSettings({ ...SEEDED[0]!.settings, reach: 12, seed })
       const crowd = createThrong(settings, createStroll(settings, settings.seed))
       return crowd.people.map((p) => [p.x, p.y])
     }
@@ -165,7 +164,7 @@ describe("the world travels with the observer", () => {
     // It used to be 0.03, from when the edge sat wherever the budget put it and
     // had to be hidden. `reach` is a control now, and a crowd that visibly ends
     // is a thing somebody may want to build.
-    for (const preset of PRESETS) {
+    for (const preset of SEEDED) {
       const settings = normalizeSettings(preset.settings)
       const me = createStroll(settings, settings.seed)
       const crowd = createThrong(settings, me)

@@ -18,9 +18,9 @@ import type { PosterRecipe } from "@/experiments/poster"
  * kept the plate on its poster for good. The first frame takes 176 ms.
  *
  * **It names no preset**: the poster is one of the surfaces that read the
- * primary, so promoting a scene to first moves the index card with it. The seed
- * in the primary fixes the placement, so this is as reproducible as the section
- * gets.
+ * primary, so promoting a scene to first moves the index card with it. The
+ * primary rolls its seed, so each capture, like each plate, is a different
+ * square.
  */
 const poster: PosterRecipe<ExperimentApi> = {
   dwellMs: 0,

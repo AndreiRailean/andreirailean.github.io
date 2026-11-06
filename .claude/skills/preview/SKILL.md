@@ -74,7 +74,9 @@ something you can read instead of something he has to describe (#305).
 
 - **"Save what I have on screen as preset X"** → `pnpm run bridge state <piece>`
   prints the scene as a preset object. Add it to that piece's `presets.ts` under
-  his label. Check the time it prints: it is his last change, and an old one
+  his label, with **`seed: "roll"`** in place of the seed it prints unless he
+  wants that exact arrangement kept: a rolling preset gets a fresh arrangement
+  on every load, which is what he asked for on 2026-11-06. A number pins it. Check the time it prints: it is his last change, and an old one
   means the tab you want is not the one that posted.
 - **"It does something odd when I…"** → give him the page with `?trace=1`, ask
   him to do it, then `pnpm run bridge trace <piece>`. This found #303's cause

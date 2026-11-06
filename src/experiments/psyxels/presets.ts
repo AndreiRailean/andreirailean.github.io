@@ -6,6 +6,7 @@
  * parameter does. The runner never imports this; see
  * `../docs/adr/20260928-a-piece-is-a-library-behind-three-files.md`.
  */
+import type { Preset } from "@/experiments/piece"
 import type { Settings } from "@/experiments/psyxels/settings"
 import { GITHUB_PORTRAIT, LOCAL_PORTRAIT } from "@/experiments/psyxels/subject"
 
@@ -25,12 +26,12 @@ import { GITHUB_PORTRAIT, LOCAL_PORTRAIT } from "@/experiments/psyxels/subject"
  * *that scene* rather than to whatever is featured next month. Nothing else
  * follows from being first.
  */
-export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
+export const PRESETS: Preset<Settings>[] = [
   {
     label: "alive",
     hint: "Every hue at once, packed fine and overlapping, with the levels above showing through — and a word rather than a letter, so the field has to hold five shapes and the spaces between them.",
     settings: {
-      seed: 639953,
+      seed: "roll",
       subject: "text",
       text: "Alive",
       picture: LOCAL_PORTRAIT,
@@ -74,7 +75,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     label: "neon",
     hint: "Fine grain at a high threshold, half-solid, spread across the whole wheel: tube light rather than ink.",
     settings: {
-      seed: 639953,
+      seed: "roll",
       subject: "text",
       text: "A",
       picture: LOCAL_PORTRAIT,
@@ -118,7 +119,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     label: "ampersand",
     hint: "A script ampersand, held still and lit from within: no frame changes at all, only breathing.",
     settings: {
-      seed: 639953,
+      seed: "roll",
       subject: "text",
       text: "&",
       picture: LOCAL_PORTRAIT,
@@ -162,7 +163,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     label: "mono",
     hint: "One hue and almost no colour: the packing and its light, and nothing else to look at.",
     settings: {
-      seed: 639953,
+      seed: "roll",
       subject: "text",
       text: "A",
       picture: LOCAL_PORTRAIT,
@@ -206,7 +207,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     label: "maker",
     hint: "A face at the finest grain the piece has, lit from within and picked out at every contour.",
     settings: {
-      seed: 2207,
+      seed: "roll",
       subject: "picture",
       text: "A",
       picture: LOCAL_PORTRAIT,
@@ -250,7 +251,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     label: "maybe",
     hint: "Few frames, big psyxels, slow repacking: the field as a sign rather than a texture.",
     settings: {
-      seed: 771,
+      seed: "roll",
       subject: "text",
       text: "&",
       picture: LOCAL_PORTRAIT,
@@ -294,7 +295,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     label: "luna",
     hint: "The word as a hole again, and everything around it held: one grain everywhere rather than a range of them, and every psyx keeping the mark and the colour it was dealt. Made of the four that are drawn rather than built — a moon, a star, a heart and a leaf — each facing whichever way it was born facing, so the field reads as things strewn about rather than as signs stamped in rows — and nothing moves in it but the breath.",
     settings: {
-      seed: 639953,
+      seed: "roll",
       subject: "text",
       text: "Luna",
       picture: LOCAL_PORTRAIT,
@@ -338,7 +339,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     label: "maker online",
     hint: "Maker exactly, with the same portrait read from GitHub rather than from this site — a picture at any address can be pixellated, as long as its host lets a canvas read it.",
     settings: {
-      seed: 2207,
+      seed: "roll",
       subject: "picture",
       text: "A",
       picture: GITHUB_PORTRAIT,
@@ -382,7 +383,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     label: "trail",
     hint: "Alive on a long afterglow watched slowly — the scene #117 was measured on. A dithered fade that could reach the ground was tried beside this one and judged noisier; the fade stayed flat.",
     settings: {
-      seed: 639953,
+      seed: "roll",
       subject: "text",
       text: "Alive",
       picture: LOCAL_PORTRAIT,
@@ -426,7 +427,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     label: "life",
     hint: "The word in the void, in the marks that grew out of the dropped flower (#135) — a sprout and a spiral — among the leaf, the moon and the heart, every psyx one size and turned its own way.",
     settings: {
-      seed: 639953,
+      seed: "roll",
       subject: "text",
       text: "life",
       picture: LOCAL_PORTRAIT,

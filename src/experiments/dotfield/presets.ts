@@ -5,9 +5,10 @@
  * `../docs/adr/20260830-a-preset-inherits-from-nothing.md`. Position one is the
  * primary: a bare address lands on it, and the poster and the note read it.
  */
+import type { Preset } from "@/experiments/piece"
 import type { Settings } from "@/experiments/dotfield/settings"
 
-export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
+export const PRESETS: Preset<Settings>[] = [
   {
     label: "meadow",
     hint: "A purple-to-red field on a triangle grid in a strong, quick-veering wind with wide gusts. Andrei's, found by dragging.",
@@ -43,7 +44,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       islands: 0.2,
       saturation: 70,
       cap: 0.35,
-      seed: 1,
+      seed: "roll",
       timescale: 1,
     },
   },
@@ -82,7 +83,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       islands: 0.1,
       saturation: 0,
       cap: 1,
-      seed: 5,
+      seed: "roll",
       timescale: 1,
     },
   },
@@ -121,7 +122,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       islands: 0,
       saturation: 65,
       cap: 0.5,
-      seed: 3,
+      seed: "roll",
       timescale: 1,
     },
   },
@@ -160,7 +161,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       islands: 0.3,
       saturation: 80,
       cap: 0.3,
-      seed: 7,
+      seed: "roll",
       timescale: 1,
     },
   },
@@ -199,7 +200,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       islands: 0.4,
       saturation: 70,
       cap: 0.25,
-      seed: 12,
+      seed: "roll",
       timescale: 1,
     },
   },
@@ -238,7 +239,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       islands: 0.85,
       saturation: 75,
       cap: 0.4,
-      seed: 21,
+      seed: "roll",
       timescale: 1,
     },
   },
@@ -277,7 +278,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       islands: 0.3,
       saturation: 70,
       cap: 0.45,
-      seed: 5,
+      seed: "roll",
       timescale: 1,
     },
   },
@@ -316,7 +317,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       islands: 0.2,
       saturation: 75,
       cap: 0.8,
-      seed: 9,
+      seed: "roll",
       timescale: 1,
     },
   },

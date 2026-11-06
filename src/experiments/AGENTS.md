@@ -459,17 +459,18 @@ max-age=31536000` — a year — on a URL keyed by **file path with no content
   the reviewer's own eyes say the change did not land. Its sibling, a stale
   content store changing the wall's order, is in `tests/AGENTS.md`.
 - **A recipe is per-piece knowledge and stays with the piece.** Which preset,
-  what has to happen before the shutter, how long to wait. Dangler loads a
-  seeded preset and calls `settle()` twice, because a frame caught mid-relaxation
+  what has to happen before the shutter, how long to wait. Dangler loads its
+  primary and calls `settle()` twice, because a frame caught mid-relaxation
   shows a shape it never holds. Starry Night needs none of that — its layers are
   seeded out of phase, so frame one is already a sky — but takes the brightest of
   twelve tries, since its glimmers are too brief to catch on purpose.
-- **No poster is byte-reproducible, for two different reasons.** Starry Night
-  takes no seed at all, so a re-capture is a different sky. Dangler's landing
-  preset does carry one, which fixes the arrangement — but its wind is derived
-  from the clock too, so the shutter catches the same strands at a different
-  point in the same breeze. Both look unchanged to a person and both churn the
-  file. Hence the slug filter: re-capture the piece you actually changed.
+- **No poster is reproducible.** Since 2026-11-06 a preset names a look and
+  not an arrangement: one whose seed is `"roll"` gets a fresh one each time it
+  is applied, so every capture, like every plate on the index and every bare
+  landing, is a different arrangement of the same scene
+  (`docs/adr/20261106-a-preset-names-a-look-not-an-arrangement.md`). Starry
+  Night and Embers take no seed at all. Hence the slug filter: re-capture the
+  piece you actually changed.
 - `scripts/posters.ts` is generic and knows nothing about any piece; the shared
   contract is the types in `src/experiments/poster.ts`, plus `PLATE`, the one
   size the capture and the index must agree on. Per ADR-0002 that is all it is

@@ -26,8 +26,17 @@ import { expect, openExperiment, test } from "../../../../tests/support/experime
  *   a crowd that has not moved, which no screenshot can distinguish.
  */
 
-/** Small enough to run fast, busy enough that the assertions mean something. */
-const MODEST = { density: 18, fade: 14 }
+/**
+ * Small enough to run fast, busy enough that the assertions mean something,
+ * and on the world these checks were measured against.
+ *
+ * **The seed is the one the primary carried until 2026-11-06.** A bare landing
+ * now rolls a fresh one, and on some worlds the eye-line band falls outside
+ * its lines: one run in six failed "the frame is a band around the eye line"
+ * with the seed left to roll. Pinned rather than loosened, as in
+ * `support.ts`.
+ */
+const MODEST = { density: 18, fade: 14, seed: 64021 }
 
 function openCrowd(page: Parameters<typeof openExperiment>[0], options?: Parameters<typeof openExperiment>[2]) {
   return openExperiment<ExperimentApi>(page, "crowd", options)

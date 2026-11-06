@@ -295,8 +295,11 @@ honest answers.
 ## What this piece deliberately does not have
 
 - **No seed, and no reroll.** A continuous emission has no arrangement to
-  preserve — the scene rerolls itself, constantly. The one seeded thing is the
+  preserve — the scene rerolls itself, constantly. The one fixed seed is the
   set of outlines in `draw.ts`, so a recaptured poster gets the same silhouettes.
+  The air, the bed and the jitter draw from a fresh stream on every start, since
+  2026-11-06: with a fixed one, a deterministic `settle` made the index's plate
+  the same fire on every load.
   A consequence worth knowing: **no capture of this piece is reproducible**, for
   the same reason Starry Night's is not.
 

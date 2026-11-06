@@ -33,8 +33,9 @@ export const PLATE = { width: 608, height: 342 } as const
 export type PosterRecipe<Api> = {
   /**
    * A preset to load, by name. Preferred over hand-written settings: a preset
-   * is already a look someone chose, and the ones carrying a `seed` make the
-   * capture reproducible for free.
+   * is already a look someone chose. It is not an arrangement: a preset that
+   * names no `seed` rolls a fresh one each time it is applied, here and on the
+   * index alike, so no capture is reproducible on that account.
    */
   preset?: string
 

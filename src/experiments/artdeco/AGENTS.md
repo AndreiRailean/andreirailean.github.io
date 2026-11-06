@@ -42,7 +42,9 @@ being found.
   the same, so a fork early kills every line at once and a branch doubles every
   line at once. Measured over forty seeds of the ziggurat preset: 4 segments in
   a third of them, 421–950 in three. A preset on "all as one" needs its seed
-  chosen by measuring, not by eye.
+  chosen by measuring, not by eye, and **pinned**: since 2026-11-06 a preset
+  whose seed is `"roll"` gets a fresh one on every load, which here would be
+  an empty frame a third of the time. `ziggurat` and `banded` pin theirs.
 - **Split children are one family with opposite `hand`**, which is what makes
   the two halves of every split mirror images of each other about their parent
   as well as about the frame. Give them separate families and the nested

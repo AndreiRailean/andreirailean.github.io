@@ -5,13 +5,18 @@
  * `../docs/adr/20260830-a-preset-inherits-from-nothing.md`. Position one is the
  * primary: a bare address lands on it, and the poster and the note read it.
  */
+import type { Preset } from "@/experiments/piece"
 import type { Settings } from "@/experiments/melting/settings"
 
-export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
+export const PRESETS: Preset<Settings>[] = [
   {
     label: "lava lamp",
     hint: "An icosahedron tumbling on a slow, hard-tipping beat and losing a corner now and then, among nine small lumps of a little wax that rise quickly and often split. Andrei's, found by dragging.",
     settings: {
+      // Pinned, every one. The lamp is a function of the moment and the seed
+      // alone, so two screens show the same lamp: the piece's premise, held by
+      // `melting.spec.ts`. A different moment on every load is the variety here.
+      seed: 7,
       shape: "icosa",
       motion: "tumble",
       clock: "wall",
@@ -45,7 +50,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 40,
       tint: 0.7,
       colours: 1,
-      seed: 7,
       timescale: 1,
     },
   },
@@ -53,6 +57,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     label: "tempus",
     hint: "The lava lamp at its steadiest: a lopsided icosahedron that now and then turns into another solid, there three cycles in four, over a bottomless pool whose surface the beats heap region by region.",
     settings: {
+      seed: 7,
       shape: "icosa",
       motion: "tumble",
       clock: "wall",
@@ -86,7 +91,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 40,
       tint: 0.7,
       colours: 1,
-      seed: 7,
       timescale: 1,
     },
   },
@@ -94,6 +98,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     label: "ora",
     hint: "Tempus in colour: every corner and every lump wears one of four colours the stream picks — a corner turns to a new one every few beats, a lump takes one each time it leaves the pool.",
     settings: {
+      seed: 7,
       shape: "icosa",
       motion: "tumble",
       clock: "wall",
@@ -127,7 +132,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 15,
       tint: 0.75,
       colours: 4,
-      seed: 7,
       timescale: 1,
     },
   },
@@ -135,6 +139,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     label: "lava pong",
     hint: "Wax on both ends: tempus with a ceiling hung as deep as its pool, so the lumps rise from one layer into the other and back. Turn the screen on its side and leave it in landscape, and the two layers face each other like paddles.",
     settings: {
+      seed: 271828,
       shape: "icosa",
       motion: "tumble",
       clock: "wall",
@@ -168,7 +173,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 40,
       tint: 0.7,
       colours: 1,
-      seed: 271828,
       timescale: 1,
     },
   },
@@ -176,6 +180,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     label: "calm",
     hint: "Three big lumps, slow to rise and seldom splitting, over a deep pool.",
     settings: {
+      seed: 7,
       shape: "icosa",
       motion: "tumble",
       clock: "wall",
@@ -209,7 +214,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 0,
       tint: 0.7,
       colours: 1,
-      seed: 7,
       timescale: 1,
     },
   },
@@ -217,6 +221,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     label: "fleeting",
     hint: "The lava lamp with the timekeeper there about half the time: it gathers into one blob and sinks into the pool, and later rises out of it and spreads into its corners again.",
     settings: {
+      seed: 7,
       shape: "icosa",
       motion: "tumble",
       clock: "wall",
@@ -250,7 +255,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 40,
       tint: 0.7,
       colours: 1,
-      seed: 7,
       timescale: 1,
     },
   },
@@ -258,6 +262,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
     label: "wax alone",
     hint: "No timekeeper at all: only the wax rising, splitting, gathering and sinking. An art piece and no clock.",
     settings: {
+      seed: 7,
       shape: "icosa",
       motion: "tumble",
       clock: "wall",
@@ -291,7 +296,6 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       hue: 40,
       tint: 0.7,
       colours: 1,
-      seed: 7,
       timescale: 1,
     },
   },

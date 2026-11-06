@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest"
 import { makeCamera, horizonFor } from "@/experiments/crowd/camera"
 import { drawFrame, makeScratch } from "@/experiments/crowd/draw"
 import { PRESETS } from "@/experiments/crowd/presets"
+import { SEEDED } from "./support"
+import { presetWithSeed } from "@/experiments/piece"
 import { encodeScene } from "@/experiments/address"
 import {
   normalizeSettings,
@@ -59,7 +61,7 @@ function fingerprint(settings: Settings): number[] {
 }
 
 const scene = (label: string, patch: Partial<Settings> = {}): Settings => {
-  const preset = PRESETS.find((p) => p.label === label)
+  const preset = SEEDED.find((p) => p.label === label)
   if (!preset) throw new Error(`no preset ${label}`)
   // Small, so a dozen walks stay a second or two each.
   return { ...normalizeSettings({ ...preset.settings, density: 10, reach: 30 }), ...patch }
@@ -138,7 +140,11 @@ describe("normalizing", () => {
   })
 
   it("leaves every preset exactly as written", () => {
-    for (const preset of PRESETS) expect(normalizeSettings(preset.settings), preset.label).toEqual(preset.settings)
+    // Nothing a preset names moves, given any legal seed for one that rolls.
+    for (const preset of PRESETS) {
+      const written = presetWithSeed(preset, 1)
+      expect(normalizeSettings(written), preset.label).toEqual(written)
+    }
   })
 })
 

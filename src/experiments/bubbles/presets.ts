@@ -6,6 +6,7 @@
  * parameter does. The runner never imports this; see
  * `../docs/adr/20260928-a-piece-is-a-library-behind-three-files.md`.
  */
+import type { Preset } from "@/experiments/piece"
 import type { Settings } from "@/experiments/bubbles/settings"
 
 /**
@@ -19,7 +20,7 @@ import type { Settings } from "@/experiments/bubbles/settings"
  * Position one is the primary: a bare address lands on it, the poster is
  * captured from it, and the note reads its backdrop and its hue off it.
  */
-export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
+export const PRESETS: Preset<Settings>[] = [
   {
     label: "standing still",
     hint: "The background flow frozen and the jets deep, so the eddies are a fixed pattern the foam runs through.",
@@ -63,7 +64,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       trail: 0,
       span: 0.9,
       hue: 172,
-      seed: 6180,
+      seed: "roll",
     },
   },
   {
@@ -109,7 +110,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       trail: 0.35,
       span: 1.25,
       hue: 196,
-      seed: 2718,
+      seed: "roll",
     },
   },
   {
@@ -155,7 +156,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       trail: 0,
       span: 0.85,
       hue: 190,
-      seed: 1729,
+      seed: "roll",
     },
   },
   {
@@ -201,7 +202,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       trail: 0,
       span: 0.7,
       hue: 188,
-      seed: 1123,
+      seed: "roll",
     },
   },
   {
@@ -247,7 +248,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       trail: 0.35,
       span: 2.2,
       hue: 196,
-      seed: 2718,
+      seed: "roll",
     },
   },
   {
@@ -293,7 +294,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       trail: 0.35,
       span: 2.2,
       hue: 196,
-      seed: 2718,
+      seed: "roll",
     },
   },
   {
@@ -339,7 +340,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       trail: 0,
       span: 0.85,
       hue: 190,
-      seed: 2027,
+      seed: "roll",
     },
   },
   {
@@ -385,7 +386,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       trail: 0,
       span: 1,
       hue: 198,
-      seed: 4021,
+      seed: "roll",
     },
   },
   {
@@ -431,7 +432,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       trail: 0,
       span: 0.8,
       hue: 184,
-      seed: 3301,
+      seed: "roll",
     },
   },
   {
@@ -477,7 +478,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       trail: 0,
       span: 0.8,
       hue: 206,
-      seed: 911,
+      seed: "roll",
     },
   },
   {
@@ -523,7 +524,7 @@ export const PRESETS: { label: string; hint: string; settings: Settings }[] = [
       trail: 0,
       span: 0.8,
       hue: 186,
-      seed: 1597,
+      seed: "roll",
     },
   },
 ]
