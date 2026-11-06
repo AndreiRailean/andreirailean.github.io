@@ -219,7 +219,24 @@ Read back over the session for anything that exists only in the conversation,
 because the next session cannot read this one. Each item is named to Andrei with
 its capture.
 
-**Start with the signals** — places where how the session worked cost
+**Start with the work that is not finished.** List every piece of work the
+conversation agreed and did not complete: the remaining steps of a plan Andrei
+approved, a "next" or "later" either of you named, a promise, a question parked
+for another time. For each, say where it lives outside the conversation — an
+issue, a PR description, a file here — and file an issue for any that lives
+nowhere else. Read the whole session for these, compaction summaries included,
+not the last request: the plan most likely to be lost was agreed many turns
+back.
+
+**This pass is separate because nothing went wrong.** On 2026-11-06 a wrap-up
+reported seven signals and four findings and never mentioned step 4 of the
+index plates plan — waking plates on hover — which existed nowhere but the
+conversation Andrei was about to clear. He caught it: "the wrap up skill did
+not detect the fact that we had bigger plans and didn't remind me of that." A
+review that hunts for what cost something passes over a plan that is merely
+not done yet. It is #347 now.
+
+**Then the signals** — places where how the session worked cost
 something, which nobody checking whether the work got done will see. Count them
 against what you examined, so the count is checkable:
 
@@ -250,8 +267,9 @@ Issues are part of finishing and need no agreement. Name an ADR, a memory or a
 rule change, and make it once he agrees. A capture made in the repo is a change
 like any other, so after making one, step 4's **Done when** is checked again.
 
-**Done when:** the signals are counted, and every finding and item is captured or
-named in the report with its suggested capture.
+**Done when:** every unfinished item is recorded outside the conversation, the
+signals are counted, and every finding and item is captured or named in the
+report with its suggested capture.
 
 ## The report
 
@@ -272,6 +290,7 @@ background: 0 · astro processes: 0 · preview: stopped | left for review | anot
 open PRs: <numbers and checks, or 0> · main checkout: fast-forwarded to <sha> | untouched, why
 branches deleted: <names> · stash: <n, none mine> · worktrees: <n>
 untracked runners: 0 (or: named but unpublished, listed)
+unfinished: <n> (each → where it is recorded) | none
 signals: <n> (<what was examined, with counts>) · findings: <n>
 not captured: <findings and items from step 5, each with its suggested capture>
 available: 13.3 GB
