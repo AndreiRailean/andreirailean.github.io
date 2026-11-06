@@ -230,8 +230,9 @@ forced is now structural rather than conditional: **a rebuilt piece builds to a
 new filename, so a run adds an untracked file and never modifies a tracked
 one.** `tests/unit/showcase-runners.test.ts` still runs the script and fails if a
 committed file moves, because that would mean a published runner had been
-rewritten — which is the thing that must never happen. An untracked runner
-appearing after a run is ordinary build output, not a change wanting a commit.
+rewritten — which is the thing that must never happen. Builds land in
+`.runners/`, gitignored, so a run leaves nothing in the tree; a new untracked
+runner in the store means something names it and it wants committing.
 
 `BASE_URL` is not a constant. The port is unknown until `globalSetup` has run, so
 it is published as an environment variable that workers read through
