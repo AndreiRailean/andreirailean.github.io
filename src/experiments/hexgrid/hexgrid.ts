@@ -761,6 +761,7 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
   function onResize() {
     size()
     rebuild()
+    loop.repaint()
   }
 
   /** What the mechanisms did, measured off the oldest live pattern and the clock. */
@@ -884,6 +885,7 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
       settings = next
       if (needsRebuild(before, next)) rebuild()
       else for (const p of patterns) p.line = timeline(settings, p.maxSteps)
+      loop.repaint()
     },
     setPaused(on: boolean) {
       loop.setHeld(on)
@@ -900,6 +902,7 @@ export function createHexgrid(canvas: HTMLCanvasElement, initial: Settings) {
     },
     debug(on?: boolean) {
       debug = on ?? !debug
+      loop.repaint()
       return debug
     },
     stats,
