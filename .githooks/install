@@ -1,0 +1,15 @@
+#!/bin/sh
+#
+# Points git at this directory's hooks. Run by `pnpm install` through the
+# `prepare` script, which pnpm runs on a fresh or changed install only, so
+# `pnpm run prepare` reinstalls by hand. tests/unit/pre-push.test.ts fails in a
+# checkout where this has not run.
+#
+# Outside a git work tree (a tarball install) there is nothing to point.
+git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
+
+# core.hooksPath lives in the config every worktree shares, and several
+# worktrees may install at once after a merge. Writing it only when it differs
+# keeps an install from failing on another's config lock.
+[ "$(git config --get core.hooksPath)" = .githooks ] && exit 0
+git config core.hooksPath .githooks

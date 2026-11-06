@@ -1,7 +1,8 @@
 #!/bin/sh
 #
 # Runs the cheap half of CI before a push leaves the machine: formatting,
-# eslint, and the unit tests this branch can affect. About twenty seconds.
+# eslint, and the unit tests this branch can affect. Twenty seconds for a
+# change to one piece, about forty when shared code selects every unit test.
 #
 # Two pushes of #346 went red on CI for a formatting slip and a shared unit
 # check, each costing a CI round trip and a fix-up commit, though a memory and
@@ -9,20 +10,36 @@
 # remembered got forgotten; a hook does not. Typecheck and the browser suite
 # stay CI's: the first has not been what CI caught, the second takes minutes.
 #
-# It checks the working tree, not the commits being pushed, so commit first.
-# Skip it once with `git push --no-verify`.
+# **It checks the working tree**, so it refuses a push it could not check: one
+# sending a commit other than HEAD, or one from a tree with uncommitted changes
+# to tracked files. It tests the branch against its merge base with
+# origin/main, where CI tests the merge with main, so a check that breaks only
+# once combined with newer main still reaches CI. Skip it once with
+# `git push --no-verify`.
 #
-# Installed by `pnpm install`: the `prepare` script points core.hooksPath at
-# this directory, and tests/unit/pre-push.test.ts holds that wiring.
+# Installed by `.githooks/install`, which `pnpm install` runs.
+# tests/unit/pre-push.test.ts runs this file against a stub pnpm.
 
-# A push that only deletes branches sends no commits, so there is nothing to check.
+head=$(git rev-parse HEAD)
 pushes_commits=no
 while read -r _local_ref local_sha _remote_ref _remote_sha; do
+  # A deletion sends no commits, so there is nothing to check.
   case "$local_sha" in
-    *[!0]*) pushes_commits=yes ;;
+    *[!0]*) ;;
+    *) continue ;;
   esac
+  pushes_commits=yes
+  if [ "$local_sha" != "$head" ]; then
+    echo "pre-push: this push sends $local_sha, which is not HEAD, and the checks run on the working tree. Push it from its own worktree, or skip with --no-verify." >&2
+    exit 1
+  fi
 done
 [ "$pushes_commits" = yes ] || exit 0
+
+if ! git diff --quiet HEAD --; then
+  echo "pre-push: tracked files have uncommitted changes, so the checks would not see what is being pushed. Commit or set them aside first, or skip with --no-verify." >&2
+  exit 1
+fi
 
 echo "pre-push: prettier, eslint and the affected unit tests (skip once with git push --no-verify)" >&2
 pnpm run --silent prettier || exit 1
