@@ -1422,6 +1422,12 @@ export const CHROME: Chrome<Settings> = {
       shortcut: "a",
       verb: "clear",
     },
+    {
+      label: "svg",
+      hint: "Save what is on screen as an SVG in black on white, for printing or for drawing programs.",
+      shortcut: "s",
+      verb: "svg",
+    },
   ],
   hatches: { settle: "seconds", debug: "flag" },
   banner: [
@@ -1434,6 +1440,7 @@ export const CHROME: Chrome<Settings> = {
     ["experiment.settle(10)", "jump forward by seconds"],
     ["experiment.clear()", "start again from the bottom (or press a)"],
     ["experiment.debug(true)", "mark tips and the centre line"],
+    ["experiment.svg()", "save what is on screen as black-on-white SVG (or press s)"],
     ["experiment.panel(true)", "open the settings panel"],
     ["experiment.pause()", "hold where it is"],
     ["experiment.fullscreen()", "toggle fullscreen (or press f)"],

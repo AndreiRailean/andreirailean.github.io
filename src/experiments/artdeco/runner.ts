@@ -11,6 +11,7 @@ import { decodeScene } from "@/experiments/address"
 import type { Live, PieceApi } from "@/experiments/piece"
 import { createArtdeco } from "@/experiments/artdeco/artdeco"
 import { normalizeSettings, REGISTRY, type Settings } from "@/experiments/artdeco/settings"
+import { saveFile } from "@/experiments/artdeco/svg"
 
 export type Mounted = {
   setScene: (scene: string) => void
@@ -30,9 +31,13 @@ function read(scene: string): Settings {
 export function start(canvas: HTMLCanvasElement, settings: Settings) {
   const scene = createArtdeco(canvas, settings)
   scene.start()
+  let seed = settings.seed
 
   return {
-    setSettings: scene.setSettings,
+    setSettings: (next: Settings) => {
+      seed = next.seed
+      scene.setSettings(next)
+    },
     setPaused: scene.setPaused,
     stats: scene.stats,
     destroy: scene.stop,
@@ -40,6 +45,21 @@ export function start(canvas: HTMLCanvasElement, settings: Settings) {
       settle: (seconds: number) => scene.settle(settleSeconds(seconds)),
       clear: () => scene.clear(),
       debug: (on?: boolean) => scene.debug(on),
+      /** Saves what is on screen as black-on-white SVG, and returns the file's name. */
+      svg: () => {
+        const name = `artdeco-${seed}.svg`
+        const date = new Date().toISOString()
+        const about = {
+          generator: "www.andrei.md",
+          title: `Art Deco, seed ${seed}`,
+          // The address bar holds the scene, so it is the link that reproduces it.
+          description: `Saved from Art Deco, an experiment at www.andrei.md, on ${date.slice(0, 10)}. The scene: ${location.href}`,
+          source: location.href,
+          date,
+        }
+        saveFile(name, scene.svg(about), "image/svg+xml")
+        return name
+      },
     },
   } satisfies Live<Settings>
 }

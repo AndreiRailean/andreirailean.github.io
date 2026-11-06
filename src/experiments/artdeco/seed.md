@@ -185,6 +185,18 @@ On recording looping reels with framestep (#329):
 > together at the blank point so it's not as obvious that we're just looping -
 > we are but there are multiple pieces shown - say a loop of 3x 5second pieces.
 
+## 2026-11-06 — prints
+
+> we have built some beautiful experiments together. i look at some and am
+> wondering what it would take to make prints of some. artdeco in particular
+> invites some sort of capture. i can pause and screenshot, but what if I want
+> dark lines on white background for regular printing without using too much
+> ink. or if I want vector output so I can import it into other programs.
+
+> an SVG would suit. pen plotter is not planned yet. maybe 3d printer, but
+> that's a separate (later) consideration. pure black lines for bw laser
+> printer.
+
 ## Open questions
 
 _Mine, not his — what I assumed and what would settle it._
