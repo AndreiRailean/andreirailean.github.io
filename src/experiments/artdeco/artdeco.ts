@@ -51,6 +51,7 @@ import { context2d, fitCanvas } from "@/experiments/simulation/canvas"
 import { hashSeed, makeRng, type Rng } from "@/experiments/random"
 import { distance, enter, inside, outline, type Point, type Shape } from "@/experiments/artdeco/frame"
 import { needsRebuild, type Mark, type Settings } from "@/experiments/artdeco/settings"
+import { SvgContext } from "@/experiments/artdeco/svg"
 
 type Kind = "straight" | "branch" | "fork" | "turn" | "echo" | "stop"
 const KINDS: Kind[] = ["straight", "branch", "fork", "turn", "echo", "stop"]
@@ -242,8 +243,13 @@ const emptyMeetings = () => ({ line: 0, mirror: 0, axis: 0, halo: 0, edge: 0, fr
 const emptyChoices = (): Record<Choice, number> => ({ stop: 0, cross: 0, rebound: 0 })
 
 export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
-  const context = context2d(canvas, "artdeco")
-  const ctx = context
+  const screen = context2d(canvas, "artdeco")
+  /** The screen's context, except while `svg()` hands `draw()` a recorder instead. */
+  let ctx: CanvasRenderingContext2D = screen
+  /** Black ink on white paper, for `svg()`: the screen's two colours are swapped for these. */
+  let paper = false
+  const ink = () => (paper ? "#000" : `hsl(${settings.hue} 62% 64%)`)
+  const ground = () => (paper ? "#fff" : `hsl(${settings.hue} 22% 4%)`)
 
   let settings = initial
   let width = 0
@@ -1549,9 +1555,10 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
   function draw() {
     const hue = settings.hue
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    if (settings.backdrop === "clear") ctx.clearRect(0, 0, width, height)
+    // Paper is the ground, so nothing is painted under a print.
+    if (paper || settings.backdrop === "clear") ctx.clearRect(0, 0, width, height)
     else {
-      ctx.fillStyle = `hsl(${hue} 22% 4%)`
+      ctx.fillStyle = ground()
       ctx.fillRect(0, 0, width, height)
     }
     // Nothing is drawn in the empty middle: a turned copy or a circle can carry
@@ -1568,7 +1575,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     }
     const cx = centre()
     ctx.lineCap = "square"
-    ctx.strokeStyle = `hsl(${hue} 62% 64%)`
+    ctx.strokeStyle = ink()
     const byGen = new Map<number, { seg: Seg; tree: Tree; tail: number }[]>()
     for (const tree of trees)
       for (const seg of tree.segs) {
@@ -1638,7 +1645,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     }
     if (settings.tipSize > 0) {
       // The tips themselves, lifted or drawing, as dots on every image.
-      ctx.fillStyle = `hsl(${hue} 62% 64%)`
+      ctx.fillStyle = ink()
       ctx.beginPath()
       for (const tree of trees)
         for (const head of tree.heads) {
@@ -1660,7 +1667,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
       // lines that rebound off it then read as meeting it.
       ctx.lineWidth = settings.width
       ctx.lineJoin = "miter"
-      ctx.strokeStyle = `hsl(${hue} 62% 64%)`
+      ctx.strokeStyle = ink()
       ctx.beginPath()
       trace(poly)
       ctx.stroke()
@@ -1760,9 +1767,9 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
     if (how !== "ring") {
       // A disc is there whole or not at all, so it grows and shrinks with the outline instead.
       const share = Math.min(to, Math.PI - from) / Math.PI
-      ctx.fillStyle = how === "solid" ? `hsl(${settings.hue} 62% 64%)` : `hsl(${settings.hue} 22% 4%)`
-      // On a clear backdrop a cutout cuts through to whatever is behind.
-      if (how === "cutout" && settings.backdrop === "clear") ctx.globalCompositeOperation = "destination-out"
+      ctx.fillStyle = how === "solid" ? ink() : ground()
+      // On a clear backdrop a cutout cuts through to whatever is behind; on paper it is paper.
+      if (how === "cutout" && settings.backdrop === "clear" && !paper) ctx.globalCompositeOperation = "destination-out"
       ctx.beginPath()
       for (const [ox, oy] of at) {
         ctx.moveTo(ox + r * share, oy)
@@ -1864,6 +1871,25 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
       debug = on ?? !debug
       draw()
       return debug
+    },
+    /**
+     * What is on screen now, as SVG: the same `draw()` into a recorder, in
+     * black on white paper, without the debug marks. Changes nothing on screen.
+     */
+    svg(): string {
+      const recorder = new SvgContext(width, height)
+      const was = debug
+      ctx = recorder as unknown as CanvasRenderingContext2D
+      paper = true
+      debug = false
+      try {
+        draw()
+      } finally {
+        ctx = screen
+        paper = false
+        debug = was
+      }
+      return recorder.toString()
     },
     stats(): Stats {
       return {
