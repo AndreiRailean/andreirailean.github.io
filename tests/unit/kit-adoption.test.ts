@@ -313,11 +313,7 @@ describe.each(slugs)("%s presets", (slug) => {
 
     for (const preset of presets) {
       const named = new Set(keysOf(preset.body))
-      // Except `seed`, which a preset leaves out to have a fresh arrangement
-      // rolled on every load and names only to pin one
-      // (`src/experiments/docs/adr/20261106-a-preset-names-a-look-not-an-arrangement.md`).
-      // So one pinned preset must not make every other one "missing" a seed.
-      const missing = [...expected].filter((key) => key !== "seed" && !named.has(key))
+      const missing = [...expected].filter((key) => !named.has(key))
       expect(
         missing,
         `${slug}'s "${preset.label}" preset does not state ${missing.join(", ")}, so it takes ` +

@@ -16,7 +16,7 @@ import {
 import { PRESETS } from "@/experiments/flotsam/presets"
 import { keysOf, positionOf, valueAtPosition } from "@/experiments/kit/controls"
 import * as module from "@/experiments/flotsam/settings"
-import { settingsForLanding as landing } from "@/experiments/piece"
+import { settingsForLanding as landing, presetWithSeed } from "@/experiments/piece"
 
 /** The landing rule as the gallery's boot applies it to this piece. */
 const settingsForLanding = (params: URLSearchParams) => landing(module, PRESETS, params)
@@ -41,10 +41,11 @@ describe("bounds", () => {
   })
 
   it("keeps every default and every preset inside its own bounds", () => {
-    for (const { label, settings } of [{ label: "defaults", settings: DEFAULT_SETTINGS }, ...PRESETS]) {
-      // The validator changes nothing a preset names; a preset leaves its seed
-      // out, and the validator fills that in.
-      expect(normalizeSettings(settings), label).toMatchObject(settings)
+    const written = PRESETS.map((preset) => ({ label: preset.label, settings: presetWithSeed(preset, 1) }))
+    for (const { label, settings } of [{ label: "defaults", settings: DEFAULT_SETTINGS }, ...written]) {
+      // The validator changes nothing a preset names, given any legal seed
+      // for one that rolls.
+      expect(normalizeSettings(settings), label).toEqual(settings)
     }
   })
 })
@@ -124,8 +125,9 @@ describe("landing", () => {
   it("shows the first preset for a bare URL, and says the address should be rewritten", () => {
     const landing = settingsForLanding(new URLSearchParams(""))
     expect(landing.featured).toBe(true)
-    // Matched rather than equal: the seed is rolled, not the preset's.
-    expect(landing.settings).toMatchObject(PRESETS[0]!.settings)
+    // The primary rolls its seed, so the scene is the preset with whichever
+    // seed it rolled.
+    expect(landing.settings).toEqual(presetWithSeed(PRESETS[0]!, landing.settings.seed))
   })
 
   it("leaves a URL that names a setting alone", () => {

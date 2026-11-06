@@ -439,15 +439,15 @@ test("an action runs from its button and its key, and reroll moves the seed and 
 })
 
 /**
- * A preset that names no seed is applied through the piece's roll on every
+ * A preset whose seed is "roll" is applied through the piece's roll on every
  * route, and still lights. `docs/adr/20261106-a-preset-names-a-look-not-an-arrangement.md`
  * in the experiments section.
  *
- * The fixture's twelfth preset names no seed and its eleventh pins the default.
+ * The fixture's twelfth preset rolls its seed and its eleventh pins the default.
  * The fixture's `reroll` steps the seed by one, so a route that skips the roll
  * lands the twelfth on the eleventh's seed, and this fails.
  */
-test("a preset with no seed rolls one on every route, and still lights", async ({ page }) => {
+test("a preset whose seed is roll rolls one on every route, and still lights", async ({ page }) => {
   const experiment = await openKit(page, { idle: false })
   const buttons = page.locator("#ui .presets .preset")
 

@@ -64,6 +64,7 @@ export const PRESETS: Preset<Settings>[] = [
       trail: 0,
       span: 0.9,
       hue: 172,
+      seed: "roll",
     },
   },
   {
@@ -109,6 +110,7 @@ export const PRESETS: Preset<Settings>[] = [
       trail: 0.35,
       span: 1.25,
       hue: 196,
+      seed: "roll",
     },
   },
   {
@@ -154,6 +156,7 @@ export const PRESETS: Preset<Settings>[] = [
       trail: 0,
       span: 0.85,
       hue: 190,
+      seed: "roll",
     },
   },
   {
@@ -199,6 +202,7 @@ export const PRESETS: Preset<Settings>[] = [
       trail: 0,
       span: 0.7,
       hue: 188,
+      seed: "roll",
     },
   },
   {
@@ -244,6 +248,7 @@ export const PRESETS: Preset<Settings>[] = [
       trail: 0.35,
       span: 2.2,
       hue: 196,
+      seed: "roll",
     },
   },
   {
@@ -289,6 +294,7 @@ export const PRESETS: Preset<Settings>[] = [
       trail: 0.35,
       span: 2.2,
       hue: 196,
+      seed: "roll",
     },
   },
   {
@@ -334,6 +340,7 @@ export const PRESETS: Preset<Settings>[] = [
       trail: 0,
       span: 0.85,
       hue: 190,
+      seed: "roll",
     },
   },
   {
@@ -379,6 +386,7 @@ export const PRESETS: Preset<Settings>[] = [
       trail: 0,
       span: 1,
       hue: 198,
+      seed: "roll",
     },
   },
   {
@@ -424,6 +432,7 @@ export const PRESETS: Preset<Settings>[] = [
       trail: 0,
       span: 0.8,
       hue: 184,
+      seed: "roll",
     },
   },
   {
@@ -469,6 +478,7 @@ export const PRESETS: Preset<Settings>[] = [
       trail: 0,
       span: 0.8,
       hue: 206,
+      seed: "roll",
     },
   },
   {
@@ -514,6 +524,7 @@ export const PRESETS: Preset<Settings>[] = [
       trail: 0,
       span: 0.8,
       hue: 186,
+      seed: "roll",
     },
   },
 ]

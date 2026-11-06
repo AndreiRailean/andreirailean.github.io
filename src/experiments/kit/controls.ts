@@ -1,4 +1,5 @@
 import { copyText } from "@/experiments/kit/copy"
+import { presetAsWritten, rollsSeed, type ROLL } from "@/experiments/kit/preset"
 import { toggleFullscreen } from "@/experiments/kit/fullscreen"
 import { PLAYBACK_GROUP } from "@/experiments/kit/speed"
 
@@ -287,16 +288,20 @@ export function valueAtPosition(track: Track, position: number): number {
 }
 
 /**
- * A preset's settings: every setting, except that the seed may be left out.
+ * A preset's settings: every setting, with a seed that is either pinned or
+ * `"roll"`.
  *
- * **A preset names a look, not an arrangement.** Left without a seed, a preset
- * gets a fresh one each time it is applied, so the same look comes up arranged
- * differently on every load. Andrei: "what can we do to make them look
- * different on each load?" Naming a seed pins one arrangement, which is for a
- * preset whose point is that particular arrangement. The address always
- * carries the seed in use, so a copied link still reproduces the screen.
+ * **Every preset says which, and none is assumed.** `"roll"` gets a fresh seed
+ * each time the preset is applied, so the same look comes up arranged
+ * differently on every load and every click: the preset names a look. Andrei:
+ * "what can we do to make them look different on each load?" A number pins one
+ * arrangement, for a preset whose point is that arrangement, and he asked for
+ * the choice to be written down rather than implied by a missing key: "it may
+ * not always be desired to have all presets pick a random seed. and there are
+ * times when pegging a seed is the desired state." The address always carries
+ * the seed in use, so a copied link still reproduces the screen.
  */
-export type PresetSettings<S> = Omit<S, "seed"> & { seed?: number }
+export type PresetSettings<S> = S extends { seed: number } ? Omit<S, "seed"> & { seed: number | typeof ROLL } : S
 
 export type Preset<S> = { label: string; hint: string; settings: PresetSettings<S> }
 
@@ -358,8 +363,9 @@ export type Options<S extends object> = {
   presets: Preset<S>[]
   /**
    * Turns a preset into the scene it applies: the piece's validator, plus a
-   * fresh seed where the preset names none and the piece rerolls. Omitted, a
-   * preset is applied as written. `boot.ts` passes `sceneFromPreset`.
+   * fresh seed where the preset's seed is `"roll"`. Omitted, a preset is
+   * applied as written, and one that rolls throws. `boot.ts` passes
+   * `sceneFromPreset`.
    */
   fromPreset?: (preset: Preset<S>) => S
   /**
@@ -519,9 +525,7 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     },
   ]
   const chrome = options.chrome ?? true
-  // A preset without a seed is one key short of `S`; the piece's validator
-  // fills it, as it fills anything an address leaves out.
-  const fromPreset = options.fromPreset ?? ((preset: Preset<S>) => normalize({ ...preset.settings } as S))
+  const fromPreset = options.fromPreset ?? ((preset: Preset<S>) => presetAsWritten(normalize, preset))
 
   let current: S = { ...options.settings }
   let panelOpen = false
@@ -1069,10 +1073,10 @@ export function createControls<S extends object>(options: Options<S>): Controls<
     }
 
     matching = presets.findIndex((preset) =>
-      // Over the keys the preset names, so a preset that leaves its seed to be
-      // rolled still lights up for every arrangement it rolls.
-      (Object.keys(preset.settings) as (keyof S)[]).every((key) =>
-        sameValue((preset.settings as Partial<S>)[key], current[key]),
+      // Over every key but a rolled seed, so a preset that rolls still lights
+      // up for every arrangement it rolls.
+      (Object.keys(preset.settings) as (keyof S)[]).every(
+        (key) => (key === "seed" && rollsSeed(preset)) || sameValue((preset.settings as Partial<S>)[key], current[key]),
       ),
     )
 

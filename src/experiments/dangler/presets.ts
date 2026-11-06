@@ -23,6 +23,7 @@ export const PRESETS: Preset<Settings>[] = [
     label: "dreamy",
     hint: "Six arms of long, all but limp strands in cold blue, falling past you, everything barely moving.",
     settings: {
+      seed: "roll",
       strands: 52,
       beads: 9,
       segments: 34,
@@ -63,6 +64,7 @@ export const PRESETS: Preset<Settings>[] = [
     label: "together",
     hint: "A tight low cluster, strands plumb and plunging past you, all of it moving.",
     settings: {
+      seed: "roll",
       strands: 50,
       beads: 4,
       segments: 20,
@@ -104,6 +106,7 @@ export const PRESETS: Preset<Settings>[] = [
     label: "frantic",
     hint: "Fifty-one short strands crammed almost overhead, hot pink through green, hit hard and often.",
     settings: {
+      seed: "roll",
       strands: 51,
       beads: 4,
       segments: 20,

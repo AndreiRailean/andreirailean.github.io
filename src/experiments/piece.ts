@@ -1,5 +1,6 @@
 import type { BaseApi, ControlReport } from "@/experiments/kit/api"
 import type { GovernedGroup, Preset } from "@/experiments/kit/controls"
+import { presetAsWritten, rollsSeed } from "@/experiments/kit/preset"
 
 /**
  * The contract between a piece and the frame it runs in: a shape, not a base
@@ -116,11 +117,11 @@ export type SettingsModule<S extends object> = {
 }
 
 export type { Preset, PresetSettings } from "@/experiments/kit/controls"
+export { ROLL, presetWithSeed } from "@/experiments/kit/preset"
 
 /**
  * The scene a preset applies: validated, and given a fresh seed when the
- * preset names none and the piece rerolls. See `PresetSettings` for why a
- * preset leaves its seed out.
+ * preset's seed is `"roll"`. See `PresetSettings` for when a preset rolls.
  *
  * The one place this happens, so the landing, the bar, the keys, the console
  * and the index's plates cannot come to disagree about it.
@@ -129,9 +130,12 @@ export function sceneFromPreset<S extends object>(
   module: Pick<SettingsModule<S>, "normalizeSettings" | "reroll">,
   preset: Preset<S>,
 ): S {
-  const scene = module.normalizeSettings({ ...preset.settings } as Partial<S>)
-  if (!module.reroll || preset.settings.seed !== undefined) return scene
-  return module.normalizeSettings(module.reroll(scene))
+  if (!rollsSeed(preset)) return presetAsWritten(module.normalizeSettings, preset)
+  if (!module.reroll)
+    throw new Error(`Preset ${JSON.stringify(preset.label)} rolls its seed, and its piece cannot reroll.`)
+  const rest: Record<string, unknown> = { ...preset.settings }
+  delete rest.seed
+  return module.normalizeSettings(module.reroll(module.normalizeSettings(rest as Partial<S>)))
 }
 
 /**

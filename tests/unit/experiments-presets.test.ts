@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 import { optsOutOf, optsOutOfFile } from "./opt-out.ts"
 import { pieces } from "../support/pieces.ts"
-import { sceneFromPreset } from "../../src/experiments/piece.ts"
+import { ROLL, sceneFromPreset } from "../../src/experiments/piece.ts"
 
 /**
  * Whether every preset still carries a hue the presentation surfaces can use.
@@ -95,13 +95,13 @@ it("finds the experiments, so an empty run cannot pass for a clean one", () => {
   expect(slugs.length).toBeGreaterThan(0)
 })
 
-// The per-piece check below returns early for a piece that cannot reroll or
-// whose primary pins a seed, so on its own it would pass if every piece did.
+// The per-piece check below returns early for a piece whose primary pins a
+// seed, so on its own it would pass if every piece did.
 it("finds pieces whose landing rolls a seed, so the fresh-arrangement check is not empty", async () => {
   const rolling = []
   for (const slug of slugs) {
     const { PRESETS, reroll } = await settingsModule(slug)
-    if (reroll && PRESETS?.[0] && !("seed" in PRESETS[0].settings)) rolling.push(slug)
+    if (reroll && PRESETS?.[0] && PRESETS[0].settings.seed === ROLL) rolling.push(slug)
   }
   expect(rolling.length).toBeGreaterThan(0)
 })
@@ -179,14 +179,14 @@ describe.each(slugs)("%s", (slug) => {
     }
     expect(PRESETS.length, `${slug} has no presets`).toBeGreaterThan(0)
 
-    // Every setting but the seed, which a preset may leave out to have a fresh
-    // arrangement rolled each time it is applied (`PresetSettings`, in
-    // `kit/controls.ts`), or name to pin one.
+    // Every setting, the seed included: a preset says whether it pins one or
+    // rolls a fresh one each time it is applied, and nothing is assumed for it
+    // (`PresetSettings`, in `kit/controls.ts`).
     const keys = Object.keys(DEFAULT_SETTINGS).sort()
     for (const { label, settings } of PRESETS) {
-      const named = "seed" in settings ? keys : keys.filter((key) => key !== "seed")
-      expect(Object.keys(settings).sort(), `${slug}'s "${label}" does not name every setting`).toEqual(named)
-      expect(normalizeSettings(settings), `${slug}'s "${label}" is not already normal`).toMatchObject(settings)
+      expect(Object.keys(settings).sort(), `${slug}'s "${label}" does not name every setting`).toEqual(keys)
+      const written = settings.seed === ROLL ? { ...settings, seed: DEFAULT_SETTINGS.seed } : settings
+      expect(normalizeSettings(written), `${slug}'s "${label}" is not already normal`).toEqual(written)
     }
   })
 
@@ -194,17 +194,17 @@ describe.each(slugs)("%s", (slug) => {
    * Andrei: "i see that posters always look exactly the same on each page
    * load… what can we do to make them look different on each load?" A bare
    * address, a preset button and an index plate all go through
-   * `sceneFromPreset`, which rolls a seed for a preset that names none.
+   * `sceneFromPreset`, which rolls a seed for a preset whose seed is `"roll"`.
    *
-   * The presence half of the check above, which only says a preset *may* leave
-   * its seed out: here, a piece that rerolls really does land somewhere new.
+   * The presence half of the check above, which only says a preset *may* roll:
+   * here, a piece whose primary rolls really does land somewhere new.
    * Three landings rather than two, so one coincidence in a range of hundreds
    * of thousands cannot fail it.
    */
-  it("lands on a fresh arrangement each time, where it rerolls and the primary pins no seed", async () => {
+  it("lands on a fresh arrangement each time, where its primary rolls", async () => {
     const { PRESETS, normalizeSettings, reroll } = await settingsModule(slug)
     const primary = PRESETS?.[0]
-    if (!reroll || !normalizeSettings || !primary || "seed" in primary.settings) return
+    if (!normalizeSettings || !primary || primary.settings.seed !== ROLL) return
     const module = { normalizeSettings, reroll } as Parameters<typeof sceneFromPreset>[0]
     const seeds = new Set([0, 1, 2].map(() => (sceneFromPreset(module, primary as never) as { seed: number }).seed))
     expect(seeds.size, `${slug} landed on the same seed three times`).toBeGreaterThan(1)

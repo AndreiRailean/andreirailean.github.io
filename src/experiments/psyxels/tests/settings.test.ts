@@ -23,7 +23,7 @@ import { LOCAL_PORTRAIT, TEXT_BYTES } from "@/experiments/psyxels/subject"
 import { encodeScene, type Slot } from "@/experiments/address"
 import type { GlyphName } from "@/experiments/psyxels/glyphs"
 import * as module from "@/experiments/psyxels/settings"
-import { settingsForLanding as landing } from "@/experiments/piece"
+import { settingsForLanding as landing, presetWithSeed } from "@/experiments/piece"
 
 /** The landing rule as the gallery's boot applies it to this piece. */
 const settingsForLanding = (params: URLSearchParams) => landing(module, PRESETS, params)
@@ -56,10 +56,11 @@ describe("bounds", () => {
   })
 
   it("keeps every default and every preset inside its own bounds", () => {
-    for (const { label, settings } of [{ label: "defaults", settings: DEFAULT_SETTINGS }, ...PRESETS]) {
-      // The validator changes nothing a preset names; a preset leaves its seed
-      // out, and the validator fills that in.
-      expect(normalizeSettings(settings), label).toMatchObject(settings)
+    const written = PRESETS.map((preset) => ({ label: preset.label, settings: presetWithSeed(preset, 1) }))
+    for (const { label, settings } of [{ label: "defaults", settings: DEFAULT_SETTINGS }, ...written]) {
+      // The validator changes nothing a preset names, given any legal seed
+      // for one that rolls.
+      expect(normalizeSettings(settings), label).toEqual(settings)
     }
   })
 })
@@ -203,7 +204,7 @@ describe("the query string", () => {
     // states the whole scene, and the packed form states it without spelling it.
     // See `../../src/experiments/docs/adr/20260906-an-address-is-packed-not-readable.md`.
     expect(settingsFromQuery(settingsToQuery(DEFAULT_SETTINGS))).toEqual(DEFAULT_SETTINGS)
-    const third = normalizeSettings(PRESETS[2]!.settings)
+    const third = normalizeSettings(presetWithSeed(PRESETS[2]!, 1))
     expect(settingsFromQuery(settingsToQuery(third))).toEqual(third)
     expect(urlForSettings(DEFAULT_SETTINGS, "/experiments/psyxels/")).toContain("?")
   })
@@ -244,8 +245,9 @@ describe("the query string", () => {
   it("lands on the featured scene only when the address names nothing", () => {
     const bare = settingsForLanding(new URLSearchParams(""))
     expect(bare.featured).toBe(true)
-    // Matched rather than equal: the seed is rolled, not the preset's.
-    expect(bare.settings).toMatchObject(PRESETS[0]!.settings)
+    // The primary rolls its seed, so the scene is the preset with whichever
+    // seed it rolled.
+    expect(bare.settings).toEqual(presetWithSeed(PRESETS[0]!, bare.settings.seed))
 
     expect(settingsForLanding(new URLSearchParams("hue=200")).featured).toBe(false)
     expect(settingsForLanding(new URLSearchParams("subject=avatar")).featured).toBe(false)
@@ -269,8 +271,8 @@ describe("the presets", () => {
    * sliders should stay the scene they found.
    */
   it("each state every setting, so none can drift when another is retuned", () => {
-    // Every setting but the seed, which a preset leaves to be rolled.
-    const keys = Object.keys(DEFAULT_SETTINGS).filter((key) => key !== "seed")
+    // The seed too, which each preset pins or sets to "roll".
+    const keys = Object.keys(DEFAULT_SETTINGS)
     for (const { label, settings } of PRESETS) {
       expect(Object.keys(settings).sort(), label).toEqual([...keys].sort())
     }
@@ -279,10 +281,10 @@ describe("the presets", () => {
   it("does not privilege the first: it is what a bare address lands on and nothing else", () => {
     const landing = settingsForLanding(new URLSearchParams(""))
     expect(landing.featured).toBe(true)
-    expect(landing.settings).toMatchObject(PRESETS[0]!.settings)
+    expect(landing.settings).toEqual(presetWithSeed(PRESETS[0]!, landing.settings.seed))
     // And the address it rewrites to carries that scene in full rather than
     // standing for "whatever is first".
-    const primary = normalizeSettings(PRESETS[0]!.settings)
+    const primary = normalizeSettings(presetWithSeed(PRESETS[0]!, 1))
     expect(settingsFromQuery(settingsToQuery(primary))).toEqual(primary)
   })
 })

@@ -29,7 +29,7 @@
  */
 import { decodeScene, encodeScene, withinBytes, type Slot } from "@/experiments/address"
 import { snapToGrid, type Control, type Track } from "@/experiments/kit/controls"
-import type { Preset } from "@/experiments/piece"
+import { ROLL, type Preset } from "@/experiments/piece"
 
 export const MODES = ["one", "two", "three"] as const
 export const ROUTES = ["near", "far", "around", "through"] as const
@@ -267,7 +267,7 @@ export function reroll(settings: Settings, seed?: number): Settings {
   return { ...settings, seed: seed ?? (settings.seed % 999_999) + 1 }
 }
 
-/** The fixture preset that names no seed: the last, which has no digit key. */
+/** The fixture preset that rolls its seed: the last, which has no digit key. */
 export const ROLLED = 11
 
 /**
@@ -286,13 +286,11 @@ export const PRESETS: Preset<Settings>[] = Array.from({ length: 12 }, (_, index)
     layer: index % 3 === 2,
     span: [1, 0.5, 20][index % 3],
   })
-  // The last leaves its seed out, as a real piece's presets do, so applying it
-  // goes through the roll. The rest pin one, which is the other path.
-  const unseeded: Partial<Settings> = { ...settings }
-  delete unseeded.seed
+  // The last rolls its seed, as most of a real piece's presets do, so applying
+  // it goes through the roll. The rest pin one, which is the other path.
   return {
     label: `scene ${index + 1}`,
     hint: `Synthetic scene ${index + 1}.`,
-    settings: (index === ROLLED ? unseeded : settings) as Preset<Settings>["settings"],
+    settings: index === ROLLED ? { ...settings, seed: ROLL } : settings,
   }
 })

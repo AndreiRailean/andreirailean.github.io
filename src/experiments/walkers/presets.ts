@@ -47,6 +47,7 @@ export const PRESETS: Preset<Settings>[] = [
       spread: 78,
       pastel: 1,
       timescale: 0.65,
+      seed: "roll",
     },
   },
   {
@@ -75,6 +76,7 @@ export const PRESETS: Preset<Settings>[] = [
       spread: 108,
       pastel: 1,
       timescale: 1,
+      seed: "roll",
     },
   },
   {
@@ -103,6 +105,7 @@ export const PRESETS: Preset<Settings>[] = [
       spread: 120,
       pastel: 1,
       timescale: 1,
+      seed: "roll",
     },
   },
 ]

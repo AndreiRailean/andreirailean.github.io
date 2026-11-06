@@ -1,4 +1,5 @@
 import { keysOf, type Control, type Controls, type Preset } from "@/experiments/kit/controls"
+import { presetAsWritten } from "@/experiments/kit/preset"
 import { setFullscreen, toggleFullscreen } from "@/experiments/kit/fullscreen"
 import type { WakeLock } from "@/experiments/kit/wakelock"
 
@@ -230,7 +231,7 @@ export function createBaseApi<S>({
   scene,
   presets,
   normalize,
-  fromPreset = (preset) => normalize({ ...preset.settings } as Partial<S>),
+  fromPreset = (preset) => presetAsWritten(normalize, preset),
   fromQuery,
 }: BaseApiOptions<S>): BaseApi<S> {
   // Held here rather than read back off the scene: whether a piece is paused is

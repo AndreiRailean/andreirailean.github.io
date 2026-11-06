@@ -73,6 +73,7 @@ export const PRESETS: Preset<Settings>[] = [
       hue: 0,
       tint: 0,
       timescale: 1,
+      seed: "roll",
     },
   },
   {
@@ -126,6 +127,7 @@ export const PRESETS: Preset<Settings>[] = [
       hue: 208,
       tint: 0,
       timescale: 1,
+      seed: "roll",
     },
   },
   {
@@ -179,6 +181,7 @@ export const PRESETS: Preset<Settings>[] = [
       hue: 196,
       tint: 0,
       timescale: 1,
+      seed: "roll",
     },
   },
   {
@@ -232,6 +235,7 @@ export const PRESETS: Preset<Settings>[] = [
       hue: 222,
       tint: 0,
       timescale: 1,
+      seed: "roll",
     },
   },
   {
@@ -285,6 +289,7 @@ export const PRESETS: Preset<Settings>[] = [
       hue: 200,
       tint: 0,
       timescale: 1,
+      seed: "roll",
     },
   },
   {
@@ -338,6 +343,7 @@ export const PRESETS: Preset<Settings>[] = [
       hue: 202,
       tint: 0,
       timescale: 1,
+      seed: "roll",
     },
   },
   {
@@ -391,6 +397,7 @@ export const PRESETS: Preset<Settings>[] = [
       hue: 216,
       tint: 0,
       timescale: 1,
+      seed: "roll",
     },
   },
   {
@@ -444,6 +451,7 @@ export const PRESETS: Preset<Settings>[] = [
       hue: 28,
       tint: 0,
       timescale: 1,
+      seed: "roll",
     },
   },
   {
@@ -497,6 +505,7 @@ export const PRESETS: Preset<Settings>[] = [
       hue: 140,
       tint: 0,
       timescale: 1,
+      seed: "roll",
     },
   },
   {
@@ -550,6 +559,7 @@ export const PRESETS: Preset<Settings>[] = [
       hue: 100,
       tint: 0,
       timescale: 1,
+      seed: "roll",
     },
   },
   {
@@ -603,6 +613,7 @@ export const PRESETS: Preset<Settings>[] = [
       hue: 160,
       tint: 0,
       timescale: 1,
+      seed: "roll",
     },
   },
   {
@@ -656,6 +667,7 @@ export const PRESETS: Preset<Settings>[] = [
       hue: 10,
       tint: 0,
       timescale: 1,
+      seed: "roll",
     },
   },
   {
@@ -709,6 +721,7 @@ export const PRESETS: Preset<Settings>[] = [
       hue: 120,
       tint: 0,
       timescale: 1,
+      seed: "roll",
     },
   },
   {
@@ -762,6 +775,7 @@ export const PRESETS: Preset<Settings>[] = [
       hue: 40,
       tint: 0,
       timescale: 1,
+      seed: "roll",
     },
   },
   {
@@ -815,6 +829,7 @@ export const PRESETS: Preset<Settings>[] = [
       hue: 40,
       tint: 0,
       timescale: 1,
+      seed: "roll",
     },
   },
   {
@@ -868,6 +883,7 @@ export const PRESETS: Preset<Settings>[] = [
       hue: 208,
       tint: 0,
       timescale: 1,
+      seed: "roll",
     },
   },
   {
@@ -921,6 +937,7 @@ export const PRESETS: Preset<Settings>[] = [
       hue: 100,
       tint: 0,
       timescale: 1,
+      seed: "roll",
     },
   },
   {
@@ -974,6 +991,7 @@ export const PRESETS: Preset<Settings>[] = [
       hue: 100,
       tint: 0,
       timescale: 1,
+      seed: "roll",
     },
   },
   {
@@ -1027,6 +1045,7 @@ export const PRESETS: Preset<Settings>[] = [
       hue: 208,
       tint: 0,
       timescale: 1,
+      seed: "roll",
     },
   },
   {
@@ -1080,6 +1099,7 @@ export const PRESETS: Preset<Settings>[] = [
       hue: 208,
       tint: 0,
       timescale: 1,
+      seed: "roll",
     },
   },
   {
@@ -1133,6 +1153,7 @@ export const PRESETS: Preset<Settings>[] = [
       hue: 0,
       tint: 0,
       timescale: 1,
+      seed: "roll",
     },
   },
   {
@@ -1186,6 +1207,7 @@ export const PRESETS: Preset<Settings>[] = [
       hue: 208,
       tint: 0,
       timescale: 1,
+      seed: "roll",
     },
   },
   {
@@ -1239,6 +1261,7 @@ export const PRESETS: Preset<Settings>[] = [
       hue: 208,
       tint: 0,
       timescale: 1,
+      seed: "roll",
     },
   },
 ]

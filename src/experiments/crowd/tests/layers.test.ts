@@ -3,6 +3,7 @@ import { makeCamera, horizonFor } from "@/experiments/crowd/camera"
 import { drawFrame, makeScratch } from "@/experiments/crowd/draw"
 import { PRESETS } from "@/experiments/crowd/presets"
 import { SEEDED } from "./support"
+import { presetWithSeed } from "@/experiments/piece"
 import { encodeScene } from "@/experiments/address"
 import {
   normalizeSettings,
@@ -139,10 +140,11 @@ describe("normalizing", () => {
   })
 
   it("leaves every preset exactly as written", () => {
-    // Nothing a preset names moves. It leaves its seed out, which the
-    // validator fills.
-    for (const preset of PRESETS)
-      expect(normalizeSettings(preset.settings), preset.label).toMatchObject(preset.settings)
+    // Nothing a preset names moves, given any legal seed for one that rolls.
+    for (const preset of PRESETS) {
+      const written = presetWithSeed(preset, 1)
+      expect(normalizeSettings(written), preset.label).toEqual(written)
+    }
   })
 })
 
