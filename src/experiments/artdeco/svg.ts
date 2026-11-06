@@ -20,6 +20,7 @@ type State = {
   lineWidth: number
   lineCap: CanvasLineCap
   lineJoin: CanvasLineJoin
+  miterLimit: number
   globalCompositeOperation: GlobalCompositeOperation
   dash: number[]
   /** `<g>` elements opened by `clip` since the matching `save`. */
@@ -76,6 +77,8 @@ export class SvgContext {
   lineWidth = 1
   lineCap: CanvasLineCap = "butt"
   lineJoin: CanvasLineJoin = "miter"
+  /** The canvas's default is 10 and SVG's is 4, so it is always written. */
+  miterLimit = 10
   globalCompositeOperation: GlobalCompositeOperation = "source-over"
   private dash: number[] = []
   private groups = 0
@@ -108,6 +111,7 @@ export class SvgContext {
       lineWidth: this.lineWidth,
       lineCap: this.lineCap,
       lineJoin: this.lineJoin,
+      miterLimit: this.miterLimit,
       globalCompositeOperation: this.globalCompositeOperation,
       dash: this.dash,
       groups: this.groups,
@@ -125,6 +129,7 @@ export class SvgContext {
       lineWidth: this.lineWidth,
       lineCap: this.lineCap,
       lineJoin: this.lineJoin,
+      miterLimit: this.miterLimit,
       globalCompositeOperation: this.globalCompositeOperation,
       dash: this.dash,
       groups: this.groups,
@@ -202,7 +207,7 @@ export class SvgContext {
     const dash = this.dash.length ? ` stroke-dasharray="${this.dash.map(n).join(" ")}"` : ""
     this.body.push(
       `<path d="${this.path.join("")}" fill="none" stroke="${escape(this.strokeStyle)}" stroke-width="${n(this.lineWidth)}"` +
-        ` stroke-linecap="${this.lineCap}" stroke-linejoin="${this.lineJoin}"${dash}/>`,
+        ` stroke-linecap="${this.lineCap}" stroke-linejoin="${this.lineJoin}" stroke-miterlimit="${n(this.miterLimit)}"${dash}/>`,
     )
   }
 

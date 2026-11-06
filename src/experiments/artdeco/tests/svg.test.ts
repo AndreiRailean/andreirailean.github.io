@@ -49,11 +49,27 @@ describe("SvgContext", () => {
     svg.lineTo(9, 9)
     svg.stroke()
     svg.restore()
+    // Drawn after the restore, as draw() draws the frame's outline: outside the clip.
+    svg.beginPath()
+    svg.moveTo(2, 2)
+    svg.lineTo(8, 8)
+    svg.stroke()
     const out = svg.toString()
     expect(out).toContain('<clipPath id="clip0"><path d="M0 0H100V100H0Z" clip-rule="evenodd"/></clipPath>')
-    expect(out.indexOf("</g>")).toBeGreaterThan(out.indexOf("M1 1L9 9"))
+    const close = out.indexOf("</g>")
+    expect(close).toBeGreaterThan(out.indexOf("M1 1L9 9"))
+    expect(close).toBeLessThan(out.indexOf("M2 2L8 8"))
     expect(out.match(/<g /g)).toHaveLength(1)
     expect(out.match(/<\/g>/g)).toHaveLength(1)
+  })
+
+  it("writes the canvas's mitre limit, not SVG's", () => {
+    const svg = new SvgContext(10, 10)
+    svg.beginPath()
+    svg.moveTo(0, 0)
+    svg.lineTo(5, 5)
+    svg.stroke()
+    expect(svg.toString()).toContain('stroke-miterlimit="10"')
   })
 
   it("turns the printed page to the drawing's orientation", () => {
