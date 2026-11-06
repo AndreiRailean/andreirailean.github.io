@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test"
+import type { Locator, Page } from "@playwright/test"
 import { expect, test } from "./support/experiment.ts"
 
 /**
@@ -214,6 +214,61 @@ test("every piece that can be drawn draws its plate, as a real frame the width o
     // would be back with nothing failing.
     expect(poster, `${piece}'s poster shows under its frame`).toBe("0")
   }
+})
+
+/**
+ * A plate's newest frame, small: enough to tell a running piece from a still.
+ * The newest layer, because waking draws over the still in a layer of its own.
+ */
+async function newestFrame(plate: Locator): Promise<string> {
+  return plate.evaluate((element) => {
+    const canvas = [...element.querySelectorAll<HTMLCanvasElement>(".live canvas")].at(-1)!
+    const small = document.createElement("canvas")
+    small.width = 64
+    small.height = 36
+    small.getContext("2d")!.drawImage(canvas, 0, 0, small.width, small.height)
+    return small.toDataURL()
+  })
+}
+
+/** The pieces whose plates are awake, read in one go so a turn cannot change between reads. */
+const awakeNow = (page: Page) =>
+  page.evaluate(() => [...document.querySelectorAll<HTMLElement>(".plate[data-awake]")].map((p) => p.dataset.piece))
+
+test("hovering a drawn plate wakes its piece, and leaving puts it back to sleep", async ({ page }) => {
+  await openIndex(page, "?budget=off")
+  const plate = page.locator('.plate[data-shown="live"]').first()
+  await plate.hover()
+  await expect(plate).toHaveAttribute("data-awake", "true")
+  expect(await awakeNow(page), "another plate stayed awake beside the hovered one").toHaveLength(1)
+
+  // Running, not just marked: the frame changes while the pointer stays.
+  const woken = await newestFrame(plate)
+  await expect.poll(() => newestFrame(plate), { timeout: 5_000 }).not.toBe(woken)
+
+  await page.mouse.move(0, 0)
+  await expect(plate).not.toHaveAttribute("data-awake")
+  // Asleep means stopped: a running piece changes its frame every few
+  // milliseconds, and the wall's next turn is a second and a half away.
+  const slept = await newestFrame(plate)
+  await page.waitForTimeout(500)
+  expect(await newestFrame(plate), "the plate kept running after it slept").toBe(slept)
+})
+
+test("with nobody pointing, the wall wakes its plates one at a time", async ({ page }) => {
+  await openIndex(page, "?budget=off")
+  await page.mouse.move(0, 0)
+
+  const seen = new Set<string | undefined>()
+  // Two turns: 1.5 s of rest, 6 s awake, 1.5 s of rest, and the next.
+  const until = Date.now() + 15_000
+  while (seen.size < 2 && Date.now() < until) {
+    const awake = await awakeNow(page)
+    expect(awake.length, `${awake.join(" and ")} were awake at once`).toBeLessThanOrEqual(1)
+    if (awake[0]) seen.add(awake[0])
+    await page.waitForTimeout(250)
+  }
+  expect([...seen], "the wall did not take turns between its plates").toHaveLength(2)
 })
 
 test("a visitor who asked for less motion gets every poster and no plate drawn", async ({ page }) => {

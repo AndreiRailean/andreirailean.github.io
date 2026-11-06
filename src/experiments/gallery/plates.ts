@@ -160,15 +160,8 @@ const idle = () =>
     else setTimeout(done, 50)
   })
 
-/** Draws the plate's still: the piece started, brought to its recipe's moment, drawn, and destroyed. */
-async function draw(plate: HTMLElement, piece: Piece): Promise<void> {
-  const { recipe } = piece
-  const preset = recipe.preset ? piece.presets.find(({ label }) => label === recipe.preset) : piece.presets[0]
-  if (!preset) throw new Error(`no preset ${JSON.stringify(recipe.preset ?? "primary")}`)
-  // Through the same function a landing goes through, so a preset that leaves
-  // its seed to be rolled draws a different arrangement on every load here too.
-  const base = sceneFromPreset(piece.settings, preset)
-
+/** A plate's canvas layer: the box `PLATE`, which CSS scales to the plate. */
+function layer(): { layer: HTMLDivElement; canvas: HTMLCanvasElement } {
   const layer = document.createElement("div")
   layer.className = "live"
   // The piece sizes itself from the canvas's css box, so this box is what it
@@ -177,20 +170,51 @@ async function draw(plate: HTMLElement, piece: Piece): Promise<void> {
   canvas.style.width = `${PLATE.width}px`
   canvas.style.height = `${PLATE.height}px`
   layer.append(canvas)
-  plate.prepend(layer)
+  return { layer, canvas }
+}
 
-  const live = piece.start(canvas, piece.settings.normalizeSettings({ ...base, ...recipe.settings }))
+/**
+ * Starts the piece on `scene` in `canvas` and brings it to its recipe's moment.
+ * On a throw the piece is destroyed before the error leaves.
+ */
+async function begin(canvas: HTMLCanvasElement, piece: Piece, scene: object): Promise<Live<object>> {
+  const { recipe } = piece
+  const live = piece.start(canvas, scene)
   try {
     if (recipe.prepare) await within(Promise.resolve(recipe.prepare({ api: handle(live) })), PATIENCE_MS, "prepare")
     // A recipe that only waits lets the piece run in real time before the
     // shutter. Here that time is settled instead, where the piece has the verb.
     else if (recipe.dwellMs && typeof live.verbs.settle === "function") live.verbs.settle(recipe.dwellMs / 1000)
+    return live
+  } catch (error) {
+    live.destroy()
+    throw error
+  }
+}
+
+/** What a drawn plate was drawn from, so waking it starts the same scene. */
+const drawn = new WeakMap<HTMLElement, { piece: Piece; scene: object }>()
+
+/** Draws the plate's still: the piece started, brought to its recipe's moment, drawn, and destroyed. */
+async function draw(plate: HTMLElement, piece: Piece): Promise<void> {
+  const { recipe } = piece
+  const preset = recipe.preset ? piece.presets.find(({ label }) => label === recipe.preset) : piece.presets[0]
+  if (!preset) throw new Error(`no preset ${JSON.stringify(recipe.preset ?? "primary")}`)
+  // Through the same function a landing goes through, so a preset that rolls
+  // its seed draws a different arrangement on every load here too.
+  const scene = piece.settings.normalizeSettings({ ...sceneFromPreset(piece.settings, preset), ...recipe.settings })
+
+  const { layer: still, canvas } = layer()
+  plate.prepend(still)
+  const live = await begin(canvas, piece, scene)
+  try {
     await frame()
     await frame()
     live.setPaused(true)
   } finally {
     live.destroy()
   }
+  drawn.set(plate, { piece, scene })
 }
 
 /**
@@ -260,6 +284,7 @@ async function drain(): Promise<void> {
   } finally {
     draining = false
     document.documentElement.dataset.plates = "idle"
+    rest()
   }
 }
 
@@ -316,3 +341,168 @@ for (const plate of document.querySelectorAll<HTMLElement>(".plate[data-piece]")
 // Only `drain` sets `idle`, and with nothing queued it never runs, so a wall
 // with no plate to draw would read as running forever.
 if (watched === 0) document.documentElement.dataset.plates = "idle"
+
+/*
+ * ## Waking
+ *
+ * A drawn plate is a still, and one plate at a time comes alive: the one under
+ * the pointer or the keyboard's focus, or, when nobody is pointing at anything,
+ * each plate on screen in turn. Andrei's terms for the whole wall apply here
+ * too, so **only the awake plate has a running piece**: waking starts a fresh
+ * one on the scene the plate was drawn from, and sleeping pauses and destroys
+ * it, leaving its last frame as the plate's new still.
+ *
+ * The fresh piece is drawn into a layer over the still and faded in, so a
+ * piece that does not come back to exactly the same frame on the same scene
+ * changes under a fade rather than with a jump.
+ *
+ * Nothing wakes for a visitor who asked for less motion, whose plates are all
+ * posters, nor on a device that the drawing judged slow, nor while plates are
+ * still being drawn.
+ */
+
+/** How long a plate stays awake when the wall wakes it on its own. */
+const AWAKE_MS = 6000
+
+/** The pause between one plate falling asleep and the next waking, and before the first. */
+const REST_MS = 1500
+
+/** The fade from still to awake plate: `.live`'s opacity transition in the index page, and a little over. */
+const FADE_MS = 800
+
+/** How long the pointer has to stay on a plate to wake it, so sweeping across the wall wakes nothing. */
+const LINGER_MS = 150
+
+let awake: { plate: HTMLElement; live: Live<object>; layer: HTMLDivElement } | null = null
+/** Bumped on every wake and sleep, so a wake that finishes after it was overtaken stands down. */
+let turn = 0
+
+function sleep(): void {
+  turn += 1
+  if (!awake) return
+  const { plate, live } = awake
+  awake = null
+  live.setPaused(true)
+  live.destroy()
+  delete plate.dataset.awake
+}
+
+async function wake(plate: HTMLElement): Promise<void> {
+  if (awake?.plate === plate) return
+  const from = drawn.get(plate)
+  if (!from || slow || draining) return
+  sleep()
+  const mine = turn
+  const { layer: fresh, canvas } = layer()
+  fresh.dataset.waking = ""
+  const below = [...plate.querySelectorAll(".live")].at(-1)
+  if (below) below.after(fresh)
+  else plate.prepend(fresh)
+  let live: Live<object>
+  try {
+    live = await begin(canvas, from.piece, from.scene)
+  } catch (error) {
+    // The still stays, and this plate is not woken again.
+    console.warn(`plates: ${plate.dataset.piece} could not wake`, error)
+    drawn.delete(plate)
+    fresh.remove()
+    return
+  }
+  if (mine !== turn) {
+    live.destroy()
+    fresh.remove()
+    return
+  }
+  live.setPaused(false)
+  awake = { plate, live, layer: fresh }
+  plate.dataset.awake = "true"
+  await frame()
+  delete fresh.dataset.waking
+  // Once the fade is over, the stills underneath are covered for good. Timed
+  // rather than read off `transitionend`, which the hover's own transform
+  // transition would fire first.
+  setTimeout(() => {
+    for (const old of plate.querySelectorAll(".live")) if (old !== fresh) old.remove()
+  }, FADE_MS)
+}
+
+/** The plate under the pointer or holding focus, which outranks the wall's own turn. */
+let held: HTMLElement | null = null
+let lingering = 0
+
+function hold(plate: HTMLElement | null): void {
+  held = plate
+  clearTimeout(lingering)
+  clearTimeout(cycling)
+  if (plate) lingering = window.setTimeout(() => void wake(plate), LINGER_MS)
+  else {
+    sleep()
+    rest()
+  }
+}
+
+/** Plates mostly on screen, in page order: the ones the wall takes turns between. */
+const onScreen = new Set<HTMLElement>()
+const seen = new IntersectionObserver(
+  (entries) => {
+    for (const { target, isIntersecting } of entries) {
+      const plate = target as HTMLElement
+      if (isIntersecting) onScreen.add(plate)
+      else {
+        onScreen.delete(plate)
+        if (awake?.plate === plate && !held) sleep()
+      }
+    }
+  },
+  { threshold: 0.6 },
+)
+
+let cycling = 0
+let last: HTMLElement | null = null
+
+/** Waits `REST_MS`, then wakes the next plate on screen after the last one woken, for `AWAKE_MS`. */
+function rest(): void {
+  clearTimeout(cycling)
+  // A plate held while others were being drawn could not wake then.
+  if (held && !draining) void wake(held)
+  if (held || slow || draining || document.hidden) return
+  cycling = window.setTimeout(() => {
+    const plates = [...document.querySelectorAll<HTMLElement>(".plate[data-piece]")].filter(
+      (plate) => onScreen.has(plate) && drawn.has(plate),
+    )
+    if (plates.length === 0) return
+    const next = plates[(plates.indexOf(last!) + 1) % plates.length]!
+    last = next
+    void wake(next).then(() => {
+      if (held) return
+      cycling = window.setTimeout(() => {
+        if (held) return
+        sleep()
+        rest()
+      }, AWAKE_MS)
+    })
+  }, REST_MS)
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    clearTimeout(cycling)
+    if (!held) sleep()
+  } else rest()
+})
+
+if (!stillOnly) {
+  for (const plate of document.querySelectorAll<HTMLElement>(".plate[data-piece]")) {
+    seen.observe(plate)
+    plate.addEventListener("pointerenter", (event) => {
+      if (event.pointerType === "mouse") hold(plate)
+    })
+    plate.addEventListener("pointerleave", (event) => {
+      if (event.pointerType === "mouse" && held === plate) hold(null)
+    })
+    plate.addEventListener("focusin", () => hold(plate))
+    plate.addEventListener("focusout", (event) => {
+      if (!plate.contains(event.relatedTarget as Node | null) && held === plate) hold(null)
+    })
+  }
+}
