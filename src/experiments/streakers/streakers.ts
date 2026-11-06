@@ -327,6 +327,7 @@ export function createStreakers(canvas: HTMLCanvasElement, initial: Settings) {
   function onResize() {
     size()
     rebuild()
+    loop.repaint()
   }
 
   /** What the mechanisms actually did, measured off the live lines rather than read off settings. */
@@ -397,6 +398,7 @@ export function createStreakers(canvas: HTMLCanvasElement, initial: Settings) {
       const before = settings
       settings = next
       if (needsRebuild(before, next) || before.size !== next.size) rebuild()
+      loop.repaint()
     },
     setPaused(on: boolean) {
       loop.setHeld(on)
@@ -407,9 +409,11 @@ export function createStreakers(canvas: HTMLCanvasElement, initial: Settings) {
     },
     clear() {
       rebuild(true)
+      loop.repaint()
     },
     debug(on?: boolean) {
       debug = on ?? !debug
+      loop.repaint()
       return debug
     },
     stats,

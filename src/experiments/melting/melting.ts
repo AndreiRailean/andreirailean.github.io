@@ -1114,6 +1114,7 @@ export function createMelting(canvas: HTMLCanvasElement, initial: Settings) {
 
   function onResize() {
     size()
+    loop.repaint()
   }
 
   /** Landmasses on the field's grid, by flood fill — how many separate blobs there are right now. */
@@ -1191,6 +1192,7 @@ export function createMelting(canvas: HTMLCanvasElement, initial: Settings) {
       const moved = (["shape", "seed", "scale", "irregular"] as const).some((key) => before[key] !== next[key])
       if (moved) rebuild()
       if (before.clock !== next.clock) clockStart(next.clock)
+      loop.repaint()
     },
     setPaused(on: boolean) {
       loop.setHeld(on)
@@ -1209,6 +1211,7 @@ export function createMelting(canvas: HTMLCanvasElement, initial: Settings) {
     },
     debug(on?: boolean) {
       debug = on ?? !debug
+      loop.repaint()
       return debug
     },
     /** Every blob drawn now, by id: the raw material, for checking that nothing jumps between frames. */
