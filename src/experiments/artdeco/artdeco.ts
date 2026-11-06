@@ -51,7 +51,7 @@ import { context2d, fitCanvas } from "@/experiments/simulation/canvas"
 import { hashSeed, makeRng, type Rng } from "@/experiments/random"
 import { distance, enter, inside, outline, type Point, type Shape } from "@/experiments/artdeco/frame"
 import { needsRebuild, type Mark, type Settings } from "@/experiments/artdeco/settings"
-import { SvgContext } from "@/experiments/artdeco/svg"
+import { SvgContext, type About } from "@/experiments/artdeco/svg"
 
 type Kind = "straight" | "branch" | "fork" | "turn" | "echo" | "stop"
 const KINDS: Kind[] = ["straight", "branch", "fork", "turn", "echo", "stop"]
@@ -1876,7 +1876,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
      * What is on screen now, as SVG: the same `draw()` into a recorder, in
      * black on white paper, without the debug marks. Changes nothing on screen.
      */
-    svg(): string {
+    svg(about?: About): string {
       const recorder = new SvgContext(width, height)
       const was = debug
       ctx = recorder as unknown as CanvasRenderingContext2D
@@ -1889,7 +1889,7 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
         paper = false
         debug = was
       }
-      return recorder.toString()
+      return recorder.toString(about)
     },
     stats(): Stats {
       return {

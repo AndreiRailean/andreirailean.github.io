@@ -48,7 +48,16 @@ export function start(canvas: HTMLCanvasElement, settings: Settings) {
       /** Saves what is on screen as black-on-white SVG, and returns the file's name. */
       svg: () => {
         const name = `artdeco-${seed}.svg`
-        saveFile(name, scene.svg(), "image/svg+xml")
+        const date = new Date().toISOString()
+        const about = {
+          generator: "www.andrei.md",
+          title: `Art Deco, seed ${seed}`,
+          // The address bar holds the scene, so it is the link that reproduces it.
+          description: `Saved from Art Deco, an experiment at www.andrei.md, on ${date.slice(0, 10)}. The scene: ${location.href}`,
+          source: location.href,
+          date,
+        }
+        saveFile(name, scene.svg(about), "image/svg+xml")
         return name
       },
     },

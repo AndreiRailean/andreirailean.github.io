@@ -35,7 +35,39 @@ function n(value: number): string {
 }
 
 function escape(text: string): string {
-  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;")
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+}
+
+/** A comment cannot hold `--`. */
+function comment(text: string): string {
+  return text.replace(/-{2,}/g, "-")
+}
+
+/** What a saved file says about itself. */
+export type About = {
+  /** Who made the file: the site, not a person. */
+  generator: string
+  title: string
+  description: string
+  /** The address that reproduces the scene. */
+  source: string
+  /** When it was saved, as ISO 8601. */
+  date: string
+}
+
+/** Dublin Core inside a `cc:Work`, the shape Inkscape writes and reads in its document properties. */
+function metadata(about: About): string {
+  return [
+    `<metadata><rdf:RDF><cc:Work rdf:about="">`,
+    `<dc:format>image/svg+xml</dc:format>`,
+    `<dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>`,
+    `<dc:title>${escape(about.title)}</dc:title>`,
+    `<dc:description>${escape(about.description)}</dc:description>`,
+    `<dc:creator><cc:Agent><dc:title>${escape(about.generator)}</dc:title></cc:Agent></dc:creator>`,
+    `<dc:source>${escape(about.source)}</dc:source>`,
+    `<dc:date>${escape(about.date)}</dc:date>`,
+    `</cc:Work></rdf:RDF></metadata>`,
+  ].join("")
 }
 
 export class SvgContext {
@@ -187,11 +219,28 @@ export class SvgContext {
     this.groups++
   }
 
-  /** Everything drawn so far as one SVG document, with any clip still open closed. */
-  toString(): string {
+  /**
+   * Everything drawn so far as one SVG document, with any clip still open
+   * closed, and `about` said of it in the forms readers look for: a generator
+   * comment, `<title>`, `<desc>`, and Dublin Core in `<metadata>`.
+   *
+   * The size stays in css px, which is what design programs open. Printing
+   * from a browser is the style's job: the page turns to the drawing's
+   * orientation and the drawing is scaled to fit it, where without it Chrome
+   * printed a window-wide drawing at full size onto a portrait page and cut it
+   * off. Only under `print`, so a file opened on screen is shown as it was.
+   */
+  toString(about?: About): string {
     const open = this.groups + this.stack.reduce((sum, state) => sum + state.groups, 0)
+    const orientation = this.width >= this.height ? "landscape" : "portrait"
     return [
-      `<svg xmlns="http://www.w3.org/2000/svg" width="${n(this.width)}" height="${n(this.height)}" viewBox="0 0 ${n(this.width)} ${n(this.height)}">`,
+      `<?xml version="1.0" encoding="UTF-8"?>`,
+      about ? `<!-- Generator: ${comment(about.generator)} -->` : "",
+      `<svg xmlns="http://www.w3.org/2000/svg" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" width="${n(this.width)}" height="${n(this.height)}" viewBox="0 0 ${n(this.width)} ${n(this.height)}">`,
+      about ? `<title>${escape(about.title)}</title>` : "",
+      about ? `<desc>${escape(about.description)}</desc>` : "",
+      about ? metadata(about) : "",
+      `<style>@page { size: ${orientation}; margin: 10mm } @media print { svg { width: 100%; height: 100% } }</style>`,
       this.clips.length ? `<defs>${this.clips.join("")}</defs>` : "",
       ...this.body,
       "</g>".repeat(open),

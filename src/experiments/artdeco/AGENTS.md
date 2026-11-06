@@ -237,6 +237,13 @@ twice.
   every circle is whole, and a whole circle drawn the wrong way round covers
   the same pixels. Mid-growth (`settle(3)`), the same break dropped medallion
   to 68%. `tests/svg.test.ts` holds the sweep direction directly.
+- **Printing from a browser is the file's `<style>`**: `@page` turns the
+  page to the drawing's orientation and, under `print` only, the root is sized
+  to the page. To check it, print the file with `page.pdf` and read the PDF's
+  `MediaBox`, then lay it out under `emulateMedia({ media: "print" })` at the
+  printable size and compare the root's box with it. **Not the page count**:
+  Chrome clips an oversized SVG document to one page rather than paginating,
+  so it reads 1 whether the drawing fits or not.
 - **The frame's shape is the drawing's.** Lines grow against the frame's
   edges, so a print at a paper's proportions has to be grown in a frame of that
   shape (a viewport of that size), which is a different drawing from the same

@@ -56,6 +56,40 @@ describe("SvgContext", () => {
     expect(out.match(/<\/g>/g)).toHaveLength(1)
   })
 
+  it("turns the printed page to the drawing's orientation", () => {
+    expect(new SvgContext(300, 200).toString()).toContain("@page { size: landscape;")
+    expect(new SvgContext(200, 300).toString()).toContain("@page { size: portrait;")
+  })
+
+  it("says what made it, escaped, in each place a reader looks", () => {
+    const out = new SvgContext(10, 10).toString({
+      generator: "www.andrei.md",
+      title: "Art Deco, seed 7",
+      description: "a <scene> & -- more",
+      source: "https://www.andrei.md/experiments/artdeco/?s=a&b=1",
+      date: "2026-11-06T00:00:00.000Z",
+    })
+    expect(out.startsWith('<?xml version="1.0" encoding="UTF-8"?>\n<!-- Generator: www.andrei.md -->\n<svg ')).toBe(
+      true,
+    )
+    expect(out).toContain("<title>Art Deco, seed 7</title>")
+    expect(out).toContain("<desc>a &lt;scene&gt; &amp; -- more</desc>")
+    expect(out).toContain("<dc:source>https://www.andrei.md/experiments/artdeco/?s=a&amp;b=1</dc:source>")
+    expect(out).toContain("<dc:creator><cc:Agent><dc:title>www.andrei.md</dc:title></cc:Agent></dc:creator>")
+    expect(out).toContain("<dc:date>2026-11-06T00:00:00.000Z</dc:date>")
+  })
+
+  it("keeps a comment free of the double dash that would end it", () => {
+    const out = new SvgContext(10, 10).toString({
+      generator: "a--b",
+      title: "",
+      description: "",
+      source: "",
+      date: "",
+    })
+    expect(out).toContain("<!-- Generator: a-b -->")
+  })
+
   it("refuses what it cannot write rather than writing something else", () => {
     const svg = new SvgContext(100, 100)
     svg.beginPath()
