@@ -35,21 +35,25 @@
  * ## Output, and which of it is committed
  *
  * ```
- * public/showcase/runners/<slug>.<hash>.js   tracked once something names it.
+ * .runners/<slug>.<hash>.js                  every build. Gitignored, disposable.
+ * public/showcase/runners/<slug>.<hash>.js   the store: only what something names.
  * public/showcase/embed.js                   generated. The mutable loader.
  * ```
  *
- * **Building a runner does not publish it.** This writes every piece's current
- * build into the runners directory on every run, and says nothing about which of
- * them belong in the store. A runner is published by something naming it — a
- * wall entry, a page — and that edit is what commits it.
+ * **Building a runner does not publish it.** Every piece's current build goes
+ * to `.runners/`, which nothing serves and anything may delete. A runner is
+ * published by something naming it — a wall entry, a page — and after the
+ * builds, `scripts/runner-store.ts` copies each named build the store lacks into
+ * the store, to be committed with the edit that names it.
  *
- * So the directory is self-describing: **tracked is published, untracked is
- * build output.** `pnpm run prune` removes tracked runners nothing names and
- * leaves untracked ones alone. Committing every build is what this used to do,
- * and it produced one new committed file per rebuild forever — three for
- * `embers` on the day it shipped, two of them dead before anything published
- * against them.
+ * Builds went into the store directory itself until 2026-11-06, told apart from
+ * published runners only by whether git tracked them. Clearing them meant
+ * deleting by pattern in a directory where the same pattern matched published
+ * files, and a session did exactly that.
+ * `src/experiments/docs/adr/20261106-runner-builds-live-outside-the-store.md`.
+ * Committing every build, before that, produced one new committed file per
+ * rebuild forever — three for `embers` on the day it shipped, two of them dead
+ * before anything published against them.
  *
  * A published runner is never edited: it is named by the hash of its own bytes,
  * so `tests/unit/showcase-runners.test.ts` catches a changed one, and the
@@ -63,9 +67,13 @@ import { fileURLToPath } from "node:url"
 
 import { build } from "esbuild"
 
+import { BUILDS, STORE, namedRunners, publishNamed } from "./runner-store.ts"
+
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const experiments = resolve(root, "src/experiments")
 const out = resolve(root, "public/showcase")
+const builds = resolve(root, BUILDS)
+const store = resolve(root, STORE)
 
 const shared = {
   bundle: true,
@@ -97,19 +105,23 @@ async function piecesWithRunners(): Promise<string[]> {
 }
 
 async function main() {
-  // **Nothing is deleted here, ever**, and nothing is published here either.
-  // This writes every piece's current build; which of them belong in the store
-  // is decided by what names them. See
-  // `src/experiments/docs/adr/20260912-the-store-holds-published-runners-only.md`.
-  await mkdir(resolve(out, "runners"), { recursive: true })
+  // **Nothing is deleted here, ever.** This writes every piece's current build
+  // to `.runners/`; which of them belong in the store is decided by what names
+  // them, below.
+  await mkdir(builds, { recursive: true })
+  await mkdir(store, { recursive: true })
 
   for (const slug of await piecesWithRunners()) {
     const built = await build({ ...shared, entryPoints: [resolve(experiments, slug, "runner.ts")] })
     const code = built.outputFiles[0]!.contents
     const hash = createHash("sha256").update(code).digest("hex").slice(0, 12)
     const name = `${slug}.${hash}.js`
-    await writeFile(resolve(out, "runners", name), code)
+    await writeFile(resolve(builds, name), code)
     console.log(`runner    ${slug.padEnd(14)} ${name}  ${kb(code.byteLength)}`)
+  }
+
+  for (const name of publishNamed(namedRunners(root), builds, store)) {
+    console.log(`published ${name} into ${STORE}/, because something names it: commit it with that edit`)
   }
 
   const loader = await build({ ...shared, entryPoints: [resolve(experiments, "gallery/embed.ts")] })
