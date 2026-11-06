@@ -253,11 +253,6 @@ const [opened] = experiments.map(({ data }) => data.started).sort((a, b) => a.va
       .plate[data-shown="live"] .live {
         opacity: 1;
       }
-      /* A plate waking: its piece is started in a layer over the still and
-         faded in once it has drawn, so it changes under a fade, not a jump. */
-      .plate[data-shown="live"] .live[data-waking] {
-        opacity: 0;
-      }
       /* The canvas keeps the box the piece composed in, and is scaled to the
          plate: `--fit` is the plate's width over that box's. */
       .live canvas {

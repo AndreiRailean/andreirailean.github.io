@@ -3,8 +3,9 @@
  *
  * Each plate gets a canvas in the box its poster was captured in, `PLATE`, and
  * the piece is started in it, brought to the moment its poster recipe
- * photographs, drawn once, and stopped. What is left is a still the piece made
- * on this device, faded in where the poster would have been. The poster stays
+ * photographs, drawn once, and paused. What is left is a still the piece made
+ * on this device, faded in where the poster would have been, which wakes where
+ * it stopped (see "Waking" below). The poster stays
  * in the page for everything that cannot do this: no script, a piece that
  * throws, a piece listed in `POSTER_ONLY`, and a device too slow to be asked.
  *
@@ -16,8 +17,11 @@
  * **One plate at a time, in idle time, only as plates come near the screen.**
  * Andrei: "i don't want to tax any computer, no matter how powerful, into
  * running these simulations all at the same time." Nothing is left running: a
- * plate's piece is destroyed as soon as its frame is drawn, so the cost of a
- * wall is the cost of its slowest plate, once, rather than thirteen loops.
+ * plate's piece is paused as soon as its frame is drawn, and a paused piece
+ * requests no frames, so the cost of a wall is the cost of its slowest plate,
+ * once, rather than thirteen loops. Measured with every plate asleep: 26 ms of
+ * main thread a second, the same as destroying them. Six pieces drew every
+ * frame while paused until #352, which came to the whole second.
  *
  * **A device that is slow says so by being slow.** The first plate that takes
  * longer than `BUDGET_MS` to draw stops the rest, and every plate after it gets
@@ -192,10 +196,20 @@ async function begin(canvas: HTMLCanvasElement, piece: Piece, scene: object): Pr
   }
 }
 
-/** What a drawn plate was drawn from, so waking it starts the same scene. */
-const drawn = new WeakMap<HTMLElement, { piece: Piece; scene: object }>()
+/**
+ * Each drawn plate's piece, paused on the frame it shows.
+ *
+ * Kept rather than destroyed, so waking a plate carries on from the frame it
+ * stopped on: Andrei, of a first version that started a fresh piece on every
+ * wake, "if i move the mouse in and out, in and out, i see the same starting
+ * position. i thought that stopping position is the start of the next
+ * animation." A paused piece costs no frames: `setPaused` parks its animation
+ * frame and nothing else (`src/experiments/AGENTS.md`, "`pause()` is not the
+ * scene's `stop()`").
+ */
+const kept = new WeakMap<HTMLElement, Live<object>>()
 
-/** Draws the plate's still: the piece started, brought to its recipe's moment, drawn, and destroyed. */
+/** Draws the plate's still: the piece started, brought to its recipe's moment, drawn, and paused there. */
 async function draw(plate: HTMLElement, piece: Piece): Promise<void> {
   const { recipe } = piece
   const preset = recipe.preset ? piece.presets.find(({ label }) => label === recipe.preset) : piece.presets[0]
@@ -211,10 +225,11 @@ async function draw(plate: HTMLElement, piece: Piece): Promise<void> {
     await frame()
     await frame()
     live.setPaused(true)
-  } finally {
+  } catch (error) {
     live.destroy()
+    throw error
   }
-  drawn.set(plate, { piece, scene })
+  kept.set(plate, live)
 }
 
 /**
@@ -279,6 +294,10 @@ async function drain(): Promise<void> {
   if (draining) return
   draining = true
   document.documentElement.dataset.plates = "running"
+  // Nothing runs while plates are drawn: the wall's own turn would count
+  // against the budget the drawing is measuring.
+  clearTimeout(cycling)
+  if (!held) sleep()
   try {
     while (waiting.length > 0) await show(waiting.shift()!)
   } finally {
@@ -345,20 +364,17 @@ if (watched === 0) document.documentElement.dataset.plates = "idle"
 /*
  * ## Waking
  *
- * A drawn plate is a still, and one plate at a time comes alive: the one under
- * the pointer or the keyboard's focus, or, when nobody is pointing at anything,
- * each plate on screen in turn. Andrei's terms for the whole wall apply here
- * too, so **only the awake plate has a running piece**: waking starts a fresh
- * one on the scene the plate was drawn from, and sleeping pauses and destroys
- * it, leaving its last frame as the plate's new still.
- *
- * The fresh piece is drawn into a layer over the still and faded in, so a
- * piece that does not come back to exactly the same frame on the same scene
- * changes under a fade rather than with a jump.
+ * A drawn plate is a paused piece, and one plate at a time comes alive: the one
+ * under the pointer or the keyboard's focus, or, when nobody is pointing at
+ * anything, each plate on screen in turn. Andrei's terms for the whole wall
+ * apply here too, so **only the awake plate's piece runs**. Waking unpauses it
+ * where it stopped and sleeping pauses it again, so the frame it sleeps on is
+ * the frame it wakes from, with nothing to fade: the fade is for a plate's
+ * first frame arriving over an empty plate, and this is the same canvas.
  *
  * Nothing wakes for a visitor who asked for less motion, whose plates are all
  * posters, nor on a device that the drawing judged slow, nor while plates are
- * still being drawn.
+ * still being drawn. Walkers is poster-only, so it has no piece to wake.
  */
 
 /** How long a plate stays awake when the wall wakes it on its own. */
@@ -367,63 +383,28 @@ const AWAKE_MS = 6000
 /** The pause between one plate falling asleep and the next waking, and before the first. */
 const REST_MS = 1500
 
-/** The fade from still to awake plate: `.live`'s opacity transition in the index page, and a little over. */
-const FADE_MS = 800
-
 /** How long the pointer has to stay on a plate to wake it, so sweeping across the wall wakes nothing. */
 const LINGER_MS = 150
 
-let awake: { plate: HTMLElement; live: Live<object>; layer: HTMLDivElement } | null = null
-/** Bumped on every wake and sleep, so a wake that finishes after it was overtaken stands down. */
-let turn = 0
+let awake: HTMLElement | null = null
 
 function sleep(): void {
-  turn += 1
   if (!awake) return
-  const { plate, live } = awake
+  kept.get(awake)?.setPaused(true)
+  delete awake.dataset.awake
   awake = null
-  live.setPaused(true)
-  live.destroy()
-  delete plate.dataset.awake
 }
 
-async function wake(plate: HTMLElement): Promise<void> {
-  if (awake?.plate === plate) return
-  const from = drawn.get(plate)
-  if (!from || slow || draining) return
+function wake(plate: HTMLElement): void {
+  if (awake === plate) return
+  // First, so pointing at a plate that cannot wake, Walkers or one that
+  // failed, still puts the wall's own turn to sleep.
   sleep()
-  const mine = turn
-  const { layer: fresh, canvas } = layer()
-  fresh.dataset.waking = ""
-  const below = [...plate.querySelectorAll(".live")].at(-1)
-  if (below) below.after(fresh)
-  else plate.prepend(fresh)
-  let live: Live<object>
-  try {
-    live = await begin(canvas, from.piece, from.scene)
-  } catch (error) {
-    // The still stays, and this plate is not woken again.
-    console.warn(`plates: ${plate.dataset.piece} could not wake`, error)
-    drawn.delete(plate)
-    fresh.remove()
-    return
-  }
-  if (mine !== turn) {
-    live.destroy()
-    fresh.remove()
-    return
-  }
+  const live = kept.get(plate)
+  if (!live || slow || draining) return
   live.setPaused(false)
-  awake = { plate, live, layer: fresh }
+  awake = plate
   plate.dataset.awake = "true"
-  await frame()
-  delete fresh.dataset.waking
-  // Once the fade is over, the stills underneath are covered for good. Timed
-  // rather than read off `transitionend`, which the hover's own transform
-  // transition would fire first.
-  setTimeout(() => {
-    for (const old of plate.querySelectorAll(".live")) if (old !== fresh) old.remove()
-  }, FADE_MS)
 }
 
 /** The plate under the pointer or holding focus, which outranks the wall's own turn. */
@@ -434,7 +415,7 @@ function hold(plate: HTMLElement | null): void {
   held = plate
   clearTimeout(lingering)
   clearTimeout(cycling)
-  if (plate) lingering = window.setTimeout(() => void wake(plate), LINGER_MS)
+  if (plate) lingering = window.setTimeout(() => wake(plate), LINGER_MS)
   else {
     sleep()
     rest()
@@ -445,16 +426,21 @@ function hold(plate: HTMLElement | null): void {
 const onScreen = new Set<HTMLElement>()
 const seen = new IntersectionObserver(
   (entries) => {
-    for (const { target, isIntersecting } of entries) {
+    for (const { target, intersectionRatio } of entries) {
       const plate = target as HTMLElement
-      if (isIntersecting) onScreen.add(plate)
+      // The ratio rather than `isIntersecting`, which the spec makes true for
+      // any overlap at all, whatever the threshold.
+      if (intersectionRatio >= 0.6) onScreen.add(plate)
       else {
         onScreen.delete(plate)
-        if (awake?.plate === plate && !held) sleep()
+        if (awake === plate) sleep()
+        // A plate held by focus and scrolled away is no longer looked at.
+        if (held === plate) held = null
       }
     }
+    if (!awake && !held) rest()
   },
-  { threshold: 0.6 },
+  { threshold: [0, 0.6] },
 )
 
 let cycling = 0
@@ -463,24 +449,25 @@ let last: HTMLElement | null = null
 /** Waits `REST_MS`, then wakes the next plate on screen after the last one woken, for `AWAKE_MS`. */
 function rest(): void {
   clearTimeout(cycling)
+  if (slow) sleep()
   // A plate held while others were being drawn could not wake then.
-  if (held && !draining) void wake(held)
+  if (held && !draining) wake(held)
   if (held || slow || draining || document.hidden) return
   cycling = window.setTimeout(() => {
     const plates = [...document.querySelectorAll<HTMLElement>(".plate[data-piece]")].filter(
-      (plate) => onScreen.has(plate) && drawn.has(plate),
+      (plate) => onScreen.has(plate) && kept.has(plate),
     )
-    if (plates.length === 0) return
+    // Nothing drawn on screen yet: look again after another rest, or the wall
+    // would stay still until something else woke it.
+    if (plates.length === 0) return rest()
     const next = plates[(plates.indexOf(last!) + 1) % plates.length]!
     last = next
-    void wake(next).then(() => {
+    wake(next)
+    cycling = window.setTimeout(() => {
       if (held) return
-      cycling = window.setTimeout(() => {
-        if (held) return
-        sleep()
-        rest()
-      }, AWAKE_MS)
-    })
+      sleep()
+      rest()
+    }, AWAKE_MS)
   }, REST_MS)
 }
 

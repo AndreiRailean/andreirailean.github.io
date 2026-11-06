@@ -235,27 +235,85 @@ async function newestFrame(plate: Locator): Promise<string> {
 const awakeNow = (page: Page) =>
   page.evaluate(() => [...document.querySelectorAll<HTMLElement>(".plate[data-awake]")].map((p) => p.dataset.piece))
 
-test("hovering a drawn plate wakes its piece, and leaving puts it back to sleep", async ({ page }) => {
-  await openIndex(page, "?budget=off")
-  const plate = page.locator('.plate[data-shown="live"]').first()
-  await plate.hover()
-  await expect(plate).toHaveAttribute("data-awake", "true")
-  expect(await awakeNow(page), "another plate stayed awake beside the hovered one").toHaveLength(1)
+/**
+ * Counts the animation frames the page asks for, which is what a running piece
+ * costs: about 60 a second for one, none for a paused one. Read through this
+ * rather than `data-awake`, which marks one plate at most by construction and
+ * says nothing about whether a piece is actually running.
+ */
+async function countFrames(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const counted = window as unknown as { framesAsked: number }
+    counted.framesAsked = 0
+    const ask = window.requestAnimationFrame.bind(window)
+    window.requestAnimationFrame = (callback) => {
+      counted.framesAsked += 1
+      return ask(callback)
+    }
+  })
+}
 
-  // Running, not just marked: the frame changes while the pointer stays.
+/** Frames asked for over `ms`. */
+async function framesOver(page: Page, ms: number): Promise<number> {
+  const read = () => page.evaluate(() => (window as unknown as { framesAsked: number }).framesAsked)
+  const before = await read()
+  await page.waitForTimeout(ms)
+  return (await read()) - before
+}
+
+test("hovering a plate wakes its piece where it stopped, and leaving pauses it there", async ({ page }) => {
+  await openIndex(page, "?budget=off")
+  // The second drawn plate, because the wall's own first turn, a second and
+  // a half after the plates are drawn, wakes the first: a hover on that one
+  // could not be told from the wall waking it.
+  const plate = page.locator('.plate[data-shown="live"]').nth(1)
+  const piece = await plate.getAttribute("data-piece")
+  await plate.hover()
+  await expect(plate).toHaveAttribute("data-awake", "true", { timeout: 1_000 })
+  expect(await awakeNow(page)).toEqual([piece])
+
   const woken = await newestFrame(plate)
   await expect.poll(() => newestFrame(plate), { timeout: 5_000 }).not.toBe(woken)
 
   await page.mouse.move(0, 0)
   await expect(plate).not.toHaveAttribute("data-awake")
-  // Asleep means stopped: a running piece changes its frame every few
-  // milliseconds, and the wall's next turn is a second and a half away.
   const slept = await newestFrame(plate)
   await page.waitForTimeout(500)
   expect(await newestFrame(plate), "the plate kept running after it slept").toBe(slept)
+
+  // Back again: the same canvas carries on from the frame it slept on. A
+  // fresh start would add a layer to fade in over it.
+  await plate.hover()
+  await expect(plate).toHaveAttribute("data-awake", "true", { timeout: 1_000 })
+  await expect(plate.locator(".live")).toHaveCount(1)
+  await expect.poll(() => newestFrame(plate), { timeout: 5_000 }).not.toBe(slept)
+})
+
+test("a sleeping plate asks for no frames, and an awake one does", async ({ page }) => {
+  await countFrames(page)
+  await openIndex(page, "?budget=off")
+  // Every plate drawn first, so no drawing is counted below.
+  const plates = page.locator(".plate")
+  for (let i = 0; i < (await plates.count()); i += 1) {
+    await plates.nth(i).scrollIntoViewIfNeeded()
+    await expect(plates.nth(i)).toHaveAttribute("data-shown", /^(live|poster)$/, { timeout: 30_000 })
+  }
+  await expect(page.locator("html")).toHaveAttribute("data-plates", "idle")
+  // Holding Walkers, which is poster-only, keeps every plate asleep and the
+  // wall from taking its turn.
+  await page.locator('.plate[data-piece="walkers"]').scrollIntoViewIfNeeded()
+  await page.locator('.plate[data-piece="walkers"]').hover()
+  await expect(page.locator(".plate[data-awake]")).toHaveCount(0)
+  expect(await framesOver(page, 1_000), "a paused piece is still drawing").toBe(0)
+
+  await page.locator('.plate[data-shown="live"]').first().scrollIntoViewIfNeeded()
+  await page.locator('.plate[data-shown="live"]').first().hover()
+  await expect(page.locator(".plate[data-awake]")).toHaveCount(1)
+  expect(await framesOver(page, 1_000), "the awake plate is not running").toBeGreaterThan(10)
 })
 
 test("with nobody pointing, the wall wakes its plates one at a time", async ({ page }) => {
+  await countFrames(page)
   await openIndex(page, "?budget=off")
   await page.mouse.move(0, 0)
 
@@ -264,9 +322,10 @@ test("with nobody pointing, the wall wakes its plates one at a time", async ({ p
   const until = Date.now() + 15_000
   while (seen.size < 2 && Date.now() < until) {
     const awake = await awakeNow(page)
-    expect(awake.length, `${awake.join(" and ")} were awake at once`).toBeLessThanOrEqual(1)
     if (awake[0]) seen.add(awake[0])
-    await page.waitForTimeout(250)
+    // One running piece asks for about 60 frames a second; two would ask
+    // for about 120.
+    expect(await framesOver(page, 1_000), "more than one piece ran at once").toBeLessThan(90)
   }
   expect([...seen], "the wall did not take turns between its plates").toHaveLength(2)
 })
