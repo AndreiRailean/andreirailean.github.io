@@ -49,6 +49,37 @@ Every preset rolls except where one arrangement is the point:
 **The address still carries the seed in use**, so a copied link reproduces
 the screen exactly. Only a preset stopped being an exact scene.
 
+## How a rolled seed reaches the address
+
+Andrei, after it was explained once: "i feel this 'roll' will come up again
+and i'll be confused again." So, from the address's side:
+
+- **`"roll"` never appears in an address.** It lives only in `presets.ts`. The
+  one parameter that carries a scene, `s=`, always holds every setting with a
+  concrete seed.
+- **A bare address, which is what the index links to**, names no settings, so
+  `settingsForLanding` in `piece.ts` takes the first preset through
+  `sceneFromPreset`, which rolls its seed. The piece starts on that scene, and
+  `gallery/boot.ts` then rewrites the address to it, seed included. A visitor
+  lands on `/experiments/artdeco/` and the bar changes to `?s=…` at once.
+- **A preset button, a number or arrow key, or `experiment.preset()`** goes
+  through the same function, so a rolling preset gets its new seed at the
+  moment it is applied, and the kit's address sync writes it into `s=`. That is
+  why the address changes on every click, including a click on the preset
+  already lit. A pinned preset takes the same route with its seed as written,
+  so clicking it again leaves the address alone.
+- **The address is replaced, not pushed**, so the back button does not step
+  through rolls.
+- **No address means "this preset, rolled".** A link is either bare, which is
+  the first preset rolled, or one exact scene. A `?preset=<label>` going through
+  `sceneFromPreset` at load would be that link; nothing has needed it.
+- **Nothing on the page shows whether a preset rolls.** What is on screen is
+  always one scene with a concrete seed, and a preset is only written in code,
+  so the distinction would describe nothing the viewer can act on. Andrei:
+  "since it's impossible to save a preset from the UI, it makes no sense to
+  show if a preset used a fixed seed or not because when looking at one
+  'scene' the seed is set."
+
 ## Considered Options
 
 - **Rolling by leaving the seed out.** The first version. Replaced for the
