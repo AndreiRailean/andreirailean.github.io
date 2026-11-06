@@ -7,7 +7,9 @@
  * on this device, faded in where the poster would have been, which wakes where
  * it stopped (see "Waking" below). The poster stays
  * in the page for everything that cannot do this: no script, a piece that
- * throws, a piece listed in `POSTER_ONLY`, and a device too slow to be asked.
+ * throws, and a device too slow to be asked. Every piece draws: the history of
+ * the ones that once could not is in
+ * `src/experiments/docs/adr/20261102-the-index-draws-its-plates.md`.
  *
  * **Gallery rather than kit**, on the section's own test: nothing here is
  * offered to a piece or declinable by one. It drives a piece through `start`
@@ -32,37 +34,6 @@
 
 import { PLATE, type PosterRecipe } from "@/experiments/poster"
 import { sceneFromPreset, type Live, type Preset, type SettingsModule, type Start } from "@/experiments/piece"
-
-/**
- * Pieces whose poster moment is too far from their start to reach on a page
- * load. They keep their posters until each can start from a state that already
- * looks like it has been running, rather than simulating its way there.
- *
- * Measured on 2026-11-02 on the preview box, which has no GPU, drawing each
- * plate the way this file does with the budget lifted: walkers 39 s (its
- * recipe settles 120 s), crowd 26 s (45 s), flotsam 5.6 s (runs 40 s), hexgrid
- * 2.8 s (sweeps a whole loop for its most lit moment), psyxels 0.8 s (runs
- * 90 s).
- *
- * **Measure before listing a piece here.** Two were listed unmeasured and drew
- * well inside the budget once tried: embers in 289 ms, listed for the settle in
- * its runner's `mount`, which this file never calls; and Starry Night in 30 ms,
- * listed because a fresh sky has no glimmers yet. That is still true, so its
- * plate is a quieter sky than its poster, which is the brightest of twelve
- * frames. Bubbles really was slow, 1.7 s for its old primary, and its primary
- * is now `standing still`, reached through a coarse warm-up; its `poster.ts`
- * says why. Its plate takes about 260 ms, of which `warm` is 220.
- *
- * Crowd, Flotsam and Psyxels draw their first frame, in 176, 219 and 88 ms,
- * rather than the 45, 40 and 90 s their recipes used to run, and Hexgrid looks
- * for its brightest moment every half second instead of every tenth, 358 ms
- * instead of 2.8 s. Their `poster.ts` files say why.
- *
- * Walkers is the one left. Its picture is the ground people have worn, which
- * takes minutes of crowd and tens of seconds of painted trail to arrive at:
- * 5 s of it alone costs 2.5 s.
- */
-const POSTER_ONLY = new Set(["walkers"])
 
 /**
  * Longest a plate may take to draw before the device is judged too slow for
@@ -237,7 +208,7 @@ async function draw(plate: HTMLElement, piece: Piece): Promise<void> {
  * tell a plate that was never meant to be drawn from one that failed or was
  * cut off by the budget.
  */
-type Why = "poster-only" | "reduced motion" | "slow" | "failed" | "not a piece"
+type Why = "reduced motion" | "slow" | "failed" | "not a piece"
 
 function showPoster(plate: HTMLElement, why: Why): void {
   plate.dataset.why = why
@@ -349,10 +320,6 @@ for (const plate of document.querySelectorAll<HTMLElement>(".plate[data-piece]")
     showPoster(plate, "reduced motion")
     continue
   }
-  if (POSTER_ONLY.has(plate.dataset.piece ?? "")) {
-    showPoster(plate, "poster-only")
-    continue
-  }
   fit.observe(plate)
   near.observe(plate)
   watched += 1
@@ -374,7 +341,7 @@ if (watched === 0) document.documentElement.dataset.plates = "idle"
  *
  * Nothing wakes for a visitor who asked for less motion, whose plates are all
  * posters, nor on a device that the drawing judged slow, nor while plates are
- * still being drawn. Walkers is poster-only, so it has no piece to wake.
+ * still being drawn.
  */
 
 /** How long a plate stays awake when the wall wakes it on its own. */
@@ -397,7 +364,7 @@ function sleep(): void {
 
 function wake(plate: HTMLElement): void {
   if (awake === plate) return
-  // First, so pointing at a plate that cannot wake, Walkers or one that
+  // First, so pointing at a plate that cannot wake, a poster or one that
   // failed, still puts the wall's own turn to sleep.
   sleep()
   const live = kept.get(plate)

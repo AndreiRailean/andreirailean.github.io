@@ -412,9 +412,9 @@ captured, not drawn, and it is committed — see
 
 **On the page, the plate is drawn by the piece and the poster is the fallback.**
 `gallery/plates.ts` starts each piece in the poster's box (`PLATE`), runs its
-recipe, draws one frame, destroys it and fades the frame in. A piece in
-`POSTER_ONLY` shows its poster instead, and so does every plate after the first
-that takes longer than the budget. So **a recipe is read twice**: its `prepare`
+recipe, draws one frame, pauses it there and fades the frame in, and a plate
+wakes by unpausing its piece. Every plate after the first that takes longer
+than the budget shows its poster instead. So **a recipe is read twice**: its `prepare`
 gets the piece's verbs, its stats and `pause`, and a recipe that reaches for
 anything else throws on the index. See
 `docs/adr/20261102-the-index-draws-its-plates.md`.
