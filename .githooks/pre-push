@@ -1,0 +1,30 @@
+#!/bin/sh
+#
+# Runs the cheap half of CI before a push leaves the machine: formatting,
+# eslint, and the unit tests this branch can affect. About twenty seconds.
+#
+# Two pushes of #346 went red on CI for a formatting slip and a shared unit
+# check, each costing a CI round trip and a fix-up commit, though a memory and
+# this repo's docs both said to run these first. A rule that has to be
+# remembered got forgotten; a hook does not. Typecheck and the browser suite
+# stay CI's: the first has not been what CI caught, the second takes minutes.
+#
+# It checks the working tree, not the commits being pushed, so commit first.
+# Skip it once with `git push --no-verify`.
+#
+# Installed by `pnpm install`: the `prepare` script points core.hooksPath at
+# this directory, and tests/unit/pre-push.test.ts holds that wiring.
+
+# A push that only deletes branches sends no commits, so there is nothing to check.
+pushes_commits=no
+while read -r _local_ref local_sha _remote_ref _remote_sha; do
+  case "$local_sha" in
+    *[!0]*) pushes_commits=yes ;;
+  esac
+done
+[ "$pushes_commits" = yes ] || exit 0
+
+echo "pre-push: prettier, eslint and the affected unit tests (skip once with git push --no-verify)" >&2
+pnpm run --silent prettier || exit 1
+pnpm run --silent lint || exit 1
+pnpm run --silent test:affected unit || exit 1
