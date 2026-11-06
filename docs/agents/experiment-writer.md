@@ -320,9 +320,9 @@ starting a piece, not later.
 heading: _publishing a runner is part of changing a piece_.
 
 - **Building is not publishing.** `pnpm run runners` writes your piece's
-  current bytes into `public/showcase/runners/` as an **untracked** file. The
-  directory is self-describing: tracked is published, untracked is build
-  output. Nothing obliges you to commit it.
+  current bytes into `.runners/`, gitignored, and its last line names every
+  piece that has changed since it was published. Nothing obliges you to do
+  anything with them.
 - **Changing a piece obliges you to _ask_ whether published scenes move**, and
   the answer is usually no. A pinned scene keeps rendering the bytes it was
   published against — that freeze is the guarantee, not a staleness bug. Re-pin
@@ -330,8 +330,8 @@ heading: _publishing a runner is part of changing a piece_.
   worked example is #169, a listener leak that only bites a host mounting and
   unmounting repeatedly. A rendering change nobody asked for is the opposite
   case: leave it, and the approved scene stays approved.
-- **Old runners are never deleted**, and an untracked one beside a tracked one
-  is just a newer build. Leave both.
+- **Old runners are never deleted.** An untracked one in the store is a publish
+  waiting for its commit.
 
 **What is not yours:** everything inside `src/showcase/`. It is owned end to
 end, and `src/showcase/AGENTS.md` asserts that boundary deliberately rather

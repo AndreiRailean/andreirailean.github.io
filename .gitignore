@@ -34,10 +34,12 @@ probes/
 test-results/
 playwright-report/
 
-# `pnpm run runners` writes three things and only one of them is generated.
-#
-# The runners and the manifest are COMMITTED: a published page pins a runner by
-# its content hash, so the file has to outlive the build that made it, and the
-# manifest is what the Astro build reads to know which one is current. `embed.js`
-# is the loader, deliberately mutable, and is rebuilt every time.
+# `pnpm run runners` builds every piece into `.runners/`, which is disposable:
+# delete any of it, and the next build writes it back byte for byte. Runners that
+# something names are copied into `public/showcase/runners/`, the store, and
+# COMMITTED there: a published page pins a runner by its content hash, so the
+# file has to outlive the build that made it. `embed.js` is the loader,
+# deliberately mutable, and rebuilt every time.
+# `src/experiments/docs/adr/20261106-runner-builds-live-outside-the-store.md`.
+.runners/
 public/showcase/embed.js

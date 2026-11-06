@@ -100,8 +100,8 @@ answer go here too — not into a message to him.
 
 **The showcase consumes your piece.** A hand-curated wall at `/showcase/`
 (`src/showcase/wall.ts`) pins **frozen runners by content hash**. Three things
-follow: `pnpm run runners` builds but does **not** publish — tracked is
-published, untracked is build output; **amending** a piece obliges you to _ask_
+follow: `pnpm run runners` builds into `.runners/` but does **not** publish —
+only a runner something names is copied into the store; **amending** a piece obliges you to _ask_
 whether published scenes move, and the answer is usually no, because the freeze
 is the guarantee; and **what goes on the wall is Andrei's call**, not yours to
 add unasked. Do not edit anything inside `src/showcase/` — it is owned end to
