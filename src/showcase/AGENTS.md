@@ -302,8 +302,8 @@ separate things follow, and only the first is automatic:
    named build into `public/showcase/runners/`, and you commit it with the edit.
 
 **Why a check cannot replace step 2, so nobody re-proposes one.** The _noticing_
-is already mechanical: `showcase-runners.test.ts` forces the rebuild and the
-commit, so a moved hash always lands in somebody's diff. What is left is a
+is already mechanical: every `pnpm run runners` ends on a `moved` line naming
+each piece whose current build is not in the store. What is left is a
 judgement whose legitimate default is _no_, and a check would have to fail on
 the right answer.
 

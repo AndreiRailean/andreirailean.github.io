@@ -75,7 +75,9 @@ const kb = (bytes: number) => `${(bytes / 1024).toFixed(1)}kb`
  */
 function referenced(): Set<string> {
   const names = new Set<string>()
-  const tracked = execFileSync("git", ["ls-files"], { cwd: root, encoding: "utf8" }).split("\n")
+  // `-z`, or git quotes a path with an unusual character, the read below fails
+  // on the quoted form, and a runner only that file names would be pruned.
+  const tracked = execFileSync("git", ["ls-files", "-z"], { cwd: root, encoding: "utf8" }).split("\0")
   for (const path of tracked) {
     if (!path || path.startsWith("public/showcase/runners/") || BINARY.test(path)) continue
     let text: string

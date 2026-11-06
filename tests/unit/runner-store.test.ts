@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process"
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync, mkdirSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
@@ -56,6 +57,29 @@ describe("publishNamed", () => {
 })
 
 describe("namedRunners", () => {
+  /**
+   * In a scratch repository, so the files can be shaped: a publish is an edit
+   * nobody has committed yet, so an untracked page has to count, and git quotes
+   * a path with an unusual character unless asked not to.
+   */
+  it("reads untracked files and unusual paths, and skips ignored ones", () => {
+    const repo = join(scratch, "repo")
+    mkdirSync(join(repo, "pages"), { recursive: true })
+    const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")))
+    execFileSync("git", ["init", "-q"], { cwd: repo, env })
+    writeFileSync(join(repo, ".gitignore"), "scratch/\n")
+    mkdirSync(join(repo, "scratch"))
+    writeFileSync(join(repo, "pages", "new.astro"), `<div data-runner="${A}">`)
+    writeFileSync(join(repo, "pages", "café.astro"), `<div data-runner="${B}">`)
+    const ignored = ["dotfield", "c".repeat(12), "js"].join(".")
+    writeFileSync(join(repo, "scratch", "note.md"), ignored)
+
+    const names = namedRunners(repo)
+    expect(names, "an untracked page's runner was not found").toContain(A)
+    expect(names, "a runner named in a file with a non-ASCII name was not found").toContain(B)
+    expect(names, "an ignored file counted as a reference").not.toContain(ignored)
+  })
+
   it("finds the runner the home page pins", () => {
     const page = readFileSync(resolve(root, "src/pages/index.astro"), "utf8")
     const pinned = /data-showcase-runner="\/showcase\/runners\/([\w.-]+\.js)"/.exec(page)?.[1]

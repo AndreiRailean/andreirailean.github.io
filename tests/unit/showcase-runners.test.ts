@@ -1,6 +1,6 @@
 import { execFileSync, spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
-import { readdirSync, readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { resolve } from "node:path"
 
 import { describe, expect, it } from "vitest"
@@ -117,7 +117,9 @@ describe("every runner this repo names", () => {
   const BINARY = /\.(webp|jpe?g|png|gif|ico|woff2?|ttf|otf|mp4|webm|pdf|svg)$/i
 
   const named = new Map<string, string[]>()
-  for (const path of execFileSync("git", ["ls-files"], { cwd: root, encoding: "utf8" }).split("\n")) {
+  // `-z`, or git quotes a path with an unusual character and the read below
+  // skips it, so a runner only that file names would go unchecked.
+  for (const path of execFileSync("git", ["ls-files", "-z"], { cwd: root, encoding: "utf8" }).split("\0")) {
     // The store itself is excluded: a runner containing its own name, or another
     // runner's, is not a reference to it.
     if (!path || path.startsWith("public/showcase/runners/") || BINARY.test(path)) continue
@@ -207,20 +209,37 @@ describe("committed runners", () => {
 describe("running the script", () => {
   const tracked = committed.map((name) => resolve(runners, name))
   const before = new Map(tracked.map((path) => [path, readFileSync(path)]))
-  const present = new Set(readdirSync(runners))
-  execFileSync("node", ["scripts/runners.ts"], { cwd: root, encoding: "utf8" })
+  const output = execFileSync("node", ["scripts/runners.ts"], { cwd: root, encoding: "utf8" })
+  const built = [...output.matchAll(/^runner\s+\S+\s+(\S+\.js)/gm)].map((match) => match[1]!)
 
-  it("adds no runner to the store that nothing names", () => {
-    const added = readdirSync(runners).filter((name) => !present.has(name))
-    const unnamed = added.filter((name) => {
-      const grep = spawnSync("git", ["grep", "--untracked", "-qF", name, "--", ".", `:!${STORE}`], { cwd: root })
-      return grep.status !== 0
+  /**
+   * Every untracked runner in the store, not only one this run added: a check
+   * that compared before and after went blind from its second run, and in any
+   * worktree that already held builds from before the move.
+   */
+  it("leaves no untracked runner in the store that nothing names", () => {
+    const untracked = execFileSync("git", ["ls-files", "-z", "--others", "--exclude-standard", STORE], {
+      cwd: root,
+      encoding: "utf8",
     })
-    expect(unnamed, "`pnpm run runners` put builds nothing names into the store").toEqual([])
+      .split("\0")
+      .filter(Boolean)
+      .map((path) => path.slice(STORE.length + 1))
+    const unnamed = untracked.filter(
+      (name) =>
+        spawnSync("git", ["grep", "--untracked", "-qF", name, "--", ".", `:!${STORE}`], { cwd: root }).status !== 0,
+    )
+    expect(
+      unnamed,
+      `untracked in ${STORE}/ and named by nothing. An untracked runner there should be a publish waiting ` +
+        `for its commit; these are builds from before builds moved to ${BUILDS}/, or a publish whose ` +
+        `naming edit was undone. Delete them.`,
+    ).toEqual([])
   })
 
-  it("writes every build to .runners/", () => {
-    expect(readdirSync(resolve(root, BUILDS)).some((name) => name.endsWith(".js"))).toBe(true)
+  it("writes each build to .runners/", () => {
+    expect(built.length, "the script printed no runner it built, so this checks nothing").toBeGreaterThan(0)
+    for (const name of built) expect(existsSync(resolve(root, BUILDS, name)), name).toBe(true)
   })
 
   it("leaves every committed file byte-identical", () => {

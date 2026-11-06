@@ -47,10 +47,15 @@ export const BUILDS = ".runners"
  */
 export function namedRunners(root: string): Set<string> {
   const names = new Set<string>()
-  const files = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard"], {
+  // `-z`, or git quotes a path with an unusual character and the read below
+  // fails on the quoted form. Without git's hook variables, so the repository
+  // is the one at `root` even when this runs inside a pre-push hook.
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")))
+  const files = execFileSync("git", ["ls-files", "-z", "--cached", "--others", "--exclude-standard"], {
     cwd: root,
+    env,
     encoding: "utf8",
-  }).split("\n")
+  }).split("\0")
   for (const path of files) {
     if (!path || path.startsWith(`${STORE}/`) || path.startsWith(`${BUILDS}/`) || BINARY.test(path)) continue
     let text: string

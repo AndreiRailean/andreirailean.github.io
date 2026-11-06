@@ -69,5 +69,19 @@ store now always means a publish waiting for its commit.**
 - **A worktree from before this change** still has untracked builds in the
   store. `/wrap-up` deletes those nothing names, by searching for each name,
   and reports any something names.
-- `showcase-runners.test.ts` runs the script and fails if the store gains a
-  runner nothing names, found by `git grep` rather than by the script's scan.
+- `showcase-runners.test.ts` runs the script and fails on any untracked runner
+  in the store that nothing names, found by `git grep` rather than by the
+  script's scan. That also catches a publish whose naming edit was undone,
+  which leaves its copied runner behind.
+- **A moved hash no longer shows in `git status`.** It used to, as an
+  untracked build in the store, and that was how a changed piece got noticed.
+  The build now ends on one `moved` line naming each piece whose current build
+  is not in the store.
+- **The site serves fewer runners.** Its build used to put every piece's
+  current build into the store, so each one was reachable at
+  `/showcase/runners/<name>` though nothing named it. Only named runners are
+  served now. Nothing outside this repo named one of those.
+- **`pnpm run dev` copies only at start**, so a runner named while it runs is
+  missing until it restarts. Previews rebuild, and are what this repo uses.
+- The three scans read `git ls-files -z`: without it git quotes a path with an
+  unusual character, and the read of the quoted form fails silently.

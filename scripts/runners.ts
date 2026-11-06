@@ -110,6 +110,7 @@ async function main() {
   // them, below.
   await mkdir(builds, { recursive: true })
   await mkdir(store, { recursive: true })
+  const current = new Map<string, string>()
 
   for (const slug of await piecesWithRunners()) {
     const built = await build({ ...shared, entryPoints: [resolve(experiments, slug, "runner.ts")] })
@@ -118,15 +119,33 @@ async function main() {
     const name = `${slug}.${hash}.js`
     await writeFile(resolve(builds, name), code)
     console.log(`runner    ${slug.padEnd(14)} ${name}  ${kb(code.byteLength)}`)
-  }
-
-  for (const name of publishNamed(namedRunners(root), builds, store)) {
-    console.log(`published ${name} into ${STORE}/, because something names it: commit it with that edit`)
+    current.set(slug, name)
   }
 
   const loader = await build({ ...shared, entryPoints: [resolve(experiments, "gallery/embed.ts")] })
   await writeFile(resolve(out, "embed.js"), loader.outputFiles[0]!.contents)
   console.log(`loader    ${"embed.js".padEnd(14)} ${kb(loader.outputFiles[0]!.contents.byteLength)}`)
+
+  for (const name of publishNamed(namedRunners(root), builds, store)) {
+    console.log(`published ${name} into ${STORE}/, because something names it: commit it with that edit`)
+  }
+
+  // A piece whose current build is not in the store has changed since it was
+  // last published. Building used to leave that build untracked in the store,
+  // where `git status` showed it; now it says so here. Whether published
+  // scenes move onto it is a question, and usually the answer is no:
+  // `src/showcase/AGENTS.md`, "Publishing a runner is part of changing a piece".
+  const stored = await readdir(store)
+  const moved = [...current].filter(([slug, name]) => {
+    const published = stored.filter((file) => file.startsWith(`${slug}.`))
+    return published.length > 0 && !published.includes(name)
+  })
+  if (moved.length > 0) {
+    console.log(
+      `moved     ${moved.map(([slug]) => slug).join(", ")}: changed since last published. ` +
+        `Whether published scenes move is a question, usually answered no: src/showcase/AGENTS.md`,
+    )
+  }
 }
 
 await main()
