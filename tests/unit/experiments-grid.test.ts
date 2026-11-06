@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { positionOf, snapToGrid, valueAtPosition, type Track } from "@/experiments/kit/controls"
 import { pieces } from "../support/pieces.ts"
+import { ROLL } from "@/experiments/kit/preset"
 
 /**
  * Every numeric setting lives on a grid, whichever way it was reached.
@@ -127,7 +128,9 @@ describe.each(slugs)("%s", (slug) => {
   it("leaves every shipped scene exactly where it was found", async () => {
     const { PRESETS, DEFAULT_SETTINGS, normalizeSettings } = await settingsModule(slug)
 
-    for (const { label, settings } of [{ label: "defaults", settings: DEFAULT_SETTINGS }, ...PRESETS]) {
+    for (const { label, settings: written } of [{ label: "defaults", settings: DEFAULT_SETTINGS }, ...PRESETS]) {
+      // A preset that rolls its seed holds no seed to move; any legal one stands in.
+      const settings = written.seed === ROLL ? { ...written, seed: DEFAULT_SETTINGS.seed } : written
       const moved = Object.keys(settings).filter(
         (key) => JSON.stringify(normalizeSettings(settings)[key]) !== JSON.stringify(settings[key]),
       )
