@@ -172,7 +172,7 @@ Multi-context. `CONTEXT-MAP.md` at the root names each context and points at its
 
 `main` moves often and nothing forces a branch to keep up. Fetch and branch from `origin/main`, never from local `main`; fetch and merge `origin/main` before opening a PR. Nothing in between. See `docs/agents/working-with-branches.md`.
 
-**A push runs prettier, eslint and the affected unit tests first** (`.githooks/pre-push`, installed by `pnpm install`), so commit before pushing: it checks the working tree. It refuses the push on a failure; `git push --no-verify` skips it once.
+**A push runs prettier, eslint and the affected unit tests first** (`.githooks/pre-push`, installed by `pnpm install`, or `pnpm run prepare` by hand). It checks the working tree, so it refuses a push from a tree with uncommitted changes or of a commit other than HEAD, as well as one that fails a check; `git push --no-verify` skips it once.
 
 ### The steward
 
