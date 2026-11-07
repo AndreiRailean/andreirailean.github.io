@@ -174,7 +174,7 @@ test("every piece that can be drawn draws its plate, as a real frame the width o
     type: "plates",
     description: outcomes.map(({ piece, shown, why, ms }) => `${piece} ${shown} ${why ?? `${ms} ms`}`).join(", "),
   })
-  expect(outcomes.filter(({ shown, why }) => shown !== "live" && why !== "poster-only")).toEqual([])
+  expect(outcomes.filter(({ shown }) => shown !== "live")).toEqual([])
   // Presence, not only the absence of a stray poster: a module that marked
   // every piece poster-only would pass the line above.
   const drawn = page.locator('.plate[data-shown="live"]')
@@ -299,12 +299,13 @@ test("a sleeping plate asks for no frames, and an awake one does", async ({ page
     await expect(plates.nth(i)).toHaveAttribute("data-shown", /^(live|poster)$/, { timeout: 30_000 })
   }
   await expect(page.locator("html")).toHaveAttribute("data-plates", "idle")
-  // Holding Walkers, which is poster-only, keeps every plate asleep and the
-  // wall from taking its turn.
-  await page.locator('.plate[data-piece="walkers"]').scrollIntoViewIfNeeded()
-  await page.locator('.plate[data-piece="walkers"]').hover()
-  await expect(page.locator(".plate[data-awake]")).toHaveCount(0)
+  // Inside the rest between two of the wall's turns: a second of the 1.5 s
+  // after one plate goes back to sleep and before the next wakes.
+  await page.mouse.move(0, 0)
+  await expect(page.locator(".plate[data-awake]")).toHaveCount(1, { timeout: 15_000 })
+  await expect(page.locator(".plate[data-awake]")).toHaveCount(0, { timeout: 15_000 })
   expect(await framesOver(page, 1_000), "a paused piece is still drawing").toBe(0)
+  await expect(page.locator(".plate[data-awake]"), "the wall woke a plate inside the measured second").toHaveCount(0)
 
   await page.locator('.plate[data-shown="live"]').first().scrollIntoViewIfNeeded()
   await page.locator('.plate[data-shown="live"]').first().hover()

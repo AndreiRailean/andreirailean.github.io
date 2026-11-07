@@ -66,8 +66,12 @@ recipes ran forty-odd seconds to build, as their `poster.ts` files explain. Ten
 plates come to about 1.5 s, so the total became 3 s at Andrei's word.
 
 Then psyxels by its first frame, and hexgrid by searching its loop every half
-second rather than every tenth: twelve plates, about 1.8 s. Walkers alone keeps
-its poster.
+second rather than every tenth: twelve plates, about 1.8 s.
+
+Then walkers, the last, by half a second of settle rather than two minutes: its
+plate takes about 500 ms, nearly all of it stepping the crowd. Andrei: "there's
+enough to freeze on walkers within a second of opening it." With no piece left
+on it, `POSTER_ONLY` was removed.
 
 **And a visitor who asked for less motion gets every poster.** Each piece
 honours the preference inside its own `start()`, with a still of its own and a
