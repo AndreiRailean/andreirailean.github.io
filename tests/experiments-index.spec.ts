@@ -323,6 +323,68 @@ test("a sleeping plate asks for no frames, and an awake one does", async ({ page
   expect(await framesOver(page, 1_000), "the awake plate is not running").toBeGreaterThan(10)
 })
 
+/**
+ * Each drawn plate's picture, by piece: a hash, and the spread between its
+ * darkest and lightest pixel, which is 0 for a plate cleared to its ground.
+ */
+const pictures = (page: Page) =>
+  page.evaluate(() => {
+    const probe = document.createElement("canvas")
+    probe.width = 64
+    probe.height = 36
+    const context = probe.getContext("2d", { willReadFrequently: true })!
+    const read: Record<string, { hash: number; spread: number; awake: boolean }> = {}
+    for (const plate of document.querySelectorAll<HTMLElement>(".plate")) {
+      const canvas = plate.querySelector<HTMLCanvasElement>(".live canvas")
+      if (!canvas) continue
+      context.clearRect(0, 0, 64, 36)
+      context.drawImage(canvas, 0, 0, 64, 36)
+      let hash = 0
+      let low = 765
+      let high = 0
+      const { data } = context.getImageData(0, 0, 64, 36)
+      for (let i = 0; i < data.length; i += 4) {
+        const sum = data[i]! + data[i + 1]! + data[i + 2]!
+        low = Math.min(low, sum)
+        high = Math.max(high, sum)
+        hash = (hash * 31 + sum) | 0
+      }
+      read[plate.dataset.piece!] = { hash, spread: high - low, awake: plate.dataset.awake === "true" }
+    }
+    return read
+  })
+
+test("a window resize leaves every sleeping plate drawn, and asleep", async ({ page }) => {
+  // A resize reaches every piece on the wall. Five paused ones used to start
+  // running again, and two cleared their canvas and left it blank, until the
+  // wall's turn came round to each.
+  await withoutSky(page)
+  await page.setViewportSize({ width: 1400, height: 900 })
+  await openIndex(page, "?budget=off")
+  const plates = page.locator(".plate")
+  for (let i = 0; i < (await plates.count()); i += 1) {
+    await plates.nth(i).scrollIntoViewIfNeeded()
+    await expect(plates.nth(i)).toHaveAttribute("data-shown", /^(live|poster)$/, { timeout: 30_000 })
+  }
+  await page.evaluate(() => scrollTo(0, 0))
+  await page.mouse.move(0, 0)
+  const before = await pictures(page)
+  // Paired presence: every live plate had a picture to lose.
+  expect(Object.keys(before).length).toBeGreaterThan(5)
+  for (const [piece, { spread }] of Object.entries(before)) expect(spread, `${piece} was blank before`).toBeGreaterThan(0)
+
+  await page.setViewportSize({ width: 1200, height: 900 })
+  await page.waitForTimeout(300)
+  const settled = await pictures(page)
+  await page.waitForTimeout(1_000)
+  const later = await pictures(page)
+  for (const [piece, picture] of Object.entries(later)) {
+    expect(picture.spread, `${piece} was left blank by the resize`).toBeGreaterThan(0)
+    if (picture.awake || settled[piece]!.awake) continue
+    expect(picture.hash, `${piece} kept running after the resize`).toBe(settled[piece]!.hash)
+  }
+})
+
 test("with nobody pointing, the wall wakes its plates one at a time", async ({ page }) => {
   await countFrames(page)
   await openIndex(page, "?budget=off")
