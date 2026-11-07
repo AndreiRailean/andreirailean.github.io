@@ -26,14 +26,26 @@ const LIT_THRESHOLD = 90
 /**
  * Intersection over union between the packed field and the subject it was read
  * from. A square is a square and a letter is not, so 1 is unreachable; below
- * about 0.6 the subject is being described rather than drawn. The landing scene
- * sits near 0.88 rather than higher on purpose: `fuzz` spends some of it on a
+ * about 0.6 the subject is being described rather than drawn. `alive` sits near
+ * 0.88 rather than higher on purpose: `fuzz` spends some of it on a
  * boundary that is a scatter rather than a line.
  */
 const RECOGNISABLE = 0.8
 
-function openPsyxels(page: Parameters<typeof openExperiment>[0], options?: Parameters<typeof openExperiment>[2]) {
-  return openExperiment<ExperimentApi>(page, "psyxels", options)
+/**
+ * The scene these checks were measured against: a solid letter A in a range of
+ * sizes. Named rather than taken from a bare address, because the primary is
+ * curation and moves (`life`, a word left as a gap, since 2026-11-07), and a
+ * check of what the field does should not change meaning when it does.
+ */
+const MEASURED_ON = "alive"
+
+async function openPsyxels(page: Parameters<typeof openExperiment>[0], options?: Parameters<typeof openExperiment>[2]) {
+  const experiment = await openExperiment<ExperimentApi>(page, "psyxels", options)
+  await experiment.api(({ api, arg }) => {
+    api.preset(arg as string)
+  }, MEASURED_ON)
+  return experiment
 }
 
 /** How many canvas psyxels are brighter than the ground, and where their weight sits. */

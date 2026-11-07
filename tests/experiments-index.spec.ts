@@ -411,11 +411,16 @@ test("the sky runs behind the wall, under the title and the plates", async ({ pa
   await expect(sky.locator("canvas")).toHaveCount(1)
   // What a pointer lands on: the title and a plate's link, not the canvas a
   // fixed box would otherwise paint over them.
-  const hit = (selector: string) =>
-    page.evaluate((selector) => {
+  // Scrolled to first, and a miss is a miss: `elementFromPoint` answers null
+  // off the screen, which a bare `?.closest() !== null` would read as a hit.
+  const hit = async (selector: string) => {
+    await page.locator(selector).first().scrollIntoViewIfNeeded()
+    return page.evaluate((selector) => {
       const box = document.querySelector(selector)!.getBoundingClientRect()
-      return document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)?.closest(selector) !== null
+      const found = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)
+      return found !== null && found.closest(selector) !== null
     }, selector)
+  }
   expect(await hit("h1"), "the sky is over the title").toBe(true)
   expect(await hit(".plate .open"), "the sky is over the plates").toBe(true)
 })
