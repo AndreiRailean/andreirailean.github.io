@@ -72,14 +72,18 @@ turn. Both misses on 2026-11-07 were this: a wrap-up passed over step 4 of the
 plates plan, and another reported fifty of its own `.scratch/` files as
 another session's because it did not remember writing them. Not remembering
 something is never evidence that it is not yours. Before you report a file,
-branch or server as someone else's, look for its name in the transcript:
+branch or server as someone else's, ask which of this session's tool calls,
+its subagents' included, named it:
 
 ```bash
-grep -qF '<name>' "$(sh ~/.claude/skills/wrap-up/ledger.sh transcript)" && echo "this session's"
+sh ~/.claude/skills/wrap-up/ledger.sh mentions '<name>'
 ```
 
-A name the transcript has is this session's, to return like a ledger item. A
-name it lacks is still only reported, never removed. `.scratch/` is the place
+It prints the calls, not what came back from them, since a listing such as
+`git branch` names other sessions' work too. A call that made the thing (a
+write to that path, a `git branch` or `worktree add` creating it) makes it
+this session's, to return like a ledger item. A call that only looked at it
+does not, and a name no call made is only reported, never removed. `.scratch/` is the place
 this bites hardest: it is gitignored, so `git status` never shows it, and
 probes and logs pile up there across a long session.
 

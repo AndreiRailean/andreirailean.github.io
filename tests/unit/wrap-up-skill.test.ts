@@ -24,7 +24,7 @@ it("expects a compaction, and asks the transcript before calling anything anothe
   // On 2026-11-07 a wrap-up after four compactions called fifty of its own
   // scratch files someone else's, because it did not remember making them.
   expect(skill).toContain("**Expect a compaction.**")
-  expect(skill).toContain('ledger.sh transcript)" && echo')
+  expect(skill).toContain("ledger.sh mentions '<name>'")
 })
 
 it("reports each unfinished item with where it is recorded", () => {
