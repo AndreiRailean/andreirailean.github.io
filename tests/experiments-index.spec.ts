@@ -134,7 +134,7 @@ test("a plate is two tab stops, not two links to the same place", async ({ page 
 test("the panel names the artist and counts the room from the work in it", async ({ page }) => {
   await page.goto("/experiments/")
 
-  await expect(page.locator(".masthead .byline")).toHaveText("Andrei Railean")
+  await expect(page.locator(".masthead .byline")).toHaveText("by Andrei Railean")
 
   // Derived, not written down. The count and the opening date come from the
   // collection, so a third piece cannot leave the panel claiming two.
@@ -242,9 +242,7 @@ const awakeNow = (page: Page) =>
  * says nothing about whether a piece is actually running.
  */
 async function countFrames(page: Page): Promise<void> {
-  // The sky behind the wall is a running piece too, and is not the wall's: an
-  // empty loader leaves it out of the count.
-  await page.route("**/showcase/embed.js", (route) => route.fulfill({ contentType: "text/javascript", body: "" }))
+  await withoutSky(page)
   await page.addInitScript(() => {
     const counted = window as unknown as { framesAsked: number }
     counted.framesAsked = 0
@@ -254,6 +252,15 @@ async function countFrames(page: Page): Promise<void> {
       return ask(callback)
     }
   })
+}
+
+/**
+ * The sky behind the wall is a running piece too, and is not the wall's. A check
+ * of what the plates cost leaves it out with an empty loader, or it counts the
+ * sky's frames and spends the sky's time as the plates'.
+ */
+async function withoutSky(page: Page): Promise<void> {
+  await page.route("**/showcase/embed.js", (route) => route.fulfill({ contentType: "text/javascript", body: "" }))
 }
 
 /** Frames asked for over `ms`. */
@@ -372,6 +379,7 @@ test("a device that draws slowly gets posters for the rest of the wall", async (
   // plate, melting at about 40 ms, then takes past the 600 ms a plate is allowed.
   const cdp = await page.context().newCDPSession(page)
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: 20 })
+  await withoutSky(page)
   await openIndex(page)
 
   const plates = page.locator(".plate")
