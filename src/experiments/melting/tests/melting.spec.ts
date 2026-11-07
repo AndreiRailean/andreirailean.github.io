@@ -31,7 +31,7 @@ const WAX_ID = 200_000
 const CEILING_ID = 400_000
 
 /** The lamp a preset draws at a moment, held there. */
-const at = ({ api, arg }: { api: ExperimentApi; arg?: unknown }) => {
+const lampAt = ({ api, arg }: { api: ExperimentApi; arg?: unknown }) => {
   const [preset, moment] = arg as [string, number]
   api.preset(preset)
   api.pause(true)
@@ -49,13 +49,13 @@ test("the lamp is a function of the moment: the same from anywhere, and on a sec
 }) => {
   const first = await openMelting(page, { idle: true })
 
-  const here = await first.api(at, [ON_THE_WALL, MOMENT])
+  const here = await first.api(lampAt, [ON_THE_WALL, MOMENT])
   expect(here.filter((blob) => blob.r > 0).length).toBeGreaterThan(0)
-  await first.api(at, [ON_THE_WALL, MOMENT + 517])
-  expect(await first.api(at, [ON_THE_WALL, MOMENT])).toEqual(here)
+  await first.api(lampAt, [ON_THE_WALL, MOMENT + 517])
+  expect(await first.api(lampAt, [ON_THE_WALL, MOMENT])).toEqual(here)
 
   const elsewhere = await openMelting(await context.newPage(), { idle: true })
-  expect(await elsewhere.api(at, [ON_THE_WALL, MOMENT])).toEqual(here)
+  expect(await elsewhere.api(lampAt, [ON_THE_WALL, MOMENT])).toEqual(here)
 })
 
 test("on the wall clock, two screens showing the same wall time show the same lamp", async ({ page, context }) => {
@@ -82,7 +82,7 @@ test("on the wall clock, two screens showing the same wall time show the same la
   // And it is the wall's moment, not merely the same start: the lamp `goto`
   // puts at that moment.
   const third = await openMelting(await context.newPage(), { idle: true })
-  const moment = await third.api(at, [ON_THE_WALL, MOMENT])
+  const moment = await third.api(lampAt, [ON_THE_WALL, MOMENT])
   expect(moment).toEqual(lamp)
 })
 
