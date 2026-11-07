@@ -352,7 +352,9 @@ test("the sky runs behind the wall, under the title and the plates", async ({ pa
 
 test("a visitor who asked for less motion gets every poster and no plate drawn", async ({ page }) => {
   await openIndex(page, "?budget=off", "reduce")
-  // Nor the sky, which the test above sees running without it.
+  // Nor the sky, which the test above sees running without it. Read once the
+  // network is quiet, by when the loader would have mounted its canvas.
+  await page.waitForLoadState("networkidle")
   await expect(page.locator("#showcase-bg canvas")).toHaveCount(0)
   const plates = page.locator(".plate")
   const count = await plates.count()
