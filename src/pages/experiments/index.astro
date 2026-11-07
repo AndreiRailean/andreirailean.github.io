@@ -158,15 +158,16 @@ const [opened] = experiments.map(({ data }) => data.started).sort((a, b) => a.va
 
       h1 {
         margin: 0;
-        /* Andrei: "make the word Experiments a lot bigger". Sized to the
-           viewport, so a phone still fits it on one line. */
-        font-size: clamp(2.75rem, 0.75rem + 9.4vw, 7.5rem);
-        /* Expanded rather than merely large. Archivo carries a width axis, and
-           wide caps are how a title reads as signage over a picture. */
-        font-stretch: 118%;
-        font-weight: 620;
-        letter-spacing: -0.025em;
-        line-height: 0.95;
+        /* Andrei: "make the word Experiments a lot bigger". In proportion to
+           the window, so it is not the larger share of a small one. */
+        font-size: clamp(2.75rem, 7vw, 8rem);
+        /* Condensed, from Archivo's own width axis, so it can be tall without
+           being wide. Andrei, on the expanded cut at this size: "I think having
+           a narrower display font would be better for this title." */
+        font-stretch: 68%;
+        font-weight: 680;
+        letter-spacing: -0.01em;
+        line-height: 0.92;
       }
 
       .byline {
