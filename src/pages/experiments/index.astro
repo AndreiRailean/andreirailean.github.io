@@ -107,23 +107,48 @@ const [opened] = experiments.map(({ data }) => data.started).sort((a, b) => a.va
       }
 
       /*
-       * The masthead does not span the plates. A title set to the full width of a
-       * spread reads as a page banner; held to a column it reads as the top of an
-       * article, which is the density this page is after.
+       * Starry Night, running behind the whole page as a pasted embed, the way
+       * the home page runs it and coupled the same way: a pinned runner and a
+       * packed scene, nothing imported. Its own scene, not the home page's:
+       * `deep field`, the piece's starting point and the wall's entry of that
+       * name, because this page is dark only and has no theme to pair with.
+       *
+       * No scrim under the words. Andrei: "we don't need the inner faded
+       * circle." The sky is dark enough to read on, and the plates are opaque.
        */
+      #showcase-bg {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+      }
+
+      /* A fixed box paints over unpositioned content whatever the DOM order, so
+         everything the page shows is lifted above it. */
+      .masthead,
+      .wall,
+      .empty {
+        position: relative;
+        z-index: 1;
+      }
+
       /*
-       * A wall panel, not a page banner: the artist above the title, a line
-       * about what the works have in common, and the run below a rule. Held to a
-       * column rather than spanning the plates, so it reads as the text you stand
-       * in front of on the way in.
+       * The title as signage, with the artist under it. Only the prose is held
+       * to a column: the title is wider than one at this size, and a column
+       * would wrap it.
        */
       .masthead {
-        max-width: 34rem;
         margin: 0 0 clamp(2rem, 5vh, 3.25rem);
       }
 
-      .byline,
+      .lede,
       .run {
+        max-width: 34rem;
+      }
+
+      .run {
+        margin: 1.1rem 0 0;
+        padding-top: 0.85rem;
+        border-top: 1px solid var(--edge);
         color: var(--ink-faint);
         font-family: var(--utility);
         font-size: 0.6875rem;
@@ -131,33 +156,37 @@ const [opened] = experiments.map(({ data }) => data.started).sort((a, b) => a.va
         text-transform: uppercase;
       }
 
-      .byline {
-        margin: 0 0 0.6rem;
-      }
-
-      .run {
-        margin: 1.1rem 0 0;
-        padding-top: 0.85rem;
-        border-top: 1px solid var(--edge);
-      }
-
       h1 {
         margin: 0;
-        font-size: clamp(1.6rem, 1.1rem + 1.7vw, 2.4rem);
-        /* Expanded rather than merely large. Archivo carries a width axis, and
-           wide caps are how a title reads as signage over a picture. */
-        font-stretch: 118%;
-        font-weight: 620;
-        letter-spacing: -0.015em;
-        line-height: 1.05;
-        text-wrap: balance;
+        /* Andrei: "make the word Experiments a lot bigger". In proportion to
+           the window, so it is not the larger share of a small one. */
+        font-size: clamp(2.75rem, 7vw, 8rem);
+        /* Condensed, from Archivo's own width axis, so it can be tall without
+           being wide. Andrei, on the expanded cut at this size: "I think having
+           a narrower display font would be better for this title." Then set
+           by eye in the browser, and in capitals. `extra-condensed` is 62.5%,
+           inside the 62 to 125 the font's axis covers. */
+        font-stretch: extra-condensed;
+        font-weight: 680;
+        text-transform: uppercase;
+        letter-spacing: -0.01em;
+        line-height: 0.92;
+      }
+
+      .byline {
+        margin: 0.5em 0 0;
+        color: var(--ink-dim);
+        font-size: clamp(1.05rem, 0.8rem + 1vw, 1.6rem);
+        font-stretch: 108%;
+        font-weight: 450;
+        letter-spacing: -0.005em;
       }
 
       /* Balanced, so the last line is never a single word left on its own. The
          copy is short enough that the browser can even the lines out, and short
          enough that it would look wrong if it did not. */
       .lede {
-        margin: 0.65rem 0 0;
+        margin: 1.25rem 0 0;
         color: var(--ink-dim);
         font-size: 0.95rem;
         text-wrap: balance;
@@ -450,9 +479,16 @@ const [opened] = experiments.map(({ data }) => data.started).sort((a, b) => a.va
     </style>
   </head>
   <body>
+    {/* Pinned: this is the wall's `starry-night-deep-field` entry, runner and
+        scene both, and changing Starry Night leaves it as it is. */}
+    <div
+      id="showcase-bg"
+      data-showcase-runner="/showcase/runners/starry-night.490e5f9452c8.js"
+      data-showcase-scene="__9ADSDBSQfRYeR7imQ"
+    ></div>
     <header class="masthead">
-      <p class="byline">Andrei Railean</p>
       <h1>Experiments</h1>
+      <p class="byline">by Andrei Railean</p>
       <p class="lede">
         Programmed graphics, made to be left running. Nothing here repeats, and every piece hands you the controls it
         was found with.
@@ -510,6 +546,33 @@ const [opened] = experiments.map(({ data }) => data.started).sort((a, b) => a.va
     )}
     <script>
       import "@/experiments/gallery/plates"
+    </script>
+    {/* Only for a visitor who has not asked for less motion, who gets every
+        plate as its poster too. Without it the ground is the page's own.
+
+        And only once the plates on screen are drawn. Starting together, the
+        sky's runner and first frames landed on the first plates' clocks, and
+        those clocks are the budget that decides whether the rest of the wall
+        is drawn at all: at 4x CPU throttle, art deco 289 to 655 ms and the wall
+        7.9 to 8.8 s. `data-plates` goes idle when the drawing stops; the
+        timeout is for a page whose plates never start. */}
+    <script is:inline type="module">
+      if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        const root = document.documentElement
+        let started = false
+        const start = () => {
+          if (started) return
+          started = true
+          watch.disconnect()
+          import("/showcase/embed.js")
+        }
+        const watch = new MutationObserver(() => {
+          if (root.dataset.plates === "idle") start()
+        })
+        watch.observe(root, { attributes: true, attributeFilter: ["data-plates"] })
+        if (root.dataset.plates === "idle") start()
+        setTimeout(start, 4000)
+      }
     </script>
   </body>
 </html>

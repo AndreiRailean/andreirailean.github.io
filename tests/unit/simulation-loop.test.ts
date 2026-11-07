@@ -125,6 +125,41 @@ describe("parkingLoop", () => {
     expect(loop.running()).toBe(false)
   })
 
+  it("held, a wake repaints once and steps nothing, and release resumes from a fresh clock", () => {
+    let wakes = 0
+    const { loop, elapsed, draws } = make(
+      () => "moved",
+      () => {
+        wakes++
+      },
+    )
+    loop.wake()
+    frameAt(1000)
+    frameAt(1016)
+    const stepped = elapsed.length
+    loop.setHeld(true)
+    frameAt(1032) // the frame already asked for draws and asks for no more
+    expect(elapsed).toHaveLength(stepped)
+    expect(queue.size).toBe(0)
+
+    // A resize, while held: one frame, drawn and not stepped.
+    const drawn = draws()
+    loop.wake()
+    expect(queue.size).toBe(1)
+    frameAt(2000)
+    expect(draws()).toBe(drawn + 1)
+    expect(elapsed).toHaveLength(stepped)
+    expect(queue.size).toBe(0)
+    expect(wakes).toBe(1)
+
+    loop.setHeld(false)
+    expect(wakes).toBe(2)
+    frameAt(9000)
+    frameAt(9016)
+    expect(elapsed.slice(stepped)).toEqual([0, 0.016])
+    expect(queue.size).toBe(1)
+  })
+
   it("smooths fps toward the frame rate", () => {
     const { loop } = make(() => "moved")
     loop.wake()

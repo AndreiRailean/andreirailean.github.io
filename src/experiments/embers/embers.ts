@@ -468,11 +468,7 @@ export function createEmbers(canvas: HTMLCanvasElement, initial: Settings): Embe
     },
 
     setPaused(paused) {
-      if (!paused) {
-        wake()
-        return
-      }
-      loop.hold()
+      loop.setHeld(paused)
     },
 
     settle(seconds) {

@@ -304,11 +304,7 @@ export function createCrowd(canvas: HTMLCanvasElement, initial: Settings): Crowd
     stop: teardown,
 
     setPaused(paused) {
-      if (!paused) {
-        wake()
-        return
-      }
-      loop.hold()
+      loop.setHeld(paused)
     },
 
     settle(seconds) {

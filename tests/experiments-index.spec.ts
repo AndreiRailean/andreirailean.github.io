@@ -134,7 +134,7 @@ test("a plate is two tab stops, not two links to the same place", async ({ page 
 test("the panel names the artist and counts the room from the work in it", async ({ page }) => {
   await page.goto("/experiments/")
 
-  await expect(page.locator(".masthead .byline")).toHaveText("Andrei Railean")
+  await expect(page.locator(".masthead .byline")).toHaveText("by Andrei Railean")
 
   // Derived, not written down. The count and the opening date come from the
   // collection, so a third piece cannot leave the panel claiming two.
@@ -242,6 +242,7 @@ const awakeNow = (page: Page) =>
  * says nothing about whether a piece is actually running.
  */
 async function countFrames(page: Page): Promise<void> {
+  await withoutSky(page)
   await page.addInitScript(() => {
     const counted = window as unknown as { framesAsked: number }
     counted.framesAsked = 0
@@ -251,6 +252,15 @@ async function countFrames(page: Page): Promise<void> {
       return ask(callback)
     }
   })
+}
+
+/**
+ * The sky behind the wall is a running piece too, and is not the wall's. A check
+ * of what the plates cost leaves it out with an empty loader, or it counts the
+ * sky's frames and spends the sky's time as the plates'.
+ */
+async function withoutSky(page: Page): Promise<void> {
+  await page.route("**/showcase/embed.js", (route) => route.fulfill({ contentType: "text/javascript", body: "" }))
 }
 
 /** Frames asked for over `ms`. */
@@ -313,6 +323,69 @@ test("a sleeping plate asks for no frames, and an awake one does", async ({ page
   expect(await framesOver(page, 1_000), "the awake plate is not running").toBeGreaterThan(10)
 })
 
+/**
+ * Each drawn plate's picture, by piece: a hash, and the spread between its
+ * darkest and lightest pixel, which is 0 for a plate cleared to its ground.
+ */
+const pictures = (page: Page) =>
+  page.evaluate(() => {
+    const probe = document.createElement("canvas")
+    probe.width = 64
+    probe.height = 36
+    const context = probe.getContext("2d", { willReadFrequently: true })!
+    const read: Record<string, { hash: number; spread: number; awake: boolean }> = {}
+    for (const plate of document.querySelectorAll<HTMLElement>(".plate")) {
+      const canvas = plate.querySelector<HTMLCanvasElement>(".live canvas")
+      if (!canvas) continue
+      context.clearRect(0, 0, 64, 36)
+      context.drawImage(canvas, 0, 0, 64, 36)
+      let hash = 0
+      let low = 765
+      let high = 0
+      const { data } = context.getImageData(0, 0, 64, 36)
+      for (let i = 0; i < data.length; i += 4) {
+        const sum = data[i]! + data[i + 1]! + data[i + 2]!
+        low = Math.min(low, sum)
+        high = Math.max(high, sum)
+        hash = (hash * 31 + sum) | 0
+      }
+      read[plate.dataset.piece!] = { hash, spread: high - low, awake: plate.dataset.awake === "true" }
+    }
+    return read
+  })
+
+test("a window resize leaves every sleeping plate drawn, and asleep", async ({ page }) => {
+  // A resize reaches every piece on the wall. Five paused ones used to start
+  // running again, and two cleared their canvas and left it blank, until the
+  // wall's turn came round to each.
+  await withoutSky(page)
+  await page.setViewportSize({ width: 1400, height: 900 })
+  await openIndex(page, "?budget=off")
+  const plates = page.locator(".plate")
+  for (let i = 0; i < (await plates.count()); i += 1) {
+    await plates.nth(i).scrollIntoViewIfNeeded()
+    await expect(plates.nth(i)).toHaveAttribute("data-shown", /^(live|poster)$/, { timeout: 30_000 })
+  }
+  await page.evaluate(() => scrollTo(0, 0))
+  await page.mouse.move(0, 0)
+  const before = await pictures(page)
+  // Paired presence: every live plate had a picture to lose.
+  expect(Object.keys(before).length).toBeGreaterThan(5)
+  for (const [piece, { spread }] of Object.entries(before))
+    expect(spread, `${piece} was blank before`).toBeGreaterThan(0)
+
+  await page.setViewportSize({ width: 1200, height: 900 })
+  await page.waitForTimeout(300)
+  const settled = await pictures(page)
+  await page.waitForTimeout(1_000)
+  const later = await pictures(page)
+  for (const [piece, picture] of Object.entries(later)) {
+    expect(picture.spread, `${piece} was left blank by the resize`).toBeGreaterThan(0)
+    if (picture.awake || settled[piece]!.awake) continue
+    expect(picture.hash, `${piece} kept running after the resize`).toBe(settled[piece]!.hash)
+  }
+})
+
 test("with nobody pointing, the wall wakes its plates one at a time", async ({ page }) => {
   await countFrames(page)
   await openIndex(page, "?budget=off")
@@ -331,8 +404,52 @@ test("with nobody pointing, the wall wakes its plates one at a time", async ({ p
   expect([...seen], "the wall did not take turns between its plates").toHaveLength(2)
 })
 
+test("the sky runs behind the wall, under the title and the plates", async ({ page }) => {
+  // When the drawing on screen stopped, read from the page's own clock.
+  await page.addInitScript(() => {
+    // On the document, since its root does not exist yet when this runs.
+    new MutationObserver(() => {
+      const marked = window as unknown as { platesIdleAt?: number }
+      if (document.documentElement.dataset.plates === "idle") marked.platesIdleAt ??= performance.now()
+    }).observe(document, { attributes: true, subtree: true, attributeFilter: ["data-plates"] })
+  })
+  await openIndex(page)
+  const sky = page.locator("#showcase-bg")
+  await expect(sky).toHaveAttribute("data-showcase-state", "running", { timeout: 15_000 })
+
+  // Started after the plates on screen were drawn, so its start-up is not on
+  // their clocks: those decide whether the rest of the wall is drawn at all.
+  const { idleAt, askedAt } = await page.evaluate(() => ({
+    idleAt: (window as unknown as { platesIdleAt?: number }).platesIdleAt,
+    askedAt: performance.getEntriesByType("resource").find((entry) => entry.name.endsWith("/showcase/embed.js"))
+      ?.startTime,
+  }))
+  expect(idleAt, "the plates never went idle").toBeDefined()
+  expect(askedAt, "the sky's loader was never asked for").toBeDefined()
+  expect(askedAt!, "the sky started while the first plates were drawing").toBeGreaterThanOrEqual(idleAt!)
+  await expect(sky.locator("canvas")).toHaveCount(1)
+  // What a pointer lands on: the title and a plate's link, not the canvas a
+  // fixed box would otherwise paint over them.
+  // Scrolled to first, and a miss is a miss: `elementFromPoint` answers null
+  // off the screen, which a bare `?.closest() !== null` would read as a hit.
+  const hit = async (selector: string) => {
+    await page.locator(selector).first().scrollIntoViewIfNeeded()
+    return page.evaluate((selector) => {
+      const box = document.querySelector(selector)!.getBoundingClientRect()
+      const found = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)
+      return found !== null && found.closest(selector) !== null
+    }, selector)
+  }
+  expect(await hit("h1"), "the sky is over the title").toBe(true)
+  expect(await hit(".plate .open"), "the sky is over the plates").toBe(true)
+})
+
 test("a visitor who asked for less motion gets every poster and no plate drawn", async ({ page }) => {
   await openIndex(page, "?budget=off", "reduce")
+  // Nor the sky, which the test above sees running without it. Read once the
+  // network is quiet, by when the loader would have mounted its canvas.
+  await page.waitForLoadState("networkidle")
+  await expect(page.locator("#showcase-bg canvas")).toHaveCount(0)
   const plates = page.locator(".plate")
   const count = await plates.count()
   expect(count).toBeGreaterThan(0)
@@ -349,6 +466,7 @@ test("a device that draws slowly gets posters for the rest of the wall", async (
   // plate, melting at about 40 ms, then takes past the 600 ms a plate is allowed.
   const cdp = await page.context().newCDPSession(page)
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: 20 })
+  await withoutSky(page)
   await openIndex(page)
 
   const plates = page.locator(".plate")

@@ -8,10 +8,11 @@ import type { PosterRecipe } from "@/experiments/poster"
  * **The lamp is a function of its seed and the moment.** This recipe used to
  * `goto` one moment, picked by eye, so every capture was the same picture. Since
  * 2026-11-06 the plates on the index are meant to differ from load to load
- * (`../docs/adr/20261106-a-preset-names-a-look-not-an-arrangement.md`), and
- * this piece's presets keep their seed, because two screens showing the same
- * lamp is its premise. So the variety here is the moment: the plate holds
- * whatever the wall clock says when it is drawn, with nothing to settle.
+ * (`../docs/adr/20261106-a-preset-names-a-look-not-an-arrangement.md`).
+ * The primary, `lava lamp`, runs on the zero clock so a plate woken from its
+ * pause carries on from where it slept rather than jumping to the time of day,
+ * and rolls its seed, so the variety is the arrangement: the plate holds the
+ * lamp as it starts.
  */
 const poster: PosterRecipe<ExperimentApi> = {
   // No preset named, so it captures the primary — which is what a bare address

@@ -1822,7 +1822,12 @@ export function createArtdeco(canvas: HTMLCanvasElement, initial: Settings) {
   }
 
   function onResize() {
-    size()
+    // Only when the canvas changed. A window resize reaches a plate on the index
+    // too, whose box does not move with it, and starting over there left a
+    // paused plate blank until the wall woke it.
+    const next = fitCanvas(canvas, { width, height, dpr })
+    if (!next) return
+    ;({ width, height, dpr } = next)
     restart()
     draw()
   }

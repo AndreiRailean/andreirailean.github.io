@@ -424,10 +424,17 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
   }
 
   function handleResize() {
+    // Only when the canvas changed: assigning its width clears it, and a window
+    // resize reaches a plate on the index whose box does not move with it.
+    const ratio = window.devicePixelRatio || 1
+    if (canvas.clientWidth === width && canvas.clientHeight === height && canvas.width === Math.round(width * ratio))
+      return
     measure()
     rebuildLayers()
     rebuildClouds()
     if (prefersReducedMotion.matches) drawStill()
+    // Paused, nothing else would draw the cleared canvas again.
+    else if (frameId === 0) draw()
   }
 
   function start() {

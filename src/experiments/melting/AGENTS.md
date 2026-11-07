@@ -84,11 +84,16 @@ Resuming where it stopped would leave this screen out of step with every other
 one for good, which is the one thing the wall clock is for. Anyone wanting a
 held moment uses the zero clock, which steps.
 
-## The poster is a fixed moment
+**`lava lamp`, the primary, runs on the zero clock and rolls its seed**, so a
+pause holds its moment and the index's plate wakes where it slept. Every other
+preset keeps the wall clock and a pinned seed, and `melting.spec.ts` holds the
+premise through one of them.
 
-`poster.ts` pauses and calls `goto` on one moment, so a recapture is the same
-picture. Pausing brings the chrome back, so the recipe waits 800 ms for it to
-fade — at 0 the panel was in the shot.
+## The poster is the primary as it starts
+
+`poster.ts` pauses the primary as it opens. With the seed rolled, that is a
+different lamp on every load. Pausing brings the chrome back, so the recipe
+waits 800 ms for it to fade — at 0 the panel was in the shot.
 
 ## History that is not in this branch
 
