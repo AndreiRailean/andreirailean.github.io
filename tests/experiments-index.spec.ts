@@ -407,10 +407,11 @@ test("with nobody pointing, the wall wakes its plates one at a time", async ({ p
 test("the sky runs behind the wall, under the title and the plates", async ({ page }) => {
   // When the drawing on screen stopped, read from the page's own clock.
   await page.addInitScript(() => {
+    // On the document, since its root does not exist yet when this runs.
     new MutationObserver(() => {
       const marked = window as unknown as { platesIdleAt?: number }
       if (document.documentElement.dataset.plates === "idle") marked.platesIdleAt ??= performance.now()
-    }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-plates"] })
+    }).observe(document, { attributes: true, subtree: true, attributeFilter: ["data-plates"] })
   })
   await openIndex(page)
   const sky = page.locator("#showcase-bg")
