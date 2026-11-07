@@ -338,11 +338,7 @@ export function createFlotsam(canvas: HTMLCanvasElement, initial: Settings): Flo
     },
 
     setPaused(paused) {
-      if (!paused) {
-        wake()
-        return
-      }
-      loop.hold()
+      loop.setHeld(paused)
     },
 
     setSettings(next) {

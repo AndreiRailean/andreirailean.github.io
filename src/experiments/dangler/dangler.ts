@@ -487,11 +487,7 @@ export function createDangler(canvas: HTMLCanvasElement, initial: Settings): Dan
     },
 
     setPaused(paused) {
-      if (!paused) {
-        wake()
-        return
-      }
-      loop.hold()
+      loop.setHeld(paused)
     },
 
     setSettings(next) {

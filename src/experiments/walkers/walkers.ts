@@ -319,11 +319,7 @@ export function createWalkers(canvas: HTMLCanvasElement, initial: Settings): Wal
     },
 
     setPaused(paused) {
-      if (!paused) {
-        wake()
-        return
-      }
-      loop.hold()
+      loop.setHeld(paused)
     },
 
     settle(seconds) {

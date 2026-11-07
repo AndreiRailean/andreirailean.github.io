@@ -14,7 +14,7 @@
  *
  * - **`parkingLoop`** stops requesting frames once nothing moves and nothing
  *   needs repainting, and `wake()` starts it again. Crowd, Dangler, Embers,
- *   Flotsam and Walkers. Holding cancels the frame outright.
+ *   Flotsam and Walkers. Held, a `wake()` draws one frame and moves nothing.
  * - **`steadyLoop`** runs from `start()` to `stop()` and draws every frame
  *   while it is not held. Holding parks the frames, and `repaint()` draws one
  *   for a change made while held. Dotfield, Hexgrid, Melting and Streakers.
@@ -45,8 +45,18 @@ export type ParkingLoop = {
    * clears it, so a piece simply vanished when its window changed size.
    */
   wake: () => void
-  /** Cancel the frame and park. Pause and teardown both; `wake()` resumes. */
+  /** Cancel the frame and park, for teardown; `wake()` starts it again. */
   hold: () => void
+  /**
+   * Pause the scene where it is, until released.
+   *
+   * Held, `wake()` still repaints, since a resize clears the canvas, but steps
+   * nothing and asks for one frame only. Pausing with `hold()` alone left the
+   * next `wake()` free to start the scene again: a window resize woke every
+   * paused plate on the index at once, and each ran until it had nothing left
+   * to move. `steadyLoop`'s `setHeld` is the same contract.
+   */
+  setHeld: (held: boolean) => void
   /** Frames per second, smoothed. */
   fps: () => number
   /** Whether a frame is currently requested. */
@@ -68,8 +78,19 @@ export function parkingLoop(options: {
   let previous = 0
   let fps = 0
   let dirty = true
+  let held = false
 
   function tick(now: number): void {
+    if (held) {
+      // A repaint asked for while held: draw what changed, step nothing, park.
+      frame = 0
+      running = false
+      if (dirty) {
+        dirty = false
+        draw()
+      }
+      return
+    }
     frame = requestAnimationFrame(tick)
 
     const elapsed = previous === 0 ? 0 : Math.min(clamp, (now - previous) / 1000)
@@ -95,16 +116,23 @@ export function parkingLoop(options: {
     running = false
   }
 
+  function wake(): void {
+    dirty = true
+    if (running) return
+    running = true
+    previous = 0
+    if (!held) onWake?.()
+    frame = requestAnimationFrame(tick)
+  }
+
   return {
-    wake() {
-      dirty = true
-      if (running) return
-      running = true
-      previous = 0
-      onWake?.()
-      frame = requestAnimationFrame(tick)
-    },
+    wake,
     hold,
+    setHeld(on) {
+      // Holding lets a frame already asked for draw, and steps nothing in it.
+      held = on
+      if (!on) wake()
+    },
     fps: () => fps,
     running: () => running,
   }
