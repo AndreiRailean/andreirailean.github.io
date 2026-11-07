@@ -64,6 +64,25 @@ If you reach this skill without a ledger, say so, and clean only what you can
 identify with certainty. **Reporting more and deleting less is always the right
 trade here.**
 
+**Expect a compaction.** A session long enough to need a wrap-up has usually
+been compacted, and then its start is a summary in your context, which keeps
+what its writer thought mattered. `sh ~/.claude/skills/wrap-up/ledger.sh open`
+says so on a `compacted:` line, with the transcript that still holds every
+turn. Both misses on 2026-11-07 were this: a wrap-up passed over step 4 of the
+plates plan, and another reported fifty of its own `.scratch/` files as
+another session's because it did not remember writing them. Not remembering
+something is never evidence that it is not yours. Before you report a file,
+branch or server as someone else's, look for its name in the transcript:
+
+```bash
+grep -qF '<name>' "$(sh ~/.claude/skills/wrap-up/ledger.sh transcript)" && echo "this session's"
+```
+
+A name the transcript has is this session's, to return like a ledger item. A
+name it lacks is still only reported, never removed. `.scratch/` is the place
+this bites hardest: it is gitignored, so `git status` never shows it, and
+probes and logs pile up there across a long session.
+
 ## This is the weaker half
 
 **A session that ends abruptly never runs this**, and that is how most sessions
@@ -225,9 +244,10 @@ conversation agreed and did not complete: the remaining steps of a plan Andrei
 approved, a "next" or "later" either of you named, a promise, a question parked
 for another time. For each, say where it lives outside the conversation — an
 issue, a PR description, a file here — and file an issue for any that lives
-nowhere else. Read the whole session for these, compaction summaries included,
-not the last request: the plan most likely to be lost was agreed many turns
-back.
+nowhere else. Read the whole session for these, not the last request: the plan
+most likely to be lost was agreed many turns back. After a compaction, read
+that part in the transcript rather than the summary, which lists pending work
+as its writer understood it.
 
 **This pass is separate because nothing went wrong.** On 2026-11-06 a wrap-up
 reported seven signals and four findings and never mentioned step 4 of the

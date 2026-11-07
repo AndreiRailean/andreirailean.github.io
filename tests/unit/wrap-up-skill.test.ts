@@ -20,6 +20,13 @@ it("reads for unfinished work first, then the signals", () => {
   expect(signals, "step 5 has no signals pass after it").toBeGreaterThan(unfinished)
 })
 
+it("expects a compaction, and asks the transcript before calling anything another session's", () => {
+  // On 2026-11-07 a wrap-up after four compactions called fifty of its own
+  // scratch files someone else's, because it did not remember making them.
+  expect(skill).toContain("**Expect a compaction.**")
+  expect(skill).toContain('ledger.sh transcript)" && echo')
+})
+
 it("reports each unfinished item with where it is recorded", () => {
   expect(report).toContain("unfinished: <n> (each → where it is recorded)")
 })
