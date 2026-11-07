@@ -163,9 +163,11 @@ const [opened] = experiments.map(({ data }) => data.started).sort((a, b) => a.va
         font-size: clamp(2.75rem, 7vw, 8rem);
         /* Condensed, from Archivo's own width axis, so it can be tall without
            being wide. Andrei, on the expanded cut at this size: "I think having
-           a narrower display font would be better for this title." */
-        font-stretch: 68%;
+           a narrower display font would be better for this title." Then a
+           touch wider, at 77%, set by eye in the browser, and in capitals. */
+        font-stretch: 77%;
         font-weight: 680;
+        text-transform: uppercase;
         letter-spacing: -0.01em;
         line-height: 0.92;
       }
