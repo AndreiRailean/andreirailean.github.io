@@ -548,9 +548,31 @@ const [opened] = experiments.map(({ data }) => data.started).sort((a, b) => a.va
       import "@/experiments/gallery/plates"
     </script>
     {/* Only for a visitor who has not asked for less motion, who gets every
-        plate as its poster too. Without it the ground is the page's own. */}
+        plate as its poster too. Without it the ground is the page's own.
+
+        And only once the plates on screen are drawn. Starting together, the
+        sky's runner and first frames landed on the first plates' clocks, and
+        those clocks are the budget that decides whether the rest of the wall
+        is drawn at all: at 4x CPU throttle, art deco 289 to 655 ms and the wall
+        7.9 to 8.8 s. `data-plates` goes idle when the drawing stops; the
+        timeout is for a page whose plates never start. */}
     <script is:inline type="module">
-      if (!matchMedia("(prefers-reduced-motion: reduce)").matches) import("/showcase/embed.js")
+      if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        const root = document.documentElement
+        let started = false
+        const start = () => {
+          if (started) return
+          started = true
+          watch.disconnect()
+          import("/showcase/embed.js")
+        }
+        const watch = new MutationObserver(() => {
+          if (root.dataset.plates === "idle") start()
+        })
+        watch.observe(root, { attributes: true, attributeFilter: ["data-plates"] })
+        if (root.dataset.plates === "idle") start()
+        setTimeout(start, 4000)
+      }
     </script>
   </body>
 </html>

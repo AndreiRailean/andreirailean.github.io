@@ -405,9 +405,27 @@ test("with nobody pointing, the wall wakes its plates one at a time", async ({ p
 })
 
 test("the sky runs behind the wall, under the title and the plates", async ({ page }) => {
+  // When the drawing on screen stopped, read from the page's own clock.
+  await page.addInitScript(() => {
+    new MutationObserver(() => {
+      const marked = window as unknown as { platesIdleAt?: number }
+      if (document.documentElement.dataset.plates === "idle") marked.platesIdleAt ??= performance.now()
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-plates"] })
+  })
   await openIndex(page)
   const sky = page.locator("#showcase-bg")
   await expect(sky).toHaveAttribute("data-showcase-state", "running", { timeout: 15_000 })
+
+  // Started after the plates on screen were drawn, so its start-up is not on
+  // their clocks: those decide whether the rest of the wall is drawn at all.
+  const { idleAt, askedAt } = await page.evaluate(() => ({
+    idleAt: (window as unknown as { platesIdleAt?: number }).platesIdleAt,
+    askedAt: performance.getEntriesByType("resource").find((entry) => entry.name.endsWith("/showcase/embed.js"))
+      ?.startTime,
+  }))
+  expect(idleAt, "the plates never went idle").toBeDefined()
+  expect(askedAt, "the sky's loader was never asked for").toBeDefined()
+  expect(askedAt!, "the sky started while the first plates were drawing").toBeGreaterThanOrEqual(idleAt!)
   await expect(sky.locator("canvas")).toHaveCount(1)
   // What a pointer lands on: the title and a plate's link, not the canvas a
   // fixed box would otherwise paint over them.
