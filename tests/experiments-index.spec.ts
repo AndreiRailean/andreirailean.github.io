@@ -371,7 +371,8 @@ test("a window resize leaves every sleeping plate drawn, and asleep", async ({ p
   const before = await pictures(page)
   // Paired presence: every live plate had a picture to lose.
   expect(Object.keys(before).length).toBeGreaterThan(5)
-  for (const [piece, { spread }] of Object.entries(before)) expect(spread, `${piece} was blank before`).toBeGreaterThan(0)
+  for (const [piece, { spread }] of Object.entries(before))
+    expect(spread, `${piece} was blank before`).toBeGreaterThan(0)
 
   await page.setViewportSize({ width: 1200, height: 900 })
   await page.waitForTimeout(300)

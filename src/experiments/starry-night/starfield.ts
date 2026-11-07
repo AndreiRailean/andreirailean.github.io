@@ -427,7 +427,8 @@ export function createStarfield(canvas: HTMLCanvasElement, initial?: Settings): 
     // Only when the canvas changed: assigning its width clears it, and a window
     // resize reaches a plate on the index whose box does not move with it.
     const ratio = window.devicePixelRatio || 1
-    if (canvas.clientWidth === width && canvas.clientHeight === height && canvas.width === Math.round(width * ratio)) return
+    if (canvas.clientWidth === width && canvas.clientHeight === height && canvas.width === Math.round(width * ratio))
+      return
     measure()
     rebuildLayers()
     rebuildClouds()
