@@ -242,6 +242,9 @@ const awakeNow = (page: Page) =>
  * says nothing about whether a piece is actually running.
  */
 async function countFrames(page: Page): Promise<void> {
+  // The sky behind the wall is a running piece too, and is not the wall's: an
+  // empty loader leaves it out of the count.
+  await page.route("**/showcase/embed.js", (route) => route.fulfill({ contentType: "text/javascript", body: "" }))
   await page.addInitScript(() => {
     const counted = window as unknown as { framesAsked: number }
     counted.framesAsked = 0
@@ -331,8 +334,26 @@ test("with nobody pointing, the wall wakes its plates one at a time", async ({ p
   expect([...seen], "the wall did not take turns between its plates").toHaveLength(2)
 })
 
+test("the sky runs behind the wall, under the title and the plates", async ({ page }) => {
+  await openIndex(page)
+  const sky = page.locator("#showcase-bg")
+  await expect(sky).toHaveAttribute("data-showcase-state", "running", { timeout: 15_000 })
+  await expect(sky.locator("canvas")).toHaveCount(1)
+  // What a pointer lands on: the title and a plate's link, not the canvas a
+  // fixed box would otherwise paint over them.
+  const hit = (selector: string) =>
+    page.evaluate((selector) => {
+      const box = document.querySelector(selector)!.getBoundingClientRect()
+      return document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)?.closest(selector) !== null
+    }, selector)
+  expect(await hit("h1"), "the sky is over the title").toBe(true)
+  expect(await hit(".plate .open"), "the sky is over the plates").toBe(true)
+})
+
 test("a visitor who asked for less motion gets every poster and no plate drawn", async ({ page }) => {
   await openIndex(page, "?budget=off", "reduce")
+  // Nor the sky, which the test above sees running without it.
+  await expect(page.locator("#showcase-bg canvas")).toHaveCount(0)
   const plates = page.locator(".plate")
   const count = await plates.count()
   expect(count).toBeGreaterThan(0)
