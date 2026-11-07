@@ -13,13 +13,16 @@ export const PRESETS: Preset<Settings>[] = [
     label: "lava lamp",
     hint: "An icosahedron tumbling on a slow, hard-tipping beat and losing a corner now and then, among nine small lumps of a little wax that rise quickly and often split. Andrei's, found by dragging.",
     settings: {
-      // Pinned, every one. The lamp is a function of the moment and the seed
-      // alone, so two screens show the same lamp: the piece's premise, held by
-      // `melting.spec.ts`. A different moment on every load is the variety here.
-      seed: 7,
+      // The zero clock, so a pause holds the moment: Andrei wanted it "to run
+      // on 'zero' clock so it unpausing doesn't jump to representing the now",
+      // which is how the index wakes its plate. Starting from nothing, a pinned
+      // seed would be the same lamp on every load, so this one rolls. The rest
+      // keep the wall clock and a pinned seed, where two screens show the same
+      // lamp: the piece's premise, held by `melting.spec.ts`.
+      seed: "roll",
       shape: "icosa",
       motion: "tumble",
-      clock: "wall",
+      clock: "zero",
       turn: 30,
       beat: 6,
       nudge: 30,

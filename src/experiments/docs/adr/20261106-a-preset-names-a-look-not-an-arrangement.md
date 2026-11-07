@@ -41,10 +41,12 @@ Every preset rolls except where one arrangement is the point:
 
 - **artdeco's `ziggurat` and `banded`** run `unison: "all"`, where a third of
   seeds stop at a few segments;
-- **every melting preset**, because the lamp is a function of the moment and
-  the seed alone, so two screens show the same lamp. That is the piece's
-  premise, and `melting.spec.ts` holds it. It varies anyway, because every
-  load is a different moment.
+- **every melting preset on the wall clock**, because the lamp is a function
+  of the moment and the seed alone, so two screens show the same lamp. That is
+  the piece's premise, and `melting.spec.ts` holds it. It varies anyway,
+  because every load is a different moment. The primary, `lava lamp`, moved to
+  the zero clock on 2026-11-07 so a pause holds its moment, and rolls: from
+  zero, a pinned seed would be the same lamp on every load.
 
 **The address still carries the seed in use**, so a copied link reproduces
 the screen exactly. Only a preset stopped being an exact scene.

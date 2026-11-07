@@ -20,9 +20,24 @@ import { expect, openExperiment, test } from "../../../../tests/support/experime
 /** Any moment will do; this one was the poster's until 2026-11-06. */
 const MOMENT = 1_800_000_101
 
+/**
+ * A preset on the wall clock with its seed pinned, which is what the premise is
+ * about. The primary, `lava lamp`, runs from zero and rolls its seed.
+ */
+const ON_THE_WALL = "tempus"
+
 const SATELLITE_ID = 100_000
 const WAX_ID = 200_000
 const CEILING_ID = 400_000
+
+/** The lamp a preset draws at a moment, held there. */
+const at = ({ api, arg }: { api: ExperimentApi; arg?: unknown }) => {
+  const [preset, moment] = arg as [string, number]
+  api.preset(preset)
+  api.pause(true)
+  api.goto(moment)
+  return api.blobs()
+}
 
 function openMelting(page: Parameters<typeof openExperiment>[0], options?: Parameters<typeof openExperiment>[2]) {
   return openExperiment<ExperimentApi>(page, "melting", options)
@@ -33,19 +48,14 @@ test("the lamp is a function of the moment: the same from anywhere, and on a sec
   context,
 }) => {
   const first = await openMelting(page, { idle: true })
-  const at = ({ api, arg }: { api: ExperimentApi; arg?: unknown }) => {
-    api.pause(true)
-    api.goto(arg as number)
-    return api.blobs()
-  }
 
-  const here = await first.api(at, MOMENT)
+  const here = await first.api(at, [ON_THE_WALL, MOMENT])
   expect(here.filter((blob) => blob.r > 0).length).toBeGreaterThan(0)
-  await first.api(at, MOMENT + 517)
-  expect(await first.api(at, MOMENT)).toEqual(here)
+  await first.api(at, [ON_THE_WALL, MOMENT + 517])
+  expect(await first.api(at, [ON_THE_WALL, MOMENT])).toEqual(here)
 
   const elsewhere = await openMelting(await context.newPage(), { idle: true })
-  expect(await elsewhere.api(at, MOMENT)).toEqual(here)
+  expect(await elsewhere.api(at, [ON_THE_WALL, MOMENT])).toEqual(here)
 })
 
 test("on the wall clock, two screens showing the same wall time show the same lamp", async ({ page, context }) => {
@@ -53,27 +63,26 @@ test("on the wall clock, two screens showing the same wall time show the same la
   // wall. Here nothing calls it: each page takes its time from `Date.now()`,
   // held at the same instant on both, so they agree only if the wall is read.
   const at = new Date(MOMENT * 1000)
-  const blobs = ({ api }: { api: ExperimentApi }) => {
+  const blobs = ({ api, arg }: { api: ExperimentApi; arg?: unknown }) => {
+    api.preset(arg as string)
     api.pause(true)
     return api.blobs()
   }
 
   await page.clock.setFixedTime(at)
-  const lamp = await openMelting(page, { idle: true }).then((experiment) => experiment.api(blobs))
+  const lamp = await openMelting(page, { idle: true }).then((experiment) => experiment.api(blobs, ON_THE_WALL))
   expect(lamp.filter((blob) => blob.r > 0).length).toBeGreaterThan(0)
 
   const second = await context.newPage()
   await second.clock.setFixedTime(at)
-  expect(await openMelting(second, { idle: true }).then((experiment) => experiment.api(blobs))).toEqual(lamp)
+  expect(await openMelting(second, { idle: true }).then((experiment) => experiment.api(blobs, ON_THE_WALL))).toEqual(
+    lamp,
+  )
 
   // And it is the wall's moment, not merely the same start: the lamp `goto`
   // puts at that moment.
   const third = await openMelting(await context.newPage(), { idle: true })
-  const moment = await third.api(({ api, arg }) => {
-    api.pause(true)
-    api.goto(arg as number)
-    return api.blobs()
-  }, MOMENT)
+  const moment = await third.api(at, [ON_THE_WALL, MOMENT])
   expect(moment).toEqual(lamp)
 })
 
