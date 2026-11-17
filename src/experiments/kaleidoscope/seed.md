@@ -27,3 +27,24 @@ direction as it arrives. Verbatim. This file faces inward and records him;
 
 Questions the build could not answer by itself. Each is left as a setting or
 a preset rather than decided.
+
+- **What one "segment" is under mirror.** Here a segment is mirror-symmetric
+  about its own middle, so `segments: 8` is eight petals and sixteen mirrored
+  halves, and every count works. The other reading — segments as the
+  alternating mirrored wedges of a two-mirror kaleidoscope — only closes for
+  even counts; odd ones leave one seam.
+- **The spine always carries on.** A line lying on a mirror never ends at a
+  split or a turn, because ending it emptied two drawings in three. That makes
+  every mirror drawing have a visible spine down each segment's middle; a
+  setting could let it end.
+- **Under mirror, "free" looks like "in segment"** unless lines stop only at
+  themselves or at nothing: a line at a segment's edge meets its own
+  reflection there. A third meeting, rebounding off a line as artdeco does,
+  would let free mirror lines carry on past the edge; not built.
+- **What happens after a drawing.** It holds, undraws in the order it grew,
+  and a new one grows from the centre. The new one could instead start while
+  the old one is still undrawing, or grow into what the last one left.
+- **Other art in the segment.** Only artdeco-like line growth is built. The
+  segment-then-copies drawing works for anything stored as strokes; a raster
+  piece would need the segment rendered to its own small canvas and stamped
+  round the centre.
