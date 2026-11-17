@@ -27,6 +27,7 @@ export type Symmetry = "mirror" | "turn"
 export type Confine = "wedge" | "free"
 export type Stops = "any" | "own" | "none"
 export type Angle = "15" | "30" | "45" | "60" | "90"
+export type ColourBy = "depth" | "family" | "age" | "copy"
 
 export type Settings = {
   /** How many times the segment repeats round the centre. */
@@ -61,14 +62,22 @@ export type Settings = {
   spin: number
   /** Line width, css px. */
   width: number
-  /** Hue of the controls. */
+  /** Each decision thins a line by this share of its width: the spine bold, the tips fine. */
+  taper: number
+  /** Hue of the controls, and the first colour of the lines once `tint` is above 0. */
   hue: number
+  /** How strongly the lines take colour. 0 is white. */
+  tint: number
+  /** Degrees of hue the colouring sweeps through. */
+  hues: number
+  /** What the colour follows: a line's depth, its root, when it grew, or which copy of the segment it is in. */
+  colourBy: ColourBy
   seed: number
   /** The speed control's value: a multiple of `CLOCK_RATE`. The kit's — `kit/speed.ts`. */
   timescale: number
 }
 
-type EnumKey = "symmetry" | "confine" | "stops" | "angle"
+type EnumKey = "symmetry" | "confine" | "stops" | "angle" | "colourBy"
 export type NumericKey = Exclude<keyof Settings, EnumKey>
 
 export type Control = KitControl<string & keyof Settings>
@@ -78,6 +87,7 @@ export const SYMMETRIES: Symmetry[] = ["mirror", "turn"]
 export const CONFINES: Confine[] = ["wedge", "free"]
 export const STOPS: Stops[] = ["any", "own", "none"]
 export const ANGLES: Angle[] = ["15", "30", "45", "60", "90"]
+export const COLOUR_BYS: ColourBy[] = ["depth", "family", "age", "copy"]
 
 /** The hold that means "for good". */
 export const HOLD_FOREVER = 120
@@ -265,7 +275,18 @@ export const CONTROLS: Control[] = [
     step: 0.05,
     scale: "log",
     format: (v) => `${v.toFixed(2)}px`,
-    hint: "Line width.",
+    hint: "Line width, of the spine when there is a taper.",
+  },
+  {
+    kind: "slider",
+    key: "taper",
+    label: "taper",
+    group: "look",
+    min: 0,
+    max: 0.5,
+    step: 0.01,
+    format: (v) => (v === 0 ? "none" : `−${Math.round(v * 100)}%`),
+    hint: "How much thinner a line is for every decision behind it, so the first lines are bold and the last are hairlines.",
   },
   {
     kind: "slider",
@@ -276,7 +297,44 @@ export const CONTROLS: Control[] = [
     max: 360,
     step: 1,
     format: (v) => `${Math.round(v)}°`,
-    hint: "Colour of these controls.",
+    hint: "Colour of these controls, and where the lines' colours start once they have some tint.",
+  },
+  {
+    kind: "slider",
+    key: "tint",
+    label: "tint",
+    group: "look",
+    min: 0,
+    max: 1,
+    step: 0.05,
+    format: (v) => v.toFixed(2),
+    hint: "How strongly the lines take colour. 0 leaves them white; 1 is the colour at full strength.",
+  },
+  {
+    kind: "slider",
+    key: "hues",
+    label: "hue sweep",
+    group: "look",
+    min: 0,
+    max: 360,
+    step: 1,
+    format: (v) => `${Math.round(v)}°`,
+    hint: "How far round the colour wheel the colouring travels, from the hue onward. Needs some tint to show.",
+    inert: (settings: Settings) => settings.tint === 0,
+  },
+  {
+    kind: "choice",
+    key: "colourBy",
+    label: "colour by",
+    group: "look",
+    options: [
+      { value: "depth", label: "depth" },
+      { value: "family", label: "root" },
+      { value: "age", label: "age" },
+      { value: "copy", label: "copy" },
+    ],
+    hint: "What the colour follows. Depth: how many decisions are behind a line, so colour moves outward. Root: each root and its offshoots one colour. Age: when a line grew, so the colours keep spreading over the drawing as it grows. Copy: each copy of the segment its own colour, which shows the tiling.",
+    inert: (settings: Settings) => settings.tint === 0,
   },
   /* @__PURE__ */ timescaleControl(),
 ]
@@ -298,7 +356,11 @@ export const DEFAULT_SETTINGS: Settings = {
   hold: 8,
   spin: 0,
   width: 1,
+  taper: 0,
   hue: 200,
+  tint: 0,
+  hues: 120,
+  colourBy: "depth",
   seed: 1,
   timescale: 1,
 }
@@ -317,7 +379,10 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   hold: { min: 0, max: HOLD_FOREVER, step: 1 },
   spin: { min: -30, max: 30, step: 0.5 },
   width: { min: 0.25, max: 8, step: 0.05, scale: "log" },
+  taper: { min: 0, max: 0.5, step: 0.01 },
   hue: { min: 0, max: 360, step: 1 },
+  tint: { min: 0, max: 1, step: 0.05 },
+  hues: { min: 0, max: 360, step: 1 },
   timescale: timescaleTrack(),
 }
 
@@ -341,6 +406,7 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
     confine: oneOf(CONFINES, merged.confine, base.confine),
     stops: oneOf(STOPS, merged.stops, base.stops),
     angle: oneOf(ANGLES, String(merged.angle) as Angle, base.angle),
+    colourBy: oneOf(COLOUR_BYS, merged.colourBy, base.colourBy),
   }
 
   for (const [key, bound] of Object.entries(BOUNDS) as [NumericKey, { min: number; max: number }][]) {
@@ -396,6 +462,10 @@ export const REGISTRY: readonly Slot[] = [
   { key: "hue", kind: "num", grid: 1, origin: 0, bits: 9 },
   { key: "seed", kind: "num", grid: 1, origin: 0, bits: 20 },
   TIMESCALE_SLOT,
+  { key: "taper", kind: "num", grid: 0.01, origin: 0, bits: 6 },
+  { key: "tint", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "hues", kind: "num", grid: 1, origin: 0, bits: 9 },
+  { key: "colourBy", kind: "enum", options: ["depth", "family", "age", "copy"] },
 ]
 
 export const { settingsToQuery, urlForSettings, settingsFromQuery, namesASetting } = packedAddress<Settings>({

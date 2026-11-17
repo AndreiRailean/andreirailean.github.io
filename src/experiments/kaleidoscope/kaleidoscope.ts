@@ -46,6 +46,10 @@ const MAX_TIPS = 600
 const MAX_LINES = 30_000
 /** Undrawing runs this many times faster than growing. */
 const UNDRAW_RATE = 2
+/** Bands the age colouring is cut into, so a drawing stays a handful of strokes per copy. */
+const SHADES = 24
+/** Thinnest a tapered line gets, css px. */
+const MIN_WIDTH = 0.2
 const CELL = 0.025
 const SPAN = 1.1
 const COLS = Math.ceil((2 * SPAN) / CELL)
@@ -145,6 +149,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
   const ended: Record<Ending, number> = { line: 0, family: 0, image: 0, wall: 0, edge: 0, life: 0, split: 0, turn: 0 }
   const decided = { split: 0, turn: 0, straight: 0, capped: 0 }
   let drawMs = 0
+  let strokes = 0
 
   const unit = () => (Number(settings.angle) * Math.PI) / 180
   const stepLen = () => settings.step / 100
@@ -492,14 +497,40 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     ctx.fillRect(0, 0, width, height)
 
     const R = Math.hypot(width, height) / 2
-    const path = new Path2D()
     const gone = phase === "undraw" ? undrawn : 0
+    // One path per look: lines sharing a colour and a width share a stroke,
+    // so a frame costs (looks × copies) strokes, not (lines × copies).
+    const looks = new Map<number, Path2D>()
+    const { colourBy, taper, life, roots } = settings
+    const tinted = settings.tint > 0 && colourBy !== "copy"
+    const ageSpan = Math.max(clock, 1e-6)
     for (const line of lines) {
       const from = Math.max(0, gone - line.born)
       if (from >= line.len) continue
+      const shade = !tinted
+        ? 0
+        : colourBy === "depth"
+          ? line.depth
+          : colourBy === "family"
+            ? line.family
+            : Math.min(SHADES - 1, Math.floor((line.born / ageSpan) * SHADES))
+      const key = shade * 256 + (taper > 0 ? line.depth : 0)
+      let path = looks.get(key)
+      if (!path) looks.set(key, (path = new Path2D()))
       path.moveTo(line.x + line.dx * from, line.y + line.dy * from)
       path.lineTo(line.x + line.dx * line.len, line.y + line.dy * line.len)
     }
+
+    const shadeOf = (shade: number) =>
+      colourBy === "depth"
+        ? shade / Math.max(1, life - 1)
+        : colourBy === "family"
+          ? shade / Math.max(1, roots)
+          : shade / SHADES
+    const colour = (at: number) =>
+      settings.tint > 0
+        ? `hsl(${settings.hue + settings.hues * at} ${Math.round(settings.tint * 92)}% ${Math.round(100 - settings.tint * 42)}%)`
+        : "#fff"
 
     // The segment's middle points up; spin turns the whole figure.
     const turn = spin - Math.PI / 2
@@ -507,14 +538,24 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     const sn = Math.sin(turn) * R * dpr
     const ox = (width / 2) * dpr
     const oy = (height / 2) * dpr
-    ctx.lineWidth = settings.width / R
     ctx.lineCap = "round"
-    ctx.strokeStyle = "#fff"
-    for (const m of group) {
+    const entries = [...looks]
+    const styles = entries.map(([key]) => ({
+      colour: colour(shadeOf(Math.floor(key / 256))),
+      width: Math.max(MIN_WIDTH, settings.width * (1 - taper) ** (key % 256)) / R,
+    }))
+    for (let g = 0; g < group.length; g++) {
+      const m = group[g]!
       // rotate(turn) · scale(R) · m, as a canvas matrix.
       ctx.setTransform(cs * m.a - sn * m.c, sn * m.a + cs * m.c, cs * m.b - sn * m.d, sn * m.b + cs * m.d, ox, oy)
-      ctx.stroke(path)
+      const copy = colourBy === "copy" ? colour(g / group.length) : ""
+      for (let i = 0; i < entries.length; i++) {
+        ctx.strokeStyle = copy || styles[i]!.colour
+        ctx.lineWidth = styles[i]!.width
+        ctx.stroke(entries[i]![1])
+      }
     }
+    strokes = entries.length * group.length
 
     if (debug) {
       ctx.setTransform(cs, sn, -sn, cs, ox, oy)
@@ -567,7 +608,8 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       /** Total length of the grown segment's lines, in half-diagonals. */
       length: round(length),
       images: group.length,
-      strokes: lines.length * group.length,
+      /** Strokes the last frame made: looks × copies. */
+      strokes,
       decided: { ...decided },
       ended: { ...ended },
       drawMs: round(drawMs, 2),
