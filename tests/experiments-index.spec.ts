@@ -22,6 +22,7 @@ const EXPECTED = [
   { slug: "embers", title: "Embers" },
   { slug: "flotsam", title: "Flotsam" },
   { slug: "hexgrid", title: "Hexgrid" },
+  { slug: "kaleidoscope", title: "Kaleidoscope" },
   { slug: "melting", title: "Melting" },
   { slug: "psyxels", title: "Psyxels" },
   { slug: "starry-night", title: "Starry Night" },

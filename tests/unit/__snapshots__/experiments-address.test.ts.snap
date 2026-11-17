@@ -459,6 +459,36 @@ exports[`hexgrid > retires a slot by appending to the retired list, never by edi
 ]
 `;
 
+exports[`kaleidoscope > has not edited a slot in place 1`] = `
+[
+  "segments num grid=1 origin=2 bits=5",
+  "symmetry enum mirror|turn",
+  "confine enum wedge|free",
+  "stops enum any|own|none",
+  "roots num grid=1 origin=1 bits=4",
+  "spread num grid=0.02 origin=0 bits=6",
+  "angle enum 15|30|45|60|90",
+  "step num grid=0.5 origin=1 bits=7",
+  "split num grid=0.05 origin=0 bits=5",
+  "keep num grid=0.05 origin=0 bits=5",
+  "turn num grid=0.05 origin=0 bits=5",
+  "life num grid=1 origin=1 bits=7",
+  "speed num grid=0.1 origin=0.5 bits=9",
+  "hold num grid=1 origin=0 bits=7",
+  "spin num grid=0.5 origin=-30 bits=7",
+  "width num grid=0.05 origin=0.25 bits=8",
+  "hue num grid=1 origin=0 bits=9",
+  "seed num grid=1 origin=0 bits=20",
+  "timescale num grid=0.001 origin=0.1 bits=14",
+  "taper num grid=0.01 origin=0 bits=6",
+  "tint num grid=0.05 origin=0 bits=5",
+  "hues num grid=1 origin=0 bits=9",
+  "colourBy enum depth|family|age|copy",
+]
+`;
+
+exports[`kaleidoscope > retires a slot by appending to the retired list, never by editing one 1`] = `[]`;
+
 exports[`melting > has not edited a slot in place 1`] = `
 [
   "shape enum tetra|cube|octa|icosa|dodeca",

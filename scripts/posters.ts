@@ -82,6 +82,7 @@ export const SLUGS = [
   "embers",
   "flotsam",
   "hexgrid",
+  "kaleidoscope",
   "melting",
   "psyxels",
   "starry-night",

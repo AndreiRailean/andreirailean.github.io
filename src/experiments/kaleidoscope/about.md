@@ -4,6 +4,7 @@ title: Kaleidoscope
 summary: Lines grow and split inside one segment of a circle, and the segment repeats round the centre — mirrored like a kaleidoscope, or turned like a pinwheel, with lines that can stay in their segment or wander among the copies of each other.
 started: 2026-11-17
 updated: 2026-11-17
+poster: ./poster.webp
 tags:
   - canvas
   - generative

@@ -171,7 +171,7 @@ export const CONTROLS: Control[] = [
     key: "angle",
     label: "angle",
     group: "growth",
-    options: ANGLES.map((value) => ({ value, label: `${value}°` })),
+    options: /* @__PURE__ */ ANGLES.map((value) => ({ value, label: `${value}°` })),
     hint: "Every turn and split is made at this angle, and every line runs a whole number of them off its segment's middle, so lines far apart in a segment come out parallel.",
   },
   {
