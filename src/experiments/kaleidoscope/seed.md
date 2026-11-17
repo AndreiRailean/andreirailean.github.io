@@ -54,9 +54,12 @@ a preset rather than decided.
   themselves or at nothing: a line at a segment's edge meets its own
   reflection there. A third meeting, rebounding off a line as artdeco does,
   would let free mirror lines carry on past the edge; not built.
-- **What happens after a drawing.** It holds, undraws in the order it grew,
-  and a new one grows from the centre. The new one could instead start while
-  the old one is still undrawing, or grow into what the last one left.
+- **What renews.** Each root's family now lives and dies on its own. A
+  finer grain — each line undrawing on its own age, rather than its family's
+  — would change more continuously but break up the bands; not built.
+- **Bands across the middle under mirror.** Roots from the sides meet their
+  reflections at the segment's middle, so a band is always a chevron. A band
+  that crossed the middle would need `stops: own` or `none`.
 - **Other art in the segment.** Only artdeco-like line growth is built. The
   segment-then-copies drawing works for anything stored as strokes; a raster
   piece would need the segment rendered to its own small canvas and stamped

@@ -484,10 +484,18 @@ exports[`kaleidoscope > has not edited a slot in place 1`] = `
   "tint num grid=0.05 origin=0 bits=5",
   "hues num grid=1 origin=0 bits=9",
   "colourBy enum depth|family|age|copy",
+  "roots num grid=1 origin=1 bits=6",
+  "from enum centre|sides",
+  "lean num grid=1 origin=-80 bits=8",
+  "cycle enum each|together",
 ]
 `;
 
-exports[`kaleidoscope > retires a slot by appending to the retired list, never by editing one 1`] = `[]`;
+exports[`kaleidoscope > retires a slot by appending to the retired list, never by editing one 1`] = `
+[
+  "4 roots",
+]
+`;
 
 exports[`melting > has not edited a slot in place 1`] = `
 [
