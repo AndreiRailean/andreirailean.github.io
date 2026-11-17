@@ -28,6 +28,8 @@ export type Confine = "wedge" | "free"
 export type Stops = "any" | "own" | "none"
 export type Angle = "15" | "30" | "45" | "60" | "90"
 export type ColourBy = "depth" | "family" | "age" | "copy"
+export type Cycle = "each" | "together"
+export type From = "centre" | "sides"
 
 export type Settings = {
   /** How many times the segment repeats round the centre. */
@@ -38,10 +40,16 @@ export type Settings = {
   confine: Confine
   /** Which meetings end a line: any line, only its own family and that family's copies, or none. */
   stops: Stops
-  /** Lines a segment starts with. */
+  /** Roots a segment holds: each a family of lines with a life of its own. */
   roots: number
-  /** How far from the centre the roots may start, as a fraction of the half-diagonal. 0 starts them all at the centre. */
+  /** Centre: roots start at or near the middle. Sides: they start on the segment's edges, square to them. */
+  from: From
+  /** From the centre, how far out roots may start, as a fraction of the half-diagonal. 0 starts them all at the centre. */
   spread: number
+  /** Degrees every root leans off its starting direction. */
+  lean: number
+  /** Each: every family grows, holds, undraws and is reborn on its own clock. Together: the whole drawing does, at once. */
+  cycle: Cycle
   /** Every line runs at a whole number of these off its segment's middle. */
   angle: Angle
   /** Length of line between decisions, in per cent of the half-diagonal. */
@@ -56,7 +64,7 @@ export type Settings = {
   life: number
   /** How fast every tip grows, in per cent of the half-diagonal per second. */
   speed: number
-  /** Seconds the finished drawing holds before it undraws and a new one grows. 120 holds it for good. */
+  /** Seconds a finished family (or drawing, together) holds before it undraws and is reborn. 120 holds it for good. */
   hold: number
   /** Degrees per second the whole figure turns. */
   spin: number
@@ -77,7 +85,7 @@ export type Settings = {
   timescale: number
 }
 
-type EnumKey = "symmetry" | "confine" | "stops" | "angle" | "colourBy"
+type EnumKey = "symmetry" | "confine" | "stops" | "angle" | "colourBy" | "cycle" | "from"
 export type NumericKey = Exclude<keyof Settings, EnumKey>
 
 export type Control = KitControl<string & keyof Settings>
@@ -88,6 +96,8 @@ export const CONFINES: Confine[] = ["wedge", "free"]
 export const STOPS: Stops[] = ["any", "own", "none"]
 export const ANGLES: Angle[] = ["15", "30", "45", "60", "90"]
 export const COLOUR_BYS: ColourBy[] = ["depth", "family", "age", "copy"]
+export const CYCLES: Cycle[] = ["each", "together"]
+export const FROMS: From[] = ["centre", "sides"]
 
 /** The hold that means "for good". */
 export const HOLD_FOREVER = 120
@@ -150,21 +160,56 @@ export const CONTROLS: Control[] = [
     label: "roots",
     group: "kaleidoscope",
     min: 1,
-    max: 12,
+    max: 48,
     step: 1,
+    scale: "log",
     format: (v) => String(Math.round(v)),
-    hint: "Lines each segment starts with.",
+    hint: "How many roots a segment holds. Each grows a family of lines with a life of its own, so more roots is more of the figure changing at once.",
+  },
+  {
+    kind: "choice",
+    key: "from",
+    label: "roots from",
+    group: "kaleidoscope",
+    options: [
+      { value: "centre", label: "centre" },
+      { value: "sides", label: "sides" },
+    ],
+    hint: "Centre starts roots at or near the middle, growing outward. Sides starts them anywhere along the segment's edges, square to the edge and so parallel to each other, growing in across the segment: bands.",
   },
   {
     kind: "slider",
     key: "spread",
-    label: "roots from",
+    label: "scatter",
     group: "kaleidoscope",
     min: 0,
     max: 1,
     step: 0.02,
     format: (v) => (v === 0 ? "centre" : `≤${Math.round(v * 100)}%`),
-    hint: "How far out the roots may start, as a share of the way to the corner. At the centre every root grows out from the middle; further out they start scattered through the segment.",
+    hint: "From the centre: how far out the roots may start, as a share of the way to the corner. At 0 every root grows out from the middle; above it they start scattered through the segment.",
+    inert: (settings: Settings) => settings.from !== "centre",
+  },
+  {
+    kind: "slider",
+    key: "lean",
+    label: "lean",
+    group: "kaleidoscope",
+    min: -80,
+    max: 80,
+    step: 1,
+    format: (v) => `${Math.round(v)}°`,
+    hint: "How far every root leans off its starting direction — off square to the edge, from the sides; off the middle, from the centre. Every root leans alike, so roots from one side stay parallel.",
+  },
+  {
+    kind: "choice",
+    key: "cycle",
+    label: "renewal",
+    group: "kaleidoscope",
+    options: [
+      { value: "each", label: "each root" },
+      { value: "together", label: "all at once" },
+    ],
+    hint: "Each root: every family grows, holds, undraws in the order it grew and is born again somewhere new, on its own clock, so the figure never stops changing. All at once: the whole drawing grows, holds and undraws together.",
   },
   {
     kind: "choice",
@@ -252,7 +297,7 @@ export const CONTROLS: Control[] = [
     max: HOLD_FOREVER,
     step: 1,
     format: (v) => (v >= HOLD_FOREVER ? "for good" : `${Math.round(v)}s`),
-    hint: "How long a finished drawing stays before it undraws in the order it grew and a new one grows in its place. At the top it stays for good.",
+    hint: "How long a family that has stopped growing stays before it undraws in the order it grew and is born again. All at once, how long the whole finished drawing stays. At the top it stays for good.",
   },
   {
     kind: "slider",
@@ -345,7 +390,10 @@ export const DEFAULT_SETTINGS: Settings = {
   confine: "wedge",
   stops: "any",
   roots: 1,
+  from: "centre",
   spread: 0,
+  lean: 0,
+  cycle: "each",
   angle: "45",
   step: 6,
   split: 0.35,
@@ -368,7 +416,8 @@ export const DEFAULT_SETTINGS: Settings = {
 /** Written out rather than derived from `CONTROLS`; see `src/experiments/AGENTS.md` under Presets. */
 export const TRACKS: Partial<Record<NumericKey, Track>> = {
   segments: { min: 2, max: 32, step: 1 },
-  roots: { min: 1, max: 12, step: 1 },
+  roots: { min: 1, max: 48, step: 1, scale: "log" },
+  lean: { min: -80, max: 80, step: 1 },
   spread: { min: 0, max: 1, step: 0.02 },
   step: { min: 1, max: 40, step: 0.5, scale: "log" },
   split: { min: 0, max: 1, step: 0.05 },
@@ -407,6 +456,8 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
     stops: oneOf(STOPS, merged.stops, base.stops),
     angle: oneOf(ANGLES, String(merged.angle) as Angle, base.angle),
     colourBy: oneOf(COLOUR_BYS, merged.colourBy, base.colourBy),
+    cycle: oneOf(CYCLES, merged.cycle, base.cycle),
+    from: oneOf(FROMS, merged.from, base.from),
   }
 
   for (const [key, bound] of Object.entries(BOUNDS) as [NumericKey, { min: number; max: number }][]) {
@@ -427,7 +478,10 @@ const GROWTH_KEYS = [
   "confine",
   "stops",
   "roots",
+  "from",
   "spread",
+  "lean",
+  "cycle",
   "angle",
   "step",
   "split",
@@ -447,7 +501,8 @@ export const REGISTRY: readonly Slot[] = [
   { key: "symmetry", kind: "enum", options: ["mirror", "turn"] },
   { key: "confine", kind: "enum", options: ["wedge", "free"] },
   { key: "stops", kind: "enum", options: ["any", "own", "none"] },
-  { key: "roots", kind: "num", grid: 1, origin: 1, bits: 4 },
+  // Retired 2026-11-17: 4 bits held 1–16, and constant change wants up to 48.
+  { key: "roots", kind: "num", grid: 1, origin: 1, bits: 4, retired: true },
   { key: "spread", kind: "num", grid: 0.02, origin: 0, bits: 6 },
   { key: "angle", kind: "enum", options: ["15", "30", "45", "60", "90"] },
   { key: "step", kind: "num", grid: 0.5, origin: 1, bits: 7 },
@@ -466,6 +521,10 @@ export const REGISTRY: readonly Slot[] = [
   { key: "tint", kind: "num", grid: 0.05, origin: 0, bits: 5 },
   { key: "hues", kind: "num", grid: 1, origin: 0, bits: 9 },
   { key: "colourBy", kind: "enum", options: ["depth", "family", "age", "copy"] },
+  { key: "roots", kind: "num", grid: 1, origin: 1, bits: 6 },
+  { key: "from", kind: "enum", options: ["centre", "sides"] },
+  { key: "lean", kind: "num", grid: 1, origin: -80, bits: 8 },
+  { key: "cycle", kind: "enum", options: ["each", "together"] },
 ]
 
 export const { settingsToQuery, urlForSettings, settingsFromQuery, namesASetting } = packedAddress<Settings>({

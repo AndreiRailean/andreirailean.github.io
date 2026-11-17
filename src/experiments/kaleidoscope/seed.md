@@ -23,6 +23,19 @@ direction as it arrives. Verbatim. This file faces inward and records him;
 > we can start with the usual white lines on black background and then
 > progress to different line thicknesses and vibrant colours
 
+## 2026-11-17 — constant change, a banded flower
+
+> this is a good start, but it's too much of an artdeco clone that grows and
+> becomes static in the middle (mostly). real kaleidoscope has change
+> everywhere. if we were to apply this here, the lines would not just branch
+> out from the first one and move in the same general outward direction. i'm
+> looking for constant change. i haven't played with adjustment controls, but
+> after looking at each preset i see the same growth pattern. i want to, as
+> one example, see a pattern where lines grow basically in parallel from the
+> sides of the segment to produce a "banded flower" type arrangement and each
+> line has a life of its own and doesn't wait for the whole thing to be wiped
+> before it restarts
+
 ## Open questions
 
 Questions the build could not answer by itself. Each is left as a setting or
