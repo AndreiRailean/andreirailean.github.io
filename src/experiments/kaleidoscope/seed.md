@@ -1,0 +1,29 @@
+# seed — kaleidoscope
+
+What Andrei asked for, in his words, and each later statement of artistic
+direction as it arrives. Verbatim. This file faces inward and records him;
+`about.md` faces outward and describes the work.
+
+## 2026-11-17 — the seed
+
+> a new experiment based on a kaleidoscope-like symmetry around the center. in
+> its basic forms, it works like a keleidoscope where a segment repeats around
+> the center. i can control the number of repeating segments. art in a segment
+> is moving. it could be any kinds from other experiments, but i think starting
+> with artdeco-like line growth will lead to good result. we want to
+> concentrate the moving art withing a segment rather than drawing the whole
+> screen, then cutting out a segment and having it repeat as that would cause
+> off-screen renders that take up compute but result in no output.
+>
+> i also want to experiment with a pattern that isn't an obvious tiling of
+> segments and evolves to look as a more elaborate repetition. say if we have
+> lines growing and splitting like they do in artdeco, the line would have a
+> life of its own until it intersects either with itself or its mirrored self.
+>
+> we can start with the usual white lines on black background and then
+> progress to different line thicknesses and vibrant colours
+
+## Open questions
+
+Questions the build could not answer by itself. Each is left as a setting or
+a preset rather than decided.
