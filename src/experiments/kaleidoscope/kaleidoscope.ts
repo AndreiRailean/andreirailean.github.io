@@ -62,6 +62,11 @@ const AGE_SPAN = 24
 const SHADES = 24
 /** Thinnest a tapered line gets, css px. */
 const MIN_WIDTH = 0.2
+/**
+ * Widths a line can take between `width` and `widest`, so lines share
+ * strokes: a frame is at most this many times more strokes than one width.
+ */
+const WIDTHS = 8
 /** Undrawn lines are dropped, and the grid rebuilt, once this many have piled up. */
 const COMPACT_AT = 2000
 const CELL = 0.025
@@ -80,6 +85,8 @@ type Family = {
   slot: number
   births: number
   rng: Rng
+  /** Draws each line's width, on its own stream so a width range moves no drawing. */
+  widths: Rng
   state: "wait" | "grow" | "hold" | "undraw"
   /** How far this family has grown since its birth. */
   clock: number
@@ -108,6 +115,8 @@ type Line = {
   family: Family
   /** Decisions this line's ancestry has taken. */
   depth: number
+  /** Which of `WIDTHS` widths it takes: 0 is `width`, the last `widest`. */
+  thick: number
   alive: boolean
   /** Undrawn whole, waiting for the next compaction to drop it. */
   gone: boolean
@@ -192,6 +201,8 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
   let compactions = 0
   let drawMs = 0
   let strokes = 0
+  /** Distinct widths the last frame stroked, css px. */
+  let widths: number[] = []
 
   const unit = () => Number(settings.angle) * DEG
   const stepLen = () => settings.step / 100
@@ -304,6 +315,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       t: now,
       family,
       depth,
+      thick: Math.floor(family.widths() * WIDTHS),
       alive: true,
       gone: false,
       axis: axisOf(x, y, dx, dy),
@@ -329,6 +341,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     family.births++
     family.id = nextId++
     family.rng = makeRng(hashSeed(settings.seed, family.slot, family.births))
+    family.widths = makeRng(hashSeed(settings.seed, family.slot, family.births, 0x71d7))
     family.state = "grow"
     family.clock = 0
     family.undrawn = 0
@@ -389,6 +402,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       slot,
       births: 0,
       rng: stagger,
+      widths: stagger,
       state: "wait" as const,
       clock: 0,
       // The first family is born at once, so the screen is never empty for long.
@@ -642,6 +656,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     const looks = new Map<number, Path2D>()
     const { colourBy, taper, life, roots } = settings
     const tinted = settings.tint > 0 && colourBy !== "copy"
+    const ranged = settings.widest > settings.width
     for (const line of lines) {
       if (line.gone) continue
       const from = visibleFrom(line)
@@ -653,7 +668,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
           : colourBy === "family"
             ? line.family.slot
             : Math.min(SHADES - 1, Math.floor(((now - line.t) / AGE_SPAN) * SHADES))
-      const key = shade * 256 + (taper > 0 ? Math.min(255, line.depth) : 0)
+      const key = (shade * 256 + (taper > 0 ? Math.min(255, line.depth) : 0)) * WIDTHS + (ranged ? line.thick : 0)
       let path = looks.get(key)
       if (!path) looks.set(key, (path = new Path2D()))
       path.moveTo(line.x + line.dx * from, line.y + line.dy * from)
@@ -679,10 +694,17 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     const oy = (height / 2) * dpr
     ctx.lineCap = "round"
     const entries = [...looks]
-    const styles = entries.map(([key]) => ({
-      colour: colour(shadeOf(Math.floor(key / 256))),
-      width: Math.max(MIN_WIDTH, settings.width * (1 - taper) ** (key % 256)) / R,
-    }))
+    // A line's width is spaced evenly in ratio, not in pixels, between the ends.
+    const ratio = settings.widest / settings.width
+    const styles = entries.map(([key]) => {
+      const look = Math.floor(key / WIDTHS)
+      const thick = key % WIDTHS
+      const wide = settings.width * ratio ** (thick / (WIDTHS - 1))
+      return {
+        colour: colour(shadeOf(Math.floor(look / 256))),
+        width: Math.max(MIN_WIDTH, wide * (1 - taper) ** (look % 256)) / R,
+      }
+    })
     for (let g = 0; g < group.length; g++) {
       const m = group[g]!
       // rotate(turn) · scale(R) · m, as a canvas matrix.
@@ -695,6 +717,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       }
     }
     strokes = entries.length * group.length
+    widths = [...new Set(styles.map((style) => Math.round(style.width * R * 100) / 100))].sort((a, b) => a - b)
 
     if (debug) {
       ctx.setTransform(cs, sn, -sn, cs, ox, oy)
@@ -754,6 +777,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       images: group.length,
       /** Strokes the last frame made: looks × copies. */
       strokes,
+      widths,
       decided: { ...decided },
       ended: { ...ended },
       drawMs: round(drawMs, 2),

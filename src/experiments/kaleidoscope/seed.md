@@ -36,6 +36,13 @@ direction as it arrives. Verbatim. This file faces inward and records him;
 > line has a life of its own and doesn't wait for the whole thing to be wiped
 > before it restarts
 
+## 2026-11-18 — a range of widths, short holds
+
+> i'm looking at it and wishing some lines could be thicker. i think we're too
+> restricted by single line width. it should be a range. also hold parameter's
+> useful range to me is at the very low end. giving it a long hold just makes
+> for static spinning pattern.
+
 ## Open questions
 
 Questions the build could not answer by itself. Each is left as a setting or
@@ -64,3 +71,7 @@ a preset rather than decided.
   segment-then-copies drawing works for anything stored as strokes; a raster
   piece would need the segment rendered to its own small canvas and stamped
   round the centre.
+- **What a width belongs to.** Each line draws its own width from the range,
+  so a band's chevron can be bold on one stretch and fine on the next. A
+  width per root, all of its offshoots alike, would make whole bands bold and
+  pair with colouring by root; not built.

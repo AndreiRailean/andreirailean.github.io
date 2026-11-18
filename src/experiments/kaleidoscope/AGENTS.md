@@ -67,6 +67,10 @@ the piece is still being found.
 - **Every family birth has its own rng**, salted by seed, slot and birth count.
   A new random draw belongs on a new salted stream, not on these, or every
   seed moves.
-- **Strokes are grouped by look**, `(shade, depth)` into one `Path2D` each, so
-  a frame is looks × copies strokes. `taper` above 0 keys by depth, so it
-  multiplies strokes by up to `life`. `stats().strokes` and `drawMs` report it.
+- **Strokes are grouped by look**, `(shade, depth, width)` into one `Path2D`
+  each, so a frame is looks × copies strokes. `taper` above 0 keys by depth,
+  so it multiplies strokes by up to `life`, and a width range by up to
+  `WIDTHS`. `stats().strokes`, `widths` and `drawMs` report it.
+- **A line's width is drawn from `family.widths`**, a stream of its own, so
+  moving the width handles moves no line: measured on `septa line`, seed 3,
+  the same 14 lines and 67 births at one width and at 1.85–8px.

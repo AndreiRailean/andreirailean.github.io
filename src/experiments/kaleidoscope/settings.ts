@@ -68,8 +68,10 @@ export type Settings = {
   hold: number
   /** Degrees per second the whole figure turns. */
   spin: number
-  /** Line width, css px. */
+  /** Width of the thinnest lines, css px. */
   width: number
+  /** Width of the thickest lines, css px. Each line takes a width between the two. */
+  widest: number
   /** Each decision thins a line by this share of its width: the spine bold, the tips fine. */
   taper: number
   /** Hue of the controls, and the first colour of the lines once `tint` is above 0. */
@@ -101,6 +103,14 @@ export const FROMS: From[] = ["centre", "sides"]
 
 /** The hold that means "for good". */
 export const HOLD_FOREVER = 120
+/** The shortest hold: a log track cannot reach 0, and a tenth of a second reads as none. */
+const HOLD_MIN = 0.1
+
+// Plain numbers rather than a track object: a property read inside `CONTROLS`
+// keeps the whole panel in the runner (`tests/unit/runner-bundle.test.ts`).
+const WIDTH_MIN = 0.25
+const WIDTH_MAX = 12
+const WIDTH_TRACK: Track = { min: WIDTH_MIN, max: WIDTH_MAX, step: 0.05, scale: "log" }
 
 const SEED_BOUNDS = { min: 0, max: 999_999 }
 
@@ -293,11 +303,12 @@ export const CONTROLS: Control[] = [
     key: "hold",
     label: "hold",
     group: "growth",
-    min: 0,
+    min: HOLD_MIN,
     max: HOLD_FOREVER,
-    step: 1,
-    format: (v) => (v >= HOLD_FOREVER ? "for good" : `${Math.round(v)}s`),
-    hint: "How long a family that has stopped growing stays before it undraws in the order it grew and is born again. All at once, how long the whole finished drawing stays. At the top it stays for good.",
+    step: 0.05,
+    scale: "log",
+    format: (v) => (v >= HOLD_FOREVER ? "for good" : v < 10 ? `${v.toFixed(v < 1 ? 2 : 1)}s` : `${Math.round(v)}s`),
+    hint: "How long a family that has stopped growing stays before it undraws in the order it grew and is born again. All at once, how long the whole finished drawing stays. Most of the track is under a few seconds, where the figure keeps moving; at the top it stays for good.",
   },
   {
     kind: "slider",
@@ -311,16 +322,16 @@ export const CONTROLS: Control[] = [
     hint: "How fast the whole figure turns, and which way.",
   },
   {
-    kind: "slider",
-    key: "width",
+    kind: "range",
+    keys: ["width", "widest"],
     label: "width",
     group: "look",
-    min: 0.25,
-    max: 8,
+    min: WIDTH_MIN,
+    max: WIDTH_MAX,
     step: 0.05,
     scale: "log",
-    format: (v) => `${v.toFixed(2)}px`,
-    hint: "Line width, of the spine when there is a taper.",
+    format: (from, to) => (from === to ? `${from.toFixed(2)}px` : `${from.toFixed(2)}–${to.toFixed(2)}px`),
+    hint: "From the thinnest line to the thickest. Each line takes a width somewhere between, spaced evenly in ratio, so with the handles apart some lines come out bold among hairlines. Together, every line is one width. A taper thins each line further for every decision behind it.",
   },
   {
     kind: "slider",
@@ -404,6 +415,7 @@ export const DEFAULT_SETTINGS: Settings = {
   hold: 8,
   spin: 0,
   width: 1,
+  widest: 1,
   taper: 0,
   hue: 200,
   tint: 0,
@@ -425,9 +437,10 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   turn: { min: 0, max: 1, step: 0.05 },
   life: { min: 1, max: 80, step: 1, scale: "log" },
   speed: { min: 0.5, max: 50, step: 0.1, scale: "log" },
-  hold: { min: 0, max: HOLD_FOREVER, step: 1 },
+  hold: { min: HOLD_MIN, max: HOLD_FOREVER, step: 0.05, scale: "log" },
   spin: { min: -30, max: 30, step: 0.5 },
-  width: { min: 0.25, max: 8, step: 0.05, scale: "log" },
+  width: WIDTH_TRACK,
+  widest: WIDTH_TRACK,
   taper: { min: 0, max: 0.5, step: 0.01 },
   hue: { min: 0, max: 360, step: 1 },
   tint: { min: 0, max: 1, step: 0.05 },
@@ -465,7 +478,22 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
     settings[key] = Number.isFinite(value) ? clamp(value, bound.min, bound.max) : base[key]
     settings[key] = snap(key, settings[key])
   }
+  // A reversed width band would draw every line at the thin end; push the top up.
+  // `reconcile` handles it when a handle is being dragged.
+  if (settings.widest < settings.width) settings.widest = settings.width
   return settings
+}
+
+/**
+ * Keeps the width band in order, moving whichever end is not being dragged.
+ *
+ * `normalizeSettings` can only push the top up, which fights someone dragging
+ * the top down. Here the changed key is known, so the other end gives way.
+ */
+export function reconcile(next: Settings, changed: keyof Settings): Settings {
+  if (changed === "width" && next.width > next.widest) return { ...next, widest: next.width }
+  if (changed === "widest" && next.widest < next.width) return { ...next, width: next.widest }
+  return next
 }
 
 /**
@@ -511,7 +539,9 @@ export const REGISTRY: readonly Slot[] = [
   { key: "turn", kind: "num", grid: 0.05, origin: 0, bits: 5 },
   { key: "life", kind: "num", grid: 1, origin: 1, bits: 7 },
   { key: "speed", kind: "num", grid: 0.1, origin: 0.5, bits: 9 },
-  { key: "hold", kind: "num", grid: 1, origin: 0, bits: 7 },
+  // Retired 2026-11-18: whole seconds from 0 left the useful holds, under a few
+  // seconds, a handful of stops at the far left of the track.
+  { key: "hold", kind: "num", grid: 1, origin: 0, bits: 7, retired: true },
   { key: "spin", kind: "num", grid: 0.5, origin: -30, bits: 7 },
   { key: "width", kind: "num", grid: 0.05, origin: 0.25, bits: 8 },
   { key: "hue", kind: "num", grid: 1, origin: 0, bits: 9 },
@@ -525,6 +555,8 @@ export const REGISTRY: readonly Slot[] = [
   { key: "from", kind: "enum", options: ["centre", "sides"] },
   { key: "lean", kind: "num", grid: 1, origin: -80, bits: 8 },
   { key: "cycle", kind: "enum", options: ["each", "together"] },
+  { key: "widest", kind: "num", grid: 0.05, origin: 0.25, bits: 8 },
+  { key: "hold", kind: "num", grid: 0.05, origin: HOLD_MIN, bits: 12 },
 ]
 
 export const { settingsToQuery, urlForSettings, settingsFromQuery, namesASetting } = packedAddress<Settings>({

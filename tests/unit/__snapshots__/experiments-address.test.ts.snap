@@ -488,12 +488,15 @@ exports[`kaleidoscope > has not edited a slot in place 1`] = `
   "from enum centre|sides",
   "lean num grid=1 origin=-80 bits=8",
   "cycle enum each|together",
+  "widest num grid=0.05 origin=0.25 bits=8",
+  "hold num grid=0.05 origin=0.1 bits=12",
 ]
 `;
 
 exports[`kaleidoscope > retires a slot by appending to the retired list, never by editing one 1`] = `
 [
   "4 roots",
+  "13 hold",
 ]
 `;
 
