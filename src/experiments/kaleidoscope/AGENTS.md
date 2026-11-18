@@ -67,10 +67,23 @@ the piece is still being found.
 - **Every family birth has its own rng**, salted by seed, slot and birth count.
   A new random draw belongs on a new salted stream, not on these, or every
   seed moves.
-- **Strokes are grouped by look**, `(shade, depth, width)` into one `Path2D`
-  each, so a frame is looks × copies strokes. `taper` above 0 keys by depth,
-  so it multiplies strokes by up to `life`, and a width range by up to
-  `WIDTHS`. `stats().strokes`, `widths` and `drawMs` report it.
+- **A line is a filled outline, not a stroke**, so its ends can be cut:
+  flush with the near edge of a line it ran into, along the mirror where it
+  met its own reflection tip to tip, along the wall it started on or reached,
+  mitred where it turned or split, square where it is free. A stroke's caps
+  can only be round (a bulb on a bold line) or square (a corner hanging past
+  the line it met at any angle but 90°). Width is in the outline, so lines
+  are grouped by colour alone, one `Path2D` each: a frame is colours × copies
+  fills, which `stats().strokes` counts.
+- **A slanted start puts a corner behind the start point**, at a negative
+  length along the line. Clamping it to 0 squared that corner off and left a
+  notch at every wall start and every bend — seen at 4×, gone once removed.
+- **Meeting at another line's very end is not closed.** The cut follows the
+  other line, which is not there past its end, so a corner hangs over by up
+  to the half-width. Seen on `septa line`, where roots under `turn` start on
+  walls their rotated copies run into; how often is not measured.
 - **A line's width is drawn from `family.widths`**, a stream of its own, so
   moving the width handles moves no line: measured on `septa line`, seed 3,
-  the same 14 lines and 67 births at one width and at 1.85–8px.
+  the same 14 lines and 67 births at one width and at 1.85–8px. Cutting the
+  ends moved none either: all eight presets, seed 7, 40 s, the same lines,
+  births, length, decisions and endings before and after.

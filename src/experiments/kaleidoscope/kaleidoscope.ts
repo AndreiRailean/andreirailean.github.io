@@ -6,7 +6,7 @@
  * about its centre. The group is the N rotations by a whole segment, plus, for
  * `mirror`, the N reflections about the segment middles and edges — the
  * dihedral group, which is what a kaleidoscope's two mirrors make. Every line
- * is stored once and drawn once per group element, so a frame strokes the
+ * is stored once and drawn once per group element, so a frame draws the
  * segment's lines `2N` times and draws nothing that is not on screen.
  *
  * **Symmetry is by construction, never checked.** A line's copies are where
@@ -60,6 +60,11 @@ const REBIRTH = 1.5
 const AGE_SPAN = 24
 /** Bands the age colouring is cut into, so a drawing stays a handful of strokes per copy. */
 const SHADES = 24
+/**
+ * The sharpest a cut end may meet its line at, as the sine of the angle. A
+ * cut any flatter runs its corners far down the line; the end is left square.
+ */
+const FLATTEST_CUT = 0.2
 /** Thinnest a tapered line gets, css px. */
 const MIN_WIDTH = 0.2
 /**
@@ -96,6 +101,15 @@ type Family = {
   tips: number
 }
 
+/**
+ * The line a line's end is cut along, in segment coordinates: through
+ * (px, py) in direction (ux, uy). With `on`, it is that line's near edge
+ * rather than its middle, `on`'s half-width toward the cut line's body, so
+ * a line ending at another touches it with no gap and no overlap whatever
+ * the two widths are.
+ */
+type Cut = { px: number; py: number; ux: number; uy: number; on: Line | null }
+
 type Line = {
   x: number
   y: number
@@ -122,6 +136,31 @@ type Line = {
   gone: boolean
   /** Index of a reflection that maps the line onto itself, or -1. */
   axis: number
+  /** What its start is cut along; null for square. */
+  tail: Cut | null
+  /**
+   * What its end is cut along, once it has ended: one cut, or two — its left
+   * half and its right — where it split into two offshoots. Null for square.
+   */
+  head: Cut[] | null
+}
+
+/** A cut along a line through (px, py) running (ux, uy), not normalised. */
+function cutAlong(px: number, py: number, ux: number, uy: number, on: Line | null = null): Cut {
+  const n = Math.hypot(ux, uy)
+  return { px, py, ux: ux / n, uy: uy / n, on }
+}
+
+/**
+ * The mitre where a line running (ax, ay) gives way to one running (bx, by)
+ * at (px, py): across the bisector, so the outer corners meet and nothing
+ * overlaps. Null where they double back on each other.
+ */
+function mitre(px: number, py: number, ax: number, ay: number, bx: number, by: number): Cut | null {
+  const sx = ax + bx
+  const sy = ay + by
+  if (Math.hypot(sx, sy) < 1e-9) return null
+  return cutAlong(px, py, -sy, sx)
 }
 
 /** The group a segment is repeated by. Element 0 is the identity. */
@@ -164,6 +203,73 @@ function meet(px: number, py: number, rx: number, ry: number, ax: number, ay: nu
 
 /** Where a line's drawn stretch starts: past whatever its family has undrawn. */
 const visibleFrom = (line: Line) => (line.family.state === "undraw" ? Math.max(0, line.family.undrawn - line.born) : 0)
+
+/**
+ * Where a side of a line, `side` off its middle, crosses a cut, as a length
+ * along the line; or null where the cut is too flat to meet it cleanly.
+ * `body` is which way the line runs from the cut: +1 from a start, −1 from
+ * an end, so a near edge is the edge on the line's own side.
+ */
+function crossing(line: Line, side: number, cut: Cut, body: 1 | -1, half: (line: Line) => number): number | null {
+  const denom = cross(line.dx, line.dy, cut.ux, cut.uy)
+  if (Math.abs(denom) < FLATTEST_CUT) return null
+  let px = cut.px
+  let py = cut.py
+  if (cut.on) {
+    // Its near edge: moved off its middle toward this line's body.
+    const nx = -cut.uy
+    const ny = cut.ux
+    const toward = Math.sign((nx * line.dx + ny * line.dy) * body) || 1
+    const offset = half(cut.on) * toward
+    px += nx * offset
+    py += ny * offset
+  }
+  // The side runs from (line.x, line.y) + side · normal, along (dx, dy).
+  const sx = line.x - line.dy * side - px
+  const sy = line.y + line.dx * side - py
+  return -cross(sx, sy, cut.ux, cut.uy) / denom
+}
+
+/**
+ * Adds a line's outline, from `from` along it to its tip, `w` either side
+ * of its middle, each end square or cut as the line records.
+ */
+function outline(path: Path2D, line: Line, from: number, w: number, half: (line: Line) => number) {
+  const { x, y, dx, dy, len } = line
+  // Left is +normal, (-dy, dx); right is −normal.
+  const at = (t: number, side: number) => [x + dx * t - dy * side, y + dy * t + dx * side] as const
+  const limit = 4 * w
+  const near = (t: number | null, square: number) => (t === null || Math.abs(t - square) > limit ? square : t)
+
+  // The start, cut only while none of it has been undrawn. A slanted cut puts
+  // one corner behind the start point, at a negative length, and it must
+  // stay there: squaring it off is the notch the cut exists to close.
+  let tailL = from
+  let tailR = from
+  if (line.tail && from === 0) {
+    tailL = near(crossing(line, w, line.tail, 1, half), 0)
+    tailR = near(crossing(line, -w, line.tail, 1, half), 0)
+  }
+
+  const head = line.alive ? null : line.head
+  let headL = len
+  let headR = len
+  if (head) {
+    headL = near(crossing(line, w, head[0]!, -1, half), len)
+    headR = near(crossing(line, -w, head[head.length - 1]!, -1, half), len)
+  }
+  // Neither side ends before it starts.
+  headL = Math.max(headL, tailL)
+  headR = Math.max(headR, tailR)
+
+  path.moveTo(...at(tailR, -w))
+  path.lineTo(...at(tailL, w))
+  path.lineTo(...at(headL, w))
+  // A split's two cuts meet on its middle at the tip.
+  if (head && head.length > 1 && Math.min(headL, headR) < len) path.lineTo(...at(len, 0))
+  path.lineTo(...at(headR, -w))
+  path.closePath()
+}
 
 export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings) {
   const ctx = context2d(canvas, "kaleidoscope")
@@ -274,6 +380,11 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       kept.push(line)
     })
     lines = kept
+    // A cut against a line now gone has nothing left to sit flush with.
+    for (const line of lines) {
+      if (line.tail?.on?.gone) line.tail.on = null
+      for (const cut of line.head ?? []) if (cut.on?.gone) cut.on = null
+    }
     tips = tips.flatMap((index) => (remap.has(index) ? [remap.get(index)!] : []))
     cells = Array.from({ length: COLS * COLS }, () => [])
     lastCell = []
@@ -297,7 +408,15 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     return -1
   }
 
-  function addLine(x: number, y: number, base: number, k: number, family: Family, depth: number): number {
+  function addLine(
+    x: number,
+    y: number,
+    base: number,
+    k: number,
+    family: Family,
+    depth: number,
+    tail: (dx: number, dy: number) => Cut | null = () => null,
+  ): number {
     const angle = base + k * unit()
     const dx = Math.cos(angle)
     const dy = Math.sin(angle)
@@ -319,6 +438,8 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       alive: true,
       gone: false,
       axis: axisOf(x, y, dx, dy),
+      tail: tail(dx, dy),
+      head: null,
     })
     tips.push(index)
     family.tips++
@@ -360,7 +481,11 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       const wall = side * half
       // Square off the side, pointing into the segment, leaned as asked.
       const base = wall - side * (Math.PI / 2) + side * settings.lean * DEG
-      addLine(r * Math.cos(wall), r * Math.sin(wall), base, 0, family, 0)
+      // Cut along the side it starts on: under mirror that is the mirror,
+      // so a root and its reflection close into a sharp chevron.
+      addLine(r * Math.cos(wall), r * Math.sin(wall), base, 0, family, 0, () =>
+        cutAlong(0, 0, Math.cos(wall), Math.sin(wall)),
+      )
       return
     }
 
@@ -414,7 +539,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
   }
 
   /** The first thing the step from `line`'s tip of length `d` meets, as a fraction of it. */
-  function firstMeeting(index: number, d: number): { t: number; why: Ending } {
+  function firstMeeting(index: number, d: number): { t: number; why: Ending; other: Line | null; g: number } {
     const line = lines[index]!
     const px = line.x + line.dx * line.len
     const py = line.y + line.dy * line.len
@@ -423,13 +548,19 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     const joint = JOINT / d
     let best = Infinity
     let why: Ending = "line"
+    // What was met: a line and the group element of its copy, or for a wall
+    // no line and the wall's side.
+    let met: Line | null = null
+    let metG = 0
     const G = group.length
     const stops = settings.stops
 
-    const consider = (t: number, kind: Ending) => {
+    const consider = (t: number, kind: Ending, other: Line | null, g: number) => {
       if (t < joint || t >= best) return
       best = t
       why = kind
+      met = other
+      metG = g
     }
 
     if (stops !== "none") {
@@ -441,7 +572,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
         const ay = m.c * line.x + m.d * line.y
         const sx = (m.a * line.dx + m.b * line.dy) * reach
         const sy = (m.c * line.dx + m.d * line.dy) * reach
-        consider(meet(px, py, rx, ry, ax, ay, sx, sy), "image")
+        consider(meet(px, py, rx, ry, ax, ay, sx, sy), "image", line, g)
       }
 
       query++
@@ -471,7 +602,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
             const span = them.len - from
             const sx = (m.a * them.dx + m.b * them.dy) * span
             const sy = (m.c * them.dx + m.d * them.dy) * span
-            consider(meet(px, py, rx, ry, ax, ay, sx, sy), own ? "family" : "line")
+            consider(meet(px, py, rx, ry, ax, ay, sx, sy), own ? "family" : "line", them, code - other * G)
           }
         }
     }
@@ -481,11 +612,11 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       for (const side of [-1, 1]) {
         const wx = Math.cos(side * half) * 2
         const wy = Math.sin(side * half) * 2
-        consider(meet(px, py, rx, ry, 0, 0, wx, wy), "wall")
+        consider(meet(px, py, rx, ry, 0, 0, wx, wy), "wall", null, side)
       }
     }
 
-    return { t: best, why }
+    return { t: best, why, other: met, g: metG }
   }
 
   function decide(index: number) {
@@ -513,11 +644,22 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       // segment is narrow, so its offshoots soon meet their reflections, and
       // ending the spine at its first split emptied two drawings in three.
       const carry = rng() < settings.keep || line.axis >= 0
-      addLine(tipX, tipY, line.base, line.k + 1, line.family, line.depth)
+      // An offshoot of a line that carries on starts at its edge; of one that
+      // ends here, it is mitred to it.
+      const from = (dx: number, dy: number) =>
+        carry ? cutAlong(tipX, tipY, line.dx, line.dy, line) : mitre(tipX, tipY, line.dx, line.dy, dx, dy)
+      const left = addLine(tipX, tipY, line.base, line.k + 1, line.family, line.depth, from)
       // On a mirror, the other offshoot is the first one's reflection.
-      if (line.axis < 0) addLine(tipX, tipY, line.base, line.k - 1, line.family, line.depth)
+      const right = line.axis < 0 ? addLine(tipX, tipY, line.base, line.k - 1, line.family, line.depth, from) : -1
       if (carry) line.next += stepLen()
-      else end(line, "split")
+      else {
+        end(line, "split")
+        // Its left half is mitred to the left offshoot, its right to the right.
+        const l = lines[left]!
+        const r = lines[right]!
+        const cuts = [mitre(tipX, tipY, line.dx, line.dy, l.dx, l.dy), mitre(tipX, tipY, line.dx, line.dy, r.dx, r.dy)]
+        line.head = cuts[0] && cuts[1] ? [cuts[0], cuts[1]] : null
+      }
       return
     }
     if (roll < settings.split + settings.turn) {
@@ -529,13 +671,47 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       decided.turn++
       // On a mirror a turn is a fork, its reflection turning the other way,
       // and the spine carries on between them.
-      addLine(tipX, tipY, line.base, line.k + sign, line.family, line.depth)
-      if (line.axis >= 0) line.next += stepLen()
-      else end(line, "turn")
+      const spine = line.axis >= 0
+      const turned = addLine(tipX, tipY, line.base, line.k + sign, line.family, line.depth, (dx, dy) =>
+        spine ? cutAlong(tipX, tipY, line.dx, line.dy, line) : mitre(tipX, tipY, line.dx, line.dy, dx, dy),
+      )
+      if (spine) line.next += stepLen()
+      else {
+        end(line, "turn")
+        // A bend: one line changing direction, so one width, mitred.
+        const child = lines[turned]!
+        child.thick = line.thick
+        line.head = child.tail ? [child.tail] : null
+      }
       return
     }
     decided.straight++
     line.next += stepLen()
+  }
+
+  /**
+   * How a line that has met something at (tx, ty) is cut: flush with the near
+   * edge of the line it met; along the mirror where it met its own reflection
+   * tip to tip, which is the point of a chevron; along the wall it reached.
+   */
+  function headAt(line: Line, tx: number, ty: number, other: Line | null, g: number): Cut[] | null {
+    if (!other) {
+      const half = Math.PI / settings.segments
+      return [cutAlong(0, 0, Math.cos(g * half), Math.sin(g * half))]
+    }
+    const m = group[g]!
+    const ux = m.a * other.dx + m.b * other.dy
+    const uy = m.c * other.dx + m.d * other.dy
+    if (other === line) {
+      // Its own copy: tip to tip when the copy's tip is here too.
+      const cx = m.a * tx + m.b * ty
+      const cy = m.c * tx + m.d * ty
+      if (Math.hypot(cx - tx, cy - ty) < 1e-6) {
+        const cut = mitre(tx, ty, line.dx, line.dy, -ux, -uy)
+        return cut ? [cut] : null
+      }
+    }
+    return [cutAlong(tx, ty, ux, uy, other)]
   }
 
   function grow(d0: number) {
@@ -548,16 +724,17 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       if (d > 0) {
         const fromX = line.x + line.dx * line.len
         const fromY = line.y + line.dy * line.len
-        const { t, why } = firstMeeting(index, d)
+        const { t, why, other, g } = firstMeeting(index, d)
         const grown = Number.isFinite(t) ? t * d : d
         line.len += grown
         file(index, fromX, fromY, line.x + line.dx * line.len, line.y + line.dy * line.len)
-        if (Number.isFinite(t)) {
-          end(line, why)
-          continue
-        }
         const tx = line.x + line.dx * line.len
         const ty = line.y + line.dy * line.len
+        if (Number.isFinite(t)) {
+          end(line, why)
+          line.head = headAt(line, tx, ty, other, g)
+          continue
+        }
         if (tx * tx + ty * ty > EDGE * EDGE) {
           end(line, "edge")
           continue
@@ -567,6 +744,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
         // wall the meeting test can see, because it starts on both.
         if (settings.confine === "wedge" && Math.abs(Math.atan2(ty, tx)) > Math.PI / settings.segments + 1e-9) {
           end(line, "wall")
+          line.head = headAt(line, tx, ty, null, Math.sign(ty))
           continue
         }
       }
@@ -651,12 +829,16 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     ctx.fillRect(0, 0, width, height)
 
     const R = Math.hypot(width, height) / 2
-    // One path per look: lines sharing a colour and a width share a stroke,
-    // so a frame costs (looks × copies) strokes, not (lines × copies).
+    // One path per colour: every line is a filled outline, its width in its
+    // shape, so a frame costs (colours × copies) fills, not (lines × copies).
     const looks = new Map<number, Path2D>()
     const { colourBy, taper, life, roots } = settings
     const tinted = settings.tint > 0 && colourBy !== "copy"
-    const ranged = settings.widest > settings.width
+    // A line's width is spaced evenly in ratio, not in pixels, between the ends.
+    const ratio = settings.widest / settings.width
+    const half = (line: Line) =>
+      Math.max(MIN_WIDTH, settings.width * ratio ** (line.thick / (WIDTHS - 1)) * (1 - taper) ** line.depth) / R / 2
+    const seen = new Set<number>()
     for (const line of lines) {
       if (line.gone) continue
       const from = visibleFrom(line)
@@ -668,11 +850,11 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
           : colourBy === "family"
             ? line.family.slot
             : Math.min(SHADES - 1, Math.floor(((now - line.t) / AGE_SPAN) * SHADES))
-      const key = (shade * 256 + (taper > 0 ? Math.min(255, line.depth) : 0)) * WIDTHS + (ranged ? line.thick : 0)
-      let path = looks.get(key)
-      if (!path) looks.set(key, (path = new Path2D()))
-      path.moveTo(line.x + line.dx * from, line.y + line.dy * from)
-      path.lineTo(line.x + line.dx * line.len, line.y + line.dy * line.len)
+      let path = looks.get(shade)
+      if (!path) looks.set(shade, (path = new Path2D()))
+      const w = half(line)
+      seen.add(Math.round(w * 2 * R * 100) / 100)
+      outline(path, line, from, w, half)
     }
 
     const shadeOf = (shade: number) =>
@@ -692,32 +874,20 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     const sn = Math.sin(turn) * R * dpr
     const ox = (width / 2) * dpr
     const oy = (height / 2) * dpr
-    ctx.lineCap = "round"
     const entries = [...looks]
-    // A line's width is spaced evenly in ratio, not in pixels, between the ends.
-    const ratio = settings.widest / settings.width
-    const styles = entries.map(([key]) => {
-      const look = Math.floor(key / WIDTHS)
-      const thick = key % WIDTHS
-      const wide = settings.width * ratio ** (thick / (WIDTHS - 1))
-      return {
-        colour: colour(shadeOf(Math.floor(look / 256))),
-        width: Math.max(MIN_WIDTH, wide * (1 - taper) ** (look % 256)) / R,
-      }
-    })
+    const colours = entries.map(([shade]) => colour(shadeOf(shade)))
     for (let g = 0; g < group.length; g++) {
       const m = group[g]!
       // rotate(turn) · scale(R) · m, as a canvas matrix.
       ctx.setTransform(cs * m.a - sn * m.c, sn * m.a + cs * m.c, cs * m.b - sn * m.d, sn * m.b + cs * m.d, ox, oy)
       const copy = colourBy === "copy" ? colour(g / group.length) : ""
       for (let i = 0; i < entries.length; i++) {
-        ctx.strokeStyle = copy || styles[i]!.colour
-        ctx.lineWidth = styles[i]!.width
-        ctx.stroke(entries[i]![1])
+        ctx.fillStyle = copy || colours[i]!
+        ctx.fill(entries[i]![1])
       }
     }
     strokes = entries.length * group.length
-    widths = [...new Set(styles.map((style) => Math.round(style.width * R * 100) / 100))].sort((a, b) => a - b)
+    widths = [...seen].sort((a, b) => a - b)
 
     if (debug) {
       ctx.setTransform(cs, sn, -sn, cs, ox, oy)
@@ -775,7 +945,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       /** Total drawn length of the grown segment's lines, in half-diagonals. */
       length: round(length),
       images: group.length,
-      /** Strokes the last frame made: looks × copies. */
+      /** Fills the last frame made: colours × copies. */
       strokes,
       widths,
       decided: { ...decided },

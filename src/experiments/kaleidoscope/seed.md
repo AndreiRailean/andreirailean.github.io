@@ -43,6 +43,16 @@ direction as it arrives. Verbatim. This file faces inward and records him;
 > useful range to me is at the very low end. giving it a long hold just makes
 > for static spinning pattern.
 
+## 2026-11-18 — square ends, flush meetings
+
+> i don't think lines should have rounded corners. when thick, it looks out of
+> place with this lineaar style if caps are rounded
+> also if a line terminates at another line it should either go under that
+> line or touch in a way that leaves no gaps and no overlaps. so if 90 degree
+> and 60 degree lines meet, currently they would touch at one point and the
+> rest of the thickness of the second (moving) will have a hanging other
+> corner rather than fusing into the first line
+
 ## Open questions
 
 Questions the build could not answer by itself. Each is left as a setting or
