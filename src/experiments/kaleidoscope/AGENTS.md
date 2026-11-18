@@ -56,6 +56,15 @@ the piece is still being found.
 - **Undrawn lines stay in `lines` until `compact`**, flagged `gone`, because
   the grid holds line indices. `compact` renumbers and refiles everything; it
   runs when undrawn lines pile past `COMPACT_AT` or half of all lines.
+- **Square to the edge grows outward.** A straight line square to the radius
+  where it starts only gets farther from the centre, and a positive `lean`
+  tilts it further toward the rim on either side. Measured with
+  `stats().inward`, the share of drawn length heading in, on seven turned
+  segments from the sides, seeds 1–3: 0 at lean 47 and at lean 0, 0.66–0.95
+  at −47. Roots from inside the segment are held to outward directions too.
+  `flip` is the share that goes the other way, drawn on a stream of its own:
+  at 0 all eight presets grow as before; at 1 it gives lean −47's numbers
+  exactly.
 - **Roots from the sides start on a wall**, so the wall meeting at their first
   step is a joint and skipped. Under mirror they start on the outer edge only:
   the other side of the half-segment is the middle, where the reflection does

@@ -53,6 +53,14 @@ direction as it arrives. Verbatim. This file faces inward and records him;
 > rest of the thickness of the second (moving) will have a hanging other
 > corner rather than fusing into the first line
 
+## 2026-11-18 — growing inward
+
+> i'm curious why lines always grow outward. i have never seen a line start
+> from the side of the segment and grow in towards the center. this tendency
+> makes edges a lot busier than the center. some lines to start turning back
+> if turns and splits are enabled, but with the config that I have on screen,
+> everything always radiates outward
+
 ## Open questions
 
 Questions the build could not answer by itself. Each is left as a setting or

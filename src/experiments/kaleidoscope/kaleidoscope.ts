@@ -472,6 +472,8 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     const rng = family.rng
     const half = Math.PI / settings.segments
     const mirror = settings.symmetry === "mirror"
+    // Its own stream, so the share going the other way moves no other draw.
+    const other = makeRng(hashSeed(settings.seed, family.slot, family.births, 0xf119))() < settings.flip
 
     if (settings.from === "sides") {
       // Mirror grows half a segment, whose outer side is the edge at +half;
@@ -479,8 +481,11 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       const side = mirror || rng() < 0.5 ? 1 : -1
       const r = 0.02 + 0.98 * rng()
       const wall = side * half
-      // Square off the side, pointing into the segment, leaned as asked.
-      const base = wall - side * (Math.PI / 2) + side * settings.lean * DEG
+      // Square off the side, pointing into the segment, leaned as asked: a
+      // positive lean toward the rim on either side, a negative one toward
+      // the centre. Square itself only ever grows away from the centre.
+      const lean = other ? -settings.lean : settings.lean
+      const base = wall - side * (Math.PI / 2) + side * lean * DEG
       // Cut along the side it starts on: under mirror that is the mirror,
       // so a root and its reflection close into a sharp chevron.
       addLine(r * Math.cos(wall), r * Math.sin(wall), base, 0, family, 0, () =>
@@ -502,6 +507,9 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     if (family.slot > 0 || settings.spread > 0) {
       k = Math.floor(rng() * (outward() + 1))
       if (!mirror && rng() < 0.5) k = -k
+      // Turned round, to face the centre: half a turn is a whole number of
+      // angles for every angle offered.
+      if (other && settings.spread > 0) k += Math.round(Math.PI / unit())
     }
     addLine(x, y, settings.lean * DEG, k, family, 0)
   }
@@ -924,11 +932,17 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     let length = 0
     let deepest = 0
     let standing = 0
+    let inward = 0
     for (const line of lines) {
       if (line.gone) continue
       standing++
-      length += line.len - visibleFrom(line)
+      const from = visibleFrom(line)
+      const drawn = line.len - from
+      length += drawn
       deepest = Math.max(deepest, line.depth)
+      // Heading in, judged at the middle of what is drawn of it.
+      const mid = (from + line.len) / 2
+      if ((line.x + line.dx * mid) * line.dx + (line.y + line.dy * mid) * line.dy < 0) inward += drawn
     }
     const states = { wait: 0, grow: 0, hold: 0, undraw: 0 }
     for (const family of families) states[family.state]++
@@ -944,6 +958,8 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       deepest,
       /** Total drawn length of the grown segment's lines, in half-diagonals. */
       length: round(length),
+      /** Share of that length heading toward the centre rather than away. */
+      inward: round(length > 0 ? inward / length : 0),
       images: group.length,
       /** Fills the last frame made: colours × copies. */
       strokes,

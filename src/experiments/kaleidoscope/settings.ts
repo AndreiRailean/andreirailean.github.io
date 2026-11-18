@@ -46,8 +46,10 @@ export type Settings = {
   from: From
   /** From the centre, how far out roots may start, as a fraction of the half-diagonal. 0 starts them all at the centre. */
   spread: number
-  /** Degrees every root leans off its starting direction. */
+  /** Degrees every root leans off its starting direction. From the sides, positive is toward the rim. */
   lean: number
+  /** Odds a root grows the other way from the rest: leaning the other way, or turned round to face the centre. */
+  flip: number
   /** Each: every family grows, holds, undraws and is reborn on its own clock. Together: the whole drawing does, at once. */
   cycle: Cycle
   /** Every line runs at a whole number of these off its segment's middle. */
@@ -208,7 +210,19 @@ export const CONTROLS: Control[] = [
     max: 80,
     step: 1,
     format: (v) => `${Math.round(v)}°`,
-    hint: "How far every root leans off its starting direction — off square to the edge, from the sides; off the middle, from the centre. Every root leans alike, so roots from one side stay parallel.",
+    hint: "How far every root leans off its starting direction — off square to the edge, from the sides; off the middle, from the centre. From the sides, a positive lean tilts roots toward the rim and a negative one toward the centre; square to the edge, a straight line only ever gets farther from the centre. Every root leans alike unless some go the other way, so roots from one side stay parallel.",
+  },
+  {
+    kind: "slider",
+    key: "flip",
+    label: "other way",
+    group: "kaleidoscope",
+    min: 0,
+    max: 1,
+    step: 0.05,
+    format: (v) => `${Math.round(v * 100)}%`,
+    hint: "Share of roots that grow the other way from the rest. From the sides they lean to the other side of square, so with a positive lean, which tilts roots toward the rim, these tilt toward the centre. Scattered through the segment, they are turned round to face the centre. Nothing to turn at lean 0 from the sides, or from the very centre.",
+    inert: (settings: Settings) => (settings.from === "sides" ? settings.lean === 0 : settings.spread === 0),
   },
   {
     kind: "choice",
@@ -404,6 +418,7 @@ export const DEFAULT_SETTINGS: Settings = {
   from: "centre",
   spread: 0,
   lean: 0,
+  flip: 0,
   cycle: "each",
   angle: "45",
   step: 6,
@@ -430,6 +445,7 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   segments: { min: 2, max: 32, step: 1 },
   roots: { min: 1, max: 48, step: 1, scale: "log" },
   lean: { min: -80, max: 80, step: 1 },
+  flip: { min: 0, max: 1, step: 0.05 },
   spread: { min: 0, max: 1, step: 0.02 },
   step: { min: 1, max: 40, step: 0.5, scale: "log" },
   split: { min: 0, max: 1, step: 0.05 },
@@ -509,6 +525,7 @@ const GROWTH_KEYS = [
   "from",
   "spread",
   "lean",
+  "flip",
   "cycle",
   "angle",
   "step",
@@ -557,6 +574,7 @@ export const REGISTRY: readonly Slot[] = [
   { key: "cycle", kind: "enum", options: ["each", "together"] },
   { key: "widest", kind: "num", grid: 0.05, origin: 0.25, bits: 8 },
   { key: "hold", kind: "num", grid: 0.05, origin: HOLD_MIN, bits: 12 },
+  { key: "flip", kind: "num", grid: 0.05, origin: 0, bits: 5 },
 ]
 
 export const { settingsToQuery, urlForSettings, settingsFromQuery, namesASetting } = packedAddress<Settings>({
