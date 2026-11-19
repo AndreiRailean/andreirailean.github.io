@@ -96,3 +96,11 @@ the piece is still being found.
   the same 14 lines and 67 births at one width and at 1.85–8px. Cutting the
   ends moved none either: all eight presets, seed 7, 40 s, the same lines,
   births, length, decisions and endings before and after.
+- **On a narrow mirror segment, a root from the sides never decides.** It
+  meets its own reflection at the middle after at most about `r·sin(π/N)` over
+  the cosine of its lean, so with a long `step` it ends before its first
+  decision, and `split`, `keep`, `turn`, `angle`, `life` and `taper` (depth
+  stays 0) move nothing. Measured on `concentric` (32 segments, step 40),
+  seeds 942088, 1 and 2, 60 s each: 1 decision in 1942 births; each of those
+  six changed alone left the lines and the pixels identical. Decisions start
+  near step 20 (52 in 1932 births) and `life` ends a line from step 6.
