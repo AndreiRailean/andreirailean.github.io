@@ -42,7 +42,11 @@ the piece is still being found.
   from: a child on its parent, siblings at their split, a parent carrying on
   past its offshoots, a root's copies at the centre. Skipping by distance from
   the line's start instead would leave a carrying-on parent to meet its own
-  children at the split (reasoned when written, not measured).
+  children at the split (reasoned when written, not measured). `JOINT` is
+  rounding error, 1e-9: a tick's step is about 0.001 long, and at 1e-4 a
+  real meeting fell in the skipped stretch one time in a dozen and was passed
+  through — on `concentric` at step 20, 2–3% of bars crossed their own
+  reflection, more the slower they grew, and none at 1e-9.
 - **A root at the centre aimed wider than its segment starts on both walls**,
   so the meeting test cannot see it leave. `tick` checks the tip's polar angle
   under `wedge` and ends it (`wall`).

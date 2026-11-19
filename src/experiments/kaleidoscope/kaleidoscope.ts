@@ -42,8 +42,13 @@ import { CLOCK_RATE, HOLD_FOREVER, needsRegrow, type Settings } from "@/experime
 
 /** One growth step, in seconds of scene. */
 export const TICK = 1 / 60
-/** A meeting this close to the start of a tip's step is the joint it grew from, not a meeting. */
-const JOINT = 1e-4
+/**
+ * A meeting this close to the start of a tip's step is the joint it grew
+ * from, not a meeting. Only rounding error away: a tick's step is about
+ * 0.001 long, and at 1e-4 one meeting in a dozen fell inside it and was
+ * passed through — 3% of `concentric`'s bars crossed their own reflection.
+ */
+const JOINT = 1e-9
 /** Where a line runs off the frame: the half-diagonal, so a spinning figure still fills the corners. */
 const EDGE = 1
 /** Most tips growing at once; past it a split goes straight on instead. */
