@@ -491,6 +491,8 @@ exports[`kaleidoscope > has not edited a slot in place 1`] = `
   "widest num grid=0.05 origin=0.25 bits=8",
   "hold num grid=0.05 origin=0.1 bits=12",
   "flip num grid=0.05 origin=0 bits=5",
+  "curl num grid=1 origin=0 bits=8",
+  "round num grid=0.05 origin=0 bits=6",
 ]
 `;
 

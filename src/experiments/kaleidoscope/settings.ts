@@ -64,6 +64,13 @@ export type Settings = {
   keep: number
   /** Decisions a line's family makes before it stops of its own accord. */
   life: number
+  /**
+   * Most degrees a line bends over one step. Each line takes its own bend
+   * between this either way, and takes a new one at each decision. 0 is straight.
+   */
+  curl: number
+  /** Radius a turn or a split bends through, as a share of a step. 0 is a sharp corner. */
+  round: number
   /** How fast every tip grows, in per cent of the half-diagonal per second. */
   speed: number
   /** Seconds a finished family (or drawing, together) holds before it undraws and is reborn. 120 holds it for good. */
@@ -302,6 +309,29 @@ export const CONTROLS: Control[] = [
   },
   {
     kind: "slider",
+    key: "curl",
+    label: "curl",
+    group: "growth",
+    min: 0,
+    max: 180,
+    step: 1,
+    format: (v) => (v === 0 ? "straight" : `${Math.round(v)}°`),
+    hint: "Most a line bends over one step. Each line follows its own arc, anywhere between this either way, and takes a new one at each decision, so a line can wind one way and then the other. 0 grows straight lines.",
+  },
+  {
+    kind: "slider",
+    key: "round",
+    label: "round",
+    group: "growth",
+    min: 0,
+    max: 2,
+    step: 0.05,
+    format: (v) => (v === 0 ? "sharp" : v.toFixed(2)),
+    hint: "How wide a turn or a split bends, as a share of a step: 0 is a sharp corner, 1 bends through an arc a step across, and the line then runs on in its new direction.",
+    inert: (settings: Settings) => settings.split === 0 && settings.turn === 0,
+  },
+  {
+    kind: "slider",
     key: "speed",
     label: "growth",
     group: "growth",
@@ -426,6 +456,8 @@ export const DEFAULT_SETTINGS: Settings = {
   turn: 0.3,
   keep: 0.5,
   life: 24,
+  curl: 0,
+  round: 0,
   speed: 8,
   hold: 8,
   spin: 0,
@@ -452,6 +484,8 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   keep: { min: 0, max: 1, step: 0.05 },
   turn: { min: 0, max: 1, step: 0.05 },
   life: { min: 1, max: 80, step: 1, scale: "log" },
+  curl: { min: 0, max: 180, step: 1 },
+  round: { min: 0, max: 2, step: 0.05 },
   speed: { min: 0.5, max: 50, step: 0.1, scale: "log" },
   hold: { min: HOLD_MIN, max: HOLD_FOREVER, step: 0.05, scale: "log" },
   spin: { min: -30, max: 30, step: 0.5 },
@@ -533,6 +567,8 @@ const GROWTH_KEYS = [
   "turn",
   "keep",
   "life",
+  "curl",
+  "round",
   "seed",
 ] as const satisfies readonly (keyof Settings)[]
 
@@ -575,6 +611,8 @@ export const REGISTRY: readonly Slot[] = [
   { key: "widest", kind: "num", grid: 0.05, origin: 0.25, bits: 8 },
   { key: "hold", kind: "num", grid: 0.05, origin: HOLD_MIN, bits: 12 },
   { key: "flip", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "curl", kind: "num", grid: 1, origin: 0, bits: 8 },
+  { key: "round", kind: "num", grid: 0.05, origin: 0, bits: 6 },
 ]
 
 export const { settingsToQuery, urlForSettings, settingsFromQuery, namesASetting } = packedAddress<Settings>({

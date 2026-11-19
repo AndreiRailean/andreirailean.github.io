@@ -9,10 +9,10 @@ Lines grow in one segment, in scene units where the frame's half-diagonal is 1,
 and every frame strokes them once per element of a symmetry group: the N
 rotations, plus under `mirror` the N reflections about the lines at `j·π/N`
 (segment middles for even `j`, edges for odd). A line takes a decision every
-`step` of length — split, turn or straight on — and its direction is always a
+`step` of length — split, turn or straight on — and its direction is a
 whole number `k` of `angle` off its family's `base` — the segment's middle
 for a root from the centre, square to the edge (plus `lean`) for one from the
-sides. A growing tip ends at the first thing `stops` lets it meet: another
+sides — plus a `bend`, which is 0 unless it curls or rounds a corner. A growing tip ends at the first thing `stops` lets it meet: another
 line or any copy of one, including its own copies, or (under `wedge`) a
 segment edge. A root and its offshoots are a **family** with a life — wait,
 grow, hold, undraw, born again — on its own clock under `cycle: each`, or all
@@ -104,3 +104,23 @@ the piece is still being found.
   seeds 942088, 1 and 2, 60 s each: 1 decision in 1942 births; each of those
   six changed alone left the lines and the pixels identical. Decisions start
   near step 20 (52 in 1932 births) and `life` ends a line from step 6.
+- **An arc is a chain of straight links**, each bending `ARC` (3°) from the
+  last and mitred to it, so meetings, cuts, the grid and undrawing are all
+  the straight-line code. `carryOn` ends a link and starts the next as the
+  same line: its width, depth and next decision carry over, and its `born` is
+  where the last one ended, so undrawing runs on along the curve. A tick's
+  growth carries from link to link (`budget`), or a tight curve would grow
+  slower than a straight line. With `curl` and `round` at 0 no line is ever a
+  link: all eleven presets grew the same lines, births, length, decisions and
+  endings before and after (seed 7, 40 s). Curls are drawn on
+  `family.curls`, a stream of their own.
+- **A rounded corner sets out along the line it leaves**, and bends away. Off
+  the spine, that is along the mirror, and `axisOf` took it for a second
+  spine: kept straight on top of the first, and every offshoot of it too —
+  1664 lines on `rose` at round 0.5, against 21. A line rounding a corner
+  (`aim` set) is never a spine. The spine itself stays straight under curl.
+- **Links cost draw time, not growth time.** Mean draw per frame over 60 s,
+  headless: `lattice` 0.79 ms straight, 13.3 ms at round 1 (6528 links);
+  `neon pinwheel` 0.39 ms, 10.7 ms at curl 90 and round 1. Joining a curve's
+  links into one outline would cut its polygons; not built. At 4× the joints
+  between links show no seam.

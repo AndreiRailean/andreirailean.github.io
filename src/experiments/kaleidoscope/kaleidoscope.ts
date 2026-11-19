@@ -72,6 +72,16 @@ const MIN_WIDTH = 0.2
  * strokes: a frame is at most this many times more strokes than one width.
  */
 const WIDTHS = 8
+/**
+ * Most a curved line bends from one straight link to the next. An arc is a
+ * chain of straight links mitred end to end, so meetings, cuts and undrawing
+ * stay the straight-line code: 3° a link is a smooth curve at any width.
+ */
+const ARC = 3 * (Math.PI / 180)
+/** Shortest link, in half-diagonals, so a tight curl is a few links per tick, not hundreds. */
+const MIN_LINK = 0.002
+/** Most links a tip runs through in one tick. */
+const MAX_HOPS = 16
 /** Undrawn lines are dropped, and the grid rebuilt, once this many have piled up. */
 const COMPACT_AT = 2000
 const CELL = 0.025
@@ -92,6 +102,8 @@ type Family = {
   rng: Rng
   /** Draws each line's width, on its own stream so a width range moves no drawing. */
   widths: Rng
+  /** Draws each line's curl, on its own stream so straight lines grow as they always did. */
+  curls: Rng
   state: "wait" | "grow" | "hold" | "undraw"
   /** How far this family has grown since its birth. */
   clock: number
@@ -110,6 +122,12 @@ type Family = {
  */
 type Cut = { px: number; py: number; ux: number; uy: number; on: Line | null }
 
+/** How a new line bends: see `Line`. */
+type Shape = { bend: number; curve: number; aim: number | null; drift: number }
+const STRAIGHT: Shape = { bend: 0, curve: 0, aim: null, drift: 0 }
+/** A line bending by its curl alone, from straight off where it starts. */
+const curled = (drift: number): Shape => ({ bend: 0, curve: drift, aim: null, drift })
+
 type Line = {
   x: number
   y: number
@@ -119,6 +137,16 @@ type Line = {
   base: number
   /** Direction as a whole number of angles off `base`. */
   k: number
+  /** Radians the line runs off `base + k·angle`, where it is bending: 0 for a straight line. */
+  bend: number
+  /** Radians the line bends per half-diagonal of length, left positive; 0 runs straight. */
+  curve: number
+  /** The `bend` a rounded corner is bending toward, or null where it is not rounding one. */
+  aim: number | null
+  /** The curve the line settles into once any corner is rounded: its curl. */
+  drift: number
+  /** Length at which this link gives way to the next one along a curve; Infinity for straight. */
+  stop: number
   len: number
   /** Length at which the next decision is taken. */
   next: number
@@ -305,6 +333,8 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
   let births = 0
   let undrawns = 0
   let compactions = 0
+  /** Links curved lines have carried on through. */
+  let links = 0
   let drawMs = 0
   let strokes = 0
   /** Distinct widths the last frame stroked, css px. */
@@ -312,6 +342,38 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
 
   const unit = () => Number(settings.angle) * DEG
   const stepLen = () => settings.step / 100
+
+  /** How long a link along a curve runs: `ARC` of bend, or to the end of the corner it is rounding. */
+  function linkLength(bend: number, curve: number, aim: number | null) {
+    const arc = Math.max(MIN_LINK, ARC / Math.abs(curve))
+    return aim === null ? arc : Math.min(arc, (aim - bend) / curve)
+  }
+
+  /** A curl for a new line, drawn from its family's own stream: between `curl` either way per step. */
+  function curlFor(family: Family) {
+    if (settings.curl <= 0) return 0
+    return ((family.curls() * 2 - 1) * settings.curl * DEG) / stepLen()
+  }
+
+  /** Where a line is heading at its tip, as a bend off `base + k·angle`. */
+  const bendAt = (line: Line) => line.bend + line.curve * line.len
+
+  /**
+   * The shape of a line leaving `line`'s tip `dk` angles round from it,
+   * with curl `drift`. With `round`, it leaves heading as `line` does at its
+   * tip and bends round to its new direction on an arc of that radius;
+   * without, it turns there, a sharp corner. Either way it ends up `dk`
+   * angles off where `line` was heading, or bending toward.
+   */
+  function shapeFrom(line: Line, dk: number, drift: number): Shape {
+    const heading = bendAt(line)
+    const aim = line.aim ?? heading
+    const radius = settings.round * stepLen()
+    if (dk === 0) return { bend: heading, curve: line.aim === null ? drift : line.curve, aim: line.aim, drift }
+    if (radius <= 0) return { bend: aim, curve: drift, aim: null, drift }
+    const bend = heading - dk * unit()
+    return { bend, curve: Math.sign(aim - bend) / radius, aim, drift }
+  }
 
   function size() {
     ;({ width, height, dpr } = fitCanvas(canvas))
@@ -416,10 +478,28 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     family: Family,
     depth: number,
     tail: (dx: number, dy: number) => Cut | null = () => null,
+    shape: Shape = STRAIGHT,
   ): number {
-    const angle = base + k * unit()
+    let { bend, curve, aim, drift } = shape
+    // A corner already rounded is not rounded again.
+    if (aim !== null && (aim - bend) * curve <= 1e-12) {
+      bend = aim
+      aim = null
+      curve = drift
+    }
+    const angle = base + k * unit() + bend
     const dx = Math.cos(angle)
     const dy = Math.sin(angle)
+    // A line on a mirror is the spine, and stays straight on it, curl or no
+    // curl. A corner being rounded off it only sets out along it: it bends
+    // away, its reflection the other way, so it is no spine. Taken for one,
+    // it was kept straight on top of the spine, and every offshoot of it
+    // too: 1664 lines on `rose` at round 0.5, against 21.
+    const axis = aim === null ? axisOf(x, y, dx, dy) : -1
+    if (axis >= 0) {
+      curve = drift = 0
+      aim = null
+    }
     const index = lines.length
     lines.push({
       x,
@@ -428,6 +508,11 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       dy,
       base,
       k,
+      bend,
+      curve,
+      aim,
+      drift,
+      stop: curve === 0 ? Infinity : linkLength(bend, curve, aim),
       len: 0,
       next: stepLen(),
       born: family.clock,
@@ -437,7 +522,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       thick: Math.floor(family.widths() * WIDTHS),
       alive: true,
       gone: false,
-      axis: axisOf(x, y, dx, dy),
+      axis,
       tail: tail(dx, dy),
       head: null,
     })
@@ -454,6 +539,38 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     ended[why]++
   }
 
+  /**
+   * Ends a link where its curve gives way to the next and starts that one at
+   * its tip, mitred to it: the same line carrying on, so it keeps its width
+   * and its depth, and its next decision falls where it would have. With a
+   * new `drift`, the line has decided to bend another way from here.
+   */
+  function carryOn(index: number, drift?: number): number {
+    const line = lines[index]!
+    line.alive = false
+    line.family.tips--
+    links++
+    const tipX = line.x + line.dx * line.len
+    const tipY = line.y + line.dy * line.len
+    const shape = shapeFrom(line, 0, drift ?? line.drift)
+    const next = addLine(
+      tipX,
+      tipY,
+      line.base,
+      line.k,
+      line.family,
+      line.depth,
+      (dx, dy) => mitre(tipX, tipY, line.dx, line.dy, dx, dy),
+      shape,
+    )
+    const link = lines[next]!
+    link.thick = line.thick
+    link.next = line.next - line.len
+    link.born = line.born + line.len
+    line.head = link.tail ? [link.tail] : null
+    return next
+  }
+
   /** The largest whole number of angles a line may run off the middle and still grow outward. */
   const outward = () => Math.max(0, Math.floor((89.9 * DEG) / unit()))
 
@@ -463,6 +580,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     family.id = nextId++
     family.rng = makeRng(hashSeed(settings.seed, family.slot, family.births))
     family.widths = makeRng(hashSeed(settings.seed, family.slot, family.births, 0x71d7))
+    family.curls = makeRng(hashSeed(settings.seed, family.slot, family.births, 0xc0be))
     family.state = "grow"
     family.clock = 0
     family.undrawn = 0
@@ -488,8 +606,15 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       const base = wall - side * (Math.PI / 2) + side * lean * DEG
       // Cut along the side it starts on: under mirror that is the mirror,
       // so a root and its reflection close into a sharp chevron.
-      addLine(r * Math.cos(wall), r * Math.sin(wall), base, 0, family, 0, () =>
-        cutAlong(0, 0, Math.cos(wall), Math.sin(wall)),
+      addLine(
+        r * Math.cos(wall),
+        r * Math.sin(wall),
+        base,
+        0,
+        family,
+        0,
+        () => cutAlong(0, 0, Math.cos(wall), Math.sin(wall)),
+        curled(curlFor(family)),
       )
       return
     }
@@ -511,7 +636,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       // angles for every angle offered.
       if (other && settings.spread > 0) k += Math.round(Math.PI / unit())
     }
-    addLine(x, y, settings.lean * DEG, k, family, 0)
+    addLine(x, y, settings.lean * DEG, k, family, 0, undefined, curled(curlFor(family)))
   }
 
   function regrow() {
@@ -525,7 +650,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     now = 0
     owed = 0
     heldAll = 0
-    births = undrawns = compactions = 0
+    births = undrawns = compactions = links = 0
     for (const key of Object.keys(ended) as Ending[]) ended[key] = 0
     decided.split = decided.turn = decided.straight = decided.capped = 0
     const each = settings.cycle === "each"
@@ -536,6 +661,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       births: 0,
       rng: stagger,
       widths: stagger,
+      curls: stagger,
       state: "wait" as const,
       clock: 0,
       // The first family is born at once, so the screen is never empty for long.
@@ -656,11 +782,34 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       // ends here, it is mitred to it.
       const from = (dx: number, dy: number) =>
         carry ? cutAlong(tipX, tipY, line.dx, line.dy, line) : mitre(tipX, tipY, line.dx, line.dy, dx, dy)
-      const left = addLine(tipX, tipY, line.base, line.k + 1, line.family, line.depth, from)
+      const left = addLine(
+        tipX,
+        tipY,
+        line.base,
+        line.k + 1,
+        line.family,
+        line.depth,
+        from,
+        shapeFrom(line, 1, curlFor(line.family)),
+      )
       // On a mirror, the other offshoot is the first one's reflection.
-      const right = line.axis < 0 ? addLine(tipX, tipY, line.base, line.k - 1, line.family, line.depth, from) : -1
-      if (carry) line.next += stepLen()
-      else {
+      const right =
+        line.axis < 0
+          ? addLine(
+              tipX,
+              tipY,
+              line.base,
+              line.k - 1,
+              line.family,
+              line.depth,
+              from,
+              shapeFrom(line, -1, curlFor(line.family)),
+            )
+          : -1
+      if (carry) {
+        line.next += stepLen()
+        if (settings.curl > 0 && line.axis < 0) carryOn(index, curlFor(line.family))
+      } else {
         end(line, "split")
         // Its left half is mitred to the left offshoot, its right to the right.
         const l = lines[left]!
@@ -680,8 +829,16 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       // On a mirror a turn is a fork, its reflection turning the other way,
       // and the spine carries on between them.
       const spine = line.axis >= 0
-      const turned = addLine(tipX, tipY, line.base, line.k + sign, line.family, line.depth, (dx, dy) =>
-        spine ? cutAlong(tipX, tipY, line.dx, line.dy, line) : mitre(tipX, tipY, line.dx, line.dy, dx, dy),
+      const turned = addLine(
+        tipX,
+        tipY,
+        line.base,
+        line.k + sign,
+        line.family,
+        line.depth,
+        (dx, dy) =>
+          spine ? cutAlong(tipX, tipY, line.dx, line.dy, line) : mitre(tipX, tipY, line.dx, line.dy, dx, dy),
+        shapeFrom(line, sign, curlFor(line.family)),
       )
       if (spine) line.next += stepLen()
       else {
@@ -695,6 +852,8 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     }
     decided.straight++
     line.next += stepLen()
+    // Straight on, a curling line takes a new curl: it may wind the other way.
+    if (settings.curl > 0 && line.axis < 0) carryOn(index, curlFor(line.family))
   }
 
   /**
@@ -725,38 +884,53 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
   function grow(d0: number) {
     const growing = tips
     tips = []
-    for (const index of growing) {
-      const line = lines[index]!
+    for (const first of growing) {
+      let index = first
+      let line = lines[index]!
       if (!line.alive) continue
-      const d = Math.min(d0, line.next - line.len)
-      if (d > 0) {
-        const fromX = line.x + line.dx * line.len
-        const fromY = line.y + line.dy * line.len
-        const { t, why, other, g } = firstMeeting(index, d)
-        const grown = Number.isFinite(t) ? t * d : d
-        line.len += grown
-        file(index, fromX, fromY, line.x + line.dx * line.len, line.y + line.dy * line.len)
-        const tx = line.x + line.dx * line.len
-        const ty = line.y + line.dy * line.len
-        if (Number.isFinite(t)) {
-          end(line, why)
-          line.head = headAt(line, tx, ty, other, g)
-          continue
+      // What is left of this tick's growth, carried from one link of a curve to the next.
+      let budget = d0
+      for (let hops = 0; ; hops++) {
+        const d = Math.min(budget, line.next - line.len, line.stop - line.len)
+        if (d > 0) {
+          budget -= d
+          const fromX = line.x + line.dx * line.len
+          const fromY = line.y + line.dy * line.len
+          const { t, why, other, g } = firstMeeting(index, d)
+          const grown = Number.isFinite(t) ? t * d : d
+          line.len += grown
+          file(index, fromX, fromY, line.x + line.dx * line.len, line.y + line.dy * line.len)
+          const tx = line.x + line.dx * line.len
+          const ty = line.y + line.dy * line.len
+          if (Number.isFinite(t)) {
+            end(line, why)
+            line.head = headAt(line, tx, ty, other, g)
+            break
+          }
+          if (tx * tx + ty * ty > EDGE * EDGE) {
+            end(line, "edge")
+            break
+          }
+          // A line that set off outside its segment from a point on an edge —
+          // a root at the centre, aimed wider than the segment — crosses no
+          // wall the meeting test can see, because it starts on both.
+          if (settings.confine === "wedge" && Math.abs(Math.atan2(ty, tx)) > Math.PI / settings.segments + 1e-9) {
+            end(line, "wall")
+            line.head = headAt(line, tx, ty, null, Math.sign(ty))
+            break
+          }
         }
-        if (tx * tx + ty * ty > EDGE * EDGE) {
-          end(line, "edge")
-          continue
+        if (line.len >= line.next - 1e-12) {
+          decide(index)
+          break
         }
-        // A line that set off outside its segment from a point on an edge —
-        // a root at the centre, aimed wider than the segment — crosses no
-        // wall the meeting test can see, because it starts on both.
-        if (settings.confine === "wedge" && Math.abs(Math.atan2(ty, tx)) > Math.PI / settings.segments + 1e-9) {
-          end(line, "wall")
-          line.head = headAt(line, tx, ty, null, Math.sign(ty))
-          continue
-        }
+        if (line.len < line.stop - 1e-12 || hops >= MAX_HOPS) break
+        index = carryOn(index)
+        // `addLine` filed it as a tip; it is this one, carried on below.
+        tips.pop()
+        line = lines[index]!
+        if (budget <= 1e-12) break
       }
-      if (line.len >= line.next - 1e-12) decide(index)
       if (line.alive) tips.push(index)
     }
   }
@@ -937,7 +1111,8 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       if (line.gone) continue
       standing++
       const from = visibleFrom(line)
-      const drawn = line.len - from
+      // Undrawn past its end, it is still standing until its family is retired, but none of it shows.
+      const drawn = Math.max(0, line.len - from)
       length += drawn
       deepest = Math.max(deepest, line.depth)
       // Heading in, judged at the middle of what is drawn of it.
@@ -965,6 +1140,8 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       strokes,
       widths,
       decided: { ...decided },
+      /** Links curved lines have carried on through since the drawing began. */
+      links,
       ended: { ...ended },
       drawMs: round(drawMs, 2),
       frame: { width, height },

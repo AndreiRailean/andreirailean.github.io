@@ -61,6 +61,14 @@ direction as it arrives. Verbatim. This file faces inward and records him;
 > if turns and splits are enabled, but with the config that I have on screen,
 > everything always radiates outward
 
+## 2026-11-19 — arcs, organic turns
+
+> what does it take to have lines that go on ann arc rather than straight. i'd
+> like to see some more organic turns rather than only angular. whether the
+> line goes straight and then does a smooth turn or if it follows a curved path
+> until (if) it decides to change the curve - that would be something to have a
+> look at
+
 ## Open questions
 
 Questions the build could not answer by itself. Each is left as a setting or
