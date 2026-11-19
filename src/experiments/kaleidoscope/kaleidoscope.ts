@@ -43,12 +43,15 @@ import { CLOCK_RATE, HOLD_FOREVER, needsRegrow, type Settings } from "@/experime
 /** One growth step, in seconds of scene. */
 export const TICK = 1 / 60
 /**
- * A meeting this close to the start of a tip's step is the joint it grew
- * from, not a meeting. Only rounding error away: a tick's step is about
- * 0.001 long, and at 1e-4 one meeting in a dozen fell inside it and was
- * passed through — 3% of `concentric`'s bars crossed their own reflection.
+ * A meeting this close to where a line started or last branched is the
+ * lines it branched from, not a meeting. Measured from that point, not from
+ * the start of every tick's step: skipping the first 1e-4 of every step
+ * passed through one real meeting in a dozen, and 3% of `concentric`'s bars
+ * crossed their own reflection. Wide enough for the rounding in meeting two
+ * arcs that set off together along the same tangent (about 1e-8 of their
+ * radius, and no arc is wider than 1/FLAT).
  */
-const JOINT = 1e-9
+const JOINT = 1e-5
 /** Where a line runs off the frame: the half-diagonal, so a spinning figure still fills the corners. */
 const EDGE = 1
 /** Most tips growing at once; past it a split goes straight on instead. */
@@ -78,14 +81,12 @@ const MIN_WIDTH = 0.2
  */
 const WIDTHS = 8
 /**
- * Most a curved line bends from one straight link to the next. An arc is a
- * chain of straight links mitred end to end, so meetings, cuts and undrawing
- * stay the straight-line code: 3° a link is a smooth curve at any width.
+ * Gentler than this, in radians per half-diagonal, a line runs straight:
+ * under 1.2° of bend across the whole frame. It keeps every arc's centre
+ * within 100 half-diagonals, where meeting two of them stays exact.
  */
-const ARC = 3 * (Math.PI / 180)
-/** Shortest link, in half-diagonals, so a tight curl is a few links per tick, not hundreds. */
-const MIN_LINK = 0.002
-/** Most links a tip runs through in one tick. */
+const FLAT = 0.01
+/** Most pieces a tip runs through in one tick: the end of a rounded corner, mostly. */
 const MAX_HOPS = 16
 /** Undrawn lines are dropped, and the grid rebuilt, once this many have piled up. */
 const COMPACT_AT = 2000
@@ -150,7 +151,7 @@ type Line = {
   aim: number | null
   /** The curve the line settles into once any corner is rounded: its curl. */
   drift: number
-  /** Length at which this link gives way to the next one along a curve; Infinity for straight. */
+  /** Length at which a rounded corner is done and the line runs on at its curl; Infinity otherwise. */
   stop: number
   len: number
   /** Length at which the next decision is taken. */
@@ -169,6 +170,9 @@ type Line = {
   gone: boolean
   /** Index of a reflection that maps the line onto itself, or -1. */
   axis: number
+  /** Where it started or last branched: meetings here are the joint, not meetings. */
+  jx: number
+  jy: number
   /** What its start is cut along; null for square. */
   tail: Cut | null
   /**
@@ -218,6 +222,9 @@ export function groupFor(segments: number, mirror: boolean): Map2[] {
 
 const cross = (ax: number, ay: number, bx: number, by: number) => ax * by - ay * bx
 
+/** How far along the other segment `meet`'s last meeting was, as a fraction of it. */
+let meetU = 0
+
 /**
  * Where the step P→P+r first meets the segment A→A+s, as a fraction of the
  * step, or Infinity. Parallel segments never meet: a line lying along its own
@@ -231,46 +238,227 @@ function meet(px: number, py: number, rx: number, ry: number, ax: number, ay: nu
   const t = cross(qx, qy, sx, sy) / denom
   const u = cross(qx, qy, rx, ry) / denom
   if (t < 0 || t > 1 || u < -1e-9 || u > 1 + 1e-9) return Infinity
+  meetU = u
   return t
+}
+
+/**
+ * A line is one piece of constant curvature: from (x, y) heading (dx, dy),
+ * bending `curve` radians per half-diagonal to the left (0 runs straight). So a
+ * straight line and an arc are the same thing, and every question — where
+ * it is, which way it heads, where it meets another — has one closed form
+ * per pair of kinds.
+ */
+type Piece = { x: number; y: number; dx: number; dy: number; curve: number }
+
+/** Where a piece is `s` along it. */
+function pointAt(p: Piece, s: number): [number, number] {
+  const k = p.curve
+  if (k === 0) return [p.x + p.dx * s, p.y + p.dy * s]
+  const sn = Math.sin(k * s)
+  // 1 − cos, without the cancellation of subtracting it.
+  const vers = 2 * Math.sin((k * s) / 2) ** 2
+  return [p.x + (p.dx * sn - p.dy * vers) / k, p.y + (p.dx * vers + p.dy * sn) / k]
+}
+
+/** Which way a piece heads `s` along it, as a unit vector. */
+function headingAt(p: Piece, s: number): [number, number] {
+  const k = p.curve
+  if (k === 0) return [p.dx, p.dy]
+  const c = Math.cos(k * s)
+  const sn = Math.sin(k * s)
+  return [p.dx * c - p.dy * sn, p.dy * c + p.dx * sn]
+}
+
+/**
+ * How far along an arc the point (zx, zy) on its circle is, from 0 up to
+ * once round. Worked scaled by the curvature, so a wide arc's centre, far
+ * off, never enters the sum.
+ */
+function arcLength(x: number, y: number, dx: number, dy: number, k: number, zx: number, zy: number) {
+  // From the centre: to the start is (dy, −dx)/k, to the point this.
+  const wx = (zx - x) * k + dy
+  const wy = (zy - y) * k - dx
+  const s = Math.atan2(cross(dy, -dx, wx, wy), dy * wx - dx * wy) / k
+  return s < -1e-9 ? s + (2 * Math.PI) / Math.abs(k) : s
+}
+
+/** Where `hit`'s last meeting was, and how far along the other piece. */
+let hitX = 0
+let hitY = 0
+let hitAlong = 0
+
+/**
+ * The first place the step — from (px, py) heading (ux, uy) with curvature
+ * `k`, `len` long — meets piece B between `b0` and `b1` along it, as a length
+ * along the step; Infinity if none. A meeting within `joint` of (jx, jy) is
+ * the joint the step's line grew from and is passed over. Both pieces are
+ * in the same frame.
+ */
+function hit(
+  px: number,
+  py: number,
+  ux: number,
+  uy: number,
+  k: number,
+  len: number,
+  bx: number,
+  by: number,
+  bdx: number,
+  bdy: number,
+  bk: number,
+  b0: number,
+  b1: number,
+  jx: number,
+  jy: number,
+  joint: number,
+): number {
+  let best = Infinity
+  const take = (s: number, along: number, zx: number, zy: number) => {
+    if (s < 0 || s > len || s >= best) return
+    if (along < b0 - 1e-9 || along > b1 + 1e-9) return
+    if (Math.hypot(zx - jx, zy - jy) < joint) return
+    best = s
+    hitX = zx
+    hitY = zy
+    hitAlong = along
+  }
+  if (k === 0 && bk === 0) {
+    const t = meet(px, py, ux * len, uy * len, bx + bdx * b0, by + bdy * b0, bdx * (b1 - b0), bdy * (b1 - b0))
+    if (Number.isFinite(t)) take(t * len, b0 + meetU * (b1 - b0), px + ux * t * len, py + uy * t * len)
+    return best
+  }
+  if (k === 0) {
+    // A line against B's circle, centre B + n/bk with n B's left normal.
+    const qx = px - bx
+    const qy = py - by
+    const nq = -bdy * qx + bdx * qy
+    const half = ux * qx + uy * qy - (-bdy * ux + bdx * uy) / bk
+    const disc = half * half - (qx * qx + qy * qy - (2 * nq) / bk)
+    if (disc < 0) return Infinity
+    const root = Math.sqrt(disc)
+    for (const t of [-half - root, -half + root]) {
+      const zx = px + ux * t
+      const zy = py + uy * t
+      take(t, arcLength(bx, by, bdx, bdy, bk, zx, zy), zx, zy)
+    }
+    return best
+  }
+  if (bk === 0) {
+    // B's line against the step's circle.
+    const gx = bx - px
+    const gy = by - py
+    const ng = -uy * gx + ux * gy
+    const half = bdx * gx + bdy * gy - (-uy * bdx + ux * bdy) / k
+    const disc = half * half - (gx * gx + gy * gy - (2 * ng) / k)
+    if (disc < 0) return Infinity
+    const root = Math.sqrt(disc)
+    for (const v of [-half - root, -half + root]) {
+      const zx = bx + bdx * v
+      const zy = by + bdy * v
+      take(arcLength(px, py, ux, uy, k, zx, zy), v, zx, zy)
+    }
+    return best
+  }
+  // Two circles.
+  const ax = px - uy / k
+  const ay = py + ux / k
+  const cx = bx - bdy / bk
+  const cy = by + bdx / bk
+  const ra = 1 / Math.abs(k)
+  const rb = 1 / Math.abs(bk)
+  const ddx = cx - ax
+  const ddy = cy - ay
+  const dist = Math.hypot(ddx, ddy)
+  if (dist < 1e-12 || dist > ra + rb || dist < Math.abs(ra - rb)) return Infinity
+  const a = (ra * ra - rb * rb + dist * dist) / (2 * dist)
+  const h = Math.sqrt(Math.max(0, ra * ra - a * a))
+  const mx = ax + (ddx * a) / dist
+  const my = ay + (ddy * a) / dist
+  for (const side of [-1, 1]) {
+    const zx = mx - (ddy * h * side) / dist
+    const zy = my + (ddx * h * side) / dist
+    take(arcLength(px, py, ux, uy, k, zx, zy), arcLength(bx, by, bdx, bdy, bk, zx, zy), zx, zy)
+  }
+  return best
 }
 
 /** Where a line's drawn stretch starts: past whatever its family has undrawn. */
 const visibleFrom = (line: Line) => (line.family.state === "undraw" ? Math.max(0, line.family.undrawn - line.born) : 0)
 
+/** An angle brought within half a turn of 0. */
+const wrap = (a: number) => a - 2 * Math.PI * Math.round(a / (2 * Math.PI))
+
 /**
  * Where a side of a line, `side` off its middle, crosses a cut, as a length
- * along the line; or null where the cut is too flat to meet it cleanly.
- * `body` is which way the line runs from the cut: +1 from a start, −1 from
- * an end, so a near edge is the edge on the line's own side.
+ * along the line near `expected` (0 at a start, the length at an end); or
+ * null where the cut is too flat to meet it cleanly. `body` is which way
+ * the line runs from the cut: +1 from a start, −1 from an end, so a near
+ * edge is the edge on the line's own side.
  */
-function crossing(line: Line, side: number, cut: Cut, body: 1 | -1, half: (line: Line) => number): number | null {
-  const denom = cross(line.dx, line.dy, cut.ux, cut.uy)
-  if (Math.abs(denom) < FLATTEST_CUT) return null
+function crossing(
+  line: Line,
+  side: number,
+  cut: Cut,
+  body: 1 | -1,
+  half: (line: Line) => number,
+  expected: number,
+): number | null {
+  const [hx, hy] = headingAt(line, expected)
   let px = cut.px
   let py = cut.py
   if (cut.on) {
     // Its near edge: moved off its middle toward this line's body.
     const nx = -cut.uy
     const ny = cut.ux
-    const toward = Math.sign((nx * line.dx + ny * line.dy) * body) || 1
+    const toward = Math.sign((nx * hx + ny * hy) * body) || 1
     const offset = half(cut.on) * toward
     px += nx * offset
     py += ny * offset
   }
-  // The side runs from (line.x, line.y) + side · normal, along (dx, dy).
-  const sx = line.x - line.dy * side - px
-  const sy = line.y + line.dx * side - py
-  return -cross(sx, sy, cut.ux, cut.uy) / denom
+  const k = line.curve
+  if (k === 0) {
+    const denom = cross(line.dx, line.dy, cut.ux, cut.uy)
+    if (Math.abs(denom) < FLATTEST_CUT) return null
+    // The side runs from (line.x, line.y) + side · normal, along (dx, dy).
+    const sx = line.x - line.dy * side - px
+    const sy = line.y + line.dx * side - py
+    return -cross(sx, sy, cut.ux, cut.uy) / denom
+  }
+  // On an arc the side is a circle about the arc's centre C, its point at s
+  // being C + (side − 1/k)·n(s). It is on the cut where the heading there
+  // makes cos(heading − cut) = cross(C − p, u) / (side − 1/k).
+  const r = side - 1 / k
+  const cx = line.x - line.dy / k
+  const cy = line.y + line.dx / k
+  const cosine = cross(cx - px, cy - py, cut.ux, cut.uy) / r
+  if (Math.abs(cosine) > 1) return null
+  // The sine is how square the side meets the cut.
+  if (Math.sqrt(1 - cosine * cosine) < FLATTEST_CUT) return null
+  const along = Math.atan2(cut.uy, cut.ux)
+  const there = Math.atan2(hy, hx)
+  let best: number | null = null
+  for (const sign of [-1, 1]) {
+    const s = expected + wrap(along + sign * Math.acos(cosine) - there) / k
+    if (best === null || Math.abs(s - expected) < Math.abs(best - expected)) best = s
+  }
+  return best
 }
 
 /**
  * Adds a line's outline, from `from` along it to its tip, `w` either side
- * of its middle, each end square or cut as the line records.
+ * of its middle, each end square or cut as the line records. A curved line's
+ * sides are arcs about its centre, so it is one shape however far it bends.
  */
 function outline(path: Path2D, line: Line, from: number, w: number, half: (line: Line) => number) {
-  const { x, y, dx, dy, len } = line
+  const { len } = line
+  const k = line.curve
   // Left is +normal, (-dy, dx); right is −normal.
-  const at = (t: number, side: number) => [x + dx * t - dy * side, y + dy * t + dx * side] as const
+  const at = (s: number, side: number) => {
+    const [x, y] = pointAt(line, s)
+    const [dx, dy] = headingAt(line, s)
+    return [x - dy * side, y + dx * side] as const
+  }
   const limit = 4 * w
   const near = (t: number | null, square: number) => (t === null || Math.abs(t - square) > limit ? square : t)
 
@@ -280,16 +468,16 @@ function outline(path: Path2D, line: Line, from: number, w: number, half: (line:
   let tailL = from
   let tailR = from
   if (line.tail && from === 0) {
-    tailL = near(crossing(line, w, line.tail, 1, half), 0)
-    tailR = near(crossing(line, -w, line.tail, 1, half), 0)
+    tailL = near(crossing(line, w, line.tail, 1, half, 0), 0)
+    tailR = near(crossing(line, -w, line.tail, 1, half, 0), 0)
   }
 
   const head = line.alive ? null : line.head
   let headL = len
   let headR = len
   if (head) {
-    headL = near(crossing(line, w, head[0]!, -1, half), len)
-    headR = near(crossing(line, -w, head[head.length - 1]!, -1, half), len)
+    headL = near(crossing(line, w, head[0]!, -1, half, len), len)
+    headR = near(crossing(line, -w, head[head.length - 1]!, -1, half, len), len)
   }
   // Neither side ends before it starts.
   headL = Math.max(headL, tailL)
@@ -297,7 +485,26 @@ function outline(path: Path2D, line: Line, from: number, w: number, half: (line:
 
   path.moveTo(...at(tailR, -w))
   path.lineTo(...at(tailL, w))
-  path.lineTo(...at(headL, w))
+  if (k === 0) path.lineTo(...at(headL, w))
+  else {
+    // A side at `side` is a circle of radius |side − 1/k| about the centre;
+    // the angle to its point at s turns with the heading, by k·s.
+    const cx = line.x - line.dy / k
+    const cy = line.y + line.dx / k
+    const start = Math.atan2(line.dy, line.dx) + Math.PI / 2
+    const edge = (side: number, s0: number, s1: number, back: boolean) => {
+      const r = side - 1 / k
+      const off = start + (r < 0 ? Math.PI : 0)
+      path.arc(cx, cy, Math.abs(r), off + k * s0, off + k * s1, back ? k > 0 : k < 0)
+    }
+    edge(w, tailL, headL, false)
+    // A split's two cuts meet on its middle at the tip.
+    if (head && head.length > 1 && Math.min(headL, headR) < len) path.lineTo(...at(len, 0))
+    path.lineTo(...at(headR, -w))
+    edge(-w, headR, tailR, true)
+    path.closePath()
+    return
+  }
   // A split's two cuts meet on its middle at the tip.
   if (head && head.length > 1 && Math.min(headL, headR) < len) path.lineTo(...at(len, 0))
   path.lineTo(...at(headR, -w))
@@ -338,8 +545,10 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
   let births = 0
   let undrawns = 0
   let compactions = 0
-  /** Links curved lines have carried on through. */
-  let links = 0
+  /** Pieces lines have carried on into: the end of a rounded corner, or a new curl. */
+  let pieces = 0
+  /** Lines met by something within 0.001 of where they started: a joint taken for a meeting, mostly. */
+  let stubs = 0
   let drawMs = 0
   let strokes = 0
   /** Distinct widths the last frame stroked, css px. */
@@ -347,12 +556,6 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
 
   const unit = () => Number(settings.angle) * DEG
   const stepLen = () => settings.step / 100
-
-  /** How long a link along a curve runs: `ARC` of bend, or to the end of the corner it is rounding. */
-  function linkLength(bend: number, curve: number, aim: number | null) {
-    const arc = Math.max(MIN_LINK, ARC / Math.abs(curve))
-    return aim === null ? arc : Math.min(arc, (aim - bend) / curve)
-  }
 
   /** A curl for a new line, drawn from its family's own stream: between `curl` either way per step. */
   function curlFor(family: Family) {
@@ -422,9 +625,9 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     file(index, line.x, line.y, line.x, line.y)
     const steps = Math.ceil(line.len / (CELL / 2))
     for (let i = 0; i < steps; i++) {
-      const a = (line.len * i) / steps
-      const b = (line.len * (i + 1)) / steps
-      file(index, line.x + line.dx * a, line.y + line.dy * a, line.x + line.dx * b, line.y + line.dy * b)
+      const [ax, ay] = pointAt(line, (line.len * i) / steps)
+      const [bx, by] = pointAt(line, (line.len * (i + 1)) / steps)
+      file(index, ax, ay, bx, by)
     }
   }
 
@@ -486,6 +689,8 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     shape: Shape = STRAIGHT,
   ): number {
     let { bend, curve, aim, drift } = shape
+    if (Math.abs(drift) < FLAT) drift = 0
+    if (aim === null && Math.abs(curve) < FLAT) curve = 0
     // A corner already rounded is not rounded again.
     if (aim !== null && (aim - bend) * curve <= 1e-12) {
       bend = aim
@@ -517,7 +722,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       curve,
       aim,
       drift,
-      stop: curve === 0 ? Infinity : linkLength(bend, curve, aim),
+      stop: aim === null ? Infinity : (aim - bend) / curve,
       len: 0,
       next: stepLen(),
       born: family.clock,
@@ -528,6 +733,8 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       alive: true,
       gone: false,
       axis,
+      jx: x,
+      jy: y,
       tail: tail(dx, dy),
       head: null,
     })
@@ -542,11 +749,12 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     line.alive = false
     line.family.tips--
     ended[why]++
+    if (line.len < 1e-3 && why !== "split" && why !== "turn" && why !== "life") stubs++
   }
 
   /**
-   * Ends a link where its curve gives way to the next and starts that one at
-   * its tip, mitred to it: the same line carrying on, so it keeps its width
+   * Ends a piece where its curve changes and starts the next at its tip,
+   * heading on as it was: the same line carrying on, so it keeps its width
    * and its depth, and its next decision falls where it would have. With a
    * new `drift`, the line has decided to bend another way from here.
    */
@@ -554,9 +762,9 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     const line = lines[index]!
     line.alive = false
     line.family.tips--
-    links++
-    const tipX = line.x + line.dx * line.len
-    const tipY = line.y + line.dy * line.len
+    pieces++
+    const [tipX, tipY] = pointAt(line, line.len)
+    const [hx, hy] = headingAt(line, line.len)
     const shape = shapeFrom(line, 0, drift ?? line.drift)
     const next = addLine(
       tipX,
@@ -565,7 +773,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       line.k,
       line.family,
       line.depth,
-      (dx, dy) => mitre(tipX, tipY, line.dx, line.dy, dx, dy),
+      (dx, dy) => mitre(tipX, tipY, hx, hy, dx, dy),
       shape,
     )
     const link = lines[next]!
@@ -655,7 +863,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     now = 0
     owed = 0
     heldAll = 0
-    births = undrawns = compactions = links = 0
+    births = undrawns = compactions = pieces = stubs = 0
     for (const key of Object.keys(ended) as Ending[]) ended[key] = 0
     decided.split = decided.turn = decided.straight = decided.capped = 0
     const each = settings.cycle === "each"
@@ -677,48 +885,80 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     for (const family of families) if (family.timer === 0) birth(family)
   }
 
-  /** The first thing the step from `line`'s tip of length `d` meets, as a fraction of it. */
-  function firstMeeting(index: number, d: number): { t: number; why: Ending; other: Line | null; g: number } {
+  /**
+   * The first thing the step from `line`'s tip of length `d` meets: how far
+   * along the step, what it was, and how far along the line it met.
+   */
+  function firstMeeting(
+    index: number,
+    d: number,
+  ): { s: number; why: Ending; other: Line | null; g: number; along: number } {
     const line = lines[index]!
-    const px = line.x + line.dx * line.len
-    const py = line.y + line.dy * line.len
-    const rx = line.dx * d
-    const ry = line.dy * d
-    const joint = JOINT / d
+    const k = line.curve
+    const [px, py] = pointAt(line, line.len)
+    const [ux, uy] = headingAt(line, line.len)
+    const { jx, jy } = line
     let best = Infinity
     let why: Ending = "line"
     // What was met: a line and the group element of its copy, or for a wall
     // no line and the wall's side.
     let met: Line | null = null
     let metG = 0
+    let metAlong = 0
     const G = group.length
     const stops = settings.stops
 
-    const consider = (t: number, kind: Ending, other: Line | null, g: number) => {
-      if (t < joint || t >= best) return
-      best = t
+    const consider = (s: number, kind: Ending, other: Line | null, g: number) => {
+      if (s >= best) return
+      best = s
       why = kind
       met = other
       metG = g
+      metAlong = hitAlong
     }
+    /** The step against `them`'s copy under `m`, between `b0` and `b1` along it. */
+    const against = (them: Line, m: Map2, b0: number, b1: number) =>
+      hit(
+        px,
+        py,
+        ux,
+        uy,
+        k,
+        d,
+        m.a * them.x + m.b * them.y,
+        m.c * them.x + m.d * them.y,
+        m.a * them.dx + m.b * them.dy,
+        m.c * them.dx + m.d * them.dy,
+        m.flip ? -them.curve : them.curve,
+        b0,
+        b1,
+        jx,
+        jy,
+        JOINT,
+      )
 
     if (stops !== "none") {
       // Its own copies, grown to where this step takes it.
       const reach = line.len + d
-      for (let g = 1; g < G; g++) {
-        const m = group[g]!
-        const ax = m.a * line.x + m.b * line.y
-        const ay = m.c * line.x + m.d * line.y
-        const sx = (m.a * line.dx + m.b * line.dy) * reach
-        const sy = (m.c * line.dx + m.d * line.dy) * reach
-        consider(meet(px, py, rx, ry, ax, ay, sx, sy), "image", line, g)
+      for (let g = 1; g < G; g++) consider(against(line, group[g]!, 0, reach), "image", line, g)
+
+      // Itself, come right round: only an arc held past a whole turn can.
+      if (k !== 0 && visibleFrom(line) === 0) {
+        const round = (2 * Math.PI) / Math.abs(k) - line.len
+        if (round >= 0 && round <= d) {
+          hitAlong = 0
+          consider(round, "family", null, -1)
+        }
       }
 
       query++
-      const x0 = Math.floor((Math.min(px, px + rx) + SPAN) / CELL)
-      const x1 = Math.floor((Math.max(px, px + rx) + SPAN) / CELL)
-      const y0 = Math.floor((Math.min(py, py + ry) + SPAN) / CELL)
-      const y1 = Math.floor((Math.max(py, py + ry) + SPAN) / CELL)
+      // The step's box, widened by how far an arc bows out from its chord.
+      const [qx, qy] = pointAt(line, line.len + d)
+      const bow = (Math.abs(k) * d * d) / 8
+      const x0 = Math.floor((Math.min(px, qx) - bow + SPAN) / CELL)
+      const x1 = Math.floor((Math.max(px, qx) + bow + SPAN) / CELL)
+      const y0 = Math.floor((Math.min(py, qy) - bow + SPAN) / CELL)
+      const y1 = Math.floor((Math.max(py, qy) + bow + SPAN) / CELL)
       for (let cy = Math.max(0, y0); cy <= Math.min(COLS - 1, y1); cy++)
         for (let cx = Math.max(0, x0); cx <= Math.min(COLS - 1, x1); cx++) {
           for (const code of cells[cy * COLS + cx]!) {
@@ -733,15 +973,8 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
             // Only the stretch still drawn can be met.
             const from = visibleFrom(them)
             if (them.len - from <= 0) continue
-            const m = group[code - other * G]!
-            const sx0 = them.x + them.dx * from
-            const sy0 = them.y + them.dy * from
-            const ax = m.a * sx0 + m.b * sy0
-            const ay = m.c * sx0 + m.d * sy0
-            const span = them.len - from
-            const sx = (m.a * them.dx + m.b * them.dy) * span
-            const sy = (m.c * them.dx + m.d * them.dy) * span
-            consider(meet(px, py, rx, ry, ax, ay, sx, sy), own ? "family" : "line", them, code - other * G)
+            const g = code - other * G
+            consider(against(them, group[g]!, from, them.len), own ? "family" : "line", them, g)
           }
         }
     }
@@ -749,13 +982,12 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     if (settings.confine === "wedge") {
       const half = Math.PI / settings.segments
       for (const side of [-1, 1]) {
-        const wx = Math.cos(side * half) * 2
-        const wy = Math.sin(side * half) * 2
-        consider(meet(px, py, rx, ry, 0, 0, wx, wy), "wall", null, side)
+        const s = hit(px, py, ux, uy, k, d, 0, 0, Math.cos(side * half), Math.sin(side * half), 0, 0, 2, jx, jy, JOINT)
+        consider(s, "wall", null, side)
       }
     }
 
-    return { t: best, why, other: met, g: metG }
+    return { s: best, why, other: met, g: metG, along: metAlong }
   }
 
   function decide(index: number) {
@@ -769,8 +1001,8 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     const roll = rng()
     const sign = rng() < 0.5 ? -1 : 1
     const room = tips.length < MAX_TIPS && lines.length - goneCount < MAX_LINES
-    const tipX = line.x + line.dx * line.len
-    const tipY = line.y + line.dy * line.len
+    const [tipX, tipY] = pointAt(line, line.len)
+    const [hx, hy] = headingAt(line, line.len)
 
     if (roll < settings.split) {
       if (!room) {
@@ -786,7 +1018,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       // An offshoot of a line that carries on starts at its edge; of one that
       // ends here, it is mitred to it.
       const from = (dx: number, dy: number) =>
-        carry ? cutAlong(tipX, tipY, line.dx, line.dy, line) : mitre(tipX, tipY, line.dx, line.dy, dx, dy)
+        carry ? cutAlong(tipX, tipY, hx, hy, line) : mitre(tipX, tipY, hx, hy, dx, dy)
       const left = addLine(
         tipX,
         tipY,
@@ -813,13 +1045,16 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
           : -1
       if (carry) {
         line.next += stepLen()
+        // Its offshoots start here, on it.
+        line.jx = tipX
+        line.jy = tipY
         if (settings.curl > 0 && line.axis < 0) carryOn(index, curlFor(line.family))
       } else {
         end(line, "split")
         // Its left half is mitred to the left offshoot, its right to the right.
         const l = lines[left]!
         const r = lines[right]!
-        const cuts = [mitre(tipX, tipY, line.dx, line.dy, l.dx, l.dy), mitre(tipX, tipY, line.dx, line.dy, r.dx, r.dy)]
+        const cuts = [mitre(tipX, tipY, hx, hy, l.dx, l.dy), mitre(tipX, tipY, hx, hy, r.dx, r.dy)]
         line.head = cuts[0] && cuts[1] ? [cuts[0], cuts[1]] : null
       }
       return
@@ -841,12 +1076,14 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
         line.k + sign,
         line.family,
         line.depth,
-        (dx, dy) =>
-          spine ? cutAlong(tipX, tipY, line.dx, line.dy, line) : mitre(tipX, tipY, line.dx, line.dy, dx, dy),
+        (dx, dy) => (spine ? cutAlong(tipX, tipY, hx, hy, line) : mitre(tipX, tipY, hx, hy, dx, dy)),
         shapeFrom(line, sign, curlFor(line.family)),
       )
-      if (spine) line.next += stepLen()
-      else {
+      if (spine) {
+        line.next += stepLen()
+        line.jx = tipX
+        line.jy = tipY
+      } else {
         end(line, "turn")
         // A bend: one line changing direction, so one width, mitred.
         const child = lines[turned]!
@@ -866,20 +1103,23 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
    * edge of the line it met; along the mirror where it met its own reflection
    * tip to tip, which is the point of a chevron; along the wall it reached.
    */
-  function headAt(line: Line, tx: number, ty: number, other: Line | null, g: number): Cut[] | null {
+  function headAt(line: Line, tx: number, ty: number, other: Line | null, g: number, along: number): Cut[] | null {
     if (!other) {
       const half = Math.PI / settings.segments
       return [cutAlong(0, 0, Math.cos(g * half), Math.sin(g * half))]
     }
     const m = group[g]!
-    const ux = m.a * other.dx + m.b * other.dy
-    const uy = m.c * other.dx + m.d * other.dy
+    // The copy's heading where it was met.
+    const [ox, oy] = headingAt(other, along)
+    const ux = m.a * ox + m.b * oy
+    const uy = m.c * ox + m.d * oy
     if (other === line) {
       // Its own copy: tip to tip when the copy's tip is here too.
       const cx = m.a * tx + m.b * ty
       const cy = m.c * tx + m.d * ty
       if (Math.hypot(cx - tx, cy - ty) < 1e-6) {
-        const cut = mitre(tx, ty, line.dx, line.dy, -ux, -uy)
+        const [hx, hy] = headingAt(line, line.len)
+        const cut = mitre(tx, ty, hx, hy, -ux, -uy)
         return cut ? [cut] : null
       }
     }
@@ -893,23 +1133,21 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       let index = first
       let line = lines[index]!
       if (!line.alive) continue
-      // What is left of this tick's growth, carried from one link of a curve to the next.
+      // What is left of this tick's growth, carried from a rounded corner to the line beyond it.
       let budget = d0
       for (let hops = 0; ; hops++) {
         const d = Math.min(budget, line.next - line.len, line.stop - line.len)
         if (d > 0) {
           budget -= d
-          const fromX = line.x + line.dx * line.len
-          const fromY = line.y + line.dy * line.len
-          const { t, why, other, g } = firstMeeting(index, d)
-          const grown = Number.isFinite(t) ? t * d : d
-          line.len += grown
-          file(index, fromX, fromY, line.x + line.dx * line.len, line.y + line.dy * line.len)
-          const tx = line.x + line.dx * line.len
-          const ty = line.y + line.dy * line.len
-          if (Number.isFinite(t)) {
+          const [fromX, fromY] = pointAt(line, line.len)
+          const { s, why, other, g, along } = firstMeeting(index, d)
+          const metHere = Number.isFinite(s)
+          line.len += metHere ? s : d
+          const [tx, ty] = pointAt(line, line.len)
+          file(index, fromX, fromY, tx, ty)
+          if (metHere) {
             end(line, why)
-            line.head = headAt(line, tx, ty, other, g)
+            line.head = g < 0 ? null : headAt(line, tx, ty, other, g, along)
             break
           }
           if (tx * tx + ty * ty > EDGE * EDGE) {
@@ -921,7 +1159,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
           // wall the meeting test can see, because it starts on both.
           if (settings.confine === "wedge" && Math.abs(Math.atan2(ty, tx)) > Math.PI / settings.segments + 1e-9) {
             end(line, "wall")
-            line.head = headAt(line, tx, ty, null, Math.sign(ty))
+            line.head = headAt(line, tx, ty, null, Math.sign(ty), 0)
             break
           }
         }
@@ -1091,7 +1329,8 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       for (const index of tips) {
         const line = lines[index]!
         ctx.beginPath()
-        ctx.arc(line.x + line.dx * line.len, line.y + line.dy * line.len, 3 / R, 0, Math.PI * 2)
+        const [x, y] = pointAt(line, line.len)
+        ctx.arc(x, y, 3 / R, 0, Math.PI * 2)
         ctx.fill()
       }
     }
@@ -1122,7 +1361,9 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       deepest = Math.max(deepest, line.depth)
       // Heading in, judged at the middle of what is drawn of it.
       const mid = (from + line.len) / 2
-      if ((line.x + line.dx * mid) * line.dx + (line.y + line.dy * mid) * line.dy < 0) inward += drawn
+      const [mx, my] = pointAt(line, mid)
+      const [hx, hy] = headingAt(line, mid)
+      if (mx * hx + my * hy < 0) inward += drawn
     }
     const states = { wait: 0, grow: 0, hold: 0, undraw: 0 }
     for (const family of families) states[family.state]++
@@ -1145,8 +1386,10 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       strokes,
       widths,
       decided: { ...decided },
-      /** Links curved lines have carried on through since the drawing began. */
-      links,
+      /** Pieces lines have carried on into since the drawing began: a rounded corner's end, or a new curl. */
+      pieces,
+      /** Lines ended by a meeting within 0.001 of their start: should be few, or joints are being met. */
+      stubs,
       ended: { ...ended },
       drawMs: round(drawMs, 2),
       frame: { width, height },
