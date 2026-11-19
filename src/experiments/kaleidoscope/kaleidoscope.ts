@@ -283,9 +283,7 @@ function arcLength(x: number, y: number, dx: number, dy: number, k: number, zx: 
   return s < -1e-9 ? s + (2 * Math.PI) / Math.abs(k) : s
 }
 
-/** Where `hit`'s last meeting was, and how far along the other piece. */
-let hitX = 0
-let hitY = 0
+/** How far along the other piece `hit`'s last meeting was. */
 let hitAlong = 0
 
 /**
@@ -319,8 +317,6 @@ function hit(
     if (along < b0 - 1e-9 || along > b1 + 1e-9) return
     if (Math.hypot(zx - jx, zy - jy) < joint) return
     best = s
-    hitX = zx
-    hitY = zy
     hitAlong = along
   }
   if (k === 0 && bk === 0) {

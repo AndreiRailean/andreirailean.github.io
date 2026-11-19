@@ -37,16 +37,19 @@ the piece is still being found.
   diverge from their rotations; a meeting needs a line turned sideways or
   back. Measured: 0 of 40 straight lines, 2 of 40 turning chains. The test is
   not blind (the same probe gives 26 under mirror), it is just rare.
-- **The joint is skipped by distance along the step, not along the line.** A
-  meeting within `JOINT` of the start of a tip's step is the joint it grew
-  from: a child on its parent, siblings at their split, a parent carrying on
-  past its offshoots, a root's copies at the centre. Skipping by distance from
-  the line's start instead would leave a carrying-on parent to meet its own
-  children at the split (reasoned when written, not measured). `JOINT` is
-  rounding error, 1e-9: a tick's step is about 0.001 long, and at 1e-4 a
-  real meeting fell in the skipped stretch one time in a dozen and was passed
-  through — on `concentric` at step 20, 2–3% of bars crossed their own
-  reflection, more the slower they grew, and none at 1e-9.
+- **The joint is a point, not a stretch of every step.** A meeting within
+  `JOINT` (1e-5) of where a line started or last branched — a child on its
+  parent, siblings at their split, a parent carrying on past its offshoots,
+  a root's copies at the centre — is the lines it branched from. It was
+  first the opening 1e-4 of every tick's step, which a step of about 0.001
+  makes one real meeting in a dozen: on `concentric` at step 20, 2–3% of
+  bars crossed their own reflection, more the slower they grew. Measured
+  from the point, none do. 1e-5 is wide for rounding: two arcs setting off
+  along one tangent (a rounded offshoot on a curling parent) meet again only
+  within about 1e-8 of their radius. `stats().stubs` counts lines met within
+  0.001 of their start; widening `JOINT` tenfold left it unchanged on
+  `vertigo`, `blinky`, `lattice` and `rose` at curl 120, so those are real
+  meetings in dense drawings, not joints.
 - **A root at the centre aimed wider than its segment starts on both walls**,
   so the meeting test cannot see it leave. `tick` checks the tip's polar angle
   under `wedge` and ends it (`wall`).
@@ -101,30 +104,35 @@ the piece is still being found.
   ends moved none either: all eight presets, seed 7, 40 s, the same lines,
   births, length, decisions and endings before and after.
 - **On a narrow mirror segment, a root from the sides never decides.** It
-  meets its own reflection at the middle after at most about `r·sin(π/N)` over
-  the cosine of its lean, so with a long `step` it ends before its first
-  decision, and `split`, `keep`, `turn`, `angle`, `life` and `taper` (depth
-  stays 0) move nothing. Measured on `concentric` (32 segments, step 40),
-  seeds 942088, 1 and 2, 60 s each: 1 decision in 1942 births; each of those
-  six changed alone left the lines and the pixels identical. Decisions start
-  near step 20 (52 in 1932 births) and `life` ends a line from step 6.
-- **An arc is a chain of straight links**, each bending `ARC` (3°) from the
-  last and mitred to it, so meetings, cuts, the grid and undrawing are all
-  the straight-line code. `carryOn` ends a link and starts the next as the
-  same line: its width, depth and next decision carry over, and its `born` is
-  where the last one ended, so undrawing runs on along the curve. A tick's
-  growth carries from link to link (`budget`), or a tight curve would grow
-  slower than a straight line. With `curl` and `round` at 0 no line is ever a
-  link: all eleven presets grew the same lines, births, length, decisions and
-  endings before and after (seed 7, 40 s). Curls are drawn on
-  `family.curls`, a stream of their own.
+  meets its own reflection at the middle, or leaves the frame, before its
+  first step, so `split`, `keep`, `turn`, `angle`, `life`, `round` and
+  `taper` (depth stays 0) move nothing, and the panel greys them.
+  `farthestBar` in `settings.ts` is the closed form for how far a straight
+  bar can grow; it says 13.2% for `concentric` (32 segments, lean ±42), and
+  the piece makes 11 decisions at step 13 and none at step 14 (seed 942088,
+  60 s). Before the joint fix, bars that slipped through their reflection
+  made decisions up to step 20 and beyond. Under curl it says nothing: a
+  curling bar can bend away from the middle.
+- **A line is one arc.** Every line is a piece of constant curvature
+  (`curve`, 0 straight): where it is, which way it heads, where its sides
+  cross a cut and where it meets another line are closed forms for line and
+  line, line and circle, circle and circle, and its sides are drawn as arcs
+  about its centre. A line carries on into a new piece (`carryOn`) only where
+  its curve changes — the end of a rounded corner, or a new curl at a
+  decision — heading on as it was, with its width, depth and next decision.
+  It was first a chain of straight 3° links, each a whole line: rounding
+  `lattice` stood 3563 lines against 664 straight, took 1.5 s to grow a
+  minute against 0.13 s and 10.6 ms a frame against 0.6; as arcs, 728
+  lines, 0.25 s and 1.1 ms. It also made `soft rose` sparse (14 splits to
+  `rose`'s 31) for no reason of its own; as arcs the two split alike.
+- **A curl under `FLAT` (0.01 rad per half-diagonal) runs straight.** Under
+  1.2° across the frame, and it keeps every centre within 100
+  half-diagonals, where meeting two circles stays exact.
 - **A rounded corner sets out along the line it leaves**, and bends away. Off
   the spine, that is along the mirror, and `axisOf` took it for a second
   spine: kept straight on top of the first, and every offshoot of it too —
   1664 lines on `rose` at round 0.5, against 21. A line rounding a corner
   (`aim` set) is never a spine. The spine itself stays straight under curl.
-- **Links cost draw time, not growth time.** Mean draw per frame over 60 s,
-  headless: `lattice` 0.79 ms straight, 13.3 ms at round 1 (6528 links);
-  `neon pinwheel` 0.39 ms, 10.7 ms at curl 90 and round 1. Joining a curve's
-  links into one outline would cut its polygons; not built. At 4× the joints
-  between links show no seam.
+- **An arc held past a whole turn meets itself** at its start, which no
+  meeting between two pieces can see; `firstMeeting` ends it there. Only a
+  capped decision or the spine holds a piece that long.
