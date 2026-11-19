@@ -125,6 +125,45 @@ const SEED_BOUNDS = { min: 0, max: 999_999 }
 
 export const GROUP_ORDER = ["kaleidoscope", "growth", "look"] as const
 
+/**
+ * The farthest a straight root from the sides can grow under mirror before it
+ * meets its own reflection at the segment's middle or leaves the frame, in
+ * half-diagonals; Infinity where nothing bounds it.
+ *
+ * A root starts on the edge at angle h = π/N, a distance r from the centre
+ * (0.02 to 1), heading h − 90° + λ for a lean λ. It reaches the middle after
+ * f = r·sin h / cos(h + λ), and the frame (radius 1) after
+ * g = −r·sin λ + √(1 − r²cos²λ). It grows min(f, g); f rises with r and g is
+ * concave, so the most of that over r is at an end, where f meets g, or at
+ * g's own peak.
+ */
+export function farthestBar(settings: Settings): number {
+  if (settings.from !== "sides" || settings.symmetry !== "mirror" || settings.stops === "none") return Infinity
+  if (settings.curl > 0) return Infinity
+  const h = Math.PI / settings.segments
+  const leans: number[] = []
+  if (settings.flip < 1) leans.push(settings.lean)
+  if (settings.flip > 0) leans.push(-settings.lean)
+  let most = 0
+  for (const deg of leans) {
+    const lean = (deg * Math.PI) / 180
+    const s = Math.sin(lean)
+    const c = Math.cos(lean)
+    const toMiddle = Math.cos(h + lean)
+    const a = toMiddle > 0 ? Math.sin(h) / toMiddle : Infinity
+    const f = (r: number) => a * r
+    const g = (r: number) => -r * s + Math.sqrt(Math.max(0, 1 - r * r * c * c))
+    const at = [0.02, 1]
+    if (Number.isFinite(a) && a + s > 0) at.push(1 / Math.hypot(a + s, c))
+    if (s < 0) at.push(-s / c)
+    for (const r of at) if (r >= 0.02 && r <= 1) most = Math.max(most, Math.min(f(r), g(r)))
+  }
+  return most
+}
+
+/** Whether no line can reach its first decision: every root meets its reflection or the frame first. */
+export const neverDecides = (settings: Settings) => farthestBar(settings) < settings.step / 100
+
 const pct = (v: number) => `${v < 10 ? v.toFixed(1) : Math.round(v)}%`
 
 export const CONTROLS: Control[] = [
@@ -249,6 +288,8 @@ export const CONTROLS: Control[] = [
     group: "growth",
     options: /* @__PURE__ */ ANGLES.map((value) => ({ value, label: `${value}°` })),
     hint: "Every turn and split is made at this angle, and every line runs a whole number of them off its segment's middle, so lines far apart in a segment come out parallel.",
+    inert: (settings: Settings) =>
+      settings.from === "sides" && ((settings.split === 0 && settings.turn === 0) || neverDecides(settings)),
   },
   {
     kind: "slider",
@@ -272,6 +313,7 @@ export const CONTROLS: Control[] = [
     step: 0.05,
     format: (v) => v.toFixed(2),
     hint: "Odds a decision splits the line in two at opposite angles.",
+    inert: neverDecides,
   },
   {
     kind: "slider",
@@ -283,6 +325,7 @@ export const CONTROLS: Control[] = [
     step: 0.05,
     format: (v) => v.toFixed(2),
     hint: "Odds a line that split carries on straight between its two offshoots, rather than ending at the split.",
+    inert: (settings: Settings) => settings.split === 0 || neverDecides(settings),
   },
   {
     kind: "slider",
@@ -294,6 +337,7 @@ export const CONTROLS: Control[] = [
     step: 0.05,
     format: (v) => v.toFixed(2),
     hint: "Odds a decision turns the line by the angle, either way. Split is tried first; whatever is left of the odds goes straight on.",
+    inert: neverDecides,
   },
   {
     kind: "slider",
@@ -306,6 +350,7 @@ export const CONTROLS: Control[] = [
     scale: "log",
     format: (v) => String(Math.round(v)),
     hint: "Decisions a line and its offshoots make before they stop of their own accord.",
+    inert: neverDecides,
   },
   {
     kind: "slider",
@@ -328,7 +373,7 @@ export const CONTROLS: Control[] = [
     step: 0.05,
     format: (v) => (v === 0 ? "sharp" : v.toFixed(2)),
     hint: "How wide a turn or a split bends, as a share of a step: 0 is a sharp corner, 1 bends through an arc a step across, and the line then runs on in its new direction.",
-    inert: (settings: Settings) => settings.split === 0 && settings.turn === 0,
+    inert: (settings: Settings) => (settings.split === 0 && settings.turn === 0) || neverDecides(settings),
   },
   {
     kind: "slider",
@@ -387,6 +432,7 @@ export const CONTROLS: Control[] = [
     step: 0.01,
     format: (v) => (v === 0 ? "none" : `−${Math.round(v * 100)}%`),
     hint: "How much thinner a line is for every decision behind it, so the first lines are bold and the last are hairlines.",
+    inert: neverDecides,
   },
   {
     kind: "slider",
