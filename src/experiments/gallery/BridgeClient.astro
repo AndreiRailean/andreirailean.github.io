@@ -110,8 +110,58 @@ const marker = BRIDGE_MARKER
     let moves = 0
     let uiMoves = 0
     let lastMove = ""
+    // Frame pacing, every two seconds: how evenly frames arrive, beside how
+    // long the piece took to draw them, so a stutter can be told apart as the
+    // browser skipping frames or the piece being slow.
+    let pacing = ""
+    let gaps = []
+    let previous = 0
+    const frame = (time) => {
+      if (previous) gaps.push(time - previous)
+      previous = time
+      requestAnimationFrame(frame)
+    }
+    requestAnimationFrame(frame)
+    // `b` takes every blur off the chrome and puts it back, so its cost can be
+    // compared on the same screen with nothing else changed.
+    let unblurred = null
+    addEventListener("keydown", (event) => {
+      if (event.key !== "b" || event.target instanceof HTMLInputElement) return
+      if (unblurred) {
+        unblurred.remove()
+        unblurred = null
+      } else {
+        unblurred = document.createElement("style")
+        unblurred.textContent =
+          "#ui, #ui * { backdrop-filter: none !important; -webkit-backdrop-filter: none !important }"
+        document.head.append(unblurred)
+      }
+      trace(unblurred ? "blur off" : "blur on")
+    })
+    setInterval(() => {
+      if (gaps.length < 2) return
+      const sorted = [...gaps].sort((a, b) => a - b)
+      const median = sorted[sorted.length >> 1]
+      const stats = window.experiment?.stats?.()
+      const detail = {
+        frames: gaps.length,
+        median: +median.toFixed(1),
+        p95: +sorted[Math.floor(sorted.length * 0.95)].toFixed(1),
+        worst: +sorted[sorted.length - 1].toFixed(1),
+        late: gaps.filter((gap) => gap > median * 1.5).length,
+        drawMs: stats?.drawMs ?? null,
+        idle: document.documentElement.dataset.idle,
+        panel: !document.querySelector("#ui .panel")?.hidden,
+        blur: !unblurred,
+      }
+      pacing = `frames ${detail.frames} median ${detail.median}ms p95 ${detail.p95} worst ${detail.worst} late ${detail.late} draw ${detail.drawMs}ms idle=${detail.idle} panel=${detail.panel} blur=${detail.blur} (b toggles)`
+      send("frames", { ...detail, focus: document.hasFocus() })
+      gaps = []
+      draw()
+    }, 2000)
     const draw = () => {
-      if (hud) hud.textContent = `moves ${moves} (on chrome ${uiMoves}) last: ${lastMove}\n` + lines.join("\n")
+      if (hud)
+        hud.textContent = `${pacing}\nmoves ${moves} (on chrome ${uiMoves}) last: ${lastMove}\n` + lines.join("\n")
     }
     const trace = (event, detail = "") => {
       const focus = document.hasFocus()
