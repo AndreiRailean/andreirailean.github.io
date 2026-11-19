@@ -115,7 +115,13 @@ html[data-idle="true"] #ui {
   background: var(--ui-chip, rgb(10 12 22 / 74%));
   border: 1px solid var(--ui-edge, rgb(255 255 255 / 12%));
   border-radius: 0.3rem;
-  backdrop-filter: blur(6px);
+  /* No backdrop blur anywhere in the chrome. A blur is redrawn every frame
+     the piece beneath it moves: on Andrei's 3360×1773 window at 2×, a 24
+     million pixel canvas spinning under the preset buttons stuttered at the
+     edges whenever the chrome showed, and taking the blur off (the bridge
+     trace's `b`) made it smooth again, toggled back and forth on the same
+     screen. Frames still arrived on time throughout: the cost is in putting
+     them on screen, which the page cannot time. */
 }
 
 #ui > .index,
@@ -146,7 +152,6 @@ html[data-idle="true"] #ui {
   background: var(--ui-panel, rgb(8 10 18 / 84%));
   border: 1px solid var(--ui-edge, rgb(255 255 255 / 12%));
   border-radius: 0.4rem;
-  backdrop-filter: blur(8px);
 }
 
 /* An author `display` beats the UA's `[hidden]` rule, so state it. Without this
@@ -254,7 +259,6 @@ html[data-idle="true"] #ui > * {
   overflow: visible;
   background: none;
   border: 0;
-  backdrop-filter: none;
 }
 
 #ui .panel.boxed[hidden] {
@@ -272,7 +276,6 @@ html[data-idle="true"] #ui > * {
   background: var(--ui-panel, rgb(8 10 18 / 84%));
   border: 1px solid var(--ui-edge, rgb(255 255 255 / 12%));
   border-radius: 0.4rem;
-  backdrop-filter: blur(8px);
 }
 
 #ui .panel.boxed .group {
