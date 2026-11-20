@@ -139,9 +139,9 @@ the piece is still being found.
 - **The ground is a second growth, painted and never wiped.** `createGrowth`
   is the whole growth (lines, families, grid, clock) and draws nothing;
   `createKaleidoscope` runs two, the lines and the ground, the ground on a
-  salted seed at `speed × groundPace`. Each frame paints the ground lines
-  that grew since the last onto an offscreen canvas in scene coordinates,
-  which is then stretched and turned with the figure under the lines. A
+  salted seed at `speed × groundPace`. Each frame paints onto an offscreen
+  canvas in scene coordinates, stretched and turned with the figure under
+  the lines, only what the ground grew since the last frame. A
   ground family undrawing frees room for new growth and takes no paint, so
   what grew later lies on top. Three consequences: a change to `groundTone`,
   the hue or the width reaches only new paint (painted over in about half a
@@ -160,3 +160,19 @@ the piece is still being found.
   colour and keeps coming back: on his bands scene, two seeds, the lit share wanders
   0.35–0.78 at 0.35 against 1.0 with none, and the lines grow the same at
   every value, the ground's on or off (measured at 0, 79 and 200 px).
+- **Ground paint is incremental, and a cut end opens.** Repainting a growing
+  line whole each frame laid it back over newer paint, so a covered line
+  popped back the moment it grew. And the lines take a cut end whole the
+  frame a line meets something, found on its middle: at 144px a stopped
+  chunk's end, or the corner of a slanted start, arrives up to four
+  half-widths at once — Andrei saw star points snap into place. So the
+  ground paints a strip from where a line was last painted, and opens each
+  cut end at the line's own speed with a square front (`behind`, `ahead` in
+  `outline`), painting the change of shape by the even-odd rule. Two ways
+  that failed: repainting an opening end whole each frame flipped which of
+  two crossing chunks lay on top the frame one finished; and opening by
+  turning the edge about a corner left sub-pixel slivers whose antialiasing
+  never summed to solid, a fan of hairlines and see-through wedges. Measured
+  on his bands scene, the largest one-frame change of the ground fell from
+  6.2% to 1.6% against a median 0.5%. A young line whose start's forward
+  corner lies past its tip is drawn only out to its tip, lines too.

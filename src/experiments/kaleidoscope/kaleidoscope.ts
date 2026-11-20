@@ -441,13 +441,52 @@ function crossing(
   return best
 }
 
+/** A cut side's length, or `square` where the cut is missing or lies more than four half-widths off. */
+/** Both cut ends of a line in full: as the lines draw them. */
+const OPEN = [Infinity, Infinity] as const
+
+const nearCut = (w: number) => (t: number | null, square: number) =>
+  t === null || Math.abs(t - square) > 4 * w ? square : t
+
+/** Where each side of a line starts, left then right, cut along what it started on; at 0 where it starts square. */
+function tailEnds(line: Line, w: number, half: (line: Line) => number): [number, number] {
+  if (!line.tail) return [0, 0]
+  const near = nearCut(w)
+  return [near(crossing(line, w, line.tail, 1, half, 0), 0), near(crossing(line, -w, line.tail, 1, half, 0), 0)]
+}
+
+/** Where each side of a stopped line ends, left then right, cut along what it met; both at its tip while it grows. */
+function headEnds(line: Line, w: number, half: (line: Line) => number): [number, number] {
+  const { len } = line
+  const head = line.alive ? null : line.head
+  if (!head) return [len, len]
+  const near = nearCut(w)
+  return [
+    near(crossing(line, w, head[0]!, -1, half, len), len),
+    near(crossing(line, -w, head[head.length - 1]!, -1, half, len), len),
+  ]
+}
+
 /**
  * Adds a line's outline, from `from` along it to its tip, `w` either side
  * of its middle, each end square or cut as the line records. A curved line's
  * sides are arcs about its centre, so it is one shape however far it bends.
+ * A cut end reaches at most `ahead` past the tip and a cut start at most
+ * `behind` back from the start: how far the ground has let each open out.
+ * Short of its tip, at `to`, it ends square.
  */
-function outline(path: Path2D, line: Line, from: number, w: number, half: (line: Line) => number) {
-  const { len } = line
+function outline(
+  path: Path2D,
+  line: Line,
+  from: number,
+  w: number,
+  half: (line: Line) => number,
+  [behind, ahead]: readonly [number, number] = OPEN,
+  to = Infinity,
+) {
+  // Short of its tip, a line is drawn to a square end at `to`.
+  const tip = to >= line.len
+  const len = tip ? line.len : to
   const k = line.curve
   // Left is +normal, (-dy, dx); right is −normal.
   const at = (s: number, side: number) => {
@@ -455,55 +494,74 @@ function outline(path: Path2D, line: Line, from: number, w: number, half: (line:
     const [dx, dy] = headingAt(line, s)
     return [x - dy * side, y + dx * side] as const
   }
-  const limit = 4 * w
-  const near = (t: number | null, square: number) => (t === null || Math.abs(t - square) > limit ? square : t)
-
   // The start, cut only while none of it has been undrawn. A slanted cut puts
   // one corner behind the start point, at a negative length, and it must
   // stay there: squaring it off is the notch the cut exists to close.
   let tailL = from
   let tailR = from
-  if (line.tail && from === 0) {
-    tailL = near(crossing(line, w, line.tail, 1, half, 0), 0)
-    tailR = near(crossing(line, -w, line.tail, 1, half, 0), 0)
-  }
+  if (line.tail && from === 0) [tailL, tailR] = tailEnds(line, w, half)
+  const head = tip && !line.alive ? line.head : null
+  const [headL, headR] = tip ? headEnds(line, w, half) : [len, len]
+  // How far across a cut is at length s: +w at its left corner, −w at its right.
+  const across = (l: number, r: number) => (s: number) => (r === l ? 0 : w - (2 * w * (s - l)) / (r - l))
+  const tailAt = across(tailL, tailR)
+  const headAt = across(headL, headR)
+  // The ground opens a cut end square across the line, `behind` back from
+  // the start and `ahead` past the tip, so each frame adds a strip.
+  const back = -behind
+  const stop = head && head.length > 1 ? Infinity : len + ahead
 
-  const head = line.alive ? null : line.head
-  let headL = len
-  let headR = len
-  if (head) {
-    headL = near(crossing(line, w, head[0]!, -1, half, len), len)
-    headR = near(crossing(line, -w, head[head.length - 1]!, -1, half, len), len)
-  }
-  // Neither side ends before it starts.
-  headL = Math.max(headL, tailL)
-  headR = Math.max(headR, tailR)
-
-  path.moveTo(...at(tailR, -w))
-  path.lineTo(...at(tailL, w))
-  if (k === 0) path.lineTo(...at(headL, w))
-  else {
-    // A side at `side` is a circle of radius |side − 1/k| about the centre;
-    // the angle to its point at s turns with the heading, by k·s.
-    const cx = line.x - line.dy / k
-    const cy = line.y + line.dx / k
-    const start = Math.atan2(line.dy, line.dx) + Math.PI / 2
-    const edge = (side: number, s0: number, s1: number, back: boolean) => {
-      const r = side - 1 / k
-      const off = start + (r < 0 ? Math.PI : 0)
-      path.arc(cx, cy, Math.abs(r), off + k * s0, off + k * s1, back ? k > 0 : k < 0)
-    }
-    edge(w, tailL, headL, false)
-    // A split's two cuts meet on its middle at the tip.
-    if (head && head.length > 1 && Math.min(headL, headR) < len) path.lineTo(...at(len, 0))
-    path.lineTo(...at(headR, -w))
-    edge(-w, headR, tailR, true)
+  // A slanted start whose forward corner is still past the tip: only what has
+  // grown beyond the cut is there, between the cut and a square end. Drawing
+  // the whole start put that corner down ahead of the line.
+  if (!head && Math.max(tailL, tailR) > len && Math.min(tailL, tailR) < len) {
+    const corner = Math.min(tailL, tailR)
+    const side = tailL < tailR ? w : -w
+    const s0 = Math.max(corner, back)
+    path.moveTo(...at(s0, side))
+    path.lineTo(...at(len, side))
+    path.lineTo(...at(len, tailAt(len)))
+    if (s0 > corner) path.lineTo(...at(s0, tailAt(s0)))
     path.closePath()
     return
   }
-  // A split's two cuts meet on its middle at the tip.
-  if (head && head.length > 1 && Math.min(headL, headR) < len) path.lineTo(...at(len, 0))
-  path.lineTo(...at(headR, -w))
+
+  const startL = Math.max(tailL, back)
+  const startR = Math.max(tailR, back)
+  // Neither side ends before it starts.
+  const endL = Math.max(Math.min(headL, stop), startL)
+  const endR = Math.max(Math.min(headR, stop), startR)
+  const clipL = headL > stop
+  const clipR = headR > stop
+
+  path.moveTo(...at(startR, -w))
+  if (startR > tailR || startL > tailL) path.lineTo(...at(back, tailAt(back)))
+  path.lineTo(...at(startL, w))
+  const tipEnd = () => {
+    if (clipL !== clipR) path.lineTo(...at(stop, headAt(stop)))
+    // A split's two cuts meet on its middle at the tip.
+    if (head && head.length > 1 && Math.min(headL, headR) < len) path.lineTo(...at(len, 0))
+    path.lineTo(...at(endR, -w))
+  }
+  if (k === 0) {
+    path.lineTo(...at(endL, w))
+    tipEnd()
+    path.closePath()
+    return
+  }
+  // A side at `side` is a circle of radius |side − 1/k| about the centre;
+  // the angle to its point at s turns with the heading, by k·s.
+  const cx = line.x - line.dy / k
+  const cy = line.y + line.dx / k
+  const start = Math.atan2(line.dy, line.dx) + Math.PI / 2
+  const edge = (side: number, s0: number, s1: number, back: boolean) => {
+    const r = side - 1 / k
+    const off = start + (r < 0 ? Math.PI : 0)
+    path.arc(cx, cy, Math.abs(r), off + k * s0, off + k * s1, back ? k > 0 : k < 0)
+  }
+  edge(w, startL, endL, false)
+  tipEnd()
+  edge(-w, endR, startR, true)
   path.closePath()
 }
 
@@ -1338,8 +1396,13 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
   const brush = context2d(paint, "kaleidoscope")
   /** The ground's half-diagonal in its own px; 0 until first painted. */
   let groundR = 0
-  /** How long each ground line was when last painted. */
-  let painted = new WeakMap<Line, number>()
+  /**
+   * How far each ground line has been painted: its length, and how far its
+   * cut end has grown in past that since it stopped.
+   */
+  let painted = new WeakMap<Line, { len: number; ends: readonly [number, number] }>()
+  /** The ground's clock when it was last painted. */
+  let paintedAt = 0
   const groundOn = () => settings.ground > 0
 
   function size() {
@@ -1351,6 +1414,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     brush.fillStyle = "#000"
     brush.fillRect(0, 0, paint.width, paint.height)
     painted = new WeakMap()
+    paintedAt = 0
   }
 
   /** Sizes the ground to the screen, keeping what is painted on it. */
@@ -1360,11 +1424,13 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     const old =
       groundR > 0 ? Object.assign(document.createElement("canvas"), { width: paint.width, height: paint.height }) : null
     old?.getContext("2d")?.drawImage(paint, 0, 0)
+    const kept = { painted, paintedAt }
     paint.width = paint.height = 2 * want
     wipe()
     if (old) {
       brush.drawImage(old, 0, 0, paint.width, paint.height)
-      painted = new WeakMap()
+      // What was painted is still there, rescaled: painting it again would lay old lines over newer paint.
+      ;({ painted, paintedAt } = kept)
     }
     groundR = want
   }
@@ -1400,8 +1466,8 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
   function looksOf(
     of: Growth,
     list: Iterable<Line>,
-    half: (line: Line) => number,
-    from: (line: Line) => number,
+    /** What of a line to add to its look's path; null for nothing. */
+    shape: (line: Line) => ((path: Path2D) => void) | null,
     painted = false,
   ) {
     const { colourBy } = settings
@@ -1410,8 +1476,8 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     const looks = new Map<number, Path2D>()
     for (const line of list) {
       if (line.gone) continue
-      const start = from(line)
-      if (start >= line.len) continue
+      const draw = shape(line)
+      if (!draw) continue
       const shade =
         painted && paintsBlack(line)
           ? BLACK
@@ -1427,7 +1493,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
                   : Math.min(SHADES - 1, Math.floor(((now - line.t) / AGE_SPAN) * SHADES))
       let path = looks.get(shade)
       if (!path) looks.set(shade, (path = new Path2D()))
-      outline(path, line, start, half(line), half)
+      draw(path)
     }
     return looks
   }
@@ -1439,6 +1505,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     looks: Map<number, Path2D>,
     tone: number,
     place: (m: Map2) => void,
+    rule: CanvasFillRule = "nonzero",
   ) {
     const entries = [...looks]
     const colours = entries.map(([shade]) => (shade === BLACK ? "#000" : colour(shadeOf(shade), tone)))
@@ -1448,28 +1515,100 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       const copy = settings.colourBy === "copy" ? colour(g / group.length, tone) : ""
       for (let i = 0; i < entries.length; i++) {
         target.fillStyle = (entries[i]![0] !== BLACK && copy) || colours[i]!
-        target.fill(entries[i]![1])
+        target.fill(entries[i]![1], rule)
       }
     }
     return entries.length * group.length
   }
 
-  /** Paints what the ground grew since the last frame. */
+  /**
+   * Paints what the ground grew since the last frame, and only that, so
+   * newer paint across a line's older stretch stays on top. A growing line
+   * is painted from where it was last painted, a pixel back so no seam
+   * shows. Its cut ends open out at its own speed rather than arriving whole,
+   * as the lines' do: a meeting is found on a line's middle, so when a wide
+   * chunk stops most of its end is still to come, and a chunk starting on a
+   * wall at a slant has a corner far behind its start; taken at once, both
+   * snapped a star's points into place. An end opening paints only the
+   * sliver it gained, its shape now less its shape before by the even-odd
+   * rule: painting it whole each frame flipped which of two crossing chunks
+   * lay on top the frame one of them finished.
+   */
   function paintGround(R: number) {
     fitGround(R)
-    const fresh: Line[] = []
-    for (const line of ground.lines()) {
-      if (line.gone || painted.get(line) === line.len) continue
-      painted.set(line, line.len)
-      fresh.push(line)
-    }
-    if (fresh.length === 0) return
     const half = (line: Line) => (settings.ground * GROUND_RANGE ** (1 - line.thick / (WIDTHS - 1))) / R / 2
-    const looks = looksOf(ground, fresh, half, () => 0, true)
+    const now = ground.now()
+    const grew = (Math.max(0, now - paintedAt) * groundOf(settings).speed) / 100
+    paintedAt = now
+    const seam = 1 / R
+    const grown = new Map<Line, (path: Path2D) => void>()
+    const opening: [Line, (path: Path2D) => void][] = []
+    for (const line of ground.lines()) {
+      if (line.gone) continue
+      const was = painted.get(line)
+      const w = half(line)
+      const tail = tailEnds(line, w, half)
+      const back = -Math.min(0, ...tail)
+      const front = Math.max(0, Math.max(...headEnds(line, w, half)) - line.len)
+      const [behind0, ahead0] = was?.ends ?? [0, 0]
+      const behind = Math.min(back, behind0 + grew)
+      // A tip opens from where it stopped: while it grew, its end was square.
+      const ahead = line.alive ? 0 : Math.min(front, was?.len === line.len ? ahead0 + grew : grew)
+      painted.set(line, { len: line.len, ends: [behind, ahead] })
+      if (!was) {
+        grown.set(line, (path) => outline(path, line, 0, w, half, [behind, ahead]))
+        continue
+      }
+      // The start, out to just past its forward corner: where it grows across
+      // the cut, the cut bounds it, so it is painted as a change of shape.
+      const zone = Math.max(0, ...tail) + seam
+      if (behind !== behind0 || (was.len < zone && was.len !== line.len)) {
+        const before = Math.max(0, Math.min(zone, was.len - seam))
+        opening.push([
+          line,
+          (path) => {
+            outline(path, line, 0, w, half, [behind, ahead], zone)
+            outline(path, line, 0, w, half, [Math.max(0, behind0 - seam), ahead], before)
+          },
+        ])
+      }
+      // Past it, what grew is a strip from where the line was last painted.
+      const from = Math.max(was.len - seam, zone - seam)
+      if (was.len !== line.len && from < line.len)
+        grown.set(line, (path) => outline(path, line, from, w, half, [behind, ahead]))
+      // A stopped tip opening, as the change of its end's shape.
+      if (was.len === line.len && ahead !== ahead0) {
+        // Within the start's reach, the cut there bounds it too.
+        const end = line.len < zone ? 0 : line.len - seam
+        opening.push([
+          line,
+          (path) => {
+            outline(path, line, end, w, half, [behind, ahead])
+            outline(path, line, end, w, half, [behind, Math.max(0, ahead0 - seam)])
+          },
+        ])
+      }
+    }
     const s = groundR
-    fillCopies(brush, ground, looks, settings.groundTone, (m) =>
-      brush.setTransform(s * m.a, s * m.c, s * m.b, s * m.d, s, s),
-    )
+    const place = (m: Map2) => brush.setTransform(s * m.a, s * m.c, s * m.b, s * m.d, s, s)
+    const tone = settings.groundTone
+    if (grown.size > 0)
+      fillCopies(
+        brush,
+        ground,
+        looksOf(ground, grown.keys(), (line) => grown.get(line)!, true),
+        tone,
+        place,
+      )
+    for (const [line, draw] of opening)
+      fillCopies(
+        brush,
+        ground,
+        looksOf(ground, [line], () => draw, true),
+        tone,
+        place,
+        "evenodd",
+      )
   }
 
   function step(dt: number) {
@@ -1505,7 +1644,10 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       R /
       2
     const lines = growth.lines()
-    const looks = looksOf(growth, lines, half, visibleFrom)
+    const looks = looksOf(growth, lines, (line) => {
+      const from = visibleFrom(line)
+      return from < line.len ? (path) => outline(path, line, from, half(line), half) : null
+    })
     const seen = new Set<number>()
     for (const line of lines)
       if (!line.gone && visibleFrom(line) < line.len) seen.add(Math.round(half(line) * 2 * R * 100) / 100)
