@@ -91,6 +91,16 @@ export type Settings = {
   hues: number
   /** What the colour follows: a line's depth, its root, when it grew, or which copy of the segment it is in. */
   colourBy: ColourBy
+  /**
+   * Width of the ground's widest chunks, css px; 0 is no ground, black. The
+   * ground is a growth of its own under the lines, on its own seed, painted
+   * and never wiped, only painted over.
+   */
+  ground: number
+  /** How fast the ground grows, as a multiple of the lines' growth. */
+  groundPace: number
+  /** How light the ground's colours are, as a share of the lines'. */
+  groundTone: number
   seed: number
   /** The speed control's value: a multiple of `CLOCK_RATE`. The kit's — `kit/speed.ts`. */
   timescale: number
@@ -123,7 +133,7 @@ const WIDTH_TRACK: Track = { min: WIDTH_MIN, max: WIDTH_MAX, step: 0.05, scale: 
 
 const SEED_BOUNDS = { min: 0, max: 999_999 }
 
-export const GROUP_ORDER = ["kaleidoscope", "growth", "look"] as const
+export const GROUP_ORDER = ["kaleidoscope", "growth", "look", "ground"] as const
 
 /**
  * The farthest a straight root from the sides can grow under mirror before it
@@ -482,6 +492,42 @@ export const CONTROLS: Control[] = [
     hint: "What the colour follows. Depth: how many decisions are behind a line, so colour moves outward. Root: each root and its offshoots one colour. Age: when a line grew, so the colours keep spreading over the drawing as it grows. Copy: each copy of the segment its own colour, which shows the tiling.",
     inert: (settings: Settings) => settings.tint === 0,
   },
+  {
+    kind: "slider",
+    key: "ground",
+    label: "ground",
+    group: "ground",
+    min: 0,
+    max: 240,
+    step: 1,
+    format: (v) => (v === 0 ? "none" : `${Math.round(v)}px`),
+    hint: "A second growth under the lines, in chunks up to this wide, on a seed of its own. What it paints stays until something newer is painted over it, so the colour builds up until it fills the figure. 0 leaves the lines on black.",
+  },
+  {
+    kind: "slider",
+    key: "groundPace",
+    label: "ground pace",
+    group: "ground",
+    min: 0.1,
+    max: 4,
+    step: 0.05,
+    scale: "log",
+    format: (v) => `${v.toFixed(2)}×`,
+    hint: "How fast the ground grows against the lines: below 1 it fills slowly behind them, above 1 it races ahead.",
+    inert: (settings: Settings) => settings.ground === 0,
+  },
+  {
+    kind: "slider",
+    key: "groundTone",
+    label: "ground tone",
+    group: "ground",
+    min: 0,
+    max: 1,
+    step: 0.05,
+    format: (v) => `${Math.round(v * 100)}%`,
+    hint: "How light the ground is against the lines, in the same colours: low keeps it dark so the lines stand out on it, 100% paints it as bright as they are.",
+    inert: (settings: Settings) => settings.ground === 0,
+  },
   /* @__PURE__ */ timescaleControl(),
 ]
 
@@ -514,6 +560,9 @@ export const DEFAULT_SETTINGS: Settings = {
   tint: 0,
   hues: 120,
   colourBy: "depth",
+  ground: 0,
+  groundPace: 1,
+  groundTone: 0.5,
   seed: 1,
   timescale: 1,
 }
@@ -541,6 +590,9 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   hue: { min: 0, max: 360, step: 1 },
   tint: { min: 0, max: 1, step: 0.05 },
   hues: { min: 0, max: 360, step: 1 },
+  ground: { min: 0, max: 240, step: 1 },
+  groundPace: { min: 0.1, max: 4, step: 0.05, scale: "log" },
+  groundTone: { min: 0, max: 1, step: 0.05 },
   timescale: timescaleTrack(),
 }
 
@@ -659,6 +711,9 @@ export const REGISTRY: readonly Slot[] = [
   { key: "flip", kind: "num", grid: 0.05, origin: 0, bits: 5 },
   { key: "curl", kind: "num", grid: 1, origin: 0, bits: 8 },
   { key: "round", kind: "num", grid: 0.05, origin: 0, bits: 6 },
+  { key: "ground", kind: "num", grid: 1, origin: 0, bits: 8 },
+  { key: "groundPace", kind: "num", grid: 0.05, origin: 0.1, bits: 7 },
+  { key: "groundTone", kind: "num", grid: 0.05, origin: 0, bits: 5 },
 ]
 
 export const { settingsToQuery, urlForSettings, settingsFromQuery, namesASetting } = packedAddress<Settings>({

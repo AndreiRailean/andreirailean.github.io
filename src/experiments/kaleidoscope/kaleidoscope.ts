@@ -507,13 +507,12 @@ function outline(path: Path2D, line: Line, from: number, w: number, half: (line:
   path.closePath()
 }
 
-export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings) {
-  const ctx = context2d(canvas, "kaleidoscope")
-
+/**
+ * One growth: its lines, families and grid, and the clock that grows them. It
+ * draws nothing; the scene draws two of them, the lines and the ground.
+ */
+function createGrowth(initial: Settings) {
   let settings = initial
-  let width = 0
-  let height = 0
-  let dpr = 1
 
   let group: Map2[] = []
   let lines: Line[] = []
@@ -533,8 +532,6 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
   let owed = 0
   /** Under `together`: seconds every family has been holding. */
   let heldAll = 0
-  let spin = 0
-  let debug = false
 
   const ended: Record<Ending, number> = { line: 0, family: 0, image: 0, wall: 0, edge: 0, life: 0, split: 0, turn: 0 }
   const decided = { split: 0, turn: 0, straight: 0, capped: 0 }
@@ -545,10 +542,6 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
   let pieces = 0
   /** Lines met by something within 0.001 of where they started: a joint taken for a meeting, mostly. */
   let stubs = 0
-  let drawMs = 0
-  let strokes = 0
-  /** Distinct widths the last frame stroked, css px. */
-  let widths: number[] = []
 
   const unit = () => Number(settings.angle) * DEG
   const stepLen = () => settings.step / 100
@@ -577,10 +570,6 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     if (radius <= 0) return { bend: aim, curve: drift, aim: null, drift }
     const bend = heading - dk * unit()
     return { bend, curve: Math.sign(aim - bend) / radius, aim, drift }
-  }
-
-  function size() {
-    ;({ width, height, dpr } = fitCanvas(canvas))
   }
 
   function cellOf(x: number, y: number) {
@@ -1237,111 +1226,17 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     }
   }
 
-  function step(dt: number) {
-    const scene = dt * settings.timescale * CLOCK_RATE
-    spin += settings.spin * DEG * scene
-    advance(scene)
-  }
-
-  function draw() {
-    const began = performance.now()
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    ctx.fillStyle = "#000"
-    ctx.fillRect(0, 0, width, height)
-
-    const R = Math.hypot(width, height) / 2
-    // One path per colour: every line is a filled outline, its width in its
-    // shape, so a frame costs (colours × copies) fills, not (lines × copies).
-    const looks = new Map<number, Path2D>()
-    const { colourBy, taper, life, roots } = settings
-    const tinted = settings.tint > 0 && colourBy !== "copy"
-    // A line's width is spaced evenly in ratio, not in pixels, between the ends.
-    const ratio = settings.widest / settings.width
-    const half = (line: Line) =>
-      Math.max(MIN_WIDTH, settings.width * ratio ** (line.thick / (WIDTHS - 1)) * (1 - taper) ** line.depth) / R / 2
-    const seen = new Set<number>()
-    for (const line of lines) {
-      if (line.gone) continue
-      const from = visibleFrom(line)
-      if (from >= line.len) continue
-      const shade = !tinted
-        ? 0
-        : colourBy === "depth"
-          ? line.depth
-          : colourBy === "family"
-            ? line.family.slot
-            : Math.min(SHADES - 1, Math.floor(((now - line.t) / AGE_SPAN) * SHADES))
-      let path = looks.get(shade)
-      if (!path) looks.set(shade, (path = new Path2D()))
-      const w = half(line)
-      seen.add(Math.round(w * 2 * R * 100) / 100)
-      outline(path, line, from, w, half)
-    }
-
-    const shadeOf = (shade: number) =>
-      colourBy === "depth"
-        ? shade / Math.max(1, life - 1)
-        : colourBy === "family"
-          ? shade / Math.max(1, roots)
-          : shade / SHADES
-    const colour = (at: number) =>
-      settings.tint > 0
-        ? `hsl(${settings.hue + settings.hues * at} ${Math.round(settings.tint * 92)}% ${Math.round(100 - settings.tint * 42)}%)`
-        : "#fff"
-
-    // The segment's middle points up; spin turns the whole figure.
-    const turn = spin - Math.PI / 2
-    const cs = Math.cos(turn) * R * dpr
-    const sn = Math.sin(turn) * R * dpr
-    const ox = (width / 2) * dpr
-    const oy = (height / 2) * dpr
-    const entries = [...looks]
-    const colours = entries.map(([shade]) => colour(shadeOf(shade)))
-    for (let g = 0; g < group.length; g++) {
-      const m = group[g]!
-      // rotate(turn) · scale(R) · m, as a canvas matrix.
-      ctx.setTransform(cs * m.a - sn * m.c, sn * m.a + cs * m.c, cs * m.b - sn * m.d, sn * m.b + cs * m.d, ox, oy)
-      const copy = colourBy === "copy" ? colour(g / group.length) : ""
-      for (let i = 0; i < entries.length; i++) {
-        ctx.fillStyle = copy || colours[i]!
-        ctx.fill(entries[i]![1])
-      }
-    }
-    strokes = entries.length * group.length
-    widths = [...seen].sort((a, b) => a - b)
-
-    if (debug) {
-      ctx.setTransform(cs, sn, -sn, cs, ox, oy)
-      const half = Math.PI / settings.segments
-      ctx.strokeStyle = `hsl(${settings.hue} 80% 60% / 60%)`
-      ctx.lineWidth = 1 / R
-      ctx.beginPath()
-      for (const side of [-1, 1]) {
-        ctx.moveTo(0, 0)
-        ctx.lineTo(Math.cos(side * half), Math.sin(side * half))
-      }
-      ctx.stroke()
-      ctx.fillStyle = `hsl(${settings.hue} 90% 65%)`
-      for (const index of tips) {
-        const line = lines[index]!
-        ctx.beginPath()
-        const [x, y] = pointAt(line, line.len)
-        ctx.arc(x, y, 3 / R, 0, Math.PI * 2)
-        ctx.fill()
-      }
-    }
-    drawMs = drawMs * 0.9 + (performance.now() - began) * 0.1
-  }
-
-  const loop = steadyLoop({ clamp: 0.1, step, draw })
-
-  function onResize() {
-    size()
-    loop.repaint()
+  /** Takes new settings; true when they start the growth again. */
+  function set(next: Settings) {
+    const before = settings
+    settings = next
+    if (!needsRegrow(before, next)) return false
+    regrow()
+    return true
   }
 
   /** What the growth actually did, counted off the lines rather than read off settings. */
-  function stats() {
+  function counts() {
     const round = (v: number, d = 3) => Number(v.toFixed(d))
     let length = 0
     let deepest = 0
@@ -1378,25 +1273,308 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       /** Share of that length heading toward the centre rather than away. */
       inward: round(length > 0 ? inward / length : 0),
       images: group.length,
-      /** Fills the last frame made: colours × copies. */
-      strokes,
-      widths,
       decided: { ...decided },
       /** Pieces lines have carried on into since the drawing began: a rounded corner's end, or a new curl. */
       pieces,
       /** Lines ended by a meeting within 0.001 of their start: should be few, or joints are being met. */
       stubs,
       ended: { ...ended },
+    }
+  }
+
+  regrow()
+
+  return {
+    set,
+    regrow,
+    advance,
+    counts,
+    lines: () => lines,
+    group: () => group,
+    tips: () => tips,
+    now: () => now,
+  }
+}
+
+type Growth = ReturnType<typeof createGrowth>
+
+/** The ground's own settings: the same rules on a seed of its own, growing at its own pace. */
+function groundOf(settings: Settings): Settings {
+  return { ...settings, seed: hashSeed(settings.seed, 0x6a0d) % 1_000_000, speed: settings.speed * settings.groundPace }
+}
+
+/**
+ * The ground is painted at most this many device px from its centre to its
+ * rim. Its chunks are wide, so it need not match a large screen pixel for
+ * pixel; it is stretched to fit and turned with the figure.
+ */
+const GROUND_RES = 1600
+/** The thinnest chunk is this share of the widest. */
+const GROUND_RANGE = 1 / 3
+
+export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings) {
+  const ctx = context2d(canvas, "kaleidoscope")
+
+  let settings = initial
+  let width = 0
+  let height = 0
+  let dpr = 1
+  let spin = 0
+  let debug = false
+  let drawMs = 0
+  let strokes = 0
+  /** Distinct widths the last frame stroked, css px. */
+  let widths: number[] = []
+
+  const growth = createGrowth(initial)
+  /**
+   * The ground: a growth of its own, painted into `paint` and never wiped
+   * while it lives, only painted over. A line is painted again while it
+   * grows and left alone after, so what grew later lies on top; its family
+   * undrawing frees the space for new growth but takes none of the paint.
+   */
+  const ground = createGrowth(groundOf(initial))
+  const paint = document.createElement("canvas")
+  const brush = context2d(paint, "kaleidoscope")
+  /** The ground's half-diagonal in its own px; 0 until first painted. */
+  let groundR = 0
+  /** How long each ground line was when last painted. */
+  let painted = new WeakMap<Line, number>()
+  const groundOn = () => settings.ground > 0
+
+  function size() {
+    ;({ width, height, dpr } = fitCanvas(canvas))
+  }
+
+  function wipe() {
+    brush.setTransform(1, 0, 0, 1, 0, 0)
+    brush.fillStyle = "#000"
+    brush.fillRect(0, 0, paint.width, paint.height)
+    painted = new WeakMap()
+  }
+
+  /** Sizes the ground to the screen, keeping what is painted on it. */
+  function fitGround(R: number) {
+    const want = Math.min(GROUND_RES, Math.ceil(R * dpr))
+    if (want === groundR) return
+    const old =
+      groundR > 0 ? Object.assign(document.createElement("canvas"), { width: paint.width, height: paint.height }) : null
+    old?.getContext("2d")?.drawImage(paint, 0, 0)
+    paint.width = paint.height = 2 * want
+    wipe()
+    if (old) {
+      brush.drawImage(old, 0, 0, paint.width, paint.height)
+      painted = new WeakMap()
+    }
+    groundR = want
+  }
+
+  const shadeOf = (shade: number) =>
+    settings.colourBy === "depth"
+      ? shade / Math.max(1, settings.life - 1)
+      : settings.colourBy === "family"
+        ? shade / Math.max(1, settings.roots)
+        : shade / SHADES
+  /** A colour along the sweep, its lightness scaled by `tone`. */
+  const colour = (at: number, tone: number) =>
+    settings.tint > 0
+      ? `hsl(${settings.hue + settings.hues * at} ${Math.round(settings.tint * 92)}% ${Math.round((100 - settings.tint * 42) * tone)}%)`
+      : tone === 1
+        ? "#fff"
+        : `hsl(0 0% ${Math.round(100 * tone)}%)`
+
+  /**
+   * One path per colour: every line is a filled outline, its width in its
+   * shape, so a frame costs (colours × copies) fills, not (lines × copies).
+   */
+  function looksOf(
+    of: Growth,
+    list: Iterable<Line>,
+    half: (line: Line) => number,
+    from: (line: Line) => number,
+    painted = false,
+  ) {
+    const { colourBy } = settings
+    const tinted = settings.tint > 0 && colourBy !== "copy"
+    const now = of.now()
+    const looks = new Map<number, Path2D>()
+    for (const line of list) {
+      if (line.gone) continue
+      const start = from(line)
+      if (start >= line.len) continue
+      const shade = !tinted
+        ? 0
+        : colourBy === "depth"
+          ? line.depth
+          : colourBy === "family"
+            ? line.family.slot
+            : painted
+              ? // Paint is coloured once, young, so by age it takes the time it grew, round the sweep.
+                Math.floor((line.t / AGE_SPAN) * SHADES) % SHADES
+              : Math.min(SHADES - 1, Math.floor(((now - line.t) / AGE_SPAN) * SHADES))
+      let path = looks.get(shade)
+      if (!path) looks.set(shade, (path = new Path2D()))
+      outline(path, line, start, half(line), half)
+    }
+    return looks
+  }
+
+  /** Fills each look once per copy of the segment, `place` setting each copy's matrix. Returns the fills made. */
+  function fillCopies(
+    target: CanvasRenderingContext2D,
+    of: Growth,
+    looks: Map<number, Path2D>,
+    tone: number,
+    place: (m: Map2) => void,
+  ) {
+    const entries = [...looks]
+    const colours = entries.map(([shade]) => colour(shadeOf(shade), tone))
+    const group = of.group()
+    for (let g = 0; g < group.length; g++) {
+      place(group[g]!)
+      const copy = settings.colourBy === "copy" ? colour(g / group.length, tone) : ""
+      for (let i = 0; i < entries.length; i++) {
+        target.fillStyle = copy || colours[i]!
+        target.fill(entries[i]![1])
+      }
+    }
+    return entries.length * group.length
+  }
+
+  /** Paints what the ground grew since the last frame. */
+  function paintGround(R: number) {
+    fitGround(R)
+    const fresh: Line[] = []
+    for (const line of ground.lines()) {
+      if (line.gone || painted.get(line) === line.len) continue
+      painted.set(line, line.len)
+      fresh.push(line)
+    }
+    if (fresh.length === 0) return
+    const half = (line: Line) => (settings.ground * GROUND_RANGE ** (1 - line.thick / (WIDTHS - 1))) / R / 2
+    const looks = looksOf(ground, fresh, half, () => 0, true)
+    const s = groundR
+    fillCopies(brush, ground, looks, settings.groundTone, (m) =>
+      brush.setTransform(s * m.a, s * m.c, s * m.b, s * m.d, s, s),
+    )
+  }
+
+  function step(dt: number) {
+    const scene = dt * settings.timescale * CLOCK_RATE
+    spin += settings.spin * DEG * scene
+    growth.advance(scene)
+    if (groundOn()) ground.advance(scene)
+  }
+
+  function draw() {
+    const began = performance.now()
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    ctx.fillStyle = "#000"
+    ctx.fillRect(0, 0, width, height)
+
+    const R = Math.hypot(width, height) / 2
+    // The segment's middle points up; spin turns the whole figure.
+    const turn = spin - Math.PI / 2
+    const ox = (width / 2) * dpr
+    const oy = (height / 2) * dpr
+
+    if (groundOn()) {
+      paintGround(R)
+      const k = (R * dpr) / groundR
+      ctx.setTransform(Math.cos(turn) * k, Math.sin(turn) * k, -Math.sin(turn) * k, Math.cos(turn) * k, ox, oy)
+      ctx.drawImage(paint, -groundR, -groundR)
+    }
+
+    // A line's width is spaced evenly in ratio, not in pixels, between the ends.
+    const ratio = settings.widest / settings.width
+    const half = (line: Line) =>
+      Math.max(MIN_WIDTH, settings.width * ratio ** (line.thick / (WIDTHS - 1)) * (1 - settings.taper) ** line.depth) /
+      R /
+      2
+    const lines = growth.lines()
+    const looks = looksOf(growth, lines, half, visibleFrom)
+    const seen = new Set<number>()
+    for (const line of lines)
+      if (!line.gone && visibleFrom(line) < line.len) seen.add(Math.round(half(line) * 2 * R * 100) / 100)
+
+    const cs = Math.cos(turn) * R * dpr
+    const sn = Math.sin(turn) * R * dpr
+    // rotate(turn) · scale(R) · m, as a canvas matrix.
+    strokes = fillCopies(ctx, growth, looks, 1, (m) =>
+      ctx.setTransform(cs * m.a - sn * m.c, sn * m.a + cs * m.c, cs * m.b - sn * m.d, sn * m.b + cs * m.d, ox, oy),
+    )
+    widths = [...seen].sort((a, b) => a - b)
+
+    if (debug) {
+      ctx.setTransform(cs, sn, -sn, cs, ox, oy)
+      const edge = Math.PI / settings.segments
+      ctx.strokeStyle = `hsl(${settings.hue} 80% 60% / 60%)`
+      ctx.lineWidth = 1 / R
+      ctx.beginPath()
+      for (const side of [-1, 1]) {
+        ctx.moveTo(0, 0)
+        ctx.lineTo(Math.cos(side * edge), Math.sin(side * edge))
+      }
+      ctx.stroke()
+      ctx.fillStyle = `hsl(${settings.hue} 90% 65%)`
+      for (const index of growth.tips()) {
+        const line = lines[index]!
+        ctx.beginPath()
+        const [x, y] = pointAt(line, line.len)
+        ctx.arc(x, y, 3 / R, 0, Math.PI * 2)
+        ctx.fill()
+      }
+    }
+    drawMs = drawMs * 0.9 + (performance.now() - began) * 0.1
+  }
+
+  const loop = steadyLoop({ clamp: 0.1, step, draw })
+
+  function onResize() {
+    size()
+    loop.repaint()
+  }
+
+  /** Share of the ground's disc painted, read off a small copy of it. */
+  function cover() {
+    if (groundR === 0) return 0
+    const n = 64
+    const probe = Object.assign(document.createElement("canvas"), { width: n, height: n })
+    const pc = probe.getContext("2d", { willReadFrequently: true })
+    if (!pc) return 0
+    pc.drawImage(paint, 0, 0, n, n)
+    const data = pc.getImageData(0, 0, n, n).data
+    let inside = 0
+    let lit = 0
+    for (let y = 0; y < n; y++)
+      for (let x = 0; x < n; x++) {
+        if (Math.hypot(x + 0.5 - n / 2, y + 0.5 - n / 2) > n / 2) continue
+        inside++
+        const i = (y * n + x) * 4
+        if (data[i]! + data[i + 1]! + data[i + 2]! > 24) lit++
+      }
+    return inside > 0 ? lit / inside : 0
+  }
+
+  function stats() {
+    const round = (v: number, d = 3) => Number(v.toFixed(d))
+    const g = groundOn() ? ground.counts() : null
+    return {
+      ...growth.counts(),
+      /** Fills the last frame made: colours × copies. */
+      strokes,
+      widths,
       drawMs: round(drawMs, 2),
       frame: { width, height },
       fps: Math.round(loop.fps()),
       running: loop.running(),
       held: loop.held(),
+      /** The ground's own growth, and the share of its disc painted so far; null with the ground off. */
+      ground: g && { births: g.births, lines: g.lines, length: g.length, side: 2 * groundR, cover: round(cover()) },
     }
   }
 
   size()
-  regrow()
 
   return {
     start() {
@@ -1411,19 +1589,34 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     setSettings(next: Settings) {
       const before = settings
       settings = next
-      if (needsRegrow(before, next)) regrow()
+      growth.set(next)
+      // The ground starts again, on black, when what it grows changes or it is switched on.
+      const regrew = ground.set(groundOf(next))
+      if (groundOn() && (regrew || before.ground === 0)) {
+        if (!regrew) ground.regrow()
+        wipe()
+      }
       loop.repaint()
     },
     setPaused(on: boolean) {
       loop.setHeld(on)
     },
-    /** Grows `seconds` of scene at once, at 1×. */
+    /** Grows `seconds` of scene at once, at 1×, painting the ground as it goes. */
     settle(seconds: number) {
-      advance(seconds)
+      for (let left = seconds; left > 0; left -= 1) {
+        const dt = Math.min(1, left)
+        growth.advance(dt)
+        if (groundOn()) {
+          ground.advance(dt)
+          paintGround(Math.hypot(width, height) / 2)
+        }
+      }
       draw()
     },
     clear() {
-      regrow()
+      growth.regrow()
+      ground.regrow()
+      wipe()
       loop.repaint()
     },
     debug(on?: boolean) {

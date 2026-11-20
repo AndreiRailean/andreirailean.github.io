@@ -69,6 +69,14 @@ direction as it arrives. Verbatim. This file faces inward and records him;
 > until (if) it decides to change the curve - that would be something to have a
 > look at
 
+## 2026-11-20 — a ground that is only painted over
+
+> this is a great experiment. i like it how it is, but am also wondering if it
+> is possible to have colour fill the piece completely. currently we have
+> coloured lines on black and those lines disappear. i feel we need a
+> background layer that has a life of its own and uses thicker chunks of colour
+> that are never removed but are only painted over.
+
 ## Open questions
 
 Questions the build could not answer by itself. Each is left as a setting or

@@ -136,3 +136,21 @@ the piece is still being found.
 - **An arc held past a whole turn meets itself** at its start, which no
   meeting between two pieces can see; `firstMeeting` ends it there. Only a
   capped decision or the spine holds a piece that long.
+- **The ground is a second growth, painted and never wiped.** `createGrowth`
+  is the whole growth (lines, families, grid, clock) and draws nothing;
+  `createKaleidoscope` runs two, the lines and the ground, the ground on a
+  salted seed at `speed × groundPace`. Each frame paints the ground lines
+  that grew since the last onto an offscreen canvas in scene coordinates,
+  which is then stretched and turned with the figure under the lines. A
+  ground family undrawing frees room for new growth and takes no paint, so
+  what grew later lies on top. Three consequences: a change to `groundTone`,
+  the hue or the width reaches only new paint (painted over in about half a
+  minute at 80px, measured: 69% of the disc at 10 s, 94% at 30 s, 99% at
+  60 s on `eleven`); a change that regrows the drawing wipes the ground to
+  black; and under `colourBy: age` a chunk takes the time it grew round the
+  sweep, because it is coloured once while young, and taking its age, as the
+  lines do, painted everything the first colour. With the ground off the
+  lines grow exactly as before the split: `eleven` on four seeds, the same
+  births, lines, length and decisions. Headless, the turned copy costs about
+  25 ms a frame at any ground resolution, which is software filling 24 Mpx;
+  what it costs on a GPU is read from the bridge's `frames` events.
