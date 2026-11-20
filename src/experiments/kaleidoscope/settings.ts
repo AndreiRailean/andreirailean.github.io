@@ -101,6 +101,8 @@ export type Settings = {
   groundPace: number
   /** How light the ground's colours are, as a share of the lines'. */
   groundTone: number
+  /** The share of the ground's growths that paint black rather than colour. */
+  groundBlack: number
   seed: number
   /** The speed control's value: a multiple of `CLOCK_RATE`. The kit's — `kit/speed.ts`. */
   timescale: number
@@ -528,6 +530,18 @@ export const CONTROLS: Control[] = [
     hint: "How light the ground is against the lines, in the same colours: low keeps it dark so the lines stand out on it, 100% paints it as bright as they are.",
     inert: (settings: Settings) => settings.ground === 0,
   },
+  {
+    kind: "slider",
+    key: "groundBlack",
+    label: "ground black",
+    group: "ground",
+    min: 0,
+    max: 1,
+    step: 0.05,
+    format: (v) => `${Math.round(v * 100)}%`,
+    hint: "The share of the ground's growths that paint black. Black is paint like any colour: it covers what was there and is painted over in turn, so black keeps coming back into a ground that would otherwise fill with colour.",
+    inert: (settings: Settings) => settings.ground === 0,
+  },
   /* @__PURE__ */ timescaleControl(),
 ]
 
@@ -563,6 +577,7 @@ export const DEFAULT_SETTINGS: Settings = {
   ground: 0,
   groundPace: 1,
   groundTone: 0.5,
+  groundBlack: 0,
   seed: 1,
   timescale: 1,
 }
@@ -593,6 +608,7 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   ground: { min: 0, max: 240, step: 1 },
   groundPace: { min: 0.1, max: 4, step: 0.05, scale: "log" },
   groundTone: { min: 0, max: 1, step: 0.05 },
+  groundBlack: { min: 0, max: 1, step: 0.05 },
   timescale: timescaleTrack(),
 }
 
@@ -714,6 +730,7 @@ export const REGISTRY: readonly Slot[] = [
   { key: "ground", kind: "num", grid: 1, origin: 0, bits: 8 },
   { key: "groundPace", kind: "num", grid: 0.05, origin: 0.1, bits: 7 },
   { key: "groundTone", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "groundBlack", kind: "num", grid: 0.05, origin: 0, bits: 5 },
 ]
 
 export const { settingsToQuery, urlForSettings, settingsFromQuery, namesASetting } = packedAddress<Settings>({

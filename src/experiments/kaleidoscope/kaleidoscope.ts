@@ -1375,6 +1375,16 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       : settings.colourBy === "family"
         ? shade / Math.max(1, settings.roots)
         : shade / SHADES
+  /** The look of the ground's black paint, apart from every colour along the sweep. */
+  const BLACK = -1
+  /**
+   * Whether a ground line's growth paints black: one draw per birth, on a
+   * stream of its own, so the black share moves no line and the same births
+   * stay black as it rises.
+   */
+  const paintsBlack = (line: Line) =>
+    settings.groundBlack > 0 &&
+    makeRng(hashSeed(groundOf(settings).seed, line.family.slot, line.family.births, 0xb1ac))() < settings.groundBlack
   /** A colour along the sweep, its lightness scaled by `tone`. */
   const colour = (at: number, tone: number) =>
     settings.tint > 0
@@ -1402,16 +1412,19 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       if (line.gone) continue
       const start = from(line)
       if (start >= line.len) continue
-      const shade = !tinted
-        ? 0
-        : colourBy === "depth"
-          ? line.depth
-          : colourBy === "family"
-            ? line.family.slot
-            : painted
-              ? // Paint is coloured once, young, so by age it takes the time it grew, round the sweep.
-                Math.floor((line.t / AGE_SPAN) * SHADES) % SHADES
-              : Math.min(SHADES - 1, Math.floor(((now - line.t) / AGE_SPAN) * SHADES))
+      const shade =
+        painted && paintsBlack(line)
+          ? BLACK
+          : !tinted
+            ? 0
+            : colourBy === "depth"
+              ? line.depth
+              : colourBy === "family"
+                ? line.family.slot
+                : painted
+                  ? // Paint is coloured once, young, so by age it takes the time it grew, round the sweep.
+                    Math.floor((line.t / AGE_SPAN) * SHADES) % SHADES
+                  : Math.min(SHADES - 1, Math.floor(((now - line.t) / AGE_SPAN) * SHADES))
       let path = looks.get(shade)
       if (!path) looks.set(shade, (path = new Path2D()))
       outline(path, line, start, half(line), half)
@@ -1428,13 +1441,13 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     place: (m: Map2) => void,
   ) {
     const entries = [...looks]
-    const colours = entries.map(([shade]) => colour(shadeOf(shade), tone))
+    const colours = entries.map(([shade]) => (shade === BLACK ? "#000" : colour(shadeOf(shade), tone)))
     const group = of.group()
     for (let g = 0; g < group.length; g++) {
       place(group[g]!)
       const copy = settings.colourBy === "copy" ? colour(g / group.length, tone) : ""
       for (let i = 0; i < entries.length; i++) {
-        target.fillStyle = copy || colours[i]!
+        target.fillStyle = (entries[i]![0] !== BLACK && copy) || colours[i]!
         target.fill(entries[i]![1])
       }
     }

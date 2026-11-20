@@ -77,6 +77,14 @@ direction as it arrives. Verbatim. This file faces inward and records him;
 > background layer that has a life of its own and uses thicker chunks of colour
 > that are never removed but are only painted over.
 
+## 2026-11-21 — black back in the ground
+
+> ground does add colour. eventually it leaves no black, so the contrast is
+> different.
+>
+> the one i'm looking at has good contrast, but i wish i could add black to
+> it.
+
 ## Open questions
 
 Questions the build could not answer by itself. Each is left as a setting or

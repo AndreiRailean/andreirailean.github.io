@@ -153,4 +153,10 @@ the piece is still being found.
   lines grow exactly as before the split: `eleven` on four seeds, the same
   births, lines, length and decisions. Headless, the turned copy costs about
   25 ms a frame at any ground resolution, which is software filling 24 Mpx;
-  what it costs on a GPU is read from the bridge's `frames` events.
+  what it costs on a GPU is read from the bridge's `frames` events: on
+  Andrei's screen with ground 79, a steady 16.7 ms a frame, no late frames,
+  1.4–1.9 ms to draw. `groundBlack` is the share of ground births that paint
+  black, drawn per birth on a stream of its own, so black is paint like any
+  colour and keeps coming back: on his bands scene, two seeds, the lit share wanders
+  0.35–0.78 at 0.35 against 1.0 with none, and the lines grow the same at
+  every value, the ground's on or off (measured at 0, 79 and 200 px).
