@@ -30,6 +30,7 @@ export type Angle = "15" | "30" | "45" | "60" | "90"
 export type ColourBy = "depth" | "family" | "age" | "copy"
 export type Cycle = "each" | "together"
 export type From = "centre" | "sides"
+export type GroundForm = "grown" | "straight"
 
 export type Settings = {
   /** How many times the segment repeats round the centre. */
@@ -103,12 +104,32 @@ export type Settings = {
   groundTone: number
   /** The share of the ground's growths that paint black rather than colour. */
   groundBlack: number
+  /** Grown: the lines' own rules, splitting and stopping. Straight: lines straight across the segment, edge to edge, overlapping. */
+  groundForm: GroundForm
+  /** Under straight, how many ground lines grow at once. */
+  groundCount: number
+  /** How far the ground's tone swings down from `groundTone` and back: 0 holds it, 1 swings it to black. */
+  groundSwing: number
+  /** Seconds of scene one swing of the ground's tone takes. */
+  groundSwingPeriod: number
+  /** Odds a ground growth swings at all; the rest hold `groundTone`. */
+  groundSwingChance: number
+  /** Seconds of a second oscillation that runs each swing half the time and holds it the other half; 0 never holds it. */
+  groundGate: number
+  /** How far a line's tone swings down from full and back, along its length as it grows. */
+  lineSwing: number
+  /** Seconds of scene one swing of a line's tone takes. */
+  lineSwingPeriod: number
+  /** Odds a family of lines swings at all. */
+  lineSwingChance: number
+  /** Seconds of the oscillation that holds the lines' swing half the time; 0 never holds it. */
+  lineGate: number
   seed: number
   /** The speed control's value: a multiple of `CLOCK_RATE`. The kit's — `kit/speed.ts`. */
   timescale: number
 }
 
-type EnumKey = "symmetry" | "confine" | "stops" | "angle" | "colourBy" | "cycle" | "from"
+type EnumKey = "symmetry" | "confine" | "stops" | "angle" | "colourBy" | "cycle" | "from" | "groundForm"
 export type NumericKey = Exclude<keyof Settings, EnumKey>
 
 export type Control = KitControl<string & keyof Settings>
@@ -121,6 +142,7 @@ export const ANGLES: Angle[] = ["15", "30", "45", "60", "90"]
 export const COLOUR_BYS: ColourBy[] = ["depth", "family", "age", "copy"]
 export const CYCLES: Cycle[] = ["each", "together"]
 export const FROMS: From[] = ["centre", "sides"]
+export const GROUND_FORMS: GroundForm[] = ["grown", "straight"]
 
 /** The hold that means "for good". */
 export const HOLD_FOREVER = 120
@@ -496,6 +518,54 @@ export const CONTROLS: Control[] = [
   },
   {
     kind: "slider",
+    key: "lineSwing",
+    label: "swing",
+    group: "look",
+    min: 0,
+    max: 1,
+    step: 0.05,
+    format: (v) => (v === 0 ? "none" : `${Math.round(v * 100)}%`),
+    hint: "How far a line's colour swings dark and back as it grows, so it keeps the swing along its length as a ramp of light and dark. 0 keeps every line at full colour. The lines' swing runs apart from the ground's.",
+  },
+  {
+    kind: "slider",
+    key: "lineSwingPeriod",
+    label: "swing period",
+    group: "look",
+    min: 0.5,
+    max: 60,
+    step: 0.5,
+    scale: "log",
+    format: (v) => `${v < 10 ? v.toFixed(1) : Math.round(v)}s`,
+    hint: "Seconds one swing takes, dark and back. A line growing through it takes a ramp as long as it grows in that time, so a short period stripes it and a long one shades it.",
+    inert: (settings: Settings) => settings.lineSwing === 0,
+  },
+  {
+    kind: "slider",
+    key: "lineSwingChance",
+    label: "swing chance",
+    group: "look",
+    min: 0,
+    max: 1,
+    step: 0.05,
+    format: (v) => `${Math.round(v * 100)}%`,
+    hint: "Odds that a root and its offshoots swing at all; the rest keep full colour. Drawn once per birth, so raising it adds swinging families and keeps the ones that were.",
+    inert: (settings: Settings) => settings.lineSwing === 0,
+  },
+  {
+    kind: "slider",
+    key: "lineGate",
+    label: "swing gate",
+    group: "look",
+    min: 0,
+    max: 120,
+    step: 0.5,
+    format: (v) => (v === 0 ? "off" : `${v < 10 ? v.toFixed(1) : Math.round(v)}s`),
+    hint: "A second, slower oscillation that switches the swing on for half of each of its periods and holds it for the other half, wherever it had got to. Each one has its own phase, so the swing starts and stops in flight, at different times on different lines. Off, the swing never stops.",
+    inert: (settings: Settings) => settings.lineSwing === 0,
+  },
+  {
+    kind: "slider",
     key: "ground",
     label: "ground",
     group: "ground",
@@ -504,6 +574,30 @@ export const CONTROLS: Control[] = [
     step: 1,
     format: (v) => (v === 0 ? "none" : `${Math.round(v)}px`),
     hint: "A second growth under the lines, in chunks up to this wide, on a seed of its own. What it paints stays until something newer is painted over it, so the colour builds up until it fills the figure. 0 leaves the lines on black.",
+  },
+  {
+    kind: "choice",
+    key: "groundForm",
+    label: "ground grows",
+    group: "ground",
+    options: [
+      { value: "grown", label: "like the lines" },
+      { value: "straight", label: "straight across" },
+    ],
+    hint: "Like the lines: the ground grows by the lines' own rules on a seed of its own, splitting, turning and stopping where they stop. Straight across: straight lines that start beyond one edge of the segment and run out past another, over whatever is there, so nothing stops them and every end lies flush along an edge.",
+    inert: (settings: Settings) => settings.ground === 0,
+  },
+  {
+    kind: "slider",
+    key: "groundCount",
+    label: "ground lines",
+    group: "ground",
+    min: 1,
+    max: 48,
+    step: 1,
+    format: (v) => String(Math.round(v)),
+    hint: "How many straight ground lines grow at once. Each starts again somewhere new as soon as it has crossed.",
+    inert: (settings: Settings) => settings.ground === 0 || settings.groundForm !== "straight",
   },
   {
     kind: "slider",
@@ -542,6 +636,55 @@ export const CONTROLS: Control[] = [
     hint: "The share of the ground's growths that paint black. Black is paint like any colour: it covers what was there and is painted over in turn, so black keeps coming back into a ground that would otherwise fill with colour.",
     inert: (settings: Settings) => settings.ground === 0,
   },
+  {
+    kind: "slider",
+    key: "groundSwing",
+    label: "ground swing",
+    group: "ground",
+    min: 0,
+    max: 1,
+    step: 0.05,
+    format: (v) => (v === 0 ? "none" : `${Math.round(v * 100)}%`),
+    hint: "How far the ground's tone swings down from ground tone and back while it paints, so each growth keeps the swing along its length as a ramp of light and dark: depth from the shading. 0 holds the tone; 100% swings it to black.",
+    inert: (settings: Settings) => settings.ground === 0,
+  },
+  {
+    kind: "slider",
+    key: "groundSwingPeriod",
+    label: "ground swing period",
+    group: "ground",
+    min: 0.5,
+    max: 60,
+    step: 0.5,
+    scale: "log",
+    format: (v) => `${v < 10 ? v.toFixed(1) : Math.round(v)}s`,
+    hint: "Seconds one swing takes, dark and back. A line growing through it takes a ramp as long as it grows in that time, so a short period stripes it and a long one shades it.",
+    inert: (settings: Settings) => settings.ground === 0 || settings.groundSwing === 0,
+  },
+  {
+    kind: "slider",
+    key: "groundSwingChance",
+    label: "ground swing chance",
+    group: "ground",
+    min: 0,
+    max: 1,
+    step: 0.05,
+    format: (v) => `${Math.round(v * 100)}%`,
+    hint: "Odds that a ground growth swings at all; the rest hold the ground tone. Drawn once per growth, so raising it adds swinging growths and keeps the ones that were.",
+    inert: (settings: Settings) => settings.ground === 0 || settings.groundSwing === 0,
+  },
+  {
+    kind: "slider",
+    key: "groundGate",
+    label: "ground swing gate",
+    group: "ground",
+    min: 0,
+    max: 120,
+    step: 0.5,
+    format: (v) => (v === 0 ? "off" : `${v < 10 ? v.toFixed(1) : Math.round(v)}s`),
+    hint: "A second, slower oscillation that switches the swing on for half of each of its periods and holds it for the other half, wherever it had got to. Each one has its own phase, so the swing starts and stops in flight, at different times on different lines. Off, the swing never stops.",
+    inert: (settings: Settings) => settings.ground === 0 || settings.groundSwing === 0,
+  },
   /* @__PURE__ */ timescaleControl(),
 ]
 
@@ -578,6 +721,16 @@ export const DEFAULT_SETTINGS: Settings = {
   groundPace: 1,
   groundTone: 0.5,
   groundBlack: 0,
+  groundForm: "grown",
+  groundCount: 8,
+  groundSwing: 0,
+  groundSwingPeriod: 6,
+  groundSwingChance: 1,
+  groundGate: 0,
+  lineSwing: 0,
+  lineSwingPeriod: 6,
+  lineSwingChance: 1,
+  lineGate: 0,
   seed: 1,
   timescale: 1,
 }
@@ -609,6 +762,15 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   groundPace: { min: 0.1, max: 4, step: 0.05, scale: "log" },
   groundTone: { min: 0, max: 1, step: 0.05 },
   groundBlack: { min: 0, max: 1, step: 0.05 },
+  groundCount: { min: 1, max: 48, step: 1 },
+  groundSwing: { min: 0, max: 1, step: 0.05 },
+  groundSwingPeriod: { min: 0.5, max: 60, step: 0.5, scale: "log" },
+  groundSwingChance: { min: 0, max: 1, step: 0.05 },
+  groundGate: { min: 0, max: 120, step: 0.5 },
+  lineSwing: { min: 0, max: 1, step: 0.05 },
+  lineSwingPeriod: { min: 0.5, max: 60, step: 0.5, scale: "log" },
+  lineSwingChance: { min: 0, max: 1, step: 0.05 },
+  lineGate: { min: 0, max: 120, step: 0.5 },
   timescale: timescaleTrack(),
 }
 
@@ -635,6 +797,7 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
     colourBy: oneOf(COLOUR_BYS, merged.colourBy, base.colourBy),
     cycle: oneOf(CYCLES, merged.cycle, base.cycle),
     from: oneOf(FROMS, merged.from, base.from),
+    groundForm: oneOf(GROUND_FORMS, merged.groundForm, base.groundForm),
   }
 
   for (const [key, bound] of Object.entries(BOUNDS) as [NumericKey, { min: number; max: number }][]) {
@@ -731,6 +894,16 @@ export const REGISTRY: readonly Slot[] = [
   { key: "groundPace", kind: "num", grid: 0.05, origin: 0.1, bits: 7 },
   { key: "groundTone", kind: "num", grid: 0.05, origin: 0, bits: 5 },
   { key: "groundBlack", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "groundForm", kind: "enum", options: ["grown", "straight"] },
+  { key: "groundCount", kind: "num", grid: 1, origin: 1, bits: 6 },
+  { key: "groundSwing", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "groundSwingPeriod", kind: "num", grid: 0.5, origin: 0.5, bits: 7 },
+  { key: "groundSwingChance", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "groundGate", kind: "num", grid: 0.5, origin: 0, bits: 8 },
+  { key: "lineSwing", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "lineSwingPeriod", kind: "num", grid: 0.5, origin: 0.5, bits: 7 },
+  { key: "lineSwingChance", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "lineGate", kind: "num", grid: 0.5, origin: 0, bits: 8 },
 ]
 
 export const { settingsToQuery, urlForSettings, settingsFromQuery, namesASetting } = packedAddress<Settings>({

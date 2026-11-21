@@ -1362,6 +1362,138 @@ function groundOf(settings: Settings): Settings {
 }
 
 /**
+ * A tone oscillator's draws for one family of lines or one straight ground
+ * line: the odds it swings at all, and where its swing and its gate start.
+ * Drawn once per birth on a stream of its own, so swinging moves no line.
+ */
+type Swing = { odds: number; phase: number; gate: number }
+
+/**
+ * A straight ground line, in the segment's coordinates: from (x, y) along
+ * (ux, uy) for `length`, starting and ending outside the segment so its
+ * square ends never show. `grown` runs from below 0 while it waits.
+ */
+type Stroke = {
+  slot: number
+  births: number
+  x: number
+  y: number
+  ux: number
+  uy: number
+  length: number
+  grown: number
+  painted: number
+  /** Seconds it has grown, for its swing. */
+  age: number
+  thick: number
+  /** Its place on the colour sweep. */
+  at: number
+  /** Drawn once: it paints black while this is under `groundBlack`. */
+  black: number
+  swing: Swing
+}
+
+/** A swinging line's tones along it: gradient stops on its chord, from (x0, y0) to (x1, y1). */
+type Ramp = {
+  x0: number
+  y0: number
+  x1: number
+  y1: number
+  stops: [number, number][]
+  /** Where along the line each stop was taken. */
+  along: number[]
+  lo: number
+  hi: number
+}
+
+/** Tone levels a swinging line is cut into when it is drawn in flat pieces: steps finer than a line shows. */
+const LEVELS = 40
+/** A ramp shallower than this, in tone, is drawn flat: one of `LEVELS`, under the colour's own steps of about 1/58. */
+const FLAT_RAMP = 1 / LEVELS
+
+/** One fill's worth: a place on the colour sweep (or black), a tone, and everything drawn in them. */
+type Look = { at: number; tone: number; path: Path2D }
+
+function swingOf(seed: number): Swing {
+  const rng = makeRng(seed)
+  return { odds: rng(), phase: rng(), gate: rng() }
+}
+
+/** How a layer swings: the settings for its oscillator and its gate. */
+type SwingRule = { depth: number; period: number; chance: number; gate: number }
+
+/**
+ * How long a swing has run `t` seconds into a growth: all of it, or under a
+ * gate of `period`, only the first half of each period from `phase`. Gated
+ * off, the swing holds where it was rather than snapping back, so it stops
+ * and starts again in flight with no step.
+ */
+function gated(t: number, period: number, phase: number) {
+  if (period <= 0) return t
+  const on = (x: number) => Math.floor(x) / 2 + Math.min(x - Math.floor(x), 0.5)
+  return (on(t / period + phase) - on(phase)) * period
+}
+
+/**
+ * A tone `base`, swung `t` seconds into a growth's life: down by up to
+ * `depth` of itself and back once a period. A function of the time each
+ * stretch grew, so a growth keeps its swing along its length as a ramp.
+ */
+function swungTone(base: number, rule: SwingRule, swing: Swing, t: number) {
+  if (rule.depth <= 0 || swing.odds >= rule.chance) return base
+  const run = gated(t, rule.gate, swing.gate)
+  return base * (1 - rule.depth * (0.5 - 0.5 * Math.cos(2 * Math.PI * (swing.phase + run / rule.period))))
+}
+
+/** The part of a convex polygon where `inside` is at least 0 (Sutherland–Hodgman, one edge). */
+function clipBy(poly: [number, number][], inside: (x: number, y: number) => number): [number, number][] {
+  const out: [number, number][] = []
+  for (let i = 0; i < poly.length; i++) {
+    const [ax, ay] = poly[i]!
+    const [bx, by] = poly[(i + 1) % poly.length]!
+    const fa = inside(ax, ay)
+    const fb = inside(bx, by)
+    if (fa >= 0) out.push([ax, ay])
+    if (fa >= 0 !== fb >= 0) {
+      const f = fa / (fa - fb)
+      out.push([ax + (bx - ax) * f, ay + (by - ay) * f])
+    }
+  }
+  return out
+}
+
+/**
+ * The t-range of the line through (cx, cy) along unit (ux, uy) inside the
+ * wedge between angles a0 and a1 (at most π apart) and the unit disc, or
+ * null where it misses.
+ */
+function spanIn(cx: number, cy: number, ux: number, uy: number, a0: number, a1: number): [number, number] | null {
+  let lo = -Infinity
+  let hi = Infinity
+  // Each side of the wedge: a + b·t ≥ 0.
+  const side = (a: number, b: number) => {
+    if (Math.abs(b) < 1e-12) {
+      if (a < 0) lo = Infinity
+    } else if (b > 0) lo = Math.max(lo, -a / b)
+    else hi = Math.min(hi, -a / b)
+  }
+  const e0x = Math.cos(a0)
+  const e0y = Math.sin(a0)
+  const e1x = Math.cos(a1)
+  const e1y = Math.sin(a1)
+  side(cross(e0x, e0y, cx, cy), cross(e0x, e0y, ux, uy))
+  side(cross(cx, cy, e1x, e1y), cross(ux, uy, e1x, e1y))
+  // The disc: t² + 2(c·u)t + |c|² − 1 ≤ 0.
+  const b = cx * ux + cy * uy
+  const disc = b * b - (cx * cx + cy * cy - 1)
+  if (disc <= 0) return null
+  const root = Math.sqrt(disc)
+  lo = Math.max(lo, -b - root)
+  hi = Math.min(hi, -b + root)
+  return lo < hi ? [lo, hi] : null
+}
+
+/**
  * The ground is painted at most this many device px from its centre to its
  * rim. Its chunks are wide, so it need not match a large screen pixel for
  * pixel; it is stretched to fit and turned with the figure.
@@ -1380,7 +1512,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
   let spin = 0
   let debug = false
   let drawMs = 0
-  let strokes = 0
+  let fills = 0
   /** Distinct widths the last frame stroked, css px. */
   let widths: number[] = []
 
@@ -1404,6 +1536,10 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
   /** The ground's clock when it was last painted. */
   let paintedAt = 0
   const groundOn = () => settings.ground > 0
+  /** Under `groundForm: straight`, the ground is straight lines across the segment, `strokes`, not the growth. */
+  const straight = () => settings.groundForm === "straight"
+  /** One straight ground line per slot, each started again somewhere new once it has crossed. */
+  let strokes: Stroke[] = []
 
   function size() {
     ;({ width, height, dpr } = fitCanvas(canvas))
@@ -1459,9 +1595,48 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
         ? "#fff"
         : `hsl(0 0% ${Math.round(100 * tone)}%)`
 
+  const lineRule = (): SwingRule => ({
+    depth: settings.lineSwing,
+    period: settings.lineSwingPeriod,
+    chance: settings.lineSwingChance,
+    gate: settings.lineGate,
+  })
+  const groundRule = (): SwingRule => ({
+    depth: settings.groundSwing,
+    period: settings.groundSwingPeriod,
+    chance: settings.groundSwingChance,
+    gate: settings.groundGate,
+  })
+  /**
+   * A family's oscillator, one per birth: every line in a family shares it,
+   * so a ramp runs on unbroken where a line carries on or splits.
+   */
+  const familySwing = (family: Family, seed: number, salt: number) =>
+    swingOf(hashSeed(seed, family.slot, family.births, salt))
+  /** Seconds into its family's life a point `s` along a line grew: time is distance, at `speed`. */
+  const grewAt = (line: Line, s: number, speed: number) => (line.born + s) / (speed / 100)
+
+  /** Where along the sweep a line is coloured, or BLACK. */
+  function shadeAt(of: Growth, line: Line, painted: boolean) {
+    const { colourBy } = settings
+    if (painted && paintsBlack(line)) return BLACK
+    if (!(settings.tint > 0 && colourBy !== "copy")) return 0
+    return shadeOf(
+      colourBy === "depth"
+        ? line.depth
+        : colourBy === "family"
+          ? line.family.slot
+          : painted
+            ? // Paint is coloured once, young, so by age it takes the time it grew, round the sweep.
+              Math.floor((line.t / AGE_SPAN) * SHADES) % SHADES
+            : Math.min(SHADES - 1, Math.floor(((of.now() - line.t) / AGE_SPAN) * SHADES)),
+    )
+  }
+
   /**
    * One path per colour: every line is a filled outline, its width in its
    * shape, so a frame costs (colours × copies) fills, not (lines × copies).
+   * A look is a place on the sweep and a tone; `toneOf` gives each line's.
    */
   function looksOf(
     of: Growth,
@@ -1469,53 +1644,45 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     /** What of a line to add to its look's path; null for nothing. */
     shape: (line: Line) => ((path: Path2D) => void) | null,
     painted = false,
+    toneOf: (line: Line) => number = () => 1,
   ) {
-    const { colourBy } = settings
-    const tinted = settings.tint > 0 && colourBy !== "copy"
-    const now = of.now()
-    const looks = new Map<number, Path2D>()
+    const looks = new Map<string, Look>()
     for (const line of list) {
       if (line.gone) continue
       const draw = shape(line)
       if (!draw) continue
-      const shade =
-        painted && paintsBlack(line)
-          ? BLACK
-          : !tinted
-            ? 0
-            : colourBy === "depth"
-              ? line.depth
-              : colourBy === "family"
-                ? line.family.slot
-                : painted
-                  ? // Paint is coloured once, young, so by age it takes the time it grew, round the sweep.
-                    Math.floor((line.t / AGE_SPAN) * SHADES) % SHADES
-                  : Math.min(SHADES - 1, Math.floor(((now - line.t) / AGE_SPAN) * SHADES))
-      let path = looks.get(shade)
-      if (!path) looks.set(shade, (path = new Path2D()))
-      draw(path)
+      const at = shadeAt(of, line, painted)
+      const tone = at === BLACK ? 1 : toneOf(line)
+      addLook(looks, at, tone, draw)
     }
     return looks
+  }
+
+  function addLook(looks: Map<string, Look>, at: number, tone: number, draw: (path: Path2D) => void) {
+    // Tones closer than the colour can show share a path.
+    const key = `${at}:${Math.round(tone * 200)}`
+    let look = looks.get(key)
+    if (!look) looks.set(key, (look = { at, tone, path: new Path2D() }))
+    draw(look.path)
   }
 
   /** Fills each look once per copy of the segment, `place` setting each copy's matrix. Returns the fills made. */
   function fillCopies(
     target: CanvasRenderingContext2D,
-    of: Growth,
-    looks: Map<number, Path2D>,
-    tone: number,
+    group: Map2[],
+    looks: Map<string, Look>,
     place: (m: Map2) => void,
     rule: CanvasFillRule = "nonzero",
   ) {
-    const entries = [...looks]
-    const colours = entries.map(([shade]) => (shade === BLACK ? "#000" : colour(shadeOf(shade), tone)))
-    const group = of.group()
+    const entries = [...looks.values()]
+    const colours = entries.map((look) => (look.at === BLACK ? "#000" : colour(look.at, look.tone)))
+    const byCopy = settings.colourBy === "copy"
     for (let g = 0; g < group.length; g++) {
       place(group[g]!)
-      const copy = settings.colourBy === "copy" ? colour(g / group.length, tone) : ""
       for (let i = 0; i < entries.length; i++) {
-        target.fillStyle = (entries[i]![0] !== BLACK && copy) || colours[i]!
-        target.fill(entries[i]![1], rule)
+        const look = entries[i]!
+        target.fillStyle = byCopy && look.at !== BLACK ? colour(g / group.length, look.tone) : colours[i]!
+        target.fill(look.path, rule)
       }
     }
     return entries.length * group.length
@@ -1536,6 +1703,10 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
    */
   function paintGround(R: number) {
     fitGround(R)
+    if (straight()) {
+      paintStraight(R)
+      return
+    }
     const half = (line: Line) => (settings.ground * GROUND_RANGE ** (1 - line.thick / (WIDTHS - 1))) / R / 2
     const now = ground.now()
     const grew = (Math.max(0, now - paintedAt) * groundOf(settings).speed) / 100
@@ -1589,33 +1760,283 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
         ])
       }
     }
-    const s = groundR
-    const place = (m: Map2) => brush.setTransform(s * m.a, s * m.c, s * m.b, s * m.d, s, s)
-    const tone = settings.groundTone
+    const rule = groundRule()
+    const { seed, speed } = groundOf(settings)
+    // Each stretch takes the tone of the moment it grew.
+    const toneOf = (line: Line) =>
+      swungTone(settings.groundTone, rule, familySwing(line.family, seed, 0x6a51), grewAt(line, line.len, speed))
     if (grown.size > 0)
       fillCopies(
         brush,
-        ground,
-        looksOf(ground, grown.keys(), (line) => grown.get(line)!, true),
-        tone,
+        ground.group(),
+        looksOf(ground, grown.keys(), (line) => grown.get(line)!, true, toneOf),
         place,
       )
     for (const [line, draw] of opening)
       fillCopies(
         brush,
-        ground,
-        looksOf(ground, [line], () => draw, true),
-        tone,
+        ground.group(),
+        looksOf(ground, [line], () => draw, true, toneOf),
         place,
         "evenodd",
       )
+  }
+
+  /**
+   * The tones a swinging line grew in, as gradient stops along its chord: a
+   * straight line's are exact, a curved one's run along its chord.
+   */
+  function rampOf(line: Line, rule: SwingRule): Ramp {
+    const { speed, seed } = settings
+    const swing = familySwing(line.family, seed, 0x11e5)
+    const [x0, y0] = pointAt(line, 0)
+    const [x1, y1] = pointAt(line, line.len)
+    const cx = x1 - x0
+    const cy = y1 - y0
+    const chord = cx * cx + cy * cy
+    // Enough stops for the ramp: sixteen a swing, at most 64.
+    const swingLength = (speed / 100) * rule.period
+    const n = Math.max(1, Math.min(64, Math.ceil((line.len / swingLength) * 16)))
+    const stops: [number, number][] = []
+    const along: number[] = []
+    let last = 0
+    let lo = Infinity
+    let hi = -Infinity
+    for (let i = 0; i <= n; i++) {
+      const s = (line.len * i) / n
+      const [px, py] = pointAt(line, s)
+      const f = chord > 1e-12 ? Math.min(1, Math.max(last, ((px - x0) * cx + (py - y0) * cy) / chord)) : 0
+      last = f
+      const tone = swungTone(1, rule, swing, grewAt(line, s, speed))
+      lo = Math.min(lo, tone)
+      hi = Math.max(hi, tone)
+      stops.push([f, tone])
+      along.push(s)
+    }
+    return { x0, y0, x1, y1, stops, along, lo, hi }
+  }
+
+  const levelOf = (tone: number) => Math.round(tone * LEVELS)
+
+  /** Whether flat pieces make fewer fills than a gradient per line. */
+  function piecesBeat(list: [Line, Ramp][]) {
+    const keys = new Set<string>()
+    for (const [line, ramp] of list) {
+      const at = shadeAt(growth, line, false)
+      for (let level = levelOf(ramp.lo); level <= levelOf(ramp.hi); level++) keys.add(`${at}:${level}`)
+      if (keys.size >= list.length) return false
+    }
+    return true
+  }
+
+  /**
+   * A swinging line as flat pieces, one per tone level it passes through,
+   * each in its look: cut between samples where the level changes, square
+   * there and a hair over the next so no seam shows.
+   */
+  function addPieces(looks: Map<string, Look>, line: Line, ramp: Ramp, half: (line: Line) => number) {
+    const at = shadeAt(growth, line, false)
+    const w = half(line)
+    const from = visibleFrom(line)
+    const seam = w / 8
+    const { along, stops } = ramp
+    let start = 0
+    let level = levelOf(stops[0]![1])
+    const piece = (a: number, b: number, level: number) => {
+      if (b <= from) return
+      const begin = Math.max(from, a > 0 ? a - seam : 0)
+      addLook(looks, at, level / LEVELS, (path) => outline(path, line, begin, w, half, OPEN, b))
+    }
+    for (let i = 1; i < along.length; i++) {
+      const next = levelOf(stops[i]![1])
+      if (next === level) continue
+      const cut = (along[i - 1]! + along[i]!) / 2
+      piece(start, cut, level)
+      start = cut
+      level = next
+    }
+    piece(start, Infinity, level)
+  }
+
+  /**
+   * Swinging lines whose tone changes along them, each filled on its own
+   * with a gradient: the tone each stretch grew in, so the swing stays on the
+   * line as a ramp. Costs a fill per such line per copy.
+   */
+  function fillSwung(list: [Line, Ramp][], half: (line: Line) => number, placeLine: (m: Map2) => void) {
+    if (list.length === 0) return 0
+    const group = growth.group()
+    const byCopy = settings.colourBy === "copy"
+    for (const [line, { x0, y0, x1, y1, stops }] of list) {
+      const path = new Path2D()
+      outline(path, line, visibleFrom(line), half(line), half)
+      const paint = (place: number) => {
+        const gradient = ctx.createLinearGradient(x0, y0, x1, y1)
+        for (const [f, tone] of stops) gradient.addColorStop(f, colour(place, tone))
+        return gradient
+      }
+      const fixed = byCopy ? null : paint(shadeAt(growth, line, false))
+      for (let g = 0; g < group.length; g++) {
+        placeLine(group[g]!)
+        ctx.fillStyle = fixed ?? paint(g / group.length)
+        ctx.fill(path)
+      }
+    }
+    return list.length * group.length
+  }
+
+  /** Places a copy of the segment on the ground's canvas. */
+  const place = (m: Map2) =>
+    brush.setTransform(groundR * m.a, groundR * m.c, groundR * m.b, groundR * m.d, groundR, groundR)
+
+  /** The segment's wedge, as the angles of its two sides: half a segment under mirror, where the other half is its reflection. */
+  function wedgeOf(): [number, number] {
+    const h = Math.PI / settings.segments
+    return settings.symmetry === "mirror" ? [0, h] : [-h, h]
+  }
+
+  const strokeHalf = (thick: number, R: number) =>
+    (settings.ground * GROUND_RANGE ** (1 - thick / (WIDTHS - 1))) / R / 2
+
+  /**
+   * A straight ground line in `slot`, its `births`th: a random line across
+   * the wedge, every direction and offset alike, running from where its whole
+   * width first touches the wedge to where it last does, so it starts and
+   * ends outside the segment. A first one waits a random while, so they do
+   * not all start together.
+   */
+  function bornStroke(slot: number, births: number, R: number): Stroke {
+    const seed = hashSeed(groundOf(settings).seed, slot, births, 0x5701)
+    const rng = makeRng(seed)
+    const thick = Math.floor(rng() * WIDTHS)
+    const half = strokeHalf(thick, R)
+    const [a0, a1] = wedgeOf()
+    // The wedge's outline, for its extent across a direction.
+    const outline: [number, number][] = [[0, 0]]
+    for (let i = 0; i <= 16; i++)
+      outline.push([Math.cos(a0 + ((a1 - a0) * i) / 16), Math.sin(a0 + ((a1 - a0) * i) / 16)])
+    let made: Omit<
+      Stroke,
+      "slot" | "births" | "grown" | "painted" | "age" | "thick" | "at" | "black" | "swing"
+    > | null = null
+    for (let tries = 0; tries < 32 && !made; tries++) {
+      const turn = rng() * 2 * Math.PI
+      const ux = Math.cos(turn)
+      const uy = Math.sin(turn)
+      const nx = -uy
+      const ny = ux
+      let lo = Infinity
+      let hi = -Infinity
+      for (const [x, y] of outline) {
+        lo = Math.min(lo, x * nx + y * ny)
+        hi = Math.max(hi, x * nx + y * ny)
+      }
+      const p = lo + rng() * (hi - lo)
+      // Its whole width, sampled across: where any of it is in the wedge.
+      let t0 = Infinity
+      let t1 = -Infinity
+      for (let i = 0; i <= 8; i++) {
+        const off = p + half * (i / 4 - 1)
+        const span = spanIn(off * nx, off * ny, ux, uy, a0, a1)
+        if (!span) continue
+        t0 = Math.min(t0, span[0])
+        t1 = Math.max(t1, span[1])
+      }
+      if (t0 >= t1) continue
+      const margin = half / 4 + 2 / R
+      made = {
+        x: p * nx + (t0 - margin) * ux,
+        y: p * ny + (t0 - margin) * uy,
+        ux,
+        uy,
+        length: t1 - t0 + 2 * margin,
+      }
+    }
+    // A wedge this wide always has a line across it; this only guards the loop.
+    made ??= { x: 0, y: 0, ux: 1, uy: 0, length: 1 }
+    const at =
+      settings.colourBy === "age"
+        ? (Math.floor((ground.now() / AGE_SPAN) * SHADES) % SHADES) / SHADES
+        : settings.tint > 0 && settings.colourBy !== "copy"
+          ? rng()
+          : 0
+    return {
+      slot,
+      births,
+      ...made,
+      grown: births === 0 ? -rng() * 0.6 : 0,
+      painted: 0,
+      age: 0,
+      thick,
+      at,
+      black: makeRng(hashSeed(groundOf(settings).seed, slot, births, 0xb1ac))(),
+      swing: swingOf(hashSeed(groundOf(settings).seed, slot, births, 0x5a19)),
+    }
+  }
+
+  function advanceStrokes(seconds: number) {
+    const speed = groundOf(settings).speed / 100
+    for (const stroke of strokes) {
+      if (stroke.grown >= 0) stroke.age += seconds
+      stroke.grown = Math.min(stroke.length, stroke.grown + speed * seconds)
+    }
+  }
+
+  /**
+   * Paints what each straight ground line grew since the last frame: a strip
+   * from a pixel back of where it was painted, cut to the wedge (a pixel
+   * wide of it, so copies meet with no seam), in the tone of the moment.
+   * A line that has crossed starts again somewhere new.
+   */
+  function paintStraight(R: number) {
+    const count = settings.groundCount
+    while (strokes.length < count) strokes.push(bornStroke(strokes.length, 0, R))
+    if (strokes.length > count) strokes.length = count
+    const [a0, a1] = wedgeOf()
+    const e0x = Math.cos(a0)
+    const e0y = Math.sin(a0)
+    const e1x = Math.cos(a1)
+    const e1y = Math.sin(a1)
+    const seam = 1 / R
+    const rule = groundRule()
+    const looks = new Map<string, Look>()
+    for (let i = 0; i < strokes.length; i++) {
+      const stroke = strokes[i]!
+      const to = stroke.grown
+      if (to > stroke.painted) {
+        const from = Math.max(0, stroke.painted - seam)
+        const half = strokeHalf(stroke.thick, R)
+        const { x, y, ux, uy } = stroke
+        const corner = (s: number, side: number): [number, number] => [x + ux * s - uy * side, y + uy * s + ux * side]
+        let poly = [corner(from, half), corner(to, half), corner(to, -half), corner(from, -half)]
+        poly = clipBy(poly, (px, py) => cross(e0x, e0y, px, py) + seam)
+        poly = clipBy(poly, (px, py) => cross(px, py, e1x, e1y) + seam)
+        if (poly.length >= 3) {
+          const black = stroke.black < settings.groundBlack
+          const tone = black ? 1 : swungTone(settings.groundTone, rule, stroke.swing, stroke.age)
+          addLook(looks, black ? BLACK : stroke.at, tone, (path) => {
+            path.moveTo(...poly[0]!)
+            for (let k = 1; k < poly.length; k++) path.lineTo(...poly[k]!)
+            path.closePath()
+          })
+        }
+        stroke.painted = to
+      }
+      if (stroke.painted >= stroke.length) strokes[i] = bornStroke(i, stroke.births + 1, R)
+    }
+    if (looks.size > 0) fillCopies(brush, groupFor(settings.segments, settings.symmetry === "mirror"), looks, place)
   }
 
   function step(dt: number) {
     const scene = dt * settings.timescale * CLOCK_RATE
     spin += settings.spin * DEG * scene
     growth.advance(scene)
-    if (groundOn()) ground.advance(scene)
+    if (groundOn()) advanceGround(scene)
+  }
+
+  function advanceGround(seconds: number) {
+    if (straight()) advanceStrokes(seconds)
+    else ground.advance(seconds)
   }
 
   function draw() {
@@ -1644,10 +2065,32 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       R /
       2
     const lines = growth.lines()
-    const looks = looksOf(growth, lines, (line) => {
-      const from = visibleFrom(line)
-      return from < line.len ? (path) => outline(path, line, from, half(line), half) : null
-    })
+    const rule = lineRule()
+    const swings = (line: Line) => rule.depth > 0 && familySwing(line.family, settings.seed, 0x11e5).odds < rule.chance
+    const swung: [Line, Ramp][] = []
+    const flat = new Map<Line, number>()
+    const looks = looksOf(
+      growth,
+      lines,
+      (line) => {
+        const from = visibleFrom(line)
+        if (from >= line.len) return null
+        if (swings(line)) {
+          const ramp = rampOf(line, rule)
+          // A line much shorter than a swing barely changes along it: it is
+          // drawn flat in the tone it grew in, among the other fills, so a
+          // dense drawing is not a fill per line per copy.
+          if (ramp.hi - ramp.lo > FLAT_RAMP) {
+            swung.push([line, ramp])
+            return null
+          }
+          flat.set(line, Math.round(((ramp.hi + ramp.lo) / 2) * LEVELS) / LEVELS)
+        }
+        return (path) => outline(path, line, from, half(line), half)
+      },
+      false,
+      (line) => flat.get(line) ?? 1,
+    )
     const seen = new Set<number>()
     for (const line of lines)
       if (!line.gone && visibleFrom(line) < line.len) seen.add(Math.round(half(line) * 2 * R * 100) / 100)
@@ -1655,9 +2098,16 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     const cs = Math.cos(turn) * R * dpr
     const sn = Math.sin(turn) * R * dpr
     // rotate(turn) · scale(R) · m, as a canvas matrix.
-    strokes = fillCopies(ctx, growth, looks, 1, (m) =>
-      ctx.setTransform(cs * m.a - sn * m.c, sn * m.a + cs * m.c, cs * m.b - sn * m.d, sn * m.b + cs * m.d, ox, oy),
-    )
+    const placeLine = (m: Map2) =>
+      ctx.setTransform(cs * m.a - sn * m.c, sn * m.a + cs * m.c, cs * m.b - sn * m.d, sn * m.b + cs * m.d, ox, oy)
+    // Ramps as gradients cost a fill per line per copy; as flat pieces, a fill
+    // per colour and tone level per copy. Many lines sharing few colours (by
+    // depth or age) are cheaper in pieces; each line its own colour, in gradients.
+    if (swung.length > 0 && piecesBeat(swung)) {
+      for (const [line, ramp] of swung) addPieces(looks, line, ramp, half)
+      swung.length = 0
+    }
+    fills = fillCopies(ctx, growth.group(), looks, placeLine) + fillSwung(swung, half, placeLine)
     widths = [...seen].sort((a, b) => a - b)
 
     if (debug) {
@@ -1713,11 +2163,19 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
 
   function stats() {
     const round = (v: number, d = 3) => Number(v.toFixed(d))
-    const g = groundOn() ? ground.counts() : null
+    const g = !groundOn()
+      ? null
+      : straight()
+        ? {
+            births: strokes.reduce((sum, stroke) => sum + stroke.births + 1, 0),
+            lines: strokes.length,
+            length: strokes.reduce((sum, stroke) => sum + Math.max(0, stroke.grown), 0),
+          }
+        : ground.counts()
     return {
       ...growth.counts(),
       /** Fills the last frame made: colours × copies. */
-      strokes,
+      strokes: fills,
       widths,
       drawMs: round(drawMs, 2),
       frame: { width, height },
@@ -1747,8 +2205,12 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       growth.set(next)
       // The ground starts again, on black, when what it grows changes or it is switched on.
       const regrew = ground.set(groundOf(next))
-      if (groundOn() && (regrew || before.ground === 0)) {
+      const reformed = before.groundForm !== next.groundForm
+      // Straight lines across depend only on the wedge and the seed.
+      const recut = before.segments !== next.segments || before.symmetry !== next.symmetry || before.seed !== next.seed
+      if (groundOn() && (reformed || before.ground === 0 || (straight() ? recut : regrew))) {
         if (!regrew) ground.regrow()
+        strokes = []
         wipe()
       }
       loop.repaint()
@@ -1762,7 +2224,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
         const dt = Math.min(1, left)
         growth.advance(dt)
         if (groundOn()) {
-          ground.advance(dt)
+          advanceGround(dt)
           paintGround(Math.hypot(width, height) / 2)
         }
       }
@@ -1771,6 +2233,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     clear() {
       growth.regrow()
       ground.regrow()
+      strokes = []
       wipe()
       loop.repaint()
     },

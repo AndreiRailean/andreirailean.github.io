@@ -85,6 +85,29 @@ direction as it arrives. Verbatim. This file faces inward and records him;
 > the one i'm looking at has good contrast, but i wish i could add black to
 > it.
 
+## 2026-11-21 — depth from a swept tone, a ground of its own
+
+Said after sweeping ground tone by hand while the ground grew, which left each
+chunk a ramp of lightness along its length.
+
+> that gradient appearance gives a lot of depth.
+> i think the background layer may need some of its own rules, complications
+> and simplifications
+> perhaps background doesn't need the decision/splitting logic and it could be
+> constructed out of straight lines that just grow and overlap and never
+> ungrow, so we don't need to treat each line as an entity, but instead can
+> think of the whole layer as one coloured bitmap. we don't have to do it that
+> way, i just thought that could simplify things. so the starting kite
+> situation would be resolved by starting and ending the line outside of the
+> visible segment so it never overhangs.
+>
+> yes, the sweep would be a good idea, but i wouldn't want to apply it to both
+> foreground and background together and at the same rate. Also, i would want
+> to make it probabilistic - i.e. whether the sweep kicks in on a particular
+> rendered line is not certain and whether it applies to the whole duration of
+> the render is not certain. it's an oscillator. and that oscillator can be
+> turned on an off in flight by another oscillation.
+
 ## Open questions
 
 Questions the build could not answer by itself. Each is left as a setting or

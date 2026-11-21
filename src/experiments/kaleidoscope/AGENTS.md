@@ -176,3 +176,32 @@ the piece is still being found.
   on his bands scene, the largest one-frame change of the ground fell from
   6.2% to 1.6% against a median 0.5%. A young line whose start's forward
   corner lies past its tip is drawn only out to its tip, lines too.
+- **Painting only what grew records time in the paint.** Each strip takes
+  the tone of its frame, so a tone that moves while a chunk grows leaves a
+  ramp along it: Andrei swept ground tone by hand and found the depth in it.
+  `groundSwing` and `lineSwing` make that an oscillator per layer, each with
+  its own period, a chance per growth and a gate. The swing is a function of
+  the time a stretch grew (`swungTone`, `gated`), never of state, so a ramp
+  is the same however often it is painted. Its draws are per family birth, on
+  a stream of their own (`familySwing`): a family's lines share one, so the
+  ramp runs on unbroken through a carry-on or a split. The gate stops the
+  swing's clock rather than resetting it, so it holds and resumes with no
+  step (checked: runs 2 s, holds 5 s, runs from 7 s, at a 10 s gate). With
+  every swing at 0 the lines and the ground are pixel for pixel what they
+  were (four scenes, both grounds' own seed, before and after).
+- **The lines are redrawn every frame, so their ramp is drawn, not painted.**
+  A swinging line is a gradient along its chord, a fill per line per copy;
+  or, where many lines share few colours (by depth, by age), flat pieces cut
+  at 40 tone levels and batched by colour — whichever makes fewer fills
+  (`piecesBeat`). A line too short to change by a level is one flat fill.
+  Gradients alone on `lattice` were 9648 fills a frame; the pieces make 792.
+  Headless costs about 0.035 ms a fill, so it reads 25–35 ms there; on
+  Andrei's GPU 550 fills drew in 0.5–1.9 ms, and his trace will tell.
+- **A straight ground is not a growth.** Under `groundForm: straight`,
+  `groundCount` lines (`Stroke`) each cross the wedge — half a segment under
+  mirror — from where their whole width first touches it to where it last
+  does, any direction and offset alike, and start again elsewhere once
+  across. Each frame's strip is cut to the wedge by two half-planes a pixel
+  wide of it (`clipBy`), so every end lies flush along a mirror and copies
+  meet with no seam (seen at 2×). Nothing stops one and nothing ungrows. Only
+  the wedge and the seed restart it; the lines' growth settings do not.
