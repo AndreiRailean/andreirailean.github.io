@@ -476,8 +476,9 @@ function headEnds(line: Line, w: number, half: (line: Line) => number): [number,
  * of its middle, each end square or cut as the line records. A curved line's
  * sides are arcs about its centre, so it is one shape however far it bends.
  * A cut end reaches at most `ahead` past the tip and a cut start at most
- * `behind` back from the start: how far the ground has let each open out.
- * Short of its tip, at `to`, it ends square.
+ * `behind` back from the start; every caller now passes them open, since
+ * the ground draws its chunks with `groundShape`. Short of its tip, at `to`,
+ * it ends square.
  */
 function outline(
   path: Path2D,
@@ -566,6 +567,87 @@ function outline(
   edge(w, startL, endL, false)
   tipEnd()
   edge(-w, endR, startR, true)
+  path.closePath()
+}
+
+/** How finely a ground band's curved sides are cut into chords: a twentieth of a radian. */
+const CHORD = 0.05
+
+/**
+ * The half-plane on a line's own side of a cut, as a function positive
+ * inside it: off the met line's middle to its near edge, or, for a cut on
+ * nothing (a mirror, a wall), `reach` out past it, so a chunk and its
+ * reflection overlap there instead of each half-covering the same pixels.
+ */
+function bodySide(
+  line: Line,
+  cut: Cut,
+  body: 1 | -1,
+  half: (line: Line) => number,
+  expected: number,
+  reach: number,
+): (x: number, y: number) => number {
+  const [hx, hy] = headingAt(line, expected)
+  const nx = -cut.uy
+  const ny = cut.ux
+  const toward = Math.sign((nx * hx + ny * hy) * body) || 1
+  const offset = cut.on ? -half(cut.on) * toward : reach * toward
+  const px = cut.px - nx * offset
+  const py = cut.py - ny * offset
+  return (x, y) => ((x - px) * nx + (y - py) * ny) * toward
+}
+
+/**
+ * A ground line as far as it has opened: its band from `lo` to `hi` along
+ * it, square across at both, cut by its start's cut and, once `stopped`, by
+ * its end's, each as a half-plane, so the shape grows only outward as `lo`
+ * falls and `hi` rises. Clockwise or not as it comes; see `addPolygon`.
+ *
+ * The outline the lines use joins cut corners with a straight edge between
+ * them, and on a chunk short and wide enough for its two cuts to cross,
+ * that edge folded the outline over itself and the fill left a hole; on a
+ * curve, where a cut is no straight line in the band, a part-opened end's
+ * edge came off the cut, so part of the end was painted at once and the rest
+ * around it later, over whatever had come between. Both left strips of older
+ * paint along the mirrors.
+ */
+function groundShape(
+  line: Line,
+  w: number,
+  half: (line: Line) => number,
+  lo: number,
+  hi: number,
+  stopped: boolean,
+  reach: number,
+): [number, number][] {
+  if (hi <= lo) return []
+  const n = Math.max(1, Math.ceil((Math.abs(line.curve) * (hi - lo)) / CHORD))
+  const side = (s: number, by: number): [number, number] => {
+    const [x, y] = pointAt(line, s)
+    const [dx, dy] = headingAt(line, s)
+    return [x - dy * by, y + dx * by]
+  }
+  let poly: [number, number][] = []
+  for (let i = 0; i <= n; i++) poly.push(side(lo + ((hi - lo) * i) / n, w))
+  for (let i = n; i >= 0; i--) poly.push(side(lo + ((hi - lo) * i) / n, -w))
+  if (line.tail) poly = clipBy(poly, bodySide(line, line.tail, 1, half, 0, reach))
+  if (stopped && line.head)
+    for (const cut of line.head) poly = clipBy(poly, bodySide(line, cut, -1, half, line.len, reach))
+  return poly
+}
+
+/** Adds a polygon to a path wound one way (`sign` 1) or the other, so a nonzero fill can take one shape from another. */
+function addPolygon(path: Path2D, poly: [number, number][], sign: 1 | -1) {
+  if (poly.length < 3) return
+  let area = 0
+  for (let i = 0; i < poly.length; i++) {
+    const [ax, ay] = poly[i]!
+    const [bx, by] = poly[(i + 1) % poly.length]!
+    area += ax * by - bx * ay
+  }
+  const list = Math.sign(area) === sign ? poly : [...poly].reverse()
+  path.moveTo(...list[0]!)
+  for (let i = 1; i < list.length; i++) path.lineTo(...list[i]!)
   path.closePath()
 }
 
@@ -1573,7 +1655,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
    * How far each ground line has been painted: its length, and how far its
    * cut end has grown in past that since it stopped.
    */
-  let painted = new WeakMap<Line, { len: number; ends: readonly [number, number] }>()
+  let painted = new WeakMap<Line, { len: number; ends: readonly [number, number]; stopped: boolean }>()
   /** The ground's clock when it was last painted. */
   let paintedAt = 0
   const groundOn = () => settings.ground > 0
@@ -1737,10 +1819,9 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
    * as the lines' do: a meeting is found on a line's middle, so when a wide
    * chunk stops most of its end is still to come, and a chunk starting on a
    * wall at a slant has a corner far behind its start; taken at once, both
-   * snapped a star's points into place. An end opening paints only the
-   * sliver it gained, its shape now less its shape before by the even-odd
-   * rule: painting it whole each frame flipped which of two crossing chunks
-   * lay on top the frame one of them finished.
+   * snapped a star's points into place. Each frame paints only the band's
+   * two new ends (`groundShape`): painting a chunk whole each frame flipped
+   * which of two crossing chunks lay on top the frame one of them finished.
    */
   function paintGround(R: number) {
     fitGround(R)
@@ -1753,53 +1834,42 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     const grew = (Math.max(0, now - paintedAt) * groundOf(settings).speed) / 100
     paintedAt = now
     const seam = 1 / R
+    // Half a buffer pixel: how far a cut on a mirror reaches past it. Enough to
+    // seal the join (none left seams on 20% of mirror crossings, half a pixel
+    // and a whole one 4.8%, the rest chevron points), and the less of it the
+    // shorter the nub it leaves past a chevron's point.
+    const reach = 0.5 / groundR
     const grown = new Map<Line, (path: Path2D) => void>()
-    const opening: [Line, (path: Path2D) => void][] = []
     for (const line of ground.lines()) {
       if (line.gone) continue
       const was = painted.get(line)
       const w = half(line)
-      const tail = tailEnds(line, w, half)
-      const back = -Math.min(0, ...tail)
-      const front = Math.max(0, Math.max(...headEnds(line, w, half)) - line.len)
+      // How far each cut end can open, a pixel past its farthest corner: past
+      // that the cut, not the band, bounds it.
+      const back = -Math.min(0, ...tailEnds(line, w, half)) + seam
+      const front = Math.max(0, Math.max(...headEnds(line, w, half)) - line.len) + seam
       const [behind0, ahead0] = was?.ends ?? [0, 0]
       const behind = Math.min(back, behind0 + grew)
       // A tip opens from where it stopped: while it grew, its end was square.
       const ahead = line.alive ? 0 : Math.min(front, was?.len === line.len ? ahead0 + grew : grew)
-      painted.set(line, { len: line.len, ends: [behind, ahead] })
-      if (!was) {
-        grown.set(line, (path) => outline(path, line, 0, w, half, [behind, ahead]))
-        continue
-      }
-      // The start, out to just past its forward corner: where it grows across
-      // the cut, the cut bounds it, so it is painted as a change of shape.
-      const zone = Math.max(0, ...tail) + seam
-      if (behind !== behind0 || (was.len < zone && was.len !== line.len)) {
-        const before = Math.max(0, Math.min(zone, was.len - seam))
-        opening.push([
-          line,
-          (path) => {
-            outline(path, line, 0, w, half, [behind, ahead], zone)
-            outline(path, line, 0, w, half, [Math.max(0, behind0 - seam), ahead], before)
-          },
-        ])
-      }
-      // Past it, what grew is a strip from where the line was last painted.
-      const from = Math.max(was.len - seam, zone - seam)
-      if (was.len !== line.len && from < line.len)
-        grown.set(line, (path) => outline(path, line, from, w, half, [behind, ahead]))
-      // A stopped tip opening, as the change of its end's shape.
-      if (was.len === line.len && ahead !== ahead0) {
-        // Within the start's reach, the cut there bounds it too.
-        const end = line.len < zone ? 0 : line.len - seam
-        opening.push([
-          line,
-          (path) => {
-            outline(path, line, end, w, half, [behind, ahead])
-            outline(path, line, end, w, half, [behind, Math.max(0, ahead0 - seam)])
-          },
-        ])
-      }
+      const stopped = !line.alive
+      painted.set(line, { len: line.len, ends: [behind, ahead], stopped })
+      // What is new is the band's two ends, each from a pixel inside where it
+      // was painted to, so no seam shows where they meet; both cut as the line
+      // is now. Drawn as pieces of their own, not the shape less the shape
+      // before: the two shared a cut edge, and the canvas never quite cancelled
+      // it, so every frame left a faint line along each mirror.
+      const pieces = was
+        ? [
+            line.len + ahead > was.len + ahead0 || stopped !== was.stopped
+              ? groundShape(line, w, half, was.len + ahead0 - seam, line.len + ahead, stopped, reach)
+              : [],
+            behind > behind0 ? groundShape(line, w, half, -behind, seam - behind0, stopped, reach) : [],
+          ]
+        : [groundShape(line, w, half, -behind, line.len + ahead, stopped, reach)]
+      grown.set(line, (path) => {
+        for (const piece of pieces) addPolygon(path, piece, 1)
+      })
     }
     const rule = groundRule()
     const { seed, speed } = groundOf(settings)
@@ -1812,14 +1882,6 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
         ground.group(),
         looksOf(ground, grown.keys(), (line) => grown.get(line)!, true, toneOf),
         place,
-      )
-    for (const [line, draw] of opening)
-      fillCopies(
-        brush,
-        ground.group(),
-        looksOf(ground, [line], () => draw, true, toneOf),
-        place,
-        "evenodd",
       )
   }
 

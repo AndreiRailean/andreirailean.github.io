@@ -123,6 +123,15 @@ chunk a ramp of lightness along its length.
 > (growing, changing) ones could ammp this up. not sure if that pushes the
 > boundary too far
 
+## 2026-11-22 — an organic join, on purpose
+
+Said of the older paint that showed through, dithered, where a ground chunk
+met its reflection at a mirror; that was fixed as a fault.
+
+> it has a mildly organic feel to it so i didn't mention it before, but i
+> think you would want to know and we can add the organic part deliberately
+> rather than rely on an unexpected side effect.
+
 ## Open questions
 
 Questions the build could not answer by itself. Each is left as a setting or
@@ -169,3 +178,8 @@ a preset rather than decided.
   seed, so it looks like more of the same lines. `movingTone` mutes its
   colours, as the ground's tone does, which is the one difference Andrei
   named; rules of its own (its own angle, width, life) are not built.
+- **An organic join, on purpose.** The ground's mirror joins are now sealed.
+  The look Andrei liked was older paint showing through a broken thread
+  where a chunk met its reflection. Built deliberately, it would be a
+  setting for how far each chunk stops short of a mirror, with a ragged
+  edge; not built.

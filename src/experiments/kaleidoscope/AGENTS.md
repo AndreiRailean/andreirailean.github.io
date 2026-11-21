@@ -167,8 +167,8 @@ the piece is still being found.
   chunk's end, or the corner of a slanted start, arrives up to four
   half-widths at once — Andrei saw star points snap into place. So the
   ground paints a strip from where a line was last painted, and opens each
-  cut end at the line's own speed with a square front (`behind`, `ahead` in
-  `outline`), painting the change of shape by the even-odd rule. Two ways
+  cut end at the line's own speed with a square front (`behind`, `ahead`),
+  painting only the change of shape (see the next note for how). Two ways
   that failed: repainting an opening end whole each frame flipped which of
   two crossing chunks lay on top the frame one finished; and opening by
   turning the edge about a corner left sub-pixel slivers whose antialiasing
@@ -176,6 +176,23 @@ the piece is still being found.
   on his bands scene, the largest one-frame change of the ground fell from
   6.2% to 1.6% against a median 0.5%. A young line whose start's forward
   corner lies past its tip is drawn only out to its tip, lines too.
+- **A ground chunk is a band cut by half-planes, and its new ends are drawn
+  as pieces.** `groundShape` takes the band from `lo` to `hi` along the line
+  and clips it by its start's cut and, once stopped, its end's, each pushed
+  half a buffer pixel past a mirror (`reach`), so a frame paints only the
+  band's two new ends. Andrei saw older paint show through where a chunk met
+  its reflection, a dithered thread down each mirror. Three causes, each
+  found by replaying the painting in Node and testing points either side of
+  a mirror: `outline` joins cut corners straight, so a short wide chunk
+  whose two cuts cross folded over itself and filled with a hole; on a
+  curve a part-opened end's edge came off the cut, so part of the end was
+  painted at once and the rest round it later, over whatever came between;
+  and a shape less the shape before shares a cut edge with it, which the
+  canvas never quite cancels. Seams on mirror crossings in the dome at 25
+  s, frame by frame: 42% before, 4.8% after, all chevron points; between
+  mirrors 2.3% to 0. Without `reach` 20%. Grown in one-second steps
+  (`settle`, the poster) faint lines remain at 19%: a step paints in array
+  order, not in the order things grew.
 - **Painting only what grew records time in the paint.** Each strip takes
   the tone of its frame, so a tone that moves while a chunk grows leaves a
   ramp along it: Andrei swept ground tone by hand and found the depth in it.
