@@ -108,6 +108,21 @@ chunk a ramp of lightness along its length.
 > the render is not certain. it's an oscillator. and that oscillator can be
 > turned on an off in flight by another oscillation.
 
+## 2026-11-21 — lines that move, not only grow
+
+> one think i've been wondering about is a new kind of growth. perhaps done as
+> another, middle layer between base and lines. current appearance of lines is
+> that they appear. they grow into final star shapes and then stay before they
+> draw themselves off. coupled with spin we have a good amount of change but
+> it's hard to call it motion. what i'm thinking about is to have lines not
+> only grow in lengh but also move. so a root that sits on the side of the
+> segment moves along that side and drags its whole tree along.
+> centrally-planted root can't really do that. it could sweep the angle across.
+> side root could also sweep the angle. while it doesn't have to be another
+> layer, i feel that a mixture of "static" current patterns and more dynamic
+> (growing, changing) ones could ammp this up. not sure if that pushes the
+> boundary too far
+
 ## Open questions
 
 Questions the build could not answer by itself. Each is left as a setting or
