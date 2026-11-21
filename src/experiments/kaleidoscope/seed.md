@@ -155,3 +155,17 @@ a preset rather than decided.
   so a band's chevron can be bold on one stretch and fine on the next. A
   width per root, all of its offshoots alike, would make whole bands bold and
   pair with colouring by root; not built.
+- **What a moving family meets.** The moving layer's families meet only
+  their own lines, because a meeting with anything else would be made where
+  that family no longer stands; they pass over each other and over the fixed
+  lines. Stopping against what moves, or fixed lines stopping against moving
+  ones, would need meetings recomputed every frame; not built.
+- **A slide past the centre.** A root on a side slides by up to `slide`
+  either way; one planted nearer the centre than that slides through it and
+  out of its wedge, and the mirrors cut it away until it comes back. A slide
+  that turned back at the centre, or scaled to where the root was planted,
+  would keep every tree in view; not built.
+- **A moving layer of its own kind.** It grows by the lines' rules on its own
+  seed, so it looks like more of the same lines. Rules of its own (its own
+  angle, width, colour, life), as the ground has, would set it apart; not
+  built.
