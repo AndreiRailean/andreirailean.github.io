@@ -119,6 +119,8 @@ type Family = {
   tips: number
   /** Where its root was planted, and the side it was planted on (null from the centre): what a moving family slides along and sweeps about. */
   root: { x: number; y: number; wall: number | null }
+  /** Scene seconds at its birth: how long a moving family has slid one way. */
+  at: number
 }
 
 /**
@@ -851,6 +853,7 @@ function createGrowth(initial: Settings, selfOnly = false) {
     family.undrawn = 0
     family.timer = 0
     family.tips = 0
+    family.at = now
     births++
     const rng = family.rng
     const half = Math.PI / settings.segments
@@ -936,6 +939,7 @@ function createGrowth(initial: Settings, selfOnly = false) {
       undrawn: 0,
       tips: 0,
       root: { x: 0, y: 0, wall: null },
+      at: 0,
     }))
     for (const family of families) if (family.timer === 0) birth(family)
   }
@@ -1558,7 +1562,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
   const moving = createGrowth(movingOf(initial), true)
   const movingOn = () => settings.moving > 0
   /** What the moving layer did last frame: families drawn, and the farthest any slid and turned. */
-  let motion = { families: 0, slid: 0, swept: 0 }
+  let motion = { families: 0, slid: 0, out: 0, in: 0, swept: 0 }
   const paint = document.createElement("canvas")
   const brush = context2d(paint, "kaleidoscope")
   /** The ground's half-diagonal in its own px; 0 until first painted. */
@@ -2099,7 +2103,14 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     const slidePhase = rng()
     const sweepPhase = rng()
     const { x, y, wall } = family.root
-    const slid = wall === null ? 0 : settings.slide * Math.sin(2 * Math.PI * (t / slidePeriod + slidePhase))
+    // To and fro in its own phase; or one way, slide's distance a period, since its birth.
+    const way = settings.slideWay
+    const slid =
+      wall === null
+        ? 0
+        : way === "both"
+          ? settings.slide * Math.sin(2 * Math.PI * (t / slidePeriod + slidePhase))
+          : ((way === "out" ? 1 : -1) * settings.slide * (t - family.at)) / slidePeriod
     const turned = settings.sweep * DEG * Math.sin(2 * Math.PI * (t / sweepPeriod + sweepPhase))
     const c = Math.cos(turned)
     const s = Math.sin(turned)
@@ -2147,7 +2158,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       for (const [f, tone] of ramp.stops) gradient.addColorStop(f, colour(at, tone))
       return gradient
     }
-    motion = { families: byFamily.size, slid: 0, swept: 0 }
+    motion = { families: byFamily.size, slid: 0, out: 0, in: 0, swept: 0 }
     for (const [family, list] of byFamily) {
       const ramps: (typeof parts)[number]["ramps"] = []
       const flat = new Map<Line, number>()
@@ -2173,6 +2184,8 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       )
       const f = motionOf(family, t, seed)
       motion.slid = Math.max(motion.slid, Math.abs(f.slid))
+      if (f.slid > 0) motion.out++
+      if (f.slid < 0) motion.in++
       motion.swept = Math.max(motion.swept, Math.abs(f.turned) / DEG)
       parts.push({ f, looks: [...looks.values()], ramps })
     }
@@ -2252,7 +2265,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     const sn = Math.sin(turn) * R * dpr
     const half = lineHalf(R)
     const movingFills = movingOn() ? drawMoving(R, half, cs, sn, ox, oy) : 0
-    if (!movingOn()) motion = { families: 0, slid: 0, swept: 0 }
+    if (!movingOn()) motion = { families: 0, slid: 0, out: 0, in: 0, swept: 0 }
     const lines = growth.lines()
     const rule = lineRule()
     const swings = (line: Line) => rule.depth > 0 && familySwing(line.family, settings.seed, 0x11e5).odds < rule.chance
@@ -2381,6 +2394,9 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
               length: m.length,
               families: motion.families,
               slid: round(motion.slid),
+              /** Families slid outward of where they were planted, and inward. */
+              out: motion.out,
+              in: motion.in,
               swept: round(motion.swept, 1),
             }
           })()

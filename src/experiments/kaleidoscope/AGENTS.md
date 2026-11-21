@@ -221,3 +221,8 @@ the piece is still being found.
   gypsy) are pixel for pixel what they were; on gypsy at 8 moving roots
   (slide 0.2, sweep 25) `stats().moving` read slid 0.18–0.2 and swept 22–25°
   over four seconds, 0 and 0 with both set to 0, and from the centre slid 0.
+  `slideWay` other than `both` slides every family one way for its whole
+  life, `slide` per period from where it was planted (`family.at` is its
+  birth on the growth's clock), so the figure streams out or in. Measured on
+  `tunnel`, five moments over six seconds: outward, every family out (16–18
+  of 16–18); inward, every one in; to and fro, a mix (4–12 out).

@@ -31,6 +31,8 @@ export type ColourBy = "depth" | "family" | "age" | "copy"
 export type Cycle = "each" | "together"
 export type From = "centre" | "sides"
 export type GroundForm = "grown" | "straight"
+/** Which way a moving root slides along its side: to and fro, or all one way for its whole life. */
+export type SlideWay = "both" | "out" | "in"
 
 export type Settings = {
   /** How many times the segment repeats round the centre. */
@@ -129,8 +131,10 @@ export type Settings = {
    * its own whose families slide and sweep as they grow. 0 is none.
    */
   moving: number
-  /** How far a moving family's root slides along its side and back, in half-diagonals. */
+  /** How far a moving family's root slides along its side and back, in half-diagonals; one way, how far it slides each period. */
   slide: number
+  /** To and fro, each family in its own phase; or all outward, or all inward, for each family's whole life. */
+  slideWay: SlideWay
   /** Degrees a moving family sweeps either way about its root. */
   sweep: number
   /** Seconds of scene one slide or sweep takes, there and back. */
@@ -140,7 +144,7 @@ export type Settings = {
   timescale: number
 }
 
-type EnumKey = "symmetry" | "confine" | "stops" | "angle" | "colourBy" | "cycle" | "from" | "groundForm"
+type EnumKey = "symmetry" | "confine" | "stops" | "angle" | "colourBy" | "cycle" | "from" | "groundForm" | "slideWay"
 export type NumericKey = Exclude<keyof Settings, EnumKey>
 
 export type Control = KitControl<string & keyof Settings>
@@ -154,6 +158,7 @@ export const COLOUR_BYS: ColourBy[] = ["depth", "family", "age", "copy"]
 export const CYCLES: Cycle[] = ["each", "together"]
 export const FROMS: From[] = ["centre", "sides"]
 export const GROUND_FORMS: GroundForm[] = ["grown", "straight"]
+export const SLIDE_WAYS: SlideWay[] = ["both", "out", "in"]
 
 /** The hold that means "for good". */
 export const HOLD_FOREVER = 120
@@ -720,6 +725,19 @@ export const CONTROLS: Control[] = [
     inert: (settings: Settings) => settings.moving === 0 || settings.from !== "sides",
   },
   {
+    kind: "choice",
+    key: "slideWay",
+    label: "slide way",
+    group: "motion",
+    options: [
+      { value: "both", label: "to and fro" },
+      { value: "out", label: "outward" },
+      { value: "in", label: "inward" },
+    ],
+    hint: "To and fro: each root slides out and back in a phase of its own, so some stars grow while others shrink. Outward or inward: every root slides the one way for its whole life, slide's distance each period, so the whole figure streams out from the centre or into it, like a tunnel.",
+    inert: (settings: Settings) => settings.moving === 0 || settings.from !== "sides" || settings.slide === 0,
+  },
+  {
     kind: "slider",
     key: "sweep",
     label: "sweep",
@@ -792,6 +810,7 @@ export const DEFAULT_SETTINGS: Settings = {
   lineGate: 0,
   moving: 0,
   slide: 0.15,
+  slideWay: "both",
   sweep: 20,
   motionPeriod: 8,
   seed: 1,
@@ -865,6 +884,7 @@ export function normalizeSettings(patch: Partial<Settings>, base: Settings = DEF
     cycle: oneOf(CYCLES, merged.cycle, base.cycle),
     from: oneOf(FROMS, merged.from, base.from),
     groundForm: oneOf(GROUND_FORMS, merged.groundForm, base.groundForm),
+    slideWay: oneOf(SLIDE_WAYS, merged.slideWay, base.slideWay),
   }
 
   for (const [key, bound] of Object.entries(BOUNDS) as [NumericKey, { min: number; max: number }][]) {
@@ -975,6 +995,7 @@ export const REGISTRY: readonly Slot[] = [
   { key: "slide", kind: "num", grid: 0.05, origin: 0, bits: 5 },
   { key: "sweep", kind: "num", grid: 1, origin: 0, bits: 8 },
   { key: "motionPeriod", kind: "num", grid: 0.5, origin: 0.5, bits: 7 },
+  { key: "slideWay", kind: "enum", options: ["both", "out", "in"] },
 ]
 
 export const { settingsToQuery, urlForSettings, settingsFromQuery, namesASetting } = packedAddress<Settings>({
