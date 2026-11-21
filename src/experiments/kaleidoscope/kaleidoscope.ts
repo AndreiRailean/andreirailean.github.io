@@ -1368,6 +1368,8 @@ function createGrowth(initial: Settings, selfOnly = false) {
     group: () => group,
     tips: () => tips,
     now: () => now,
+    /** The clock to the instant, ticks and the part of one owed, for what is drawn as it moves between ticks. */
+    exact: () => now + owed,
   }
 }
 
@@ -2136,7 +2138,10 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
    * on, however the family has moved. Returns the fills made.
    */
   function drawMoving(R: number, half: (line: Line) => number, cs: number, sn: number, ox: number, oy: number) {
-    const t = moving.now()
+    // The frame's own time, not the last whole tick's, as the spin is: frames
+    // that drift across the tick grid would otherwise step a family twice, then
+    // not at all, and the slide stutters against a smooth spin.
+    const t = moving.exact()
     const seed = movingOf(settings).seed
     const rule = lineRule()
     const swings = (line: Line) => rule.depth > 0 && familySwing(line.family, seed, 0x11e5).odds < rule.chance

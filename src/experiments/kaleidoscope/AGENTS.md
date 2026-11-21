@@ -226,3 +226,10 @@ the piece is still being found.
   birth on the growth's clock), so the figure streams out or in. Measured on
   `tunnel`, five moments over six seconds: outward, every family out (16–18
   of 16–18); inward, every one in; to and fro, a mix (4–12 out).
+  **Motion reads `moving.exact()`, not `now()`.** The growth's clock moves in
+  whole 1/60 s ticks, and a display a hair off 60 Hz, with a millisecond of
+  jitter, drifts across that grid: a frame steps two ticks, the next none.
+  Lines growing hide it; a whole star sliding against the smooth spin shows
+  it as a stutter, which Andrei saw on the dome. Over a simulated minute,
+  frames advancing 0 or 2 ticks went from 39 (59.94 Hz ±0.2 ms) and 26
+  (60.05 Hz) to 0 and 0 drawn at `now + owed`.
