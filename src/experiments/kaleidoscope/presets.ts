@@ -1299,7 +1299,7 @@ export const PRESETS: Preset<Settings>[] = [
   },
   {
     label: "the dome",
-    hint: "Eleven mirrored segments of bold bars from the sides over a dark grown ground, two in five of its growths painting black, and beneath the bars eleven more families that slide inward along their sides for their whole lives, sweeping slowly as they go, so their stars sink toward the centre and close over it like a dome.",
+    hint: "Eleven mirrored segments of bold bars from the sides over a dark grown ground, two in five of its growths painting black, and beneath the bars, at half their brightness, eleven more families that slide inward along their sides for their whole lives, sweeping slowly as they go, so their stars sink toward the centre and close over it like a dome.",
     settings: {
       segments: 11,
       symmetry: "mirror",
@@ -1325,7 +1325,7 @@ export const PRESETS: Preset<Settings>[] = [
       width: 1,
       widest: 5,
       taper: 0,
-      hue: 30,
+      hue: 164,
       tint: 0.8,
       hues: 200,
       colourBy: "family",
@@ -1348,7 +1348,7 @@ export const PRESETS: Preset<Settings>[] = [
       slideWay: "in",
       sweep: 17,
       motionPeriod: 13,
-      movingTone: 1,
+      movingTone: 0.5,
       seed: "roll",
       timescale: 1,
     },
