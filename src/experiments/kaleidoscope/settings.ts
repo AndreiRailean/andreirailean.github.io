@@ -139,6 +139,8 @@ export type Settings = {
   sweep: number
   /** Seconds of scene one slide or sweep takes, there and back. */
   motionPeriod: number
+  /** How light the moving layer's colours are, as a share of the lines': below 1 it sits back, muted, behind them. */
+  movingTone: number
   seed: number
   /** The speed control's value: a multiple of `CLOCK_RATE`. The kit's — `kit/speed.ts`. */
   timescale: number
@@ -762,6 +764,18 @@ export const CONTROLS: Control[] = [
     hint: "Seconds one slide or sweep takes, there and back. Each family takes its own, within a third either way, and its own phase, so they never move in step.",
     inert: (settings: Settings) => settings.moving === 0 || (settings.slide === 0 && settings.sweep === 0),
   },
+  {
+    kind: "slider",
+    key: "movingTone",
+    label: "moving tone",
+    group: "motion",
+    min: 0,
+    max: 1,
+    step: 0.05,
+    format: (v) => `${Math.round(v * 100)}%`,
+    hint: "How light the moving layer's colours are against the lines': lower, it sits back behind them as a muted version of the same colours, the way the ground does, so the fixed stars stand apart from the moving ones.",
+    inert: (settings: Settings) => settings.moving === 0,
+  },
   /* @__PURE__ */ timescaleControl(),
 ]
 
@@ -813,6 +827,7 @@ export const DEFAULT_SETTINGS: Settings = {
   slideWay: "both",
   sweep: 20,
   motionPeriod: 8,
+  movingTone: 1,
   seed: 1,
   timescale: 1,
 }
@@ -857,6 +872,7 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   slide: { min: 0, max: 1, step: 0.05 },
   sweep: { min: 0, max: 180, step: 1 },
   motionPeriod: { min: 0.5, max: 60, step: 0.5, scale: "log" },
+  movingTone: { min: 0, max: 1, step: 0.05 },
   timescale: timescaleTrack(),
 }
 
@@ -996,6 +1012,7 @@ export const REGISTRY: readonly Slot[] = [
   { key: "sweep", kind: "num", grid: 1, origin: 0, bits: 8 },
   { key: "motionPeriod", kind: "num", grid: 0.5, origin: 0.5, bits: 7 },
   { key: "slideWay", kind: "enum", options: ["both", "out", "in"] },
+  { key: "movingTone", kind: "num", grid: 0.05, origin: 0, bits: 5 },
 ]
 
 export const { settingsToQuery, urlForSettings, settingsFromQuery, namesASetting } = packedAddress<Settings>({

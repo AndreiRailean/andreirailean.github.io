@@ -2153,9 +2153,11 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       looks: Look[]
       ramps: { path: Path2D; ramp: Ramp; at: number; fixed: CanvasGradient | null }[]
     }[] = []
+    // Muted as a whole, as the ground is by its tone.
+    const muted = settings.movingTone
     const gradientOf = (ramp: Ramp, at: number) => {
       const gradient = ctx.createLinearGradient(ramp.x0, ramp.y0, ramp.x1, ramp.y1)
-      for (const [f, tone] of ramp.stops) gradient.addColorStop(f, colour(at, tone))
+      for (const [f, tone] of ramp.stops) gradient.addColorStop(f, colour(at, tone * muted))
       return gradient
     }
     motion = { families: byFamily.size, slid: 0, out: 0, in: 0, swept: 0 }
@@ -2180,7 +2182,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
           return (path) => outline(path, line, visibleFrom(line), half(line), half)
         },
         false,
-        (line) => flat.get(line) ?? 1,
+        (line) => (flat.get(line) ?? 1) * muted,
       )
       const f = motionOf(family, t, seed)
       motion.slid = Math.max(motion.slid, Math.abs(f.slid))

@@ -166,6 +166,6 @@ a preset rather than decided.
   that turned back at the centre, or scaled to where the root was planted,
   would keep every tree in view; not built.
 - **A moving layer of its own kind.** It grows by the lines' rules on its own
-  seed, so it looks like more of the same lines. Rules of its own (its own
-  angle, width, colour, life), as the ground has, would set it apart; not
-  built.
+  seed, so it looks like more of the same lines. `movingTone` mutes its
+  colours, as the ground's tone does, which is the one difference Andrei
+  named; rules of its own (its own angle, width, life) are not built.
