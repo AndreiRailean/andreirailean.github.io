@@ -205,3 +205,19 @@ the piece is still being found.
   wide of it (`clipBy`), so every end lies flush along a mirror and copies
   meet with no seam (seen at 2×). Nothing stops one and nothing ungrows. Only
   the wedge and the seed restart it; the lines' growth settings do not.
+- **The moving layer meets only itself, and the mirrors cut it.** `moving`
+  roots grow a third growth (`createGrowth(movingOf(…), true)`) between the
+  ground and the lines, on a seed of its own, free of the walls. Each family
+  is drawn moved as one rigid piece (`motionOf`): turned about its root by
+  `sweep`, and a root from the sides slid along its side by `slide`, each on
+  its own period (within a third of `motionPeriod`) and phase, drawn per
+  birth on a stream of its own. A meeting is only right where the two lines
+  stand as they grew, so a family meets only its own lines in its own copy
+  (`selfOnly`): never another family, never a copy, never its reflection.
+  Each copy is clipped to its wedge, a pixel wide, as a kaleidoscope's
+  mirrors cut what tumbles behind them, so a line run past a mirror is cut
+  flush there and its reflection closes it, wherever the family has moved.
+  With `moving: 0` the five scenes checked (his, deep, vertigo, by copy,
+  gypsy) are pixel for pixel what they were; on gypsy at 8 moving roots
+  (slide 0.2, sweep 25) `stats().moving` read slid 0.18–0.2 and swept 22–25°
+  over four seconds, 0 and 0 with both set to 0, and from the centre slid 0.

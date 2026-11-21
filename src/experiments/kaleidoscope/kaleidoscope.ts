@@ -117,6 +117,8 @@ type Family = {
   timer: number
   undrawn: number
   tips: number
+  /** Where its root was planted, and the side it was planted on (null from the centre): what a moving family slides along and sweeps about. */
+  root: { x: number; y: number; wall: number | null }
 }
 
 /**
@@ -569,7 +571,14 @@ function outline(
  * One growth: its lines, families and grid, and the clock that grows them. It
  * draws nothing; the scene draws two of them, the lines and the ground.
  */
-function createGrowth(initial: Settings) {
+/**
+ * A growth: lines, families, grid and clock, drawing nothing. With
+ * `selfOnly`, a family meets only its own lines as they stand, never a copy
+ * of anything nor another family: the moving layer's, whose families are
+ * drawn moved and cut at the mirrors, so a meeting with anything else would
+ * be with where it is not.
+ */
+function createGrowth(initial: Settings, selfOnly = false) {
   let settings = initial
 
   let group: Map2[] = []
@@ -860,6 +869,7 @@ function createGrowth(initial: Settings) {
       // the centre. Square itself only ever grows away from the centre.
       const lean = other ? -settings.lean : settings.lean
       const base = wall - side * (Math.PI / 2) + side * lean * DEG
+      family.root = { x: r * Math.cos(wall), y: r * Math.sin(wall), wall }
       // Cut along the side it starts on: under mirror that is the mirror,
       // so a root and its reflection close into a sharp chevron.
       addLine(
@@ -892,6 +902,7 @@ function createGrowth(initial: Settings) {
       // angles for every angle offered.
       if (other && settings.spread > 0) k += Math.round(Math.PI / unit())
     }
+    family.root = { x, y, wall: null }
     addLine(x, y, settings.lean * DEG, k, family, 0, undefined, curled(curlFor(family)))
   }
 
@@ -924,6 +935,7 @@ function createGrowth(initial: Settings) {
       timer: each && slot > 0 ? stagger() * STAGGER : 0,
       undrawn: 0,
       tips: 0,
+      root: { x: 0, y: 0, wall: null },
     }))
     for (const family of families) if (family.timer === 0) birth(family)
   }
@@ -983,7 +995,7 @@ function createGrowth(initial: Settings) {
     if (stops !== "none") {
       // Its own copies, grown to where this step takes it.
       const reach = line.len + d
-      for (let g = 1; g < G; g++) consider(against(line, group[g]!, 0, reach), "image", line, g)
+      if (!selfOnly) for (let g = 1; g < G; g++) consider(against(line, group[g]!, 0, reach), "image", line, g)
 
       // Itself, come right round: only an arc held past a whole turn can.
       if (k !== 0 && visibleFrom(line) === 0) {
@@ -1012,11 +1024,12 @@ function createGrowth(initial: Settings) {
             const them = lines[other]!
             if (them.gone) continue
             const own = them.family.id === line.family.id
-            if (stops === "own" && !own) continue
+            if ((stops === "own" || selfOnly) && !own) continue
             // Only the stretch still drawn can be met.
             const from = visibleFrom(them)
             if (them.len - from <= 0) continue
             const g = code - other * G
+            if (selfOnly && g !== 0) continue
             consider(against(them, group[g]!, from, them.len), own ? "family" : "line", them, g)
           }
         }
@@ -1356,6 +1369,20 @@ function createGrowth(initial: Settings) {
 
 type Growth = ReturnType<typeof createGrowth>
 
+/**
+ * The moving layer's own settings: the lines' rules on a seed of its own,
+ * with `moving` roots, free of the walls; it is cut at the mirrors when drawn.
+ */
+function movingOf(settings: Settings): Settings {
+  return {
+    ...settings,
+    seed: hashSeed(settings.seed, 0x3d1f) % 1_000_000,
+    roots: Math.max(1, settings.moving),
+    confine: "free",
+    stops: "own",
+  }
+}
+
 /** The ground's own settings: the same rules on a seed of its own, growing at its own pace. */
 function groundOf(settings: Settings): Settings {
   return { ...settings, seed: hashSeed(settings.seed, 0x6a0d) % 1_000_000, speed: settings.speed * settings.groundPace }
@@ -1524,6 +1551,14 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
    * undrawing frees the space for new growth but takes none of the paint.
    */
   const ground = createGrowth(groundOf(initial))
+  /**
+   * The moving layer, between the ground and the lines: a growth of its own
+   * whose families are drawn moved, each copy cut at its mirrors.
+   */
+  const moving = createGrowth(movingOf(initial), true)
+  const movingOn = () => settings.moving > 0
+  /** What the moving layer did last frame: families drawn, and the farthest any slid and turned. */
+  let motion = { families: 0, slid: 0, swept: 0 }
   const paint = document.createElement("canvas")
   const brush = context2d(paint, "kaleidoscope")
   /** The ground's half-diagonal in its own px; 0 until first painted. */
@@ -1786,8 +1821,8 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
    * The tones a swinging line grew in, as gradient stops along its chord: a
    * straight line's are exact, a curved one's run along its chord.
    */
-  function rampOf(line: Line, rule: SwingRule): Ramp {
-    const { speed, seed } = settings
+  function rampOf(line: Line, rule: SwingRule, seed = settings.seed): Ramp {
+    const { speed } = settings
     const swing = familySwing(line.family, seed, 0x11e5)
     const [x0, y0] = pointAt(line, 0)
     const [x1, y1] = pointAt(line, line.len)
@@ -2031,12 +2066,167 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     const scene = dt * settings.timescale * CLOCK_RATE
     spin += settings.spin * DEG * scene
     growth.advance(scene)
+    if (movingOn()) moving.advance(scene)
     if (groundOn()) advanceGround(scene)
   }
 
   function advanceGround(seconds: number) {
     if (straight()) advanceStrokes(seconds)
     else ground.advance(seconds)
+  }
+
+  /** A line's half-width in scene units, spaced evenly in ratio, not in pixels, between the ends. */
+  const lineHalf = (R: number) => {
+    const ratio = settings.widest / settings.width
+    return (line: Line) =>
+      Math.max(MIN_WIDTH, settings.width * ratio ** (line.thick / (WIDTHS - 1)) * (1 - settings.taper) ** line.depth) /
+      R /
+      2
+  }
+
+  /**
+   * Where a moving family is now, as a map of the segment onto itself: turned
+   * about its root and slid along the side it grew from, each on its own
+   * period and phase, drawn once per birth on a stream of their own. So
+   * `p ↦ L·(p − root) + root + slid·side`, as `x' = a·x + b·y + e`,
+   * `y' = c·x + d·y + f`.
+   */
+  function motionOf(family: Family, t: number, seed: number) {
+    const rng = makeRng(hashSeed(seed, family.slot, family.births, 0x5e1d))
+    const period = settings.motionPeriod
+    const slidePeriod = period * (2 / 3 + (rng() * 2) / 3)
+    const sweepPeriod = period * (2 / 3 + (rng() * 2) / 3)
+    const slidePhase = rng()
+    const sweepPhase = rng()
+    const { x, y, wall } = family.root
+    const slid = wall === null ? 0 : settings.slide * Math.sin(2 * Math.PI * (t / slidePeriod + slidePhase))
+    const turned = settings.sweep * DEG * Math.sin(2 * Math.PI * (t / sweepPeriod + sweepPhase))
+    const c = Math.cos(turned)
+    const s = Math.sin(turned)
+    const ex = wall === null ? 0 : Math.cos(wall)
+    const ey = wall === null ? 0 : Math.sin(wall)
+    return {
+      a: c,
+      b: -s,
+      c: s,
+      d: c,
+      e: x - (c * x - s * y) + slid * ex,
+      f: y - (s * x + c * y) + slid * ey,
+      slid,
+      turned,
+    }
+  }
+
+  /**
+   * The moving layer: each family drawn where its motion has taken it, and
+   * each copy cut to its own wedge (a pixel wide, so copies meet with no
+   * seam), as a kaleidoscope's mirrors cut what tumbles behind them. A line
+   * running past a mirror is cut flush there and its reflection carries it
+   * on, however the family has moved. Returns the fills made.
+   */
+  function drawMoving(R: number, half: (line: Line) => number, cs: number, sn: number, ox: number, oy: number) {
+    const t = moving.now()
+    const seed = movingOf(settings).seed
+    const rule = lineRule()
+    const swings = (line: Line) => rule.depth > 0 && familySwing(line.family, seed, 0x11e5).odds < rule.chance
+    const byFamily = new Map<Family, Line[]>()
+    for (const line of moving.lines()) {
+      if (line.gone || visibleFrom(line) >= line.len) continue
+      let list = byFamily.get(line.family)
+      if (!list) byFamily.set(line.family, (list = []))
+      list.push(line)
+    }
+    const byCopy = settings.colourBy === "copy"
+    const parts: {
+      f: ReturnType<typeof motionOf>
+      looks: Look[]
+      ramps: { path: Path2D; ramp: Ramp; at: number; fixed: CanvasGradient | null }[]
+    }[] = []
+    const gradientOf = (ramp: Ramp, at: number) => {
+      const gradient = ctx.createLinearGradient(ramp.x0, ramp.y0, ramp.x1, ramp.y1)
+      for (const [f, tone] of ramp.stops) gradient.addColorStop(f, colour(at, tone))
+      return gradient
+    }
+    motion = { families: byFamily.size, slid: 0, swept: 0 }
+    for (const [family, list] of byFamily) {
+      const ramps: (typeof parts)[number]["ramps"] = []
+      const flat = new Map<Line, number>()
+      const looks = looksOf(
+        moving,
+        list,
+        (line) => {
+          if (swings(line)) {
+            const ramp = rampOf(line, rule, seed)
+            if (ramp.hi - ramp.lo > FLAT_RAMP) {
+              const path = new Path2D()
+              outline(path, line, visibleFrom(line), half(line), half)
+              const at = shadeAt(moving, line, false)
+              ramps.push({ path, ramp, at, fixed: byCopy ? null : gradientOf(ramp, at) })
+              return null
+            }
+            flat.set(line, Math.round(((ramp.hi + ramp.lo) / 2) * LEVELS) / LEVELS)
+          }
+          return (path) => outline(path, line, visibleFrom(line), half(line), half)
+        },
+        false,
+        (line) => flat.get(line) ?? 1,
+      )
+      const f = motionOf(family, t, seed)
+      motion.slid = Math.max(motion.slid, Math.abs(f.slid))
+      motion.swept = Math.max(motion.swept, Math.abs(f.turned) / DEG)
+      parts.push({ f, looks: [...looks.values()], ramps })
+    }
+    if (parts.length === 0) return 0
+
+    const [a0, a1] = wedgeOf()
+    const seam = 1 / R
+    let poly: [number, number][] = [
+      [-2, -2],
+      [2, -2],
+      [2, 2],
+      [-2, 2],
+    ]
+    poly = clipBy(poly, (px, py) => cross(Math.cos(a0), Math.sin(a0), px, py) + seam)
+    poly = clipBy(poly, (px, py) => cross(px, py, Math.cos(a1), Math.sin(a1)) + seam)
+    const wedge = new Path2D()
+    wedge.moveTo(...poly[0]!)
+    for (let k = 1; k < poly.length; k++) wedge.lineTo(...poly[k]!)
+    wedge.closePath()
+
+    const group = moving.group()
+    let made = 0
+    for (let g = 0; g < group.length; g++) {
+      const m = group[g]!
+      // rotate(turn) · scale(R) · m, then the family's own motion.
+      const A = cs * m.a - sn * m.c
+      const B = sn * m.a + cs * m.c
+      const C = cs * m.b - sn * m.d
+      const D = sn * m.b + cs * m.d
+      ctx.save()
+      ctx.setTransform(A, B, C, D, ox, oy)
+      ctx.clip(wedge)
+      for (const { f, looks, ramps } of parts) {
+        ctx.setTransform(
+          A * f.a + C * f.c,
+          B * f.a + D * f.c,
+          A * f.b + C * f.d,
+          B * f.b + D * f.d,
+          ox + A * f.e + C * f.f,
+          oy + B * f.e + D * f.f,
+        )
+        for (const look of looks) {
+          ctx.fillStyle = byCopy ? colour(g / group.length, look.tone) : colour(look.at, look.tone)
+          ctx.fill(look.path)
+        }
+        for (const { path, ramp, fixed } of ramps) {
+          ctx.fillStyle = fixed ?? gradientOf(ramp, g / group.length)
+          ctx.fill(path)
+        }
+        made += looks.length + ramps.length
+      }
+      ctx.restore()
+    }
+    return made
   }
 
   function draw() {
@@ -2058,12 +2248,11 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       ctx.drawImage(paint, -groundR, -groundR)
     }
 
-    // A line's width is spaced evenly in ratio, not in pixels, between the ends.
-    const ratio = settings.widest / settings.width
-    const half = (line: Line) =>
-      Math.max(MIN_WIDTH, settings.width * ratio ** (line.thick / (WIDTHS - 1)) * (1 - settings.taper) ** line.depth) /
-      R /
-      2
+    const cs = Math.cos(turn) * R * dpr
+    const sn = Math.sin(turn) * R * dpr
+    const half = lineHalf(R)
+    const movingFills = movingOn() ? drawMoving(R, half, cs, sn, ox, oy) : 0
+    if (!movingOn()) motion = { families: 0, slid: 0, swept: 0 }
     const lines = growth.lines()
     const rule = lineRule()
     const swings = (line: Line) => rule.depth > 0 && familySwing(line.family, settings.seed, 0x11e5).odds < rule.chance
@@ -2095,8 +2284,6 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     for (const line of lines)
       if (!line.gone && visibleFrom(line) < line.len) seen.add(Math.round(half(line) * 2 * R * 100) / 100)
 
-    const cs = Math.cos(turn) * R * dpr
-    const sn = Math.sin(turn) * R * dpr
     // rotate(turn) · scale(R) · m, as a canvas matrix.
     const placeLine = (m: Map2) =>
       ctx.setTransform(cs * m.a - sn * m.c, sn * m.a + cs * m.c, cs * m.b - sn * m.d, sn * m.b + cs * m.d, ox, oy)
@@ -2107,7 +2294,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       for (const [line, ramp] of swung) addPieces(looks, line, ramp, half)
       swung.length = 0
     }
-    fills = fillCopies(ctx, growth.group(), looks, placeLine) + fillSwung(swung, half, placeLine)
+    fills = movingFills + fillCopies(ctx, growth.group(), looks, placeLine) + fillSwung(swung, half, placeLine)
     widths = [...seen].sort((a, b) => a - b)
 
     if (debug) {
@@ -2184,6 +2371,20 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       held: loop.held(),
       /** The ground's own growth, and the share of its disc painted so far; null with the ground off. */
       ground: g && { births: g.births, lines: g.lines, length: g.length, side: 2 * groundR, cover: round(cover()) },
+      /** The moving layer's growth, and how far its families stood moved last frame (slid in half-diagonals, swept in degrees); null with it off. */
+      moving: movingOn()
+        ? (() => {
+            const m = moving.counts()
+            return {
+              births: m.births,
+              lines: m.lines,
+              length: m.length,
+              families: motion.families,
+              slid: round(motion.slid),
+              swept: round(motion.swept, 1),
+            }
+          })()
+        : null,
     }
   }
 
@@ -2203,6 +2404,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       const before = settings
       settings = next
       growth.set(next)
+      moving.set(movingOf(next))
       // The ground starts again, on black, when what it grows changes or it is switched on.
       const regrew = ground.set(groundOf(next))
       const reformed = before.groundForm !== next.groundForm
@@ -2223,6 +2425,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       for (let left = seconds; left > 0; left -= 1) {
         const dt = Math.min(1, left)
         growth.advance(dt)
+        if (movingOn()) moving.advance(dt)
         if (groundOn()) {
           advanceGround(dt)
           paintGround(Math.hypot(width, height) / 2)
@@ -2232,6 +2435,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     },
     clear() {
       growth.regrow()
+      moving.regrow()
       ground.regrow()
       strokes = []
       wipe()

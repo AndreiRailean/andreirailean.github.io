@@ -124,6 +124,17 @@ export type Settings = {
   lineSwingChance: number
   /** Seconds of the oscillation that holds the lines' swing half the time; 0 never holds it. */
   lineGate: number
+  /**
+   * Roots of the moving layer, between the ground and the lines: a growth of
+   * its own whose families slide and sweep as they grow. 0 is none.
+   */
+  moving: number
+  /** How far a moving family's root slides along its side and back, in half-diagonals. */
+  slide: number
+  /** Degrees a moving family sweeps either way about its root. */
+  sweep: number
+  /** Seconds of scene one slide or sweep takes, there and back. */
+  motionPeriod: number
   seed: number
   /** The speed control's value: a multiple of `CLOCK_RATE`. The kit's — `kit/speed.ts`. */
   timescale: number
@@ -157,7 +168,7 @@ const WIDTH_TRACK: Track = { min: WIDTH_MIN, max: WIDTH_MAX, step: 0.05, scale: 
 
 const SEED_BOUNDS = { min: 0, max: 999_999 }
 
-export const GROUP_ORDER = ["kaleidoscope", "growth", "look", "ground"] as const
+export const GROUP_ORDER = ["kaleidoscope", "growth", "look", "motion", "ground"] as const
 
 /**
  * The farthest a straight root from the sides can grow under mirror before it
@@ -685,6 +696,54 @@ export const CONTROLS: Control[] = [
     hint: "A second, slower oscillation that switches the swing on for half of each of its periods and holds it for the other half, wherever it had got to. Each one has its own phase, so the swing starts and stops in flight, at different times on different lines. Off, the swing never stops.",
     inert: (settings: Settings) => settings.ground === 0 || settings.groundSwing === 0,
   },
+  {
+    kind: "slider",
+    key: "moving",
+    label: "moving roots",
+    group: "motion",
+    min: 0,
+    max: 48,
+    step: 1,
+    format: (v) => (v === 0 ? "none" : String(Math.round(v))),
+    hint: "Roots of a layer of its own, between the ground and the lines, grown by the lines' rules on a seed of its own. Its families move as they grow: a root on a side slides along it, and every one sweeps its angle, dragging its whole tree. Each copy is cut at the segment's mirrors, as a real kaleidoscope cuts whatever moves behind its glass. 0 is none; the lines above stay as they are.",
+  },
+  {
+    kind: "slider",
+    key: "slide",
+    label: "slide",
+    group: "motion",
+    min: 0,
+    max: 1,
+    step: 0.05,
+    format: (v) => (v === 0 ? "none" : pct(v * 100)),
+    hint: "How far a moving root on a side slides along it and back, as a share of the distance from the centre to a corner. A root from the centre does not slide.",
+    inert: (settings: Settings) => settings.moving === 0 || settings.from !== "sides",
+  },
+  {
+    kind: "slider",
+    key: "sweep",
+    label: "sweep",
+    group: "motion",
+    min: 0,
+    max: 180,
+    step: 1,
+    format: (v) => (v === 0 ? "none" : `${Math.round(v)}°`),
+    hint: "Degrees a moving family turns either way about its root and back, its whole tree with it.",
+    inert: (settings: Settings) => settings.moving === 0,
+  },
+  {
+    kind: "slider",
+    key: "motionPeriod",
+    label: "motion period",
+    group: "motion",
+    min: 0.5,
+    max: 60,
+    step: 0.5,
+    scale: "log",
+    format: (v) => `${v < 10 ? v.toFixed(1) : Math.round(v)}s`,
+    hint: "Seconds one slide or sweep takes, there and back. Each family takes its own, within a third either way, and its own phase, so they never move in step.",
+    inert: (settings: Settings) => settings.moving === 0 || (settings.slide === 0 && settings.sweep === 0),
+  },
   /* @__PURE__ */ timescaleControl(),
 ]
 
@@ -731,6 +790,10 @@ export const DEFAULT_SETTINGS: Settings = {
   lineSwingPeriod: 6,
   lineSwingChance: 1,
   lineGate: 0,
+  moving: 0,
+  slide: 0.15,
+  sweep: 20,
+  motionPeriod: 8,
   seed: 1,
   timescale: 1,
 }
@@ -771,6 +834,10 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   lineSwingPeriod: { min: 0.5, max: 60, step: 0.5, scale: "log" },
   lineSwingChance: { min: 0, max: 1, step: 0.05 },
   lineGate: { min: 0, max: 120, step: 0.5 },
+  moving: { min: 0, max: 48, step: 1 },
+  slide: { min: 0, max: 1, step: 0.05 },
+  sweep: { min: 0, max: 180, step: 1 },
+  motionPeriod: { min: 0.5, max: 60, step: 0.5, scale: "log" },
   timescale: timescaleTrack(),
 }
 
@@ -904,6 +971,10 @@ export const REGISTRY: readonly Slot[] = [
   { key: "lineSwingPeriod", kind: "num", grid: 0.5, origin: 0.5, bits: 7 },
   { key: "lineSwingChance", kind: "num", grid: 0.05, origin: 0, bits: 5 },
   { key: "lineGate", kind: "num", grid: 0.5, origin: 0, bits: 8 },
+  { key: "moving", kind: "num", grid: 1, origin: 0, bits: 6 },
+  { key: "slide", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "sweep", kind: "num", grid: 1, origin: 0, bits: 8 },
+  { key: "motionPeriod", kind: "num", grid: 0.5, origin: 0.5, bits: 7 },
 ]
 
 export const { settingsToQuery, urlForSettings, settingsFromQuery, namesASetting } = packedAddress<Settings>({

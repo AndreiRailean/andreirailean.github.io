@@ -507,6 +507,10 @@ exports[`kaleidoscope > has not edited a slot in place 1`] = `
   "lineSwingPeriod num grid=0.5 origin=0.5 bits=7",
   "lineSwingChance num grid=0.05 origin=0 bits=5",
   "lineGate num grid=0.5 origin=0 bits=8",
+  "moving num grid=1 origin=0 bits=6",
+  "slide num grid=0.05 origin=0 bits=5",
+  "sweep num grid=1 origin=0 bits=8",
+  "motionPeriod num grid=0.5 origin=0.5 bits=7",
 ]
 `;
 
