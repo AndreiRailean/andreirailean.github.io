@@ -445,10 +445,10 @@ function crossing(
   return best
 }
 
-/** A cut side's length, or `square` where the cut is missing or lies more than four half-widths off. */
 /** Both cut ends of a line in full: as the lines draw them. */
 const OPEN = [Infinity, Infinity] as const
 
+/** A cut side's length, or `square` where the cut is missing or lies more than four half-widths off. */
 const nearCut = (w: number) => (t: number | null, square: number) =>
   t === null || Math.abs(t - square) > 4 * w ? square : t
 
@@ -777,10 +777,6 @@ function addPolygon(path: Path2D, poly: [number, number][], sign: 1 | -1) {
   path.closePath()
 }
 
-/**
- * One growth: its lines, families and grid, and the clock that grows them. It
- * draws nothing; the scene draws two of them, the lines and the ground.
- */
 /**
  * A growth: lines, families, grid and clock, drawing nothing. With
  * `selfOnly`, a family meets only its own lines as they stand, never a copy
@@ -1466,11 +1462,14 @@ export function createGrowth(initial: Settings, selfOnly = false) {
     const each = settings.cycle === "each"
     now += TICK
 
-    for (const family of families)
-      if (family.state === "wait") {
-        family.timer -= TICK
-        if (family.timer <= 0) birth(family)
-      }
+    // Together, a family undrawn first waits for the rest, so all are born at once again.
+    if (each) {
+      for (const family of families)
+        if (family.state === "wait") {
+          family.timer -= TICK
+          if (family.timer <= 0) birth(family)
+        }
+    } else if (families.every((family) => family.state === "wait")) for (const family of families) birth(family)
 
     grow(d0)
 
@@ -2290,7 +2289,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       }
       if (stroke.painted >= stroke.length) strokes[i] = bornStroke(i, stroke.births + 1, R)
     }
-    if (looks.size > 0) fillCopies(brush, groupFor(settings.segments, settings.symmetry === "mirror"), looks, place)
+    if (looks.size > 0) fillCopies(brush, ground.group(), looks, place)
   }
 
   function step(dt: number) {
@@ -2652,7 +2651,9 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       const before = settings
       settings = next
       growth.set(next)
-      moving.set(movingOf(next))
+      // `movingOf` keeps one root at 0 so the growth exists; switched back on
+      // from 0 it starts afresh rather than carrying on where it froze.
+      if (!moving.set(movingOf(next)) && before.moving === 0 && next.moving > 0) moving.regrow()
       // The ground starts again, on black, when what it grows changes or it is switched on.
       const regrew = ground.set(groundOf(next))
       const reformed = before.groundForm !== next.groundForm
