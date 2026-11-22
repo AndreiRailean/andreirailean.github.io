@@ -193,6 +193,21 @@ the piece is still being found.
   mirrors 2.3% to 0. Without `reach` 20%. Grown in one-second steps
   (`settle`, the poster) faint lines remain at 19%: a step paints in array
   order, not in the order things grew.
+- **An old mirror is that seam put back on purpose, per root.** Andrei liked
+  the thread where it broke up the solid middle, so `oldMirrors` draws, once
+  per ground birth on its own stream, the roots whose ends on nothing fall
+  short of the mirror (`Wear`, `frayed`). The solid part is clipped as deep
+  as the end can fall; the strip between that and the mirror is cut into
+  teeth a css px long, each edge running between two depths of `fray`, a
+  noise of position along the mirror, so the thread is the same in a poster,
+  in `settle` and on screen, whatever the frames. A depth of `-reach` is
+  sealed. `mirrorWear` scales the depth by an oscillator taken at the moment
+  that end met the mirror, never at the frame. Only cuts through the centre
+  are worn: a mitre at a split or a turn is on nothing too, and wearing it
+  opened threads inside chunks, which the count between mirrors caught. The
+  dome at 25 s: threads on 62% of mirror crossings with every root old, 4.8%
+  with none (unchanged), at most 2 faint points between mirrors; headless
+  frame time 40.9 ms against 39.7, interleaved twice.
 - **Painting only what grew records time in the paint.** Each strip takes
   the tone of its frame, so a tone that moves while a chunk grows leaves a
   ramp along it: Andrei swept ground tone by hand and found the depth in it.

@@ -587,14 +587,116 @@ function bodySide(
   expected: number,
   reach: number,
 ): (x: number, y: number) => number {
-  const [hx, hy] = headingAt(line, expected)
-  const nx = -cut.uy
-  const ny = cut.ux
-  const toward = Math.sign((nx * hx + ny * hy) * body) || 1
-  const offset = cut.on ? -half(cut.on) * toward : reach * toward
+  const [nx, ny] = inward(line, cut, body, expected)
+  const offset = cut.on ? -half(cut.on) : reach
   const px = cut.px - nx * offset
   const py = cut.py - ny * offset
-  return (x, y) => ((x - px) * nx + (y - py) * ny) * toward
+  return (x, y) => (x - px) * nx + (y - py) * ny
+}
+
+/** A lattice value at integer `i`, 0 to 1, from an integer hash. */
+function lattice(i: number, salt: number) {
+  let h = Math.imul(i ^ salt, 0x27d4eb2d) ^ 0x9e3779b9
+  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b)
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35)
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296
+}
+
+/** Smooth noise along a line, 0 to 1, with lattice points every `scale`. */
+function noise1(x: number, scale: number, salt: number) {
+  const f = x / scale
+  const i = Math.floor(f)
+  const t = f - i
+  const s = t * t * (3 - 2 * t)
+  return lattice(i, salt) * (1 - s) + lattice(i + 1, salt) * s
+}
+
+/**
+ * How far an old mirror's edge falls short at `at` css px along the mirror,
+ * 0 (sealed) to 1 (as short as it gets): slow stretches open and sealed,
+ * frayed finely within them, so the thread is broken rather than ruled.
+ */
+function fray(at: number, salt: number) {
+  const v = 0.6 * noise1(at, 14, salt) + 0.4 * noise1(at, 2.5, salt ^ 0x5bd1)
+  return Math.min(1, Math.max(0, (v - 0.3) / 0.45))
+}
+
+/** Whether a cut runs through the centre, as a mirror or a wall does. */
+const throughCentre = (cut: Cut) => Math.abs(cut.px * cut.uy - cut.py * cut.ux) < 1e-6
+
+/** The unit normal to a cut pointing into the line's own side of it. */
+function inward(line: Line, cut: Cut, body: 1 | -1, expected: number): [number, number] {
+  const [hx, hy] = headingAt(line, expected)
+  const toward = Math.sign((-cut.uy * hx + cut.ux * hy) * body) || 1
+  return [-cut.uy * toward, cut.ux * toward]
+}
+
+/**
+ * How an old mirror wears a ground line's ends on nothing. `short` is the
+ * deepest a cut end falls short of its mirror, in segment units, 0 for none;
+ * `fray` is how much of that it falls short by at `at` css px along the
+ * mirror, 0 to 1, so the edge runs ragged; `cell` is how finely, in segment
+ * units, the ragged edge is cut.
+ */
+type Wear = {
+  short: (line: Line, cut: Cut, body: 1 | -1) => number
+  fray: (cut: Cut, at: number) => number
+  cell: number
+}
+
+/** A ground chunk's end on an old mirror, cut by the ragged edge `wear` frays it to. */
+function frayed(
+  poly: [number, number][],
+  line: Line,
+  cut: Cut,
+  body: 1 | -1,
+  expected: number,
+  reach: number,
+  deepest: number,
+  wear: Wear,
+): [number, number][][] {
+  const [nx, ny] = inward(line, cut, body, expected)
+  // Along the mirror, one way round whichever way the cut runs, from the foot of the centre on it.
+  const flip = cut.ux < 0 || (cut.ux === 0 && cut.uy < 0) ? -1 : 1
+  const ux = cut.ux * flip
+  const uy = cut.uy * flip
+  const base = cut.px * ux + cut.py * uy
+  const footX = cut.px - ux * base
+  const footY = cut.py - uy * base
+  const along = (x: number, y: number) => x * ux + y * uy
+  const into = (x: number, y: number) => (x - cut.px) * nx + (y - cut.py) * ny
+  // Only the strip the edge can fall in, a little into the solid part so the two overlap.
+  const strip = clipBy(poly, (x, y) => deepest + wear.cell / 4 - into(x, y))
+  if (strip.length < 3) return []
+  let lo = Infinity
+  let hi = -Infinity
+  for (const [x, y] of strip) {
+    const t = along(x, y)
+    lo = Math.min(lo, t)
+    hi = Math.max(hi, t)
+  }
+  const { cell } = wear
+  const depth = (t: number) => -reach + (deepest + reach) * wear.fray(cut, t / cell)
+  const out: [number, number][][] = []
+  const overlap = cell / 8
+  for (let i = Math.floor(lo / cell); i * cell < hi; i++) {
+    const t0 = i * cell
+    const t1 = t0 + cell
+    let tooth = clipBy(strip, (x, y) => along(x, y) - (t0 - overlap))
+    tooth = clipBy(tooth, (x, y) => t1 + overlap - along(x, y))
+    if (tooth.length < 3) continue
+    // The edge from depth(t0) at t0 to depth(t1) at t1; inside is past it, into the body.
+    const ax = footX + ux * t0 + nx * depth(t0)
+    const ay = footY + uy * t0 + ny * depth(t0)
+    const bx = footX + ux * t1 + nx * depth(t1)
+    const by = footY + uy * t1 + ny * depth(t1)
+    const ex = bx - ax
+    const ey = by - ay
+    const sign = Math.sign(ex * ny - ey * nx) || 1
+    tooth = clipBy(tooth, (x, y) => (ex * (y - ay) - ey * (x - ax)) * sign)
+    if (tooth.length >= 3) out.push(tooth)
+  }
+  return out
 }
 
 /**
@@ -619,7 +721,8 @@ function groundShape(
   hi: number,
   stopped: boolean,
   reach: number,
-): [number, number][] {
+  wear: Wear | null = null,
+): [number, number][][] {
   if (hi <= lo) return []
   const n = Math.max(1, Math.ceil((Math.abs(line.curve) * (hi - lo)) / CHORD))
   const side = (s: number, by: number): [number, number] => {
@@ -627,13 +730,36 @@ function groundShape(
     const [dx, dy] = headingAt(line, s)
     return [x - dy * by, y + dx * by]
   }
-  let poly: [number, number][] = []
+  const poly: [number, number][] = []
   for (let i = 0; i <= n; i++) poly.push(side(lo + ((hi - lo) * i) / n, w))
   for (let i = n; i >= 0; i--) poly.push(side(lo + ((hi - lo) * i) / n, -w))
-  if (line.tail) poly = clipBy(poly, bodySide(line, line.tail, 1, half, 0, reach))
-  if (stopped && line.head)
-    for (const cut of line.head) poly = clipBy(poly, bodySide(line, cut, -1, half, line.len, reach))
-  return poly
+  const cuts: [Cut, 1 | -1, number][] = []
+  if (line.tail) cuts.push([line.tail, 1, 0])
+  if (stopped && line.head) for (const cut of line.head) cuts.push([cut, -1, line.len])
+  // An old mirror's end on a mirror stops short, as deep as it can fall, and
+  // its ragged edge is drawn as teeth between that and the mirror. Mirrors and
+  // walls run through the centre; a mitre at a split or a turn is on nothing
+  // too, but inside a chunk, and wearing it opened threads down the middle.
+  const worn = cuts.map(([cut, body]) => (wear && !cut.on && throughCentre(cut) ? wear.short(line, cut, body) : 0))
+  const solid = cuts.reduce(
+    (shape, [cut, body, expected], i) =>
+      clipBy(shape, bodySide(line, cut, body, half, expected, worn[i]! > 0 ? -worn[i]! : reach)),
+    poly,
+  )
+  const shapes = [solid]
+  cuts.forEach(([cut, body, expected], i) => {
+    if (!(worn[i]! > 0)) return
+    // The rest of the band past every other cut, then this end's teeth.
+    const rest = cuts.reduce(
+      (shape, [other, b, e], j) =>
+        j === i
+          ? clipBy(shape, bodySide(line, other, b, half, e, reach))
+          : clipBy(shape, bodySide(line, other, b, half, e, worn[j]! > 0 ? -worn[j]! : reach)),
+      poly,
+    )
+    shapes.push(...frayed(rest, line, cut, body, expected, reach, worn[i]!, wear!))
+  })
+  return shapes
 }
 
 /** Adds a polygon to a path wound one way (`sign` 1) or the other, so a nonzero fill can take one shape from another. */
@@ -1812,6 +1938,40 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
   }
 
   /**
+   * Whether a ground root is an old mirror: one draw per birth on a stream of
+   * its own, as black is, so the share moves no line and raising it keeps the
+   * old mirrors there were.
+   */
+  const isOldMirror = (family: Family) =>
+    settings.oldMirrors > 0 &&
+    makeRng(hashSeed(groundOf(settings).seed, family.slot, family.births, 0x01d0))() < settings.oldMirrors
+
+  /**
+   * How old mirrors wear the ground at radius `R` css px, or null with none.
+   * An old mirror's end on nothing falls short by up to half `mirrorGap`, so
+   * with its reflection it leaves a thread up to `mirrorGap` wide, frayed
+   * along the mirror. Under `mirrorWear` the depth opens and seals on its
+   * root's own phase, taken at the moment that end met the mirror.
+   */
+  function wearOf(R: number): Wear | null {
+    if (!(settings.oldMirrors > 0)) return null
+    const { seed, speed } = groundOf(settings)
+    const deepest = settings.mirrorGap / 2 / R
+    const period = settings.mirrorWear
+    return {
+      short: (line, _cut, body) => {
+        if (!isOldMirror(line.family)) return 0
+        if (period <= 0) return deepest
+        const phase = familySwing(line.family, seed, 0x01d3).phase
+        const t = grewAt(line, body === 1 ? 0 : line.len, speed)
+        return deepest * (0.5 - 0.5 * Math.cos(2 * Math.PI * (phase + t / period)))
+      },
+      fray: (cut, at) => fray(at, seed ^ Math.round(Math.atan2(Math.abs(cut.uy), Math.abs(cut.ux)) * 4096)),
+      cell: 1 / R,
+    }
+  }
+
+  /**
    * Paints what the ground grew since the last frame, and only that, so
    * newer paint across a line's older stretch stays on top. A growing line
    * is painted from where it was last painted, a pixel back so no seam
@@ -1839,6 +1999,7 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
     // and a whole one 4.8%, the rest chevron points), and the less of it the
     // shorter the nub it leaves past a chevron's point.
     const reach = 0.5 / groundR
+    const wear = wearOf(R)
     const grown = new Map<Line, (path: Path2D) => void>()
     for (const line of ground.lines()) {
       if (line.gone) continue
@@ -1862,13 +2023,13 @@ export function createKaleidoscope(canvas: HTMLCanvasElement, initial: Settings)
       const pieces = was
         ? [
             line.len + ahead > was.len + ahead0 || stopped !== was.stopped
-              ? groundShape(line, w, half, was.len + ahead0 - seam, line.len + ahead, stopped, reach)
+              ? groundShape(line, w, half, was.len + ahead0 - seam, line.len + ahead, stopped, reach, wear)
               : [],
-            behind > behind0 ? groundShape(line, w, half, -behind, seam - behind0, stopped, reach) : [],
+            behind > behind0 ? groundShape(line, w, half, -behind, seam - behind0, stopped, reach, wear) : [],
           ]
-        : [groundShape(line, w, half, -behind, line.len + ahead, stopped, reach)]
+        : [groundShape(line, w, half, -behind, line.len + ahead, stopped, reach, wear)]
       grown.set(line, (path) => {
-        for (const piece of pieces) addPolygon(path, piece, 1)
+        for (const piece of pieces) for (const shape of piece) addPolygon(path, shape, 1)
       })
     }
     const rule = groundRule()

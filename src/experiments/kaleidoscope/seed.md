@@ -132,6 +132,23 @@ met its reflection at a mirror; that was fixed as a fault.
 > think you would want to know and we can add the organic part deliberately
 > rather than rely on an unexpected side effect.
 
+## 2026-11-22 — old mirrors
+
+Said once the join was sealed.
+
+> the organic seam looked best when it broke up bigger solid chunks.
+> background ends up filling large solid areas and the seam was giving it
+> depth. perhaps we can layer something like that on the seams. the fact
+> that we're painting over previous pixels gives us something to play with
+> here and it is what unlocked the "organic seam". perhaps that 2px outset
+> that you built can be turned off sometimes (on an oscillator) to bring back
+> the depth. seams looked best in the middle section - central star - it ends
+> up being a solid chunk most of the time. with a seam it looks like sea
+> star. if we're rebuilding the seam, I wouldn't want it to be universally
+> applied to all base paint. it would be a per-root thing. maybe a "old
+> mirror" is where the paint goes to the end of the segment but can't quite
+> fill it.
+
 ## Open questions
 
 Questions the build could not answer by itself. Each is left as a setting or
@@ -178,8 +195,7 @@ a preset rather than decided.
   seed, so it looks like more of the same lines. `movingTone` mutes its
   colours, as the ground's tone does, which is the one difference Andrei
   named; rules of its own (its own angle, width, life) are not built.
-- **An organic join, on purpose.** The ground's mirror joins are now sealed.
-  The look Andrei liked was older paint showing through a broken thread
-  where a chunk met its reflection. Built deliberately, it would be a
-  setting for how far each chunk stops short of a mirror, with a ragged
-  edge; not built.
+- **Old mirrors: which roots, and where.** Built as a share of roots drawn
+  by chance, a gap and a wear oscillator. Andrei saw the seam at its best in
+  the central star; a share that favoured roots planted at the centre, or a
+  thread that frayed by distance from it, would aim it there; not built.

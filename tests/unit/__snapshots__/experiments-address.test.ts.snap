@@ -513,6 +513,9 @@ exports[`kaleidoscope > has not edited a slot in place 1`] = `
   "motionPeriod num grid=0.5 origin=0.5 bits=7",
   "slideWay enum both|out|in",
   "movingTone num grid=0.05 origin=0 bits=5",
+  "oldMirrors num grid=0.05 origin=0 bits=5",
+  "mirrorGap num grid=0.25 origin=0 bits=5",
+  "mirrorWear num grid=0.5 origin=0 bits=7",
 ]
 `;
 

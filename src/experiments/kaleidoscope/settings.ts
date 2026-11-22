@@ -118,6 +118,12 @@ export type Settings = {
   groundSwingChance: number
   /** Seconds of a second oscillation that runs each swing half the time and holds it the other half; 0 never holds it. */
   groundGate: number
+  /** The share of the ground's roots that are old mirrors: their paint runs to the segment's edge and cannot quite fill it, leaving a thread of older paint along the mirror. */
+  oldMirrors: number
+  /** The widest thread of older paint an old mirror leaves, css px, both sides of the mirror together. */
+  mirrorGap: number
+  /** Seconds of the oscillation that opens an old mirror's thread and seals it again; 0 keeps it open. */
+  mirrorWear: number
   /** How far a line's tone swings down from full and back, along its length as it grows. */
   lineSwing: number
   /** Seconds of scene one swing of a line's tone takes. */
@@ -705,6 +711,44 @@ export const CONTROLS: Control[] = [
   },
   {
     kind: "slider",
+    key: "oldMirrors",
+    label: "old mirrors",
+    group: "ground",
+    min: 0,
+    max: 1,
+    step: 0.05,
+    format: (v) => (v === 0 ? "none" : `${Math.round(v * 100)}%`),
+    hint: "The share of the ground's roots that are old mirrors. An old mirror's paint runs to the edge of the segment and cannot quite fill it, so where it meets its reflection a broken, ragged thread of whatever was painted before shows through: a seam that breaks up the solid chunks. Drawn once per root, so raising it adds old mirrors and keeps the ones there were.",
+    inert: (settings: Settings) => settings.ground === 0 || settings.groundForm === "straight",
+  },
+  {
+    kind: "slider",
+    key: "mirrorGap",
+    label: "mirror gap",
+    group: "ground",
+    min: 0,
+    max: 6,
+    step: 0.25,
+    format: (v) => `${v.toFixed(2)}px`,
+    hint: "The widest an old mirror's thread gets, both sides of the mirror together. Along the mirror it frays between this and sealed, so under a pixel it shows as a faint, dithered line and wider as a ragged one.",
+    inert: (settings: Settings) =>
+      settings.ground === 0 || settings.groundForm === "straight" || settings.oldMirrors === 0,
+  },
+  {
+    kind: "slider",
+    key: "mirrorWear",
+    label: "mirror wear",
+    group: "ground",
+    min: 0,
+    max: 60,
+    step: 0.5,
+    format: (v) => (v === 0 ? "off" : `${v < 10 ? v.toFixed(1) : Math.round(v)}s`),
+    hint: "Seconds of an oscillation that opens each old mirror's thread and seals it again, on each root's own phase: a chunk that reaches the mirror while it is open leaves a thread, one that reaches it while sealed leaves none. Off, every old mirror's thread is open.",
+    inert: (settings: Settings) =>
+      settings.ground === 0 || settings.groundForm === "straight" || settings.oldMirrors === 0,
+  },
+  {
+    kind: "slider",
     key: "moving",
     label: "moving roots",
     group: "motion",
@@ -818,6 +862,9 @@ export const DEFAULT_SETTINGS: Settings = {
   groundSwingPeriod: 6,
   groundSwingChance: 1,
   groundGate: 0,
+  oldMirrors: 0,
+  mirrorGap: 2,
+  mirrorWear: 0,
   lineSwing: 0,
   lineSwingPeriod: 6,
   lineSwingChance: 1,
@@ -864,6 +911,9 @@ export const TRACKS: Partial<Record<NumericKey, Track>> = {
   groundSwingPeriod: { min: 0.5, max: 60, step: 0.5, scale: "log" },
   groundSwingChance: { min: 0, max: 1, step: 0.05 },
   groundGate: { min: 0, max: 120, step: 0.5 },
+  oldMirrors: { min: 0, max: 1, step: 0.05 },
+  mirrorGap: { min: 0, max: 6, step: 0.25 },
+  mirrorWear: { min: 0, max: 60, step: 0.5 },
   lineSwing: { min: 0, max: 1, step: 0.05 },
   lineSwingPeriod: { min: 0.5, max: 60, step: 0.5, scale: "log" },
   lineSwingChance: { min: 0, max: 1, step: 0.05 },
@@ -1013,6 +1063,9 @@ export const REGISTRY: readonly Slot[] = [
   { key: "motionPeriod", kind: "num", grid: 0.5, origin: 0.5, bits: 7 },
   { key: "slideWay", kind: "enum", options: ["both", "out", "in"] },
   { key: "movingTone", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "oldMirrors", kind: "num", grid: 0.05, origin: 0, bits: 5 },
+  { key: "mirrorGap", kind: "num", grid: 0.25, origin: 0, bits: 5 },
+  { key: "mirrorWear", kind: "num", grid: 0.5, origin: 0, bits: 7 },
 ]
 
 export const { settingsToQuery, urlForSettings, settingsFromQuery, namesASetting } = packedAddress<Settings>({
