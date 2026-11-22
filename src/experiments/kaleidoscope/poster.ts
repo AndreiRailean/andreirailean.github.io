@@ -11,8 +11,8 @@ import type { ExperimentApi } from "@/experiments/kaleidoscope/runner"
  */
 const poster: PosterRecipe<ExperimentApi> = {
   // No preset named, so it captures the primary — what a bare address lands on.
-  // The seed of the vertigo Andrei promoted, as he had it on screen.
-  settings: { seed: 942088 },
+  // The seed of the dome Andrei promoted, as he had it on screen.
+  settings: { seed: 227954 },
   prepare: ({ api }) => {
     api.pause(true)
     api.clear()
