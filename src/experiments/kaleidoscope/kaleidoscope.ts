@@ -256,7 +256,7 @@ function meet(px: number, py: number, rx: number, ry: number, ax: number, ay: nu
 type Piece = { x: number; y: number; dx: number; dy: number; curve: number }
 
 /** Where a piece is `s` along it. */
-function pointAt(p: Piece, s: number): [number, number] {
+export function pointAt(p: Piece, s: number): [number, number] {
   const k = p.curve
   if (k === 0) return [p.x + p.dx * s, p.y + p.dy * s]
   const sn = Math.sin(k * s)
@@ -788,7 +788,7 @@ function addPolygon(path: Path2D, poly: [number, number][], sign: 1 | -1) {
  * drawn moved and cut at the mirrors, so a meeting with anything else would
  * be with where it is not.
  */
-function createGrowth(initial: Settings, selfOnly = false) {
+export function createGrowth(initial: Settings, selfOnly = false) {
   let settings = initial
 
   let group: Map2[] = []
@@ -1415,7 +1415,9 @@ function createGrowth(initial: Settings, selfOnly = false) {
           file(index, fromX, fromY, tx, ty)
           if (metHere) {
             end(line, why)
-            line.head = g < 0 ? null : headAt(line, tx, ty, other, g, along)
+            // Square where it came right round onto itself; a wall's side is
+            // passed as `g` too, -1 for one of them, so that is no marker.
+            line.head = why === "family" && !other ? null : headAt(line, tx, ty, other, g, along)
             break
           }
           if (tx * tx + ty * ty > EDGE * EDGE) {
