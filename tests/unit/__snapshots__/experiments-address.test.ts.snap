@@ -459,6 +459,73 @@ exports[`hexgrid > retires a slot by appending to the retired list, never by edi
 ]
 `;
 
+exports[`kaleidoscope > has not edited a slot in place 1`] = `
+[
+  "segments num grid=1 origin=2 bits=5",
+  "symmetry enum mirror|turn",
+  "confine enum wedge|free",
+  "stops enum any|own|none",
+  "roots num grid=1 origin=1 bits=4",
+  "spread num grid=0.02 origin=0 bits=6",
+  "angle enum 15|30|45|60|90",
+  "step num grid=0.5 origin=1 bits=7",
+  "split num grid=0.05 origin=0 bits=5",
+  "keep num grid=0.05 origin=0 bits=5",
+  "turn num grid=0.05 origin=0 bits=5",
+  "life num grid=1 origin=1 bits=7",
+  "speed num grid=0.1 origin=0.5 bits=9",
+  "hold num grid=1 origin=0 bits=7",
+  "spin num grid=0.5 origin=-30 bits=7",
+  "width num grid=0.05 origin=0.25 bits=8",
+  "hue num grid=1 origin=0 bits=9",
+  "seed num grid=1 origin=0 bits=20",
+  "timescale num grid=0.001 origin=0.1 bits=14",
+  "taper num grid=0.01 origin=0 bits=6",
+  "tint num grid=0.05 origin=0 bits=5",
+  "hues num grid=1 origin=0 bits=9",
+  "colourBy enum depth|family|age|copy",
+  "roots num grid=1 origin=1 bits=6",
+  "from enum centre|sides",
+  "lean num grid=1 origin=-80 bits=8",
+  "cycle enum each|together",
+  "widest num grid=0.05 origin=0.25 bits=8",
+  "hold num grid=0.05 origin=0.1 bits=12",
+  "flip num grid=0.05 origin=0 bits=5",
+  "curl num grid=1 origin=0 bits=8",
+  "round num grid=0.05 origin=0 bits=6",
+  "ground num grid=1 origin=0 bits=8",
+  "groundPace num grid=0.05 origin=0.1 bits=7",
+  "groundTone num grid=0.05 origin=0 bits=5",
+  "groundBlack num grid=0.05 origin=0 bits=5",
+  "groundForm enum grown|straight",
+  "groundCount num grid=1 origin=1 bits=6",
+  "groundSwing num grid=0.05 origin=0 bits=5",
+  "groundSwingPeriod num grid=0.5 origin=0.5 bits=7",
+  "groundSwingChance num grid=0.05 origin=0 bits=5",
+  "groundGate num grid=0.5 origin=0 bits=8",
+  "lineSwing num grid=0.05 origin=0 bits=5",
+  "lineSwingPeriod num grid=0.5 origin=0.5 bits=7",
+  "lineSwingChance num grid=0.05 origin=0 bits=5",
+  "lineGate num grid=0.5 origin=0 bits=8",
+  "moving num grid=1 origin=0 bits=6",
+  "slide num grid=0.05 origin=0 bits=5",
+  "sweep num grid=1 origin=0 bits=8",
+  "motionPeriod num grid=0.5 origin=0.5 bits=7",
+  "slideWay enum both|out|in",
+  "movingTone num grid=0.05 origin=0 bits=5",
+  "oldMirrors num grid=0.05 origin=0 bits=5",
+  "mirrorGap num grid=0.25 origin=0 bits=5",
+  "mirrorWear num grid=0.5 origin=0 bits=7",
+]
+`;
+
+exports[`kaleidoscope > retires a slot by appending to the retired list, never by editing one 1`] = `
+[
+  "4 roots",
+  "13 hold",
+]
+`;
+
 exports[`melting > has not edited a slot in place 1`] = `
 [
   "shape enum tetra|cube|octa|icosa|dodeca",
