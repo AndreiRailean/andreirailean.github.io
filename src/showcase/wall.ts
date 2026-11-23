@@ -73,6 +73,14 @@ export type WallEntry = {
  *
  * The leads so far, newest first. Each was its piece's primary.
  *
+ * **Kaleidoscope's `the dome`**, a scene Andrei saved from his screen, with
+ * eleven more woven in. Andrei named twelve of its twenty-four presets. It is
+ * the first piece published whose presets roll their seed, so each entry pins
+ * one: the dome the seed of its poster, the rest the seed of fifteen tried
+ * whose drawn length over 45 s came out the median, so none is an outlier of
+ * its look. Eleven on deep ground took the next seed, because the median was
+ * Eleven's own and the two would have grown the same lines.
+ *
  * **Melting's `lava lamp`**, a scene Andrei found by dragging, with tempus, ora
  * and wax alone woven in. Andrei named all four. Each runs on the wall clock,
  * so every screen showing one shows the same lamp.
@@ -125,6 +133,15 @@ export type WallEntry = {
  */
 export const WALL: readonly WallEntry[] = [
   {
+    id: "kaleidoscope-the-dome",
+    title: "the dome",
+    piece: "kaleidoscope",
+    pieceTitle: "Kaleidoscope",
+    note: "Andrei's, saved from his screen: eleven mirrored segments of bold bars from the sides over a dark grown ground, two in five of its growths painting black, and beneath the bars, at half their brightness, eleven more families that slide inward along their sides for their whole lives, sweeping slowly as they go, so their stars sink toward the centre and close over it like a dome. Three in ten of the ground's roots are old mirrors, leaving a frayed thread of older paint where their chunks meet their reflections, each opening and sealing on a slow wear of its own.",
+    runner: "kaleidoscope.ca23580a3fc7.js",
+    scene: "-_7______35I5RMBQAZfgB6kN6cg4QCDITpIXwOhFAE0SKgOMEkUALoAFqETMozJA",
+  },
+  {
     id: "melting-lava-lamp",
     title: "lava lamp",
     piece: "melting",
@@ -168,6 +185,15 @@ export const WALL: readonly WallEntry[] = [
     note: "A screen filled with lines of dots, all travelling one way, each line at its own speed and letting its dots go at random — plainly lines, and never a fixed structure.",
     runner: "streakers.7286d5bcf698.js",
     scene: "-_-fQDRhKtAFgPScGgAxpAABaAAAA",
+  },
+  {
+    id: "kaleidoscope-vertigo",
+    title: "vertigo",
+    piece: "kaleidoscope",
+    pieceTitle: "Kaleidoscope",
+    note: "Eleven mirrored segments of straight bars from the sides, every width from hairline to bold. Seven in ten lean out toward the rim and run long; the rest lean in and soon meet their reflections. Each bar lives and dies on its own, so the figure is never still.",
+    runner: "kaleidoscope.ca23580a3fc7.js",
+    scene: "-_7______35KZScAgAR9mAFoH36Q4QClob5M6QT3AAAASUAOAXQAALoAADFB5QCAA",
   },
   {
     id: "crowd-catch-me",
@@ -215,6 +241,15 @@ export const WALL: readonly WallEntry[] = [
     scene: "_4_177vX_0BiMTEjANGtCgUSTRIAZybEKnQA0aIK6CADLZzA-4gfiAQA",
   },
   {
+    id: "kaleidoscope-concentric",
+    title: "concentric",
+    piece: "kaleidoscope",
+    pieceTitle: "Kaleidoscope",
+    note: "Thirty-two mirrored segments, so narrow that a bar from the side meets its own reflection long before it could split or turn: each closes into a small chevron, and the chevrons stack into rings round the centre, every width from hairline to bold, each coming and going on its own.",
+    runner: "kaleidoscope.ca23580a3fc7.js",
+    scene: "-_7______37y5ScohhBEYAFoAAZQ4Qulob5M6QJ3AAAASUAOAXQAALoAADFB5QCAA",
+  },
+  {
     id: "hexgrid-drift",
     title: "drift",
     piece: "hexgrid",
@@ -258,6 +293,15 @@ export const WALL: readonly WallEntry[] = [
     note: "Thin white dots on stiff stalks set wide apart, each tipping on its base and ringing long after the wind has passed.",
     runner: "dotfield.ef90bb509bb6.js",
     scene: "vov___9wOgBcqyaCCIAKhNokkKAZAAAUAAJQOYZPANBaFGRRaApi",
+  },
+  {
+    id: "kaleidoscope-blinky",
+    title: "blinky",
+    piece: "kaleidoscope",
+    pieceTitle: "Kaleidoscope",
+    note: "Thirty-two mirrored segments of short sprigs scattered through the inner part of the frame, every one turned to face the centre, bending in 15° steps until it meets its own reflection. Held for a third of a second, so each sprig flicks on and off about every two seconds.",
+    runner: "kaleidoscope.ca23580a3fc7.js",
+    scene: "-_7______37yqgINzkA0agC1Ii6Q4QBloTAAEwBKAAAASUAOAXQAALoAADFB5QCAA",
   },
   {
     id: "artdeco-facade",
@@ -305,6 +349,15 @@ export const WALL: readonly WallEntry[] = [
     scene: "v____P8YGeXdUsI7kB6IQWEDAgGAAB4DBCTwlgMptCA",
   },
   {
+    id: "kaleidoscope-rose",
+    title: "rose",
+    piece: "kaleidoscope",
+    pieceTitle: "Kaleidoscope",
+    note: "The plain kaleidoscope: eight mirrored segments, one stem in each growing out from the middle, the whole drawing growing, holding and undrawing at once.",
+    runner: "kaleidoscope.ca23580a3fc7.js",
+    scene: "-_7______34wAIUdRi5LeB7IF3DQ4QAB4AChDwngAAAASUAOAXQAALoAADFB5QCAA",
+  },
+  {
     id: "psyxels-alive",
     title: "alive",
     piece: "psyxels",
@@ -348,6 +401,15 @@ export const WALL: readonly WallEntry[] = [
     note: "Nothing drawn but where people went, in chalk on slate. Andrei's, found with the sliders.",
     runner: "walkers.6daa00b20e51.js",
     scene: "____YHhmNHgAxzoCSY2CWAATOyNcwq",
+  },
+  {
+    id: "kaleidoscope-lattice",
+    title: "lattice",
+    piece: "kaleidoscope",
+    pieceTitle: "Kaleidoscope",
+    note: "Twelve mirrored segments on a 30° angle, short steps and many splits, the whole snowflake growing and undrawing at once.",
+    runner: "kaleidoscope.ca23580a3fc7.js",
+    scene: "-_7______35QAEIphE43eBUEDLhw4QAB4AChCg7gAAAASUAOAXQAALoAADFB5QCAA",
   },
   {
     id: "dangler-dreamy",
@@ -395,6 +457,15 @@ export const WALL: readonly WallEntry[] = [
     scene: "____cFnIyQcRThzoZSxihdfGQAoNlOYAh",
   },
   {
+    id: "kaleidoscope-septa-line",
+    title: "septa line",
+    piece: "kaleidoscope",
+    pieceTitle: "Kaleidoscope",
+    note: "Seven turned segments of straight walls: roots from both sides that never split or turn, crossing into each other's segments and stopping at the first wall they meet, so the figure is a lattice of partitions forever being put up and taken down.",
+    runner: "kaleidoscope.ca23580a3fc7.js",
+    scene: "-_7______34uZOcAgAR9jED4CgMw4QCloUKgIATgAAAASUAOAXQAALoAADFB5QCAA",
+  },
+  {
     id: "starry-night-deep-field",
     title: "deep field",
     piece: "starry-night",
@@ -438,6 +509,15 @@ export const WALL: readonly WallEntry[] = [
     note: "Emitters placed at random on a circle off screen, every line through the middle.",
     runner: "streakers.7286d5bcf698.js",
     scene: "-_-fQIdgCtAFgtK8GABEUAAAoAAAA",
+  },
+  {
+    id: "kaleidoscope-soft-rose",
+    title: "soft rose",
+    piece: "kaleidoscope",
+    pieceTitle: "Kaleidoscope",
+    note: "The rose with its corners rounded: every turn and split bends through an arc a step across, then runs straight on, so the stems swell into petals.",
+    runner: "kaleidoscope.ca23580a3fc7.js",
+    scene: "-_7______34wAIUdRi5LeB7IHNEQ4QAB4AChDwngACgASUAOAXQAALoAADFB5QCAA",
   },
   {
     id: "bubbles-foam",
@@ -485,6 +565,15 @@ export const WALL: readonly WallEntry[] = [
     scene: "v____P8YGeXdUsI7kB6IQUEMgEpAAB4DBCTwlgYBtCF",
   },
   {
+    id: "kaleidoscope-eleven",
+    title: "eleven",
+    piece: "kaleidoscope",
+    pieceTitle: "Kaleidoscope",
+    note: "Eleven mirrored segments, eleven roots from the sides, every line curling hard and splitting or turning at every short step, so the bars knot into small hooks and loops that meet their own reflections. Each root lives and dies on its own, about a hundred a minute, coloured by age.",
+    runner: "kaleidoscope.ca23580a3fc7.js",
+    scene: "-_7______35KZMMojRx9hhdoB2Yw4QCloiqSHwT3SoAASUAOAXQAALoAADFB5QCAA",
+  },
+  {
     id: "walkers-bacteria",
     title: "bacteria",
     piece: "walkers",
@@ -528,6 +617,15 @@ export const WALL: readonly WallEntry[] = [
     note: "No steady breeze, only eddies: the field turns in slow whorls.",
     runner: "dotfield.ef90bb509bb6.js",
     scene: "vov___9wFChAWgAPEEcKVS0a4ojGQAAwAAQURhGHMFAAAAAi0AAG",
+  },
+  {
+    id: "kaleidoscope-eleven-on-deep-ground",
+    title: "eleven on deep ground",
+    piece: "kaleidoscope",
+    pieceTitle: "Kaleidoscope",
+    note: "Eleven's curling hooks over a wider, darker ground: chunks up to 160px at a third of the lines' lightness, so the hairlines stand out on it. The ground is never wiped, only painted over.",
+    runner: "kaleidoscope.ca23580a3fc7.js",
+    scene: "-_7______35KZMMojRx9hhdoEjCw4QCloiqSHwT3SoFASOAOAXQAALoAADFB5QCAA",
   },
   {
     id: "hexgrid-glow",
@@ -575,6 +673,15 @@ export const WALL: readonly WallEntry[] = [
     scene: "_____2AABNfBAAhqZMQkhQCCK3WikZkHgMfQYHvA8ZKAoZMhQAWRJY",
   },
   {
+    id: "kaleidoscope-bands-on-ground-and-black",
+    title: "bands on ground and black",
+    piece: "kaleidoscope",
+    pieceTitle: "Kaleidoscope",
+    note: "Bold and hairline bands from the sides of eleven mirrored segments over a dark ground, where a third of the ground's growths paint black, so black keeps returning between the colours instead of being filled in for good.",
+    runner: "kaleidoscope.ca23580a3fc7.js",
+    scene: "-_7______35I5ScAgAR9mAFoDLhw4QClob5M6QT3AACeSGcOAXQAALoAADFB5QCAA",
+  },
+  {
     id: "crowd-teams",
     title: "teams",
     piece: "crowd",
@@ -618,6 +725,15 @@ export const WALL: readonly WallEntry[] = [
     note: "A script ampersand, held still and lit from within: no frame changes at all, only breathing.",
     runner: "psyxels.3d3ba1c0d12f.js",
     scene: "______9AnD0ZGwGJitjvH5woAWmBngBcAfshQdgBaK6djtJUxyI2Q",
+  },
+  {
+    id: "kaleidoscope-tunnel",
+    title: "tunnel",
+    piece: "kaleidoscope",
+    pieceTitle: "Kaleidoscope",
+    note: "Moving families all sliding outward along their sides for their whole lives, the stars swelling out of the centre and away past the rim while new ones rise behind them: a tunnel.",
+    runner: "kaleidoscope.ca23580a3fc7.js",
+    scene: "-_7______34w5RMZRAZffB4eJN3w4QCDIQpkXwOlFAAASKOOAEkUALoAJCCA7QCAA",
   },
   {
     id: "streakers-club",
