@@ -607,6 +607,46 @@ and hands back a typed handle on it, so nothing needs to hand-roll a CDP harness
 any more. Note that headless runs without a GPU, so absolute frame times are
 pessimistic — trust the ratios between configurations, not the numbers.
 
+## Symmetry
+
+Two pieces draw copies of one part round a centre or across a mirror:
+`artdeco` and `kaleidoscope`. They found the same traps independently, so a
+third will too. The measurements behind each line are in those pieces' own
+`AGENTS.md`.
+
+- **Grow one segment and draw it once per element of the group** — N
+  rotations, plus N reflections under mirror. Store nothing twice; the copies
+  are transforms at draw time, so cost follows the segment, not the screen.
+- **What lies on a mirror is its own reflection, so decide what every action
+  means there first.** A split on the mirror has one offshoot, since the other
+  is its image; a turn is a fork. Both pieces broke here: kaleidoscope's spine
+  ended at its first split in two drawings of three under `rose`, and a
+  rounded corner setting off along the mirror was taken for a second spine
+  (1664 lines against 21). Artdeco forks a turn on its centre line for the
+  same reason, and both notes end on the same rule: if you add a decision,
+  decide what it means on the axis first.
+- **Meetings include the copies, and a line meets its own reflection exactly
+  on the mirror.** Under mirror, confining lines to the segment and leaving
+  them free therefore look alike; that is geometry, and the control's hint
+  should say so. Testing a tip against the stored segments' images does not
+  see this meeting, because the image of the tip's own segment reaches the
+  mirror only when the tip does: artdeco checks for the tip crossing its centre
+  line explicitly.
+- **Test under pure rotation as well as under mirror.** Under mirror one side
+  of the segment is a mirror, so code for that side barely runs: kaleidoscope's
+  wall bug (#359) squared the ends of about half of all wall stops under
+  rotation, and only a handful of lines in three presets under mirror. Lines
+  meet their own copies very differently too: 26 of 40 under mirror, 0 of 40
+  under rotation.
+- **Where copies abut, each must reach past the mirror.** Copies painted
+  exactly to the line leave an antialiased seam: overlapping half a buffer
+  pixel took kaleidoscope's seams on mirror crossings from 42% to 4.8%. A
+  seam wanted on purpose (`oldMirrors`) is a function of position along the
+  mirror, never of the frame, so a poster, `settle` and the live view agree.
+- **Measure a seam with a control.** Count along the mirror lines and along
+  lines halfway between them, where no seam belongs; the halfway count is what
+  caught a fix opening threads inside chunks.
+
 ## Verifying
 
 `pnpm run build` covers `astro check` and the link check below, `pnpm run lint`
